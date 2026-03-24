@@ -57,9 +57,9 @@ def setup_ego_planner(map_name, raceline_file, config_path='latticeplanner/latti
     
     # Use SAME weights regardless of single/multi-agent
     ego_cost_weights = np.array([
-        0.1,   # Follow optimization cost     
-        3.5,    # Absolute speed reward
-        0.5,    # Curvature speed punishment
+        0.12,   # Follow optimization cost     
+        2.0,    # Absolute speed reward
+        0.3,    # Curvature speed punishment
         0.5     # Opponent collision cost (will be ignored if no opponents)
     ])
     ego_planner.set_parameters({'cost_weights': ego_cost_weights, 'traj_v_scale': 1.0})
@@ -206,7 +206,13 @@ def run_lattice_planner(args):
     
     current_state = initial_state
     final_state = initial_state
-    
+
+    # Overtaking cost weight strategy
+    ego_weights_normal = np.array([0.12, 2.0, 0.3, 0.5])
+    ego_weights_overtaking = np.array([0.0, 2.0, 0.3, 0.5])  # follow_optim=0
+    overtake_buffer_dist = 5.0  # meters ahead before returning to raceline
+    progress_lead = 0.0
+
     # Main simulation variables
     laptime = 0.0
     sim_duration = args.sim_duration
@@ -221,6 +227,12 @@ def run_lattice_planner(args):
     
     # Main simulation loop
     while not done and laptime < sim_duration:
+        # Switch ego cost weights based on overtaking state and distance buffer
+        if current_state == "overtaking" and progress_lead < overtake_buffer_dist:
+            ego_planner.set_cost_weights(ego_weights_overtaking)
+        else:
+            ego_planner.set_cost_weights(ego_weights_normal)
+
         # Planning phase
         opp_pose = obsDict2oppoArray(obs, 0)
         ego_best_traj = ego_planner.plan(obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0], opp_pose, obs['linear_vels_x'][0])
@@ -262,11 +274,13 @@ def run_lattice_planner(args):
             if current_opp_progress < initial_opp_progress - centerline_total_length/2:
                 current_opp_progress += centerline_total_length
             
+            progress_lead = current_ego_progress - current_opp_progress
+
             if current_ego_progress > current_opp_progress:
                 current_state = "overtaking"
             else:
                 current_state = "following"
-            
+
             final_state = current_state
             
             # Check collision
