@@ -347,8 +347,8 @@ def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, pre
     max_cost = 20.0
     min_cost = 10.0
     width, length = 0.31, 0.58 
-    safey_width_distance = 0.1
-    safey_length_distance = 0.1
+    safey_width_distance = 0.05  # original 0.15
+    safey_length_distance = 0.12  # original 0.2
     n, m, _ = traj.shape
     k = v_lattice.shape[1]
     cost = np.zeros(n)

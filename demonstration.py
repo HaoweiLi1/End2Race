@@ -11,7 +11,7 @@ from latticeplanner.lattice_planner import *
 from latticeplanner.utils import *
 from utils import create_planner_render_callback
 
-render_info = {"ego_steer": 0.0, "ego_speed": 0.0, "opp_steer": 0.0, "opp_speed": 0.0}
+render_info = {"ego_steer": 0.0, "ego_speed": 0.0, "opp_steer": 0.0, "opp_speed": 0.0, "ego_state": "following"}
 draw_grid_pts = []
 draw_traj_pts = []
 draw_target = []
@@ -24,12 +24,12 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=0)
+    parser.add_argument('--ego_idx', type=int, default=42)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
-    parser.add_argument('--opp_speed_scale', type=float, default=0.8)
+    parser.add_argument('--opp_speed_scale', type=float, default=0.6)
     parser.add_argument('--interval_idx', type=int, default=15)
-    parser.add_argument('--opp_raceline', type=str, default='raceline1')
+    parser.add_argument('--opp_raceline', type=str, default='raceline0')
     
     return parser.parse_args()
 
@@ -57,9 +57,9 @@ def setup_ego_planner(map_name, raceline_file, config_path='latticeplanner/latti
     
     # Use SAME weights regardless of single/multi-agent
     ego_cost_weights = np.array([
-        0.1,   # Follow optimization cost     
-        3.5,    # Absolute speed reward
-        0.5,    # Curvature speed punishment
+        0.12,   # Follow optimization cost
+        3.0,    # Absolute speed reward
+        0.3,    # Curvature speed punishment
         0.5     # Opponent collision cost (will be ignored if no opponents)
     ])
     ego_planner.set_parameters({'cost_weights': ego_cost_weights, 'traj_v_scale': 1.0})
@@ -206,7 +206,7 @@ def run_lattice_planner(args):
     
     current_state = initial_state
     final_state = initial_state
-    
+
     # Main simulation variables
     laptime = 0.0
     sim_duration = args.sim_duration
@@ -218,9 +218,14 @@ def run_lattice_planner(args):
     tracker_steps = ego_planner.conf.tracker_steps
     video_frames = []
     collision_occurred = False
-    
+    ego_follow_weight = 0.12
+
     # Main simulation loop
     while not done and laptime < sim_duration:
+        # Update ego follow weight before planning
+        ego_planner.cost_weights[0] = ego_follow_weight
+        print(ego_planner.cost_weights)
+
         # Planning phase
         opp_pose = obsDict2oppoArray(obs, 0)
         ego_best_traj = ego_planner.plan(obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0], opp_pose, obs['linear_vels_x'][0])
@@ -263,12 +268,21 @@ def run_lattice_planner(args):
                 current_opp_progress += centerline_total_length
             
             if current_ego_progress > current_opp_progress:
-                current_state = "overtaking"
+                current_state = "overtake"
             else:
-                current_state = "following"
+                current_state = "follow"
+
+            # Update ego follow weight based on progress_diff
+            if -1.0 <= current_ego_progress - current_opp_progress < 1.0:
+                ego_follow_weight = 0.02
+            else:
+                ego_follow_weight = 0.12
             
             final_state = current_state
-            
+
+            if args.render:
+                render_info['ego_state'] = current_state
+
             # Check collision
             if np.any(obs['collisions']):
                 done = True
@@ -305,7 +319,7 @@ def run_lattice_planner(args):
     print('Sim elapsed time:', laptime)
     
     # Generate filename
-    state_prefix = "o" if final_state == "overtaking" else "f"
+    state_prefix = "o" if final_state == "overtake" else "f"
     opp_raceline_num = args.opp_raceline.replace('raceline', '').replace('.csv', '')
     base_filename = f"{state_prefix}_ol{opp_raceline_num}_e{args.ego_idx}_o{opp_idx}_s{args.opp_speed_scale}"
     

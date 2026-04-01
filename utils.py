@@ -100,11 +100,13 @@ def create_planner_render_callback(render_info, planner_getter, draw_grid_pts, d
 
     def render_callback(event):
         planner = planner_getter()
+        ego_state = render_info.get('ego_state', 'follow')
 
         follow_vehicle_camera(event, margin=margin)
         set_score_label(event, 800, 100, vertical_anchor='bottom')
 
         event.score_label.text = (
+            f"State: {ego_state} | "
             f"Ego: {render_info['ego_speed']:.1f}m/s, {render_info['ego_steer']:+.2f}rad | "
             f"Opp: {render_info['opp_speed']:.1f}m/s, {render_info['opp_steer']:+.2f}rad"
         )
