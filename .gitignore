@@ -3,6 +3,5 @@ __pycache__
 build/
 install/
 .claude*
-.codex
 .vscode
 Dataset_*

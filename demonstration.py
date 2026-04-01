@@ -27,9 +27,9 @@ def parse_arguments():
     parser.add_argument('--ego_idx', type=int, default=42)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
-    parser.add_argument('--opp_speed_scale', type=float, default=0.6)
+    parser.add_argument('--opp_speed_scale', type=float, default=0.8)
     parser.add_argument('--interval_idx', type=int, default=15)
-    parser.add_argument('--opp_raceline', type=str, default='raceline0')
+    parser.add_argument('--opp_raceline', type=str, default='raceline1')
     
     return parser.parse_args()
 
@@ -58,7 +58,7 @@ def setup_ego_planner(map_name, raceline_file, config_path='latticeplanner/latti
     # Use SAME weights regardless of single/multi-agent
     ego_cost_weights = np.array([
         0.12,   # Follow optimization cost
-        3.0,    # Absolute speed reward
+        3.5,    # Absolute speed reward
         0.3,    # Curvature speed punishment
         0.5     # Opponent collision cost (will be ignored if no opponents)
     ])
@@ -224,7 +224,6 @@ def run_lattice_planner(args):
     while not done and laptime < sim_duration:
         # Update ego follow weight before planning
         ego_planner.cost_weights[0] = ego_follow_weight
-        print(ego_planner.cost_weights)
 
         # Planning phase
         opp_pose = obsDict2oppoArray(obs, 0)
