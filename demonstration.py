@@ -24,12 +24,12 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=42)
+    parser.add_argument('--ego_idx', type=int, default=680)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
-    parser.add_argument('--opp_speed_scale', type=float, default=0.8)
+    parser.add_argument('--opp_speed_scale', type=float, default=0.82)
     parser.add_argument('--interval_idx', type=int, default=15)
-    parser.add_argument('--opp_raceline', type=str, default='raceline1')
+    parser.add_argument('--opp_raceline', type=str, default='raceline0')
     
     return parser.parse_args()
 
@@ -58,8 +58,8 @@ def setup_ego_planner(map_name, raceline_file, config_path='latticeplanner/latti
     # Use SAME weights regardless of single/multi-agent
     ego_cost_weights = np.array([
         0.12,   # Follow optimization cost
-        3.5,    # Absolute speed reward
-        0.3,    # Curvature speed punishment
+        2.5,    # Absolute speed reward
+        0.5,    # Curvature speed punishment
         0.5     # Opponent collision cost (will be ignored if no opponents)
     ])
     ego_planner.set_parameters({'cost_weights': ego_cost_weights, 'traj_v_scale': 1.0})
@@ -83,7 +83,7 @@ def setup_opp_planner(map_name, raceline_file, config_path='latticeplanner/latti
     # Set opponent-specific cost weights (defensive/conservative)
     opp_cost_weights = np.array([
         1.0,    # Follow optimization cost 
-        2.0,    # Absolute speed reward
+        1.8,    # Absolute speed reward
         0.5,    # Curvature speed punishment
         0.0     # Opponent collision cost (opponent doesn't avoid)
     ])
@@ -218,7 +218,7 @@ def run_lattice_planner(args):
     tracker_steps = ego_planner.conf.tracker_steps
     video_frames = []
     collision_occurred = False
-    ego_follow_weight = 0.12
+    ego_follow_weight = 0.15
 
     # Main simulation loop
     while not done and laptime < sim_duration:
@@ -272,8 +272,8 @@ def run_lattice_planner(args):
                 current_state = "follow"
 
             # Update ego follow weight based on progress_diff
-            if -1.0 <= current_ego_progress - current_opp_progress < 1.0:
-                ego_follow_weight = 0.02
+            if -1.5 <= current_ego_progress - current_opp_progress < 2.0:
+                ego_follow_weight = 0.0
             else:
                 ego_follow_weight = 0.12
             
