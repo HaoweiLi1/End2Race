@@ -61,7 +61,6 @@ class LatticePlanner:
         self.best_traj_idx = 0
         self.prev_traj_local = np.zeros((self.traj_points, 2))
         self.prev_opp_pose = np.array([0, 0])
-        self.opp_waypoints = None
         self.goal_grid = None
         self.state_i = None
         self.state_t = None
@@ -181,19 +180,10 @@ class LatticePlanner:
         abs_v_cost = -cost_weights[-3] * np.log(1 + traj_v_lattice) + cost_weights[-2] * (mean_k_lattice - all_traj_min_mean_k) * traj_v_lattice
         self.step_all_cost['abs_v_cost'] = abs_v_cost
 
-        opp_wpts = self.opp_waypoints if self.opp_waypoints is not None else np.empty((0, 5))
-        ## Option 1: static OBB only (original)
-        collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(
-            all_traj, all_traj_clothoid, traj_v_lattice,
-            opp_poses, self.prev_opp_pose, self.time_interval)
-        ## Option 2: TTC OBB only (predictive)
-        # collision_cost = cost_weights[-1] * get_obstacle_collision_ttc(
-        #     all_traj, all_traj_clothoid, traj_v_lattice,
-        #     opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts)
-        ## Option 3: 0.5 static + 0.5 TTC (mixed)
-        # collision_cost = cost_weights[-1] * get_obstacle_collision_mixed(
-        #     all_traj, all_traj_clothoid, traj_v_lattice,
-        #     opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts)
+        ## collision cost
+        collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(all_traj, all_traj_clothoid, traj_v_lattice,
+                                                                          opp_poses, self.prev_opp_pose,
+                                                                          self.time_interval)
         self.step_all_cost['collision_cost'] = collision_cost
 
         cost = np.repeat(cost, k).reshape(n, k)
@@ -357,8 +347,8 @@ def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, pre
     max_cost = 20.0
     min_cost = 10.0
     width, length = 0.31, 0.58 
-    safey_width_distance = 0.03  # original 0.15
-    safey_length_distance = 0.04  # original 0.2
+    safey_width_distance = 0.07  # original 0.15
+    safey_length_distance = 0.1  # original 0.2
     n, m, _ = traj.shape
     k = v_lattice.shape[1]
     cost = np.zeros(n)
@@ -393,119 +383,3 @@ def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, pre
                 elif cost[i][j] < 1.2:
                     cost[i][j] = 1.2
     return cost
-
-@njit(cache=True)
-def _ttc_opp_setup(opp_poses, prev_oppo_pose, dt, opp_waypoints):
-    """Shared setup for TTC-based functions: opponent velocity and raceline projection."""
-    opp_pos = opp_poses[0][:2]
-    opp_theta = opp_poses[0][2]
-    prev_opp = prev_oppo_pose.ravel()
-    has_prev = np.sum(prev_opp) != 0
-    opp_vx = (opp_pos[0] - prev_opp[0]) / float(dt) if has_prev else 0.0
-    opp_vy = (opp_pos[1] - prev_opp[1]) / float(dt) if has_prev else 0.0
-    opp_speed = np.sqrt(opp_vx * opp_vx + opp_vy * opp_vy)
-
-    use_raceline = len(opp_waypoints) > 0 and opp_speed > 0.1
-    s_arr, s_max, s_now = np.empty(0), 0.0, 0.0
-    if use_raceline:
-        _, _, t_opp, i_opp = nearest_point(opp_pos, opp_waypoints[:, :2])
-        s_arr = opp_waypoints[:, 4]
-        s_max = s_arr[-1]
-        s_now = s_arr[i_opp] + t_opp * (s_arr[min(i_opp + 1, len(s_arr) - 1)] - s_arr[i_opp])
-    return opp_pos, opp_theta, opp_vx, opp_vy, opp_speed, has_prev, use_raceline, s_arr, s_max, s_now
-
-
-@njit(cache=True)
-def _ttc_core(traj, traj_clothoid, v_lattice, opp_waypoints,
-              opp_pos, opp_theta, opp_vx, opp_vy, opp_speed,
-              use_raceline, s_arr, s_max, s_now, ittc_thres,
-              length, safety_l, width, safety_w):
-    """Core TTC loop: returns (n, k) cost array."""
-    n, m, _ = traj.shape
-    k = v_lattice.shape[1]
-    cost = np.zeros((n, k))
-    for i in range(n):
-        s_total = traj_clothoid[i, -1]
-        for ki in range(k):
-            v_ego = max(v_lattice[i, ki], 0.1)
-            min_ttc = ittc_thres + 1.0
-            for j in range(m):
-                t_j = (s_total * j / (m - 1)) / v_ego if m > 1 else 0.0
-                if t_j > ittc_thres:
-                    break
-                if use_raceline:
-                    px, py, ptheta = interp_raceline(opp_waypoints, s_arr, s_max, s_now + opp_speed * t_j)
-                else:
-                    px, py, ptheta = opp_pos[0] + opp_vx * t_j, opp_pos[1] + opp_vy * t_j, opp_theta
-                opp_box = get_vertices(np.array([px, py, ptheta]), length + safety_l, width + safety_w)
-                ego_box = get_vertices(traj[i, j, :3], length + safety_l, width + safety_w)
-                if collision(opp_box, ego_box):
-                    min_ttc = t_j
-                    break
-            if min_ttc <= ittc_thres:
-                cost[i, ki] = 20.0 * (1.0 - min_ttc / ittc_thres)
-    return cost
-
-
-@njit(cache=True)
-def get_obstacle_collision_ttc(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt,
-                               ittc_thres=1.0, opp_waypoints=np.empty((0, 5))):
-    """TTC-only collision cost with OBB detection and raceline prediction."""
-    width, length = 0.31, 0.58
-    safety_w, safety_l = 0.03, 0.04
-    setup = _ttc_opp_setup(opp_poses, prev_oppo_pose, dt, opp_waypoints)
-    return _ttc_core(traj, traj_clothoid, v_lattice, opp_waypoints, *setup, ittc_thres,
-                     length, safety_l, width, safety_w)
-
-
-@njit(cache=True)
-def get_obstacle_collision_mixed(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt,
-                                 ittc_thres=1.0, opp_waypoints=np.empty((0, 5))):
-    """50% static OBB (original) + 50% TTC OBB (predictive)."""
-    max_cost = 20.0
-    min_cost = 10.0
-    width, length = 0.31, 0.58
-    safety_w, safety_l = 0.03, 0.04
-    n, m, _ = traj.shape
-    k = v_lattice.shape[1]
-
-    setup = _ttc_opp_setup(opp_poses, prev_oppo_pose, dt, opp_waypoints)
-    opp_pos, opp_theta, opp_vx, opp_vy, opp_speed, has_prev, use_raceline, s_arr, s_max, s_now = setup
-
-    # Branch A: static OBB (original logic)
-    static_cost = np.zeros(n)
-    traj_xyt = traj[:, :, :3]
-    for i in range(n):
-        tr = traj_xyt[i]
-        close_p_idx = x2y_distances_argmin(np.ascontiguousarray(opp_poses[:, :2]), np.ascontiguousarray(tr[:, :2]))
-        for oi in range(len(opp_poses)):
-            p_idx = close_p_idx[oi]
-            opp_box = get_vertices(opp_poses[oi], length + safety_l, width + safety_w)
-            p_box = get_vertices(tr[int(p_idx)], length + safety_l, width + safety_w)
-            if collision(opp_box, p_box):
-                static_cost[i] = max_cost - p_idx * (max_cost - min_cost) / m
-
-    if has_prev:
-        opp_v = np.array([opp_vx, opp_vy])
-        traj_heading = traj[:, -1, 3]
-        traj_heading_vec = np.vstack((np.cos(traj_heading), np.sin(traj_heading))).T
-        opp_v_proj = np.dot(traj_heading_vec, opp_v.reshape(2, 1))
-        opp_v_proj_k = np.repeat(opp_v_proj, k).reshape(n, k)
-        v_diff = v_lattice - opp_v_proj_k
-        static_cost_k = np.repeat(static_cost, k).reshape(n, k) * v_diff
-        for i in range(n):
-            for j in range(k):
-                if static_cost_k[i, j] < 0:
-                    static_cost_k[i, j] = 1.0
-                elif static_cost_k[i, j] < 1.2:
-                    static_cost_k[i, j] = 1.2
-    else:
-        static_cost_k = np.repeat(static_cost, k).reshape(n, k)
-
-    # Branch B: TTC OBB
-    ttc_cost = _ttc_core(traj, traj_clothoid, v_lattice, opp_waypoints,
-                         opp_pos, opp_theta, opp_vx, opp_vy, opp_speed,
-                         use_raceline, s_arr, s_max, s_now, ittc_thres,
-                         length, safety_l, width, safety_w)
-
-    return 0.5 * static_cost_k + 0.5 * ttc_cost
