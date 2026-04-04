@@ -251,7 +251,7 @@ def sample_lookahead_square(pose_x,
                             velocity,
                             waypoints,
                             lookahead_distances=np.array([1.6, 1.8, 2.0, 2.2]),
-                            widths=np.linspace(-1.25, 1.25, num=11)):
+                            widths=np.linspace(-1.2, 1.2, num=11)):
 
     # get lookahead points to create grid along waypoints
     position = np.array([pose_x, pose_y])
@@ -347,8 +347,8 @@ def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, pre
     max_cost = 20.0
     min_cost = 10.0
     width, length = 0.31, 0.58 
-    safey_width_distance = 0.07  # original 0.15
-    safey_length_distance = 0.1  # original 0.2
+    safey_width_distance = 0.03  # original 0.15
+    safey_length_distance = 0.04  # original 0.2
     n, m, _ = traj.shape
     k = v_lattice.shape[1]
     cost = np.zeros(n)
