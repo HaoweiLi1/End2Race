@@ -183,11 +183,11 @@ class LatticePlanner:
 
         ## collision cost
         opp_wpts = self.opp_waypoints if self.opp_waypoints is not None else np.empty((0, 5))
-        ## Option 1: static OBB only (original)
-        collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval)
-        ## Option 2: weighted static + TTC (mixed, configurable ratio)
-        collision_cost = cost_weights[-1] * get_obstacle_collision_mixed_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts)
-        ## Option 3: OR fusion — max(static, TTC), no dilution
+        # Option 1: static OBB only (original)
+        # collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval)
+        # Option 2: weighted static + TTC (mixed, configurable ratio)
+        # collision_cost = cost_weights[-1] * get_obstacle_collision_mixed_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts)
+        # Option 3: OR fusion — max(static, TTC), no dilution
         collision_cost = cost_weights[-1] * get_obstacle_collision_merged_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts)
         self.step_all_cost['collision_cost'] = collision_cost
 
