@@ -24,12 +24,12 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=1022)
+    parser.add_argument('--ego_idx', type=int, default=26)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
-    parser.add_argument('--opp_speed_scale', type=float, default=0.6)
+    parser.add_argument('--opp_speed_scale', type=float, default=0.7)
     parser.add_argument('--interval_idx', type=int, default=15)
-    parser.add_argument('--opp_raceline', type=str, default='raceline0')
+    parser.add_argument('--opp_raceline', type=str, default='raceline1')
     
     return parser.parse_args()
 
@@ -64,8 +64,8 @@ def setup_ego_planner(map_name, raceline_file, config_path='latticeplanner/latti
     ])
     # Overtake zone weights
     ego_cost_weights_overtake = np.array([
-        0.01,   # Follow optimization cost (reduced)
-        2.5,    # Absolute speed reward
+        0.0,   # Follow optimization cost (reduced)
+        2.3,    # Absolute speed reward
         0.3,    # Curvature speed punishment
         0.5     # Opponent collision cost
     ])
