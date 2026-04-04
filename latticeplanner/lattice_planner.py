@@ -100,7 +100,10 @@ class LatticePlanner:
         self.scan_num = conf.scan_num
         self.angle_span = np.linspace(-0.75 * np.pi, 0.75 * np.pi, self.scan_num)
         self.ittc_thres = conf.ittc_thres
-        self.collision_thres = 0.35
+        self.collision_thres = 0.4
+        self.safety_w = 0.03
+        self.safety_l = 0.04
+        self.collision_method = 'merged'  # 'static', 'mixed', or 'merged'
 
     def add_shape_cost_function(self, func):
         """
@@ -183,12 +186,13 @@ class LatticePlanner:
 
         ## collision cost
         opp_wpts = self.opp_waypoints if self.opp_waypoints is not None else np.empty((0, 5))
-        # Option 1: static OBB only (original)
-        # collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval)
-        # Option 2: weighted static + TTC (mixed, configurable ratio)
-        # collision_cost = cost_weights[-1] * get_obstacle_collision_mixed_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts)
-        # Option 3: OR fusion — max(static, TTC), no dilution
-        collision_cost = cost_weights[-1] * get_obstacle_collision_merged_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts)
+        sw, sl = self.safety_w, self.safety_l
+        if self.collision_method == 'static':
+            collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, sw, sl)
+        elif self.collision_method == 'mixed':
+            collision_cost = cost_weights[-1] * get_obstacle_collision_mixed_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts, sw, sl)
+        else:  # 'merged'
+            collision_cost = cost_weights[-1] * get_obstacle_collision_merged_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts, sw, sl)
         self.step_all_cost['collision_cost'] = collision_cost
 
         cost = np.repeat(cost, k).reshape(n, k)
@@ -256,7 +260,7 @@ def sample_lookahead_square(pose_x,
                             velocity,
                             waypoints,
                             lookahead_distances=np.array([1.6, 1.8, 2.0, 2.2]),
-                            widths=np.linspace(-1.2, 1.2, num=11)):
+                            widths=np.linspace(-1.05, 1.05, num=11)):
 
     # get lookahead points to create grid along waypoints
     position = np.array([pose_x, pose_y])
@@ -330,8 +334,7 @@ def get_curvature(traj, traj_clothoid):
     return mean_k, max_k
 
 @njit(cache=True)
-def get_map_collision(traj, traj_clothoid, opp_poses=None, ego_pose=None, prev_traj=None, dt=None, map_metainfo=None,
-                      collision_thres=0.35):
+def get_map_collision(traj, traj_clothoid, opp_poses=None, ego_pose=None, prev_traj=None, dt=None, map_metainfo=None, collision_thres=0.4):
     if dt is None:
         raise ValueError('Map Distance Transform dt has to be set when using this cost function.')
     # points: (n, 2)
@@ -348,12 +351,10 @@ def get_map_collision(traj, traj_clothoid, opp_poses=None, ego_pose=None, prev_t
 
 
 @njit(cache=True)
-def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt=None):
+def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt=None, safety_w=0.03, safety_l=0.04):
     max_cost = 20.0
     min_cost = 10.0
-    width, length = 0.31, 0.58 
-    safey_width_distance = 0.03  # original 0.15
-    safey_length_distance = 0.04  # original 0.2
+    width, length = 0.31, 0.58
     n, m, _ = traj.shape
     k = v_lattice.shape[1]
     cost = np.zeros(n)
@@ -361,8 +362,8 @@ def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, pre
     for i, tr in enumerate(traj_xyt):
         close_p_idx = x2y_distances_argmin(np.ascontiguousarray(opp_poses[:, :2]), np.ascontiguousarray(tr[:, :2]))
         for opp_pose, p_idx in zip(opp_poses, close_p_idx):
-            opp_box = get_vertices(opp_pose, length + safey_length_distance, width + safey_width_distance)
-            p_box = get_vertices(tr[int(p_idx)], length + safey_length_distance, width + safey_width_distance)
+            opp_box = get_vertices(opp_pose, length + safety_l, width + safety_w)
+            p_box = get_vertices(tr[int(p_idx)], length + safety_l, width + safety_w)
             if collision(opp_box, p_box):
                 cost[i] = max_cost - p_idx * (max_cost - min_cost) / m
     if np.sum(prev_oppo_pose) == 0:
@@ -445,12 +446,11 @@ def _ttc_core(traj, traj_clothoid, v_lattice, opp_waypoints,
 
 @njit(cache=True)
 def get_obstacle_collision_mixed_ttc_obb(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt,
-                                         ittc_thres=1.0, opp_waypoints=np.empty((0, 5))):
+                                         ittc_thres=1.0, opp_waypoints=np.empty((0, 5)), safety_w=0.03, safety_l=0.04):
     """50% static OBB + 50% TTC OBB collision cost."""
     max_cost = 20.0
     min_cost = 10.0
     width, length = 0.31, 0.58
-    safety_w, safety_l = 0.03, 0.04
     n, m, _ = traj.shape
     k = v_lattice.shape[1]
 
@@ -498,12 +498,11 @@ def get_obstacle_collision_mixed_ttc_obb(traj, traj_clothoid, v_lattice, opp_pos
 
 @njit(cache=True)
 def get_obstacle_collision_merged_ttc_obb(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt,
-                                          ittc_thres=1.0, opp_waypoints=np.empty((0, 5))):
+                                          ittc_thres=1.0, opp_waypoints=np.empty((0, 5)), safety_w=0.03, safety_l=0.04):
     """OR-fused collision cost: at each (traj, velocity), take max of static OBB and TTC OBB."""
-    max_cost = 20.0
-    min_cost = 10.0
+    max_cost = 25.0
+    min_cost = 15.0
     width, length = 0.31, 0.58
-    safety_w, safety_l = 0.03, 0.04
     n, m, _ = traj.shape
     k = v_lattice.shape[1]
 

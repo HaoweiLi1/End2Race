@@ -24,13 +24,18 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=26)
+    parser.add_argument('--ego_idx', type=int, default=41)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
-    parser.add_argument('--opp_speed_scale', type=float, default=0.7)
+    parser.add_argument('--opp_speed_scale', type=float, default=0.6)
     parser.add_argument('--interval_idx', type=int, default=15)
     parser.add_argument('--opp_raceline', type=str, default='raceline1')
-    
+    parser.add_argument('--safety_w', type=float, default=0.03)
+    parser.add_argument('--safety_l', type=float, default=0.04)
+    parser.add_argument('--collision_method', type=str, default='merged', choices=['static', 'mixed', 'merged'])
+    parser.add_argument('--overtake_speed_reward', type=float, default=2.0)
+    parser.add_argument('--overtake_curvature_cost', type=float, default=0.4)
+
     return parser.parse_args()
 
 def create_render_callback():
@@ -41,20 +46,25 @@ def create_render_callback():
 
     return create_planner_render_callback(render_info, get_ego_planner, draw_grid_pts, draw_traj_pts, margin=800.0)
 
-def setup_ego_planner(map_name, raceline_file, config_path='latticeplanner/lattice_config.yaml'):
+def setup_ego_planner(args, config_path='latticeplanner/lattice_config.yaml'):
     """
     Setup ego vehicle planner with consistent settings
     """
     # Load configuration
     config = load_config(config_path)
-    
+
     # Get map paths
-    map_directory, map_path = get_map_paths(map_name)
-    ego_raceline_path = os.path.join(map_directory, f"{raceline_file}.csv")
-    
+    map_directory, map_path = get_map_paths(args.map_name)
+    ego_raceline_path = os.path.join(map_directory, f"{args.raceline}.csv")
+
     # Create and configure ego planner
     ego_planner = LatticePlanner(config, map_path, ego_raceline_path)
-    
+
+    # Apply collision settings from CLI
+    ego_planner.safety_w = args.safety_w
+    ego_planner.safety_l = args.safety_l
+    ego_planner.collision_method = args.collision_method
+
     # Default/follow weights
     ego_cost_weights = np.array([
         0.15,   # Follow optimization cost
@@ -64,10 +74,10 @@ def setup_ego_planner(map_name, raceline_file, config_path='latticeplanner/latti
     ])
     # Overtake zone weights
     ego_cost_weights_overtake = np.array([
-        0.0,   # Follow optimization cost (reduced)
-        2.3,    # Absolute speed reward
-        0.3,    # Curvature speed punishment
-        0.5     # Opponent collision cost
+        0.01,                        # Follow optimization cost (reduced)
+        args.overtake_speed_reward,  # Absolute speed reward
+        args.overtake_curvature_cost,# Curvature speed punishment
+        0.5                          # Opponent collision cost
     ])
     ego_planner.set_parameters({'cost_weights': ego_cost_weights, 'traj_v_scale': 1.0})
 
@@ -158,7 +168,7 @@ def run_lattice_planner(args):
     rng = np.random.default_rng(6300)
     
     # Setup planners
-    ego_planner, config_directory, ego_cost_weights, ego_cost_weights_overtake = setup_ego_planner(args.map_name, args.raceline)
+    ego_planner, config_directory, ego_cost_weights, ego_cost_weights_overtake = setup_ego_planner(args)
     opp_planner = setup_opp_planner(args.map_name, args.opp_raceline)
     ego_planner.opp_waypoints = opp_planner.waypoints
 
