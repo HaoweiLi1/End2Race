@@ -544,3 +544,19 @@ def get_map_paths(map_name):
     map_directory = os.path.join('f1tenth_racetracks', map_name)
     map_path = os.path.join(map_directory, f'{map_name}_map')
     return map_directory, map_path
+
+@njit(cache=True)
+def interp_raceline(waypoints, s_arr, s_max, s_query):
+    """Interpolate (x, y, theta) on raceline at arc length s_query (wraps around)."""
+    s_q = s_query % s_max
+    idx = 0
+    for i in range(len(s_arr) - 1):
+        if s_arr[i + 1] > s_q:
+            idx = i
+            break
+    seg = s_arr[idx + 1] - s_arr[idx]
+    t = 0.0 if seg < 1e-9 else (s_q - s_arr[idx]) / seg
+    x = waypoints[idx, 0] + t * (waypoints[idx + 1, 0] - waypoints[idx, 0])
+    y = waypoints[idx, 1] + t * (waypoints[idx + 1, 1] - waypoints[idx, 1])
+    theta = waypoints[idx, 3] + t * (waypoints[idx + 1, 3] - waypoints[idx, 3])
+    return x, y, theta

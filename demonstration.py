@@ -24,7 +24,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=92)
+    parser.add_argument('--ego_idx', type=int, default=102)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
     parser.add_argument('--opp_speed_scale', type=float, default=0.6)
@@ -160,7 +160,8 @@ def run_lattice_planner(args):
     # Setup planners
     ego_planner, config_directory, ego_cost_weights, ego_cost_weights_overtake = setup_ego_planner(args.map_name, args.raceline)
     opp_planner = setup_opp_planner(args.map_name, args.opp_raceline)
-    
+    ego_planner.opp_waypoints = opp_planner.waypoints
+
     # Common setup
     waypoints = ego_planner.waypoints
     ego_wpt_xyhs = np.vstack((ego_planner.waypoints[:, 0], ego_planner.waypoints[:, 1], ego_planner.waypoints[:, 3], ego_planner.waypoints[:, 4])).T
@@ -281,14 +282,9 @@ def run_lattice_planner(args):
             # Update ego cost weights based on progress_diff
             progress_diff = current_ego_progress - current_opp_progress
             if -2.0 <= progress_diff <= 2.5:
-                if ego_weight is not ego_cost_weights_overtake:
-                    print(f"[t={laptime:.2f}] SWITCH -> OVERTAKE | diff={progress_diff:.2f} | speed={obs['linear_vels_x'][0]:.2f}")
                 ego_weight = ego_cost_weights_overtake
             else:
-                if ego_weight is not ego_cost_weights:
-                    print(f"[t={laptime:.2f}] SWITCH -> DEFAULT  | diff={progress_diff:.2f} | speed={obs['linear_vels_x'][0]:.2f}")
                 ego_weight = ego_cost_weights
-            print(f"\r[t={laptime:.2f}] state={current_state:8s} | diff={progress_diff:+.2f} | ego_v={obs['linear_vels_x'][0]:.2f} | opp_v={obs['linear_vels_x'][1]:.2f} | mode={'OVERTAKE' if ego_weight is ego_cost_weights_overtake else 'DEFAULT'}", end="")
 
             final_state = current_state
 

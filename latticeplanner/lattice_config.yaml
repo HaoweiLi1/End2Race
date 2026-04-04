@@ -12,7 +12,7 @@ get_follow_optim_cost: true
 get_map_collision: true
 get_similarity_cost: true
 weights_num: 4
-ittc_thres: 2.0
+ittc_thres: 1.0
 scan_num: 144
 
 # Parameter Configuration
