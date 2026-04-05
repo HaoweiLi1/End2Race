@@ -2,8 +2,10 @@
 Episode quality validator for collected demonstration data.
 
 Usage:
-    python episode_validator.py <csv_file>
-    python episode_validator.py --scan_dir Dataset_Austin_0404/success/
+    python episode_validator.py <csv_file>                          # validate single file
+    python episode_validator.py --scan_dir Dataset/success/         # validate all, print report
+    python episode_validator.py --analyze Dataset/success/          # output per-case JSON + metrics
+    python episode_validator.py --calibrate Dataset/success/        # print percentile distributions
 
 CSV format: [time, steer, desired_speed, lidar_0, ..., lidar_359]
 Sampling interval: 0.1s
@@ -11,7 +13,7 @@ LiDAR: 360 beams, 1 degree resolution, index 0 = front, clockwise
 """
 
 import argparse
-import csv
+import json
 import os
 import sys
 import numpy as np
@@ -19,108 +21,84 @@ import numpy as np
 
 # ── Thresholds ──────────────────────────────────────────────────────────────
 
-PROXIMITY_THRESHOLD = 0.25      # meters, front min lidar (P5=0.24 of real data)
-PROXIMITY_SIDE_THRESHOLD = 0.25 # meters, side/rear proximity (P5=0.24 of real data)
+PROXIMITY_THRESHOLD = 0.25      # meters, front min lidar
+PROXIMITY_SIDE_THRESHOLD = 0.25 # meters, side/rear/diagonal proximity
 
 REVERSAL_WINDOW = 10            # frames = 1.0s at 0.1s interval
-REVERSAL_MAX_PER_WINDOW = 8     # max sign changes in steering rate per window (P75=8)
+REVERSAL_MAX_PER_WINDOW = 8     # max sign changes in steering rate per window
 
-STEER_JERK_THRESHOLD = 65.0     # rad/s^2, max steering acceleration (P90=65.7)
-STEER_JUMP_THRESHOLD = 0.45     # rad, max single-step steer change (P90=0.43)
+SPEED_VARIANCE_THRESHOLD = 2.0      # (m/s)^2, ~P98 of real data
+STEER_AUTOCORR_THRESHOLD = -0.1     # lag-1, ~P2 of real data (negative = actively oscillating)
 
 DT = 0.1                        # sampling interval (seconds)
 
 # LiDAR sector definitions (index 0 = front, clockwise)
-# 360 beams, 1 degree per beam
-SECTOR_FRONT = list(range(0, 30)) + list(range(330, 360))       # front ±30°
-SECTOR_RIGHT = list(range(60, 120))                              # right side
-SECTOR_REAR  = list(range(150, 210))                             # rear ±30°
-SECTOR_LEFT  = list(range(240, 300))                             # left side
+# 360 beams, 1 degree per beam, full coverage including diagonals
+SECTOR_FRONT       = list(range(0, 30)) + list(range(330, 360))  # front ±30°
+SECTOR_FRONT_RIGHT = list(range(30, 60))                          # right-front diagonal
+SECTOR_RIGHT       = list(range(60, 120))                         # right side
+SECTOR_REAR_RIGHT  = list(range(120, 150))                        # right-rear diagonal
+SECTOR_REAR        = list(range(150, 210))                        # rear ±30°
+SECTOR_REAR_LEFT   = list(range(210, 240))                        # left-rear diagonal
+SECTOR_LEFT        = list(range(240, 300))                        # left side
+SECTOR_FRONT_LEFT  = list(range(300, 330))                        # left-front diagonal
+
+SECTOR_SIDE_ALL = (SECTOR_FRONT_RIGHT + SECTOR_RIGHT + SECTOR_REAR_RIGHT
+                   + SECTOR_REAR_LEFT + SECTOR_LEFT + SECTOR_FRONT_LEFT)
 
 
 # ── Core detection functions ────────────────────────────────────────────────
 
 def check_proximity(lidar, threshold=PROXIMITY_THRESHOLD, side_threshold=PROXIMITY_SIDE_THRESHOLD):
-    """
-    Detect frames where ego is dangerously close to wall or opponent.
-
-    Args:
-        lidar: np.array shape (n_frames, 360)
-
-    Returns:
-        list of dicts, each describing one proximity event
-    """
+    """Detect frames where ego is dangerously close to wall or opponent."""
     issues = []
-    n_frames = lidar.shape[0]
+    sectors = [
+        ('front',       SECTOR_FRONT,       threshold),
+        ('front_right', SECTOR_FRONT_RIGHT, side_threshold),
+        ('right',       SECTOR_RIGHT,       side_threshold),
+        ('rear_right',  SECTOR_REAR_RIGHT,  side_threshold),
+        ('rear',        SECTOR_REAR,        side_threshold),
+        ('rear_left',   SECTOR_REAR_LEFT,   side_threshold),
+        ('left',        SECTOR_LEFT,        side_threshold),
+        ('front_left',  SECTOR_FRONT_LEFT,  side_threshold),
+    ]
 
-    for i in range(n_frames):
+    for i in range(lidar.shape[0]):
         frame = lidar[i]
-        global_min = np.min(frame)
+        worst_sector = None
+        worst_val = float('inf')
+        for sector_name, sector_idx, thresh in sectors:
+            sector_min = np.min(frame[sector_idx])
+            if sector_min < thresh and sector_min < worst_val:
+                worst_val = sector_min
+                worst_sector = sector_name
 
-        # Check each sector
-        front_min = np.min(frame[SECTOR_FRONT])
-        right_min = np.min(frame[SECTOR_RIGHT])
-        rear_min  = np.min(frame[SECTOR_REAR])
-        left_min  = np.min(frame[SECTOR_LEFT])
-
-        # Side/rear proximity is more indicative of bad overtaking behavior
-        if right_min < side_threshold or left_min < side_threshold:
-            sector = "right" if right_min < left_min else "left"
-            min_val = min(right_min, left_min)
+        if worst_sector is not None:
+            ptype = 'front_proximity' if worst_sector == 'front' else 'side_proximity'
             issues.append({
-                'type': 'side_proximity',
+                'type': ptype,
                 'frame': i,
                 'time': round(i * DT, 2),
-                'sector': sector,
-                'min_range': round(float(min_val), 3),
+                'sector': worst_sector,
+                'min_range': round(float(worst_val), 3),
             })
-        elif rear_min < side_threshold:
-            issues.append({
-                'type': 'rear_proximity',
-                'frame': i,
-                'time': round(i * DT, 2),
-                'sector': 'rear',
-                'min_range': round(float(rear_min), 3),
-            })
-        elif front_min < threshold:
-            issues.append({
-                'type': 'front_proximity',
-                'frame': i,
-                'time': round(i * DT, 2),
-                'sector': 'front',
-                'min_range': round(float(front_min), 3),
-            })
-
     return issues
 
 
 def check_steering(steer):
-    """
-    Detect frequent steering reversals and jerky steering.
-
-    Args:
-        steer: np.array shape (n_frames,)
-
-    Returns:
-        list of dicts, each describing one steering issue
-    """
+    """Detect frequent steering reversals via sliding window."""
     issues = []
-
     if len(steer) < 3:
         return issues
 
-    steer_rate = np.diff(steer) / DT                   # rad/s
-    steer_accel = np.diff(steer_rate) / DT              # rad/s^2 (jerk)
-    steer_diff = np.diff(steer)                         # raw single-step change
-    sign_changes = np.abs(np.diff(np.sign(steer_rate)))  # 2 where sign flips
+    steer_rate = np.diff(steer) / DT
+    sign_changes = np.abs(np.diff(np.sign(steer_rate)))
 
-    # ── 1. Sliding window reversal detection ──
     flagged_windows = set()
     for i in range(len(sign_changes) - REVERSAL_WINDOW + 1):
         window = sign_changes[i:i + REVERSAL_WINDOW]
         n_reversals = np.sum(window > 0)
         if n_reversals > REVERSAL_MAX_PER_WINDOW:
-            # Record the center of the window, avoid duplicate reports
             center = i + REVERSAL_WINDOW // 2
             bucket = center // REVERSAL_WINDOW
             if bucket not in flagged_windows:
@@ -133,59 +111,108 @@ def check_steering(steer):
                     'time_end': round((i + REVERSAL_WINDOW) * DT, 2),
                     'reversals': int(n_reversals),
                 })
-
-    # ── 2. Steering jerk (sudden acceleration of steering) ──
-    jerk_peaks = np.where(np.abs(steer_accel) > STEER_JERK_THRESHOLD)[0]
-    for idx in jerk_peaks:
-        issues.append({
-            'type': 'steering_jerk',
-            'frame': int(idx + 1),
-            'time': round((idx + 1) * DT, 2),
-            'jerk': round(float(steer_accel[idx]), 2),
-        })
-
-    # ── 3. Large single-step steering jump ──
-    jump_indices = np.where(np.abs(steer_diff) > STEER_JUMP_THRESHOLD)[0]
-    for idx in jump_indices:
-        issues.append({
-            'type': 'steering_jump',
-            'frame': int(idx),
-            'time': round(idx * DT, 2),
-            'delta': round(float(steer_diff[idx]), 3),
-        })
-
     return issues
 
 
-# ── Main validation entry point ────────────────────────────────────────────
+def check_speed_variance(speed):
+    """Detect episodes with abnormally high speed variance."""
+    if len(speed) < 2:
+        return []
+    variance = float(np.var(speed))
+    if variance > SPEED_VARIANCE_THRESHOLD:
+        return [{'type': 'speed_variance', 'variance': round(variance, 4)}]
+    return []
 
-def validate_episode(csv_path):
-    """
-    Validate a single episode CSV.
 
-    Returns:
-        dict with keys:
-            'file': str
-            'is_valid': bool
-            'issues': list of issue dicts
-            'summary': dict of issue counts by type
-    """
+def check_steering_autocorrelation(steer):
+    """Detect episodes with low steering autocorrelation (lag-1)."""
+    if len(steer) < 3:
+        return []
+    steer_centered = steer - np.mean(steer)
+    norm = np.sum(steer_centered ** 2)
+    if norm < 1e-10:
+        return []
+    autocorr = float(np.sum(steer_centered[:-1] * steer_centered[1:]) / norm)
+    if autocorr < STEER_AUTOCORR_THRESHOLD:
+        return [{'type': 'low_steer_autocorrelation', 'autocorr_lag1': round(autocorr, 4)}]
+    return []
+
+
+# ── Metrics computation ────────────────────────────────────────────────────
+
+def compute_metrics(csv_path):
+    """Compute all raw metrics for one episode (used by --analyze and --calibrate)."""
     data = np.loadtxt(csv_path, delimiter=',', skiprows=1)
-
     if data.ndim == 1:
         data = data.reshape(1, -1)
 
     steer = data[:, 1]
-    lidar = data[:, 3:]  # columns 3..362
+    speed = data[:, 2]
+    lidar = data[:, 3:]
+
+    metrics = {
+        'global_min_lidar': round(float(np.min(lidar)), 4),
+        'side_min_lidar': round(float(np.min(lidar[:, SECTOR_SIDE_ALL])), 4),
+        'front_min_lidar': round(float(np.min(lidar[:, SECTOR_FRONT])), 4),
+        'speed_mean': round(float(np.mean(speed)), 4),
+        'speed_variance': round(float(np.var(speed)), 4),
+        'steer_variance': round(float(np.var(steer)), 4),
+        'n_frames': len(steer),
+        'duration': round(len(steer) * DT, 1),
+    }
+
+    if len(steer) >= 3:
+        steer_rate = np.diff(steer) / DT
+        steer_accel = np.diff(steer_rate) / DT
+        sign_changes = np.abs(np.diff(np.sign(steer_rate)))
+
+        metrics['max_steer_jerk'] = round(float(np.max(np.abs(steer_accel))), 2)
+        metrics['max_steer_jump'] = round(float(np.max(np.abs(np.diff(steer)))), 4)
+
+        # Reversal rate
+        n_reversals = np.sum(sign_changes > 0)
+        metrics['reversal_rate'] = round(float(n_reversals / (len(steer) * DT)), 4)
+
+        # Max reversals in any 1s window
+        window = 10
+        max_win_rev = 0
+        for i in range(len(sign_changes) - window + 1):
+            max_win_rev = max(max_win_rev, int(np.sum(sign_changes[i:i+window] > 0)))
+        metrics['max_window_reversals'] = max_win_rev
+
+        # Autocorrelation lag-1
+        sc = steer - np.mean(steer)
+        norm = np.sum(sc ** 2)
+        metrics['steer_autocorr_lag1'] = round(float(np.sum(sc[:-1] * sc[1:]) / norm), 4) if norm > 1e-10 else 1.0
+    else:
+        metrics.update({
+            'max_steer_jerk': 0.0, 'max_steer_jump': 0.0,
+            'reversal_rate': 0.0, 'max_window_reversals': 0,
+            'steer_autocorr_lag1': 1.0,
+        })
+    return metrics
+
+
+# ── Validation entry point ─────────────────────────────────────────────────
+
+def validate_episode(csv_path):
+    """Validate a single episode CSV. Returns dict with is_valid, issues, summary."""
+    data = np.loadtxt(csv_path, delimiter=',', skiprows=1)
+    if data.ndim == 1:
+        data = data.reshape(1, -1)
+
+    steer = data[:, 1]
+    speed = data[:, 2]
+    lidar = data[:, 3:]
 
     all_issues = []
     all_issues.extend(check_proximity(lidar))
     all_issues.extend(check_steering(steer))
+    all_issues.extend(check_speed_variance(speed))
+    all_issues.extend(check_steering_autocorrelation(steer))
 
-    # Sort by time
     all_issues.sort(key=lambda x: x.get('time', x.get('time_start', 0)))
 
-    # Summary counts
     summary = {}
     for issue in all_issues:
         t = issue['type']
@@ -199,8 +226,10 @@ def validate_episode(csv_path):
     }
 
 
+# ── Output helpers ─────────────────────────────────────────────────────────
+
 def print_report(result):
-    """Pretty-print validation result."""
+    """Pretty-print validation result for one episode."""
     fname = result['file']
     if result['is_valid']:
         print(f"[PASS] {fname}")
@@ -210,56 +239,171 @@ def print_report(result):
     for itype, count in result['summary'].items():
         print(f"  {itype}: {count} events")
 
-    # Print first few issues as examples
     shown = 0
     for issue in result['issues']:
         if shown >= 10:
-            remaining = len(result['issues']) - shown
-            print(f"  ... and {remaining} more issues")
+            print(f"  ... and {len(result['issues']) - shown} more issues")
             break
         if 'time_start' in issue:
             print(f"    t={issue['time_start']}-{issue['time_end']}s  {issue['type']}  reversals={issue.get('reversals', '')}")
         else:
-            detail = issue.get('min_range') or issue.get('jerk') or issue.get('delta') or ''
+            detail = issue.get('min_range') or issue.get('variance') or issue.get('autocorr_lag1') or ''
             print(f"    t={issue['time']}s  {issue['type']}  {detail}")
         shown += 1
 
 
-# ── CLI ─────────────────────────────────────────────────────────────────────
+def print_percentiles(name, arr):
+    arr = np.array(arr)
+    print(f"{name} (n={len(arr)}):")
+    for p in [0, 5, 10, 25, 50, 75, 90, 95, 100]:
+        print(f"  P{p:3d}: {np.percentile(arr, p):.4f}")
+    print()
+
+
+# ── CLI modes ──────────────────────────────────────────────────────────────
+
+def get_csv_files(directory):
+    return sorted([os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.csv')])
+
+
+def mode_validate_single(csv_file):
+    """Validate one CSV, exit 0=pass 1=fail."""
+    result = validate_episode(csv_file)
+    print_report(result)
+    sys.exit(0 if result['is_valid'] else 1)
+
+
+def mode_scan(scan_dir):
+    """Validate all CSVs in directory, print per-file report + summary."""
+    csv_files = get_csv_files(scan_dir)
+    if not csv_files:
+        print(f"No CSV files found in {scan_dir}")
+        sys.exit(1)
+
+    pass_count = 0
+    fail_count = 0
+    for csv_path in csv_files:
+        result = validate_episode(csv_path)
+        print_report(result)
+        if result['is_valid']:
+            pass_count += 1
+        else:
+            fail_count += 1
+
+    print(f"\n{'='*40}")
+    print(f"Total: {pass_count + fail_count}  Pass: {pass_count}  Fail: {fail_count}")
+
+
+def mode_analyze(scan_dir):
+    """Compute per-case metrics + validation, save JSON."""
+    csv_files = get_csv_files(scan_dir)
+    if not csv_files:
+        print(f"No CSV files found in {scan_dir}")
+        sys.exit(1)
+
+    print(f"Analyzing {len(csv_files)} episodes...")
+
+    results = []
+    for csv_path in csv_files:
+        metrics = compute_metrics(csv_path)
+        validation = validate_episode(csv_path)
+        results.append({
+            'file': os.path.basename(csv_path),
+            'metrics': metrics,
+            'is_valid': validation['is_valid'],
+            'issue_summary': validation['summary'],
+            'issues': validation['issues'],
+        })
+
+    results.sort(key=lambda r: (r['is_valid'], -len(r['issues'])))
+
+    out_dir = os.path.dirname(scan_dir.rstrip('/'))
+    out_path = os.path.join(out_dir, 'episode_analysis.json')
+    with open(out_path, 'w') as f:
+        json.dump(results, f, indent=2)
+    print(f"Saved to {out_path}")
+
+    fail_count = sum(1 for r in results if not r['is_valid'])
+    pass_count = len(results) - fail_count
+    print(f"\nTotal: {len(results)}  Pass: {pass_count}  Fail: {fail_count}")
+
+    print(f"\nTop 10 worst cases:")
+    for r in results[:10]:
+        m = r['metrics']
+        tag = "[FAIL]" if not r['is_valid'] else "[PASS]"
+        issues_str = ", ".join(f"{k}:{v}" for k, v in r['issue_summary'].items()) if r['issue_summary'] else "none"
+        print(f"  {tag} {r['file']}")
+        print(f"    speed_var={m['speed_variance']}  autocorr={m['steer_autocorr_lag1']}  side_min={m['side_min_lidar']}  max_rev={m['max_window_reversals']}  max_jerk={m['max_steer_jerk']}")
+        print(f"    issues: {issues_str}")
+
+
+def mode_calibrate(scan_dir):
+    """Print percentile distributions for all metrics to calibrate thresholds."""
+    csv_files = get_csv_files(scan_dir)
+    if not csv_files:
+        print(f"No CSV files found in {scan_dir}")
+        sys.exit(1)
+
+    print(f"Calibrating on {len(csv_files)} episodes...\n")
+
+    all_metrics = {
+        'global_min_lidar': [], 'side_min_lidar': [], 'front_min_lidar': [],
+        'speed_variance': [], 'steer_variance': [],
+        'reversal_rate': [], 'max_window_reversals': [],
+        'max_steer_jerk': [], 'max_steer_jump': [],
+        'steer_autocorr_lag1': [],
+    }
+
+    for csv_path in csv_files:
+        m = compute_metrics(csv_path)
+        for key in all_metrics:
+            all_metrics[key].append(m[key])
+
+    print("=" * 50)
+    print("LIDAR PROXIMITY")
+    print("=" * 50)
+    print_percentiles("Global min lidar (m)", all_metrics['global_min_lidar'])
+    print_percentiles("Side min lidar (m)", all_metrics['side_min_lidar'])
+    print_percentiles("Front min lidar (m)", all_metrics['front_min_lidar'])
+
+    print("=" * 50)
+    print("STEERING")
+    print("=" * 50)
+    print_percentiles("Steer variance (rad^2)", all_metrics['steer_variance'])
+    print_percentiles("Reversal rate (per sec)", all_metrics['reversal_rate'])
+    print_percentiles("Max window reversals (per 1s)", all_metrics['max_window_reversals'])
+    print_percentiles("Max |steering jerk| (rad/s^2)", all_metrics['max_steer_jerk'])
+    print_percentiles("Max |steer jump| (rad)", all_metrics['max_steer_jump'])
+
+    print("=" * 50)
+    print("SPEED")
+    print("=" * 50)
+    print_percentiles("Speed variance (m/s)^2", all_metrics['speed_variance'])
+
+    print("=" * 50)
+    print("STEERING AUTOCORRELATION")
+    print("=" * 50)
+    print_percentiles("Steer autocorr lag-1", all_metrics['steer_autocorr_lag1'])
+
+
+# ── Main ───────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description='Episode quality validator')
     parser.add_argument('csv_file', nargs='?', help='Single CSV file to validate')
-    parser.add_argument('--scan_dir', type=str, help='Directory of CSVs to batch validate')
+    parser.add_argument('--scan_dir', type=str, help='Validate all CSVs, print report')
+    parser.add_argument('--analyze', type=str, metavar='DIR', help='Compute metrics + validation, save JSON')
+    parser.add_argument('--calibrate', type=str, metavar='DIR', help='Print percentile distributions')
     args = parser.parse_args()
 
-    if args.scan_dir:
-        csv_files = sorted([
-            os.path.join(args.scan_dir, f)
-            for f in os.listdir(args.scan_dir) if f.endswith('.csv')
-        ])
-        if not csv_files:
-            print(f"No CSV files found in {args.scan_dir}")
-            sys.exit(1)
-
-        pass_count = 0
-        fail_count = 0
-        for csv_path in csv_files:
-            result = validate_episode(csv_path)
-            print_report(result)
-            if result['is_valid']:
-                pass_count += 1
-            else:
-                fail_count += 1
-
-        print(f"\n{'='*40}")
-        print(f"Total: {pass_count + fail_count}  Pass: {pass_count}  Fail: {fail_count}")
-
+    if args.calibrate:
+        mode_calibrate(args.calibrate)
+    elif args.analyze:
+        mode_analyze(args.analyze)
+    elif args.scan_dir:
+        mode_scan(args.scan_dir)
     elif args.csv_file:
-        result = validate_episode(args.csv_file)
-        print_report(result)
-        sys.exit(0 if result['is_valid'] else 1)
-
+        mode_validate_single(args.csv_file)
     else:
         parser.print_help()
         sys.exit(1)
