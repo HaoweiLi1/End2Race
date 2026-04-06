@@ -19,10 +19,33 @@ import sys
 import numpy as np
 
 
+# ── Vehicle geometry ───────────────────────────────────────────────────────
+# F1/10 car body dimensions (same as lattice_planner.py)
+CAR_WIDTH = 0.31       # meters
+CAR_LENGTH = 0.58      # meters
+HALF_W = CAR_WIDTH / 2   # 0.155
+HALF_L = CAR_LENGTH / 2  # 0.29
+
+def _precompute_d_edge(n_beams=360):
+    """Precompute sensor-to-ego-surface distance for each lidar beam.
+
+    Beam i is at angle i degrees clockwise from front.
+    d_edge(θ) = min(|half_L / cos(θ)|, |half_W / sin(θ)|)
+    """
+    angles = np.arange(n_beams) * (np.pi / 180)
+    c = np.abs(np.cos(angles))
+    s = np.abs(np.sin(angles))
+    # Avoid division by zero: when cos≈0 → front/back unreachable, only side matters
+    d_l = np.where(c > 1e-9, HALF_L / c, np.inf)
+    d_w = np.where(s > 1e-9, HALF_W / s, np.inf)
+    return np.minimum(d_l, d_w)
+
+D_EDGE = _precompute_d_edge()  # (360,) constant lookup table
+
 # ── Thresholds ──────────────────────────────────────────────────────────────
 
-PROXIMITY_THRESHOLD = 0.25      # meters, front min lidar
-PROXIMITY_SIDE_THRESHOLD = 0.25 # meters, side/rear/diagonal proximity
+PROXIMITY_THRESHOLD = 0.07      # meters, ego surface to obstacle (uniform all directions)
+PROXIMITY_SIDE_THRESHOLD = 0.07 # meters, ego surface to obstacle
 
 REVERSAL_WINDOW = 10            # frames = 1.0s at 0.1s interval
 REVERSAL_MAX_PER_WINDOW = 8     # max sign changes in steering rate per window
@@ -50,7 +73,15 @@ SECTOR_SIDE_ALL = (SECTOR_FRONT_RIGHT + SECTOR_RIGHT + SECTOR_REAR_RIGHT
 # ── Core detection functions ────────────────────────────────────────────────
 
 def check_proximity(lidar, threshold=PROXIMITY_THRESHOLD, side_threshold=PROXIMITY_SIDE_THRESHOLD):
-    """Detect frames where ego is dangerously close to wall or opponent."""
+    """Detect frames where ego surface is dangerously close to obstacle.
+
+    Converts raw lidar (sensor-to-obstacle) to surface distance by
+    subtracting the precomputed sensor-to-ego-edge offset per beam.
+    """
+    # Convert all frames at once: surface_dist = lidar - D_EDGE
+    surface_dist = lidar - D_EDGE  # (n_frames, 360)
+    np.clip(surface_dist, 0.0, None, out=surface_dist)
+
     issues = []
     sectors = [
         ('front',       SECTOR_FRONT,       threshold),
@@ -63,8 +94,8 @@ def check_proximity(lidar, threshold=PROXIMITY_THRESHOLD, side_threshold=PROXIMI
         ('front_left',  SECTOR_FRONT_LEFT,  side_threshold),
     ]
 
-    for i in range(lidar.shape[0]):
-        frame = lidar[i]
+    for i in range(surface_dist.shape[0]):
+        frame = surface_dist[i]
         worst_sector = None
         worst_val = float('inf')
         for sector_name, sector_idx, thresh in sectors:
@@ -150,28 +181,21 @@ def compute_metrics(csv_path):
     speed = data[:, 2]
     lidar = data[:, 3:]
 
+    surface_dist = np.clip(lidar - D_EDGE, 0.0, None)
+
     metrics = {
-        'global_min_lidar': round(float(np.min(lidar)), 4),
-        'side_min_lidar': round(float(np.min(lidar[:, SECTOR_SIDE_ALL])), 4),
-        'front_min_lidar': round(float(np.min(lidar[:, SECTOR_FRONT])), 4),
+        'global_min_surface_dist': round(float(np.min(surface_dist)), 4),
+        'side_min_surface_dist': round(float(np.min(surface_dist[:, SECTOR_SIDE_ALL])), 4),
+        'front_min_surface_dist': round(float(np.min(surface_dist[:, SECTOR_FRONT])), 4),
         'speed_mean': round(float(np.mean(speed)), 4),
         'speed_variance': round(float(np.var(speed)), 4),
-        'steer_variance': round(float(np.var(steer)), 4),
         'n_frames': len(steer),
         'duration': round(len(steer) * DT, 1),
     }
 
     if len(steer) >= 3:
         steer_rate = np.diff(steer) / DT
-        steer_accel = np.diff(steer_rate) / DT
         sign_changes = np.abs(np.diff(np.sign(steer_rate)))
-
-        metrics['max_steer_jerk'] = round(float(np.max(np.abs(steer_accel))), 2)
-        metrics['max_steer_jump'] = round(float(np.max(np.abs(np.diff(steer)))), 4)
-
-        # Reversal rate
-        n_reversals = np.sum(sign_changes > 0)
-        metrics['reversal_rate'] = round(float(n_reversals / (len(steer) * DT)), 4)
 
         # Max reversals in any 1s window
         window = 10
@@ -186,8 +210,7 @@ def compute_metrics(csv_path):
         metrics['steer_autocorr_lag1'] = round(float(np.sum(sc[:-1] * sc[1:]) / norm), 4) if norm > 1e-10 else 1.0
     else:
         metrics.update({
-            'max_steer_jerk': 0.0, 'max_steer_jump': 0.0,
-            'reversal_rate': 0.0, 'max_window_reversals': 0,
+            'max_window_reversals': 0,
             'steer_autocorr_lag1': 1.0,
         })
     return metrics
@@ -333,7 +356,7 @@ def mode_analyze(scan_dir):
         tag = "[FAIL]" if not r['is_valid'] else "[PASS]"
         issues_str = ", ".join(f"{k}:{v}" for k, v in r['issue_summary'].items()) if r['issue_summary'] else "none"
         print(f"  {tag} {r['file']}")
-        print(f"    speed_var={m['speed_variance']}  autocorr={m['steer_autocorr_lag1']}  side_min={m['side_min_lidar']}  max_rev={m['max_window_reversals']}  max_jerk={m['max_steer_jerk']}")
+        print(f"    speed_var={m['speed_variance']}  autocorr={m['steer_autocorr_lag1']}  side_min={m['side_min_surface_dist']}  max_rev={m['max_window_reversals']}")
         print(f"    issues: {issues_str}")
 
 
@@ -347,10 +370,9 @@ def mode_calibrate(scan_dir):
     print(f"Calibrating on {len(csv_files)} episodes...\n")
 
     all_metrics = {
-        'global_min_lidar': [], 'side_min_lidar': [], 'front_min_lidar': [],
-        'speed_variance': [], 'steer_variance': [],
-        'reversal_rate': [], 'max_window_reversals': [],
-        'max_steer_jerk': [], 'max_steer_jump': [],
+        'global_min_surface_dist': [], 'side_min_surface_dist': [], 'front_min_surface_dist': [],
+        'speed_variance': [],
+        'max_window_reversals': [],
         'steer_autocorr_lag1': [],
     }
 
@@ -360,20 +382,16 @@ def mode_calibrate(scan_dir):
             all_metrics[key].append(m[key])
 
     print("=" * 50)
-    print("LIDAR PROXIMITY")
+    print("SURFACE DISTANCE (ego edge to obstacle)")
     print("=" * 50)
-    print_percentiles("Global min lidar (m)", all_metrics['global_min_lidar'])
-    print_percentiles("Side min lidar (m)", all_metrics['side_min_lidar'])
-    print_percentiles("Front min lidar (m)", all_metrics['front_min_lidar'])
+    print_percentiles("Global min surface dist (m)", all_metrics['global_min_surface_dist'])
+    print_percentiles("Side min surface dist (m)", all_metrics['side_min_surface_dist'])
+    print_percentiles("Front min surface dist (m)", all_metrics['front_min_surface_dist'])
 
     print("=" * 50)
     print("STEERING")
     print("=" * 50)
-    print_percentiles("Steer variance (rad^2)", all_metrics['steer_variance'])
-    print_percentiles("Reversal rate (per sec)", all_metrics['reversal_rate'])
     print_percentiles("Max window reversals (per 1s)", all_metrics['max_window_reversals'])
-    print_percentiles("Max |steering jerk| (rad/s^2)", all_metrics['max_steer_jerk'])
-    print_percentiles("Max |steer jump| (rad)", all_metrics['max_steer_jump'])
 
     print("=" * 50)
     print("SPEED")
