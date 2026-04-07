@@ -45,7 +45,7 @@ D_EDGE = _precompute_d_edge()  # (360,) constant lookup table
 # ── Thresholds ──────────────────────────────────────────────────────────────
 
 PROXIMITY_THRESHOLD = 0.07      # meters, ego surface to obstacle (uniform all directions)
-PROXIMITY_SIDE_THRESHOLD = 0.07 # meters, ego surface to obstacle
+PROXIMITY_SIDE_THRESHOLD = 0.05 # meters, ego surface to obstacle
 
 REVERSAL_WINDOW = 10            # frames = 1.0s at 0.1s interval
 REVERSAL_MAX_PER_WINDOW = 8     # max sign changes in steering rate per window

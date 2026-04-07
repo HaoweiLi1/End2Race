@@ -24,17 +24,18 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=85)
+    parser.add_argument('--ego_idx', type=int, default=1410)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
-    parser.add_argument('--opp_speed_scale', type=float, default=0.7)
+    parser.add_argument('--opp_speed_scale', type=float, default=0.6)
     parser.add_argument('--interval_idx', type=int, default=15)
     parser.add_argument('--opp_raceline', type=str, default='raceline1')
     parser.add_argument('--safety_w', type=float, default=0.05)
     parser.add_argument('--safety_l', type=float, default=0.07)
     parser.add_argument('--collision_method', type=str, default='merged', choices=['static', 'mixed', 'merged'])
-    parser.add_argument('--overtake_speed_reward', type=float, default=2.5)
-    parser.add_argument('--overtake_curvature_cost', type=float, default=0.3)
+    parser.add_argument('--overtake_follow_weight', type=float, default=0.05)
+    parser.add_argument('--overtake_speed_reward', type=float, default=1.5)
+    parser.add_argument('--overtake_curvature_cost', type=float, default=0.5)
 
     return parser.parse_args()
 
@@ -74,7 +75,7 @@ def setup_ego_planner(args, config_path='latticeplanner/lattice_config.yaml'):
     ])
     # Overtake zone weights
     ego_cost_weights_overtake = np.array([
-        0.01,                        # Follow optimization cost (reduced)
+        args.overtake_follow_weight, # Follow optimization cost (reduced)
         args.overtake_speed_reward,  # Absolute speed reward
         args.overtake_curvature_cost,# Curvature speed punishment
         0.5                          # Opponent collision cost
