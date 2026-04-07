@@ -24,7 +24,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=1410)
+    parser.add_argument('--ego_idx', type=int, default=470)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
     parser.add_argument('--opp_speed_scale', type=float, default=0.6)
@@ -101,7 +101,7 @@ def setup_opp_planner(map_name, raceline_file, config_path='latticeplanner/latti
     # Set opponent-specific cost weights (defensive/conservative)
     opp_cost_weights = np.array([
         1.0,    # Follow optimization cost 
-        1.8,    # Absolute speed reward
+        1.5,    # Absolute speed reward
         0.5,    # Curvature speed punishment
         0.0     # Opponent collision cost (opponent doesn't avoid)
     ])

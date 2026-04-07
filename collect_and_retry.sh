@@ -38,9 +38,15 @@ PRESETS_OTHER=(
     "0.05 1.5 0.5 0.08 0.12"
     "0.10 1.5 0.5 0.12 0.16"
     "0.15 1.5 0.5 0.12 0.16"
+    "0.01 0.5 0.5 0.3 0.4"
 )
 
-MAX_RETRIES=${#PRESETS_RL1[@]}
+# MAX_RETRIES = min of both preset table lengths
+if [ ${#PRESETS_RL1[@]} -le ${#PRESETS_OTHER[@]} ]; then
+    MAX_RETRIES=${#PRESETS_RL1[@]}
+else
+    MAX_RETRIES=${#PRESETS_OTHER[@]}
+fi
 
 # Generate ego_idx_range
 raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
@@ -128,6 +134,7 @@ run_case_with_preset() {
     fi
 
     python demonstration.py \
+        --render \
         --map_name "$MAP_NAME" \
         --ego_idx "$EGO_IDX" \
         --raceline "$EGO_RACELINE" \
@@ -143,15 +150,25 @@ run_case_with_preset() {
 }
 
 organize_folders() {
+    # Batch validate: pass all success CSVs to validator at once,
+    # then move the ones that fail
     if [ -d "$SUCCESS_DIR" ]; then
+        local csv_list=()
         for csv in "$SUCCESS_DIR"/*.csv; do
-            [ -f "$csv" ] || continue
-            if ! python episode_validator.py "$csv" >/dev/null 2>&1; then
-                local base=$(basename "$csv" .csv)
-                mv "$csv" "$LOW_QUALITY_DIR/"
-                [ -f "$SUCCESS_DIR/${base}.mp4" ] && mv "$SUCCESS_DIR/${base}.mp4" "$LOW_QUALITY_DIR/"
-            fi
+            [ -f "$csv" ] && csv_list+=("$csv")
         done
+        [ ${#csv_list[@]} -eq 0 ] && return
+
+        # Run validator in scan mode, grep FAIL lines to get filenames
+        local fail_files
+        fail_files=$(python episode_validator.py --scan_dir "$SUCCESS_DIR" 2>/dev/null | grep '^\[FAIL\]' | sed 's/\[FAIL\] //')
+
+        while IFS= read -r fname; do
+            [ -z "$fname" ] && continue
+            local base="${fname%.csv}"
+            [ -f "$SUCCESS_DIR/$fname" ] && mv "$SUCCESS_DIR/$fname" "$LOW_QUALITY_DIR/"
+            [ -f "$SUCCESS_DIR/${base}.mp4" ] && mv "$SUCCESS_DIR/${base}.mp4" "$LOW_QUALITY_DIR/"
+        done <<< "$fail_files"
     fi
 }
 
@@ -222,7 +239,7 @@ for opp_raceline in "${OPP_RACELINES[@]}"; do
                 continue
             fi
 
-            cmd="python demonstration.py --map_name $MAP_NAME --raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speed_scale $opp_speed --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --sim_duration $SIM_DURATION --safety_w $P1_SW --safety_l $P1_SL --overtake_follow_weight $P1_FW --overtake_speed_reward $P1_SR --overtake_curvature_cost $P1_CC"
+            cmd="python demonstration.py --render --map_name $MAP_NAME --raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speed_scale $opp_speed --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --sim_duration $SIM_DURATION --safety_w $P1_SW --safety_l $P1_SL --overtake_follow_weight $P1_FW --overtake_speed_reward $P1_SR --overtake_curvature_cost $P1_CC"
 
             while [ $(jobs -r | wc -l) -ge $WORKERS ]; do
                 sleep 0.1
@@ -242,6 +259,24 @@ else
     echo "All $launched simulations completed"
 fi
 
+# Check for missing cases after Phase 1
+echo "Checking for missing cases..."
+missing=0
+for opp_raceline in "${OPP_RACELINES[@]}"; do
+    opp_rl_num="${opp_raceline#raceline}"
+    for opp_speed in "${OPP_SPEED_SCALES[@]}"; do
+        for ego_idx in "${ego_idx_range[@]}"; do
+            if ! case_exists "$opp_rl_num" "$ego_idx" "$opp_speed"; then
+                ((missing++))
+                case_key="ol${opp_rl_num}_e${ego_idx}_o0_s${opp_speed}"
+                echo "  [WARN] Missing: opp_rl=$opp_rl_num ego=$ego_idx speed=$opp_speed, retrying..."
+                run_case_with_preset "$case_key" 0 2>&1
+            fi
+        done
+    done
+done
+[ "$missing" -eq 0 ] && echo "  All cases present."
+
 organize_folders
 print_status "After Phase 1"
 
@@ -253,7 +288,7 @@ echo "====================================="
 
 # Resume: skip completed rounds
 start_round=1
-for r in $(seq 1 "$MAX_RETRIES"); do
+for r in $(seq 1 "$((MAX_RETRIES - 1))"); do
     if [ -f "${DATASET_DIR}/retry_round${r}.txt" ]; then
         start_round=$((r + 1))
     else
@@ -265,12 +300,9 @@ if [ "$start_round" -gt 1 ]; then
     echo "Resuming from round $start_round (rounds 1-$((start_round - 1)) already done)"
 fi
 
-for round in $(seq "$start_round" "$MAX_RETRIES"); do
-    # Preset index: round 1 uses preset 1, round 2 uses preset 2, etc.
+max_rounds=$((MAX_RETRIES - 1))  # preset 0 used in Phase 1, presets 1..N-1 for retries
+for round in $(seq "$start_round" "$max_rounds"); do
     preset_idx=$round
-    if [ "$preset_idx" -ge "$MAX_RETRIES" ]; then
-        preset_idx=$((MAX_RETRIES - 1))
-    fi
 
     echo ""
     echo "Round ${round}: Collecting retry list..."
@@ -313,6 +345,16 @@ for round in $(seq "$start_round" "$MAX_RETRIES"); do
         run_case_with_preset "$case_key" "$preset_idx" >/dev/null 2>&1 &
     done < "$retry_file"
     wait
+
+    # Check for missing cases (silent crashes) and retry them once
+    while IFS= read -r case_key; do
+        [ -z "$case_key" ] && continue
+        parse_case_key "$case_key"
+        if ! case_exists "$OPP_RL_NUM" "$EGO_IDX" "$OPP_SPEED"; then
+            echo "  [WARN] Missing output for $case_key, retrying..."
+            run_case_with_preset "$case_key" "$preset_idx" 2>&1
+        fi
+    done < "$retry_file"
 
     organize_folders
     print_status "After Round $round (preset $preset_idx)"
