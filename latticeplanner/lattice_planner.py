@@ -100,10 +100,9 @@ class LatticePlanner:
         self.scan_num = conf.scan_num
         self.angle_span = np.linspace(-0.75 * np.pi, 0.75 * np.pi, self.scan_num)
         self.ittc_thres = conf.ittc_thres
-        self.collision_thres = 0.4
+        self.collision_thres = 0.35
         self.safety_w = 0.03
         self.safety_l = 0.04
-        self.collision_method = 'merged'  # 'static', 'mixed', or 'merged'
 
     def add_shape_cost_function(self, func):
         """
@@ -187,12 +186,9 @@ class LatticePlanner:
         ## collision cost
         opp_wpts = self.opp_waypoints if self.opp_waypoints is not None else np.empty((0, 5))
         sw, sl = self.safety_w, self.safety_l
-        if self.collision_method == 'static':
-            collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, sw, sl)
-        elif self.collision_method == 'mixed':
-            collision_cost = cost_weights[-1] * get_obstacle_collision_mixed_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts, sw, sl)
-        else:  # 'merged'
-            collision_cost = cost_weights[-1] * get_obstacle_collision_merged_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts, sw, sl)
+        # collision_cost = cost_weights[-1] * get_obstacle_collision_with_v(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, sw, sl)
+        # collision_cost = cost_weights[-1] * get_obstacle_collision_mixed_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts, sw, sl)
+        collision_cost = cost_weights[-1] * get_obstacle_collision_merged_ttc_obb(all_traj, all_traj_clothoid, traj_v_lattice, opp_poses, self.prev_opp_pose, self.time_interval, self.ittc_thres, opp_wpts, sw, sl)
         self.step_all_cost['collision_cost'] = collision_cost
 
         cost = np.repeat(cost, k).reshape(n, k)
@@ -334,7 +330,7 @@ def get_curvature(traj, traj_clothoid):
     return mean_k, max_k
 
 @njit(cache=True)
-def get_map_collision(traj, traj_clothoid, opp_poses=None, ego_pose=None, prev_traj=None, dt=None, map_metainfo=None, collision_thres=0.4):
+def get_map_collision(traj, traj_clothoid, opp_poses=None, ego_pose=None, prev_traj=None, dt=None, map_metainfo=None, collision_thres=0.35):
     if dt is None:
         raise ValueError('Map Distance Transform dt has to be set when using this cost function.')
     # points: (n, 2)
@@ -351,7 +347,7 @@ def get_map_collision(traj, traj_clothoid, opp_poses=None, ego_pose=None, prev_t
 
 
 @njit(cache=True)
-def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt=None, safety_w=0.03, safety_l=0.04):
+def get_obstacle_collision_with_v(traj, traj_clothoid, v_lattice, opp_poses, prev_oppo_pose, dt=None, safety_w=0.15, safety_l=0.20):
     max_cost = 20.0
     min_cost = 10.0
     width, length = 0.31, 0.58

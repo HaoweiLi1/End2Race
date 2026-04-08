@@ -5,7 +5,6 @@ import numpy as np
 import csv
 import json
 import argparse
-from datetime import datetime
 import imageio
 from latticeplanner.lattice_planner import *
 from latticeplanner.utils import *
@@ -24,18 +23,14 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Multi-Agent Planner Runner')
     parser.add_argument('--map_name', type=str, default='Austin')
     parser.add_argument('--sim_duration', type=float, default=8.0)
-    parser.add_argument('--ego_idx', type=int, default=470)
+    parser.add_argument('--ego_idx', type=int, default=42)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--raceline', type=str, default='raceline1')
-    parser.add_argument('--opp_speed_scale', type=float, default=0.6)
+    parser.add_argument('--opp_speed_scale', type=float, default=0.7)
     parser.add_argument('--interval_idx', type=int, default=15)
     parser.add_argument('--opp_raceline', type=str, default='raceline1')
-    parser.add_argument('--safety_w', type=float, default=0.05)
-    parser.add_argument('--safety_l', type=float, default=0.07)
-    parser.add_argument('--collision_method', type=str, default='merged', choices=['static', 'mixed', 'merged'])
-    parser.add_argument('--overtake_follow_weight', type=float, default=0.05)
-    parser.add_argument('--overtake_speed_reward', type=float, default=1.5)
-    parser.add_argument('--overtake_curvature_cost', type=float, default=0.5)
+    parser.add_argument('--safety_margin', type=float, nargs=2, default=[0.03, 0.04], help='[safety_w, safety_l]')
+    parser.add_argument('--cost_weights', type=float, nargs=4, default=[0.05, 2.3, 0.3, 0.5], help='[follow_cost, speed_reward, curvature_cost, collision_cost]')
 
     return parser.parse_args()
 
@@ -62,27 +57,13 @@ def setup_ego_planner(args, config_path='latticeplanner/lattice_config.yaml'):
     ego_planner = LatticePlanner(config, map_path, ego_raceline_path)
 
     # Apply collision settings from CLI
-    ego_planner.safety_w = args.safety_w
-    ego_planner.safety_l = args.safety_l
-    ego_planner.collision_method = args.collision_method
+    ego_planner.safety_w = args.safety_margin[0]
+    ego_planner.safety_l = args.safety_margin[1]
 
-    # Default/follow weights
-    ego_cost_weights = np.array([
-        0.15,   # Follow optimization cost
-        2.0,    # Absolute speed reward
-        0.4,    # Curvature speed punishment
-        0.5     # Opponent collision cost
-    ])
-    # Overtake zone weights
-    ego_cost_weights_overtake = np.array([
-        args.overtake_follow_weight, # Follow optimization cost (reduced)
-        args.overtake_speed_reward,  # Absolute speed reward
-        args.overtake_curvature_cost,# Curvature speed punishment
-        0.5                          # Opponent collision cost
-    ])
+    ego_cost_weights = np.array(args.cost_weights)
     ego_planner.set_parameters({'cost_weights': ego_cost_weights, 'traj_v_scale': 1.0})
 
-    return ego_planner, map_directory, ego_cost_weights, ego_cost_weights_overtake
+    return ego_planner, map_directory
 
 def setup_opp_planner(map_name, raceline_file, config_path='latticeplanner/lattice_config.yaml'):
     """
@@ -101,7 +82,7 @@ def setup_opp_planner(map_name, raceline_file, config_path='latticeplanner/latti
     # Set opponent-specific cost weights (defensive/conservative)
     opp_cost_weights = np.array([
         1.0,    # Follow optimization cost 
-        1.5,    # Absolute speed reward
+        1.8,    # Absolute speed reward
         0.5,    # Curvature speed punishment
         0.0     # Opponent collision cost (opponent doesn't avoid)
     ])
@@ -112,8 +93,11 @@ def setup_opp_planner(map_name, raceline_file, config_path='latticeplanner/latti
 def save_data(args, collected_data, video_frames, collision_occurred, 
               final_state, base_filename, laptime, opp_idx):
     """Save data with unified format"""
-    dir_timestamp = datetime.now().strftime("%m%d")
-    dataset_dir = f"Dataset_{args.map_name}_{dir_timestamp}"
+    cw = args.cost_weights
+    sm = args.safety_margin
+    cw_str = f"{cw[0]:.2f}_{cw[1]:.1f}_{cw[2]:.1f}_{cw[3]:.1f}"
+    sm_str = f"{sm[0]:.2f}_{sm[1]:.2f}"
+    dataset_dir = f"Dataset_{args.map_name}_cw{cw_str}_sm{sm_str}"
     
     if collision_occurred:
         collision_dir = os.path.join(dataset_dir, "collision")
@@ -169,7 +153,7 @@ def run_lattice_planner(args):
     rng = np.random.default_rng(6300)
     
     # Setup planners
-    ego_planner, config_directory, ego_cost_weights, ego_cost_weights_overtake = setup_ego_planner(args)
+    ego_planner, config_directory = setup_ego_planner(args)
     opp_planner = setup_opp_planner(args.map_name, args.opp_raceline)
     ego_planner.opp_waypoints = opp_planner.waypoints
 
@@ -237,13 +221,9 @@ def run_lattice_planner(args):
     tracker_steps = ego_planner.conf.tracker_steps
     video_frames = []
     collision_occurred = False
-    ego_weight = ego_cost_weights
 
     # Main simulation loop
     while not done and laptime < sim_duration:
-        # Update ego cost weights before planning
-        ego_planner.cost_weights = ego_weight
-
         # Planning phase
         opp_pose = obsDict2oppoArray(obs, 0)
         ego_best_traj = ego_planner.plan(obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0], opp_pose, obs['linear_vels_x'][0])
@@ -289,13 +269,6 @@ def run_lattice_planner(args):
                 current_state = "overtake"
             else:
                 current_state = "follow"
-
-            # Update ego cost weights based on progress_diff
-            progress_diff = current_ego_progress - current_opp_progress
-            if -2.0 <= progress_diff <= 2.5:
-                ego_weight = ego_cost_weights_overtake
-            else:
-                ego_weight = ego_cost_weights
 
             final_state = current_state
 
