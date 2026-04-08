@@ -97,7 +97,7 @@ def save_data(args, collected_data, video_frames, collision_occurred,
     sm = args.safety_margin
     cw_str = f"{cw[0]:.2f}_{cw[1]:.1f}_{cw[2]:.1f}_{cw[3]:.1f}"
     sm_str = f"{sm[0]:.2f}_{sm[1]:.2f}"
-    dataset_dir = f"Dataset_{args.map_name}_cw{cw_str}_sm{sm_str}"
+    dataset_dir = os.path.join(f"Dataset_{args.map_name}", f"cw{cw_str}_sm{sm_str}")
     
     if collision_occurred:
         collision_dir = os.path.join(dataset_dir, "collision")

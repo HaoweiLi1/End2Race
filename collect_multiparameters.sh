@@ -62,7 +62,8 @@ for sm in "${SAFETY_MARGINS[@]}"; do
     read -r sw sl <<< "$sm"
     ((gi++))
 
-    DATASET_DIR="Dataset_${MAP_NAME}_cw${fc}_${sr}_${cc}_${colc}_sm${sw}_${sl}"
+    PARAM_DIR="cw${fc}_${sr}_${cc}_${colc}_sm${sw}_${sl}"
+    DATASET_DIR="Dataset_${MAP_NAME}/${PARAM_DIR}"
     SUCCESS_DIR="$DATASET_DIR/success"
     COLLISION_DIR="$DATASET_DIR/collision"
     mkdir -p "$SUCCESS_DIR" "$COLLISION_DIR"
