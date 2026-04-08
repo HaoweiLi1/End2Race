@@ -19,23 +19,24 @@ https://github.com/user-attachments/assets/5369f5ea-13fa-44c3-a6aa-5b3c2b59b10c
 ```
 end2race/
 ├── pretrained/
-│   └── end2race.pth           # Pretrained model weights
-├── f1tenth_gym/               # F1Tenth simulator environment
-├── f1tenth_racetracks/        # Track data with pre-generated lanes and racelines
-│   └── generate_raceline.py   # Raceline generation tool
-├── latticeplanner/            # Expert planner module
-│   ├── lattice_planner.py     # Main planner implementation
-│   ├── lattice_config.yaml    # Planner configuration
-│   ├── pure_pursuit.py        # Low-level trajectory tracker
-│   └── utils.py               # Planner utility functions
-├── model.py                   # GRU network architecture
-├── train.py                   # Training script
-├── demonstration.py           # Lattice planner expert demonstration
-├── collect.sh                 # Batch data collection
-├── evaluate_singleagent.py    # Single-agent lap completion evaluation
-├── evaluate_multiagent.py     # Multi-agent competitive racing evaluation
-├── evaluate.sh                # Parallel batch evaluation
-└── utils.py                   # Shared utility functions
+│   └── end2race.pth                # Pretrained model weights
+├── f1tenth_gym/                    # F1Tenth simulator environment
+├── f1tenth_racetracks/             # Track data with pre-generated lanes and racelines
+│   └── generate_raceline.py        # Raceline generation tool
+├── latticeplanner/                 # Expert planner module
+│   ├── lattice_planner.py          # Main planner implementation
+│   ├── lattice_config.yaml         # Planner configuration
+│   ├── pure_pursuit.py             # Low-level trajectory tracker
+│   └── utils.py                    # Planner utility functions
+├── model.py                        # GRU network architecture
+├── train.py                        # Training script
+├── demonstration.py                # Lattice planner expert demonstration
+├── episode_validator.py            # Episode quality validator
+├── collect_multiparameters.sh      # Batch collection with parameter sweeps
+├── evaluate_singleagent.py         # Single-agent lap completion evaluation
+├── evaluate_multiagent.py          # Multi-agent competitive racing evaluation
+├── evaluate.sh                     # Parallel batch evaluation
+└── utils.py                        # Shared utility functions
 ```
 
 ## Environment Setup
@@ -125,6 +126,8 @@ python demonstration.py \
     --opp_raceline raceline0 \
     --opp_speed_scale 0.6 \
     --sim_duration 8.0 \
+    --cost_weights 0.05 2.3 0.3 0.5 \
+    --safety_margin 0.03 0.04 \
     --render
 ```
 - `--ego_idx`: Starting waypoint index for ego vehicle 
@@ -132,14 +135,28 @@ python demonstration.py \
 - `--opp_raceline`: Opponent's raceline file 
 - `--opp_speed_scale`: Opponent speed multiplier 
 - `--sim_duration`: Simulation time limit in seconds
+- `--cost_weights`: Ego planner cost weights `[follow_cost, speed_reward, curvature_cost, collision_cost]`
+- `--safety_margin`: OBB collision safety margins `[safety_w, safety_l]` in meters
+- `--render`: Enable visualization and video recording
 
-### Parallel Collection
+### Episode Quality Validation
 
-The batch collection script automates the process by running multiple Lattice Planner simulations in parallel, systematically varying starting positions, opponent strategies, and speed settings to create a diverse training dataset:
+Validates collected demonstrations for data quality. Detects proximity violations, steering oscillation, steering jumps, low steering autocorrelation, and speed oscillation:
 
 ```bash
-bash collect.sh
+python episode_validator.py --input_csv file.csv          # validate single file
+python episode_validator.py --input_csv Dataset/success/   # validate directory, save JSON
 ```
+
+### Batch Collection with Parameter Sweeps
+
+Runs systematic parameter sweeps over `--cost_weights` and `--safety_margin`, collecting data for each combination and automatically validating results:
+
+```bash
+bash collect_multiparameters.sh
+```
+
+Parameter ranges are configured at the top of the script. Each parameter combination creates a separate output directory named by the parameters (e.g., `Dataset_Austin_cw0.05_2.0_0.3_0.5_sm0.03_0.04/`). After each group completes, the episode validator runs automatically and moves low-quality episodes to a `low_quality/` subdirectory.
 
 ## Training
 Trains the End2Race model using imitation learning on collected demonstrations.
