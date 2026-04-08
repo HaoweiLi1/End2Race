@@ -1,9 +1,11 @@
 #!/bin/bash
-export DISPLAY=:1
+# export DISPLAY=:1
+# nohup bash collect_multiparameters.sh > /dev/null 2>&1 &
+# pkill -f collect_multiparameters.sh && pkill -f demonstration.py
 
 # ── Fixed parameters ──────────────────────────────────────────────────────
 
-WORKERS=6
+WORKERS=4
 MAP_NAME="Austin"
 EGO_RACELINE="raceline1"
 OPP_RACELINES=("raceline0" "raceline1" "raceline2")
@@ -24,6 +26,16 @@ COLLISION_COSTS=(0.5 1.0 1.5)
 # 1x=(0.03,0.04)  3x=(0.09,0.12)  5x=(0.15,0.20)
 SAFETY_MARGINS=("0.03 0.04" "0.09 0.12" "0.15 0.20")
 
+# ── Logging & progress tracking ──────────────────────────────────────────
+
+ROOT_DIR="Dataset_${MAP_NAME}"
+mkdir -p "$ROOT_DIR"
+LOG_FILE="${ROOT_DIR}/collect.log"
+PROGRESS_FILE="${ROOT_DIR}/progress.txt"
+touch "$PROGRESS_FILE"
+
+log() { echo "$(date '+%m-%d %H:%M:%S') $*" | tee -a "$LOG_FILE"; }
+
 # ── Generate ego indices ──────────────────────────────────────────────────
 
 raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
@@ -39,17 +51,21 @@ done
 n_groups=$((${#FOLLOW_COSTS[@]} * ${#SPEED_REWARDS[@]} * ${#CURVATURE_COSTS[@]} * ${#COLLISION_COSTS[@]} * ${#SAFETY_MARGINS[@]}))
 jobs_per_group=$((${#OPP_RACELINES[@]} * ${#OPP_SPEED_SCALES[@]} * ${#ego_idx_range[@]}))
 
-echo "Batch Data Collection (Multi-Parameter)"
-echo "============================================="
-echo "Map: $MAP_NAME"
-echo "Ego raceline: $EGO_RACELINE"
-echo "Opponent racelines: ${OPP_RACELINES[*]}"
-echo "Speed scales: ${OPP_SPEED_SCALES[*]}"
-echo "Start points: $NUM_STARTPOINTS"
-echo "Jobs per group: $jobs_per_group"
-echo "Parameter groups: $n_groups"
-echo "Total jobs: $((n_groups * jobs_per_group))"
-echo "Workers: $WORKERS"
+# Count already completed groups
+completed=$(wc -l < "$PROGRESS_FILE" | tr -d ' ')
+
+log "Batch Data Collection (Multi-Parameter)"
+log "============================================="
+log "Map: $MAP_NAME"
+log "Ego raceline: $EGO_RACELINE"
+log "Opponent racelines: ${OPP_RACELINES[*]}"
+log "Speed scales: ${OPP_SPEED_SCALES[*]}"
+log "Start points: $NUM_STARTPOINTS"
+log "Jobs per group: $jobs_per_group"
+log "Parameter groups: $n_groups"
+log "Total jobs: $((n_groups * jobs_per_group))"
+log "Workers: $WORKERS"
+log "Already completed: $completed groups"
 
 # ── Run all parameter combinations ───────────────────────────────────────
 
@@ -63,14 +79,20 @@ for sm in "${SAFETY_MARGINS[@]}"; do
     ((gi++))
 
     PARAM_DIR="cw${fc}_${sr}_${cc}_${colc}_sm${sw}_${sl}"
-    DATASET_DIR="Dataset_${MAP_NAME}/${PARAM_DIR}"
+    DATASET_DIR="${ROOT_DIR}/${PARAM_DIR}"
+
+    # Skip completed groups
+    if grep -qxF "$PARAM_DIR" "$PROGRESS_FILE"; then
+        continue
+    fi
+
     SUCCESS_DIR="$DATASET_DIR/success"
     COLLISION_DIR="$DATASET_DIR/collision"
     mkdir -p "$SUCCESS_DIR" "$COLLISION_DIR"
 
-    echo ""
-    echo "[$gi/$n_groups] $DATASET_DIR"
-    echo "  cost_weights: [$fc, $sr, $cc, $colc]  safety_margin: [$sw, $sl]"
+    log ""
+    log "[$gi/$n_groups] $PARAM_DIR"
+    log "  cost_weights: [$fc, $sr, $cc, $colc]  safety_margin: [$sw, $sl]"
 
     launched=0
     for opp_raceline in "${OPP_RACELINES[@]}"; do
@@ -126,7 +148,10 @@ for sm in "${SAFETY_MARGINS[@]}"; do
     c_total=$(ls "$COLLISION_DIR"/*.json 2>/dev/null | wc -l)
     c_total=$((c_total + 0))
 
-    echo "  Done: $launched jobs | Success: $s_total (F:$s_follow O:$s_overtake) Low quality: $lq_total Collision: $c_total"
+    log "  Done: $launched jobs | Success: $s_total (F:$s_follow O:$s_overtake) Low quality: $lq_total Collision: $c_total"
+
+    # Mark group as completed
+    echo "$PARAM_DIR" >> "$PROGRESS_FILE"
 
 done
 done
@@ -134,6 +159,6 @@ done
 done
 done
 
-echo ""
-echo "============================================="
-echo "All $n_groups groups done."
+log ""
+log "============================================="
+log "All $n_groups groups done."
