@@ -1,11 +1,11 @@
 #!/bin/bash
-# export DISPLAY=:1
+export DISPLAY=:1
 # nohup bash collect_multiparameters.sh > /dev/null 2>&1 &
 # pkill -f collect_multiparameters.sh && pkill -f demonstration.py
 
 # ── Fixed parameters ──────────────────────────────────────────────────────
 
-WORKERS=4
+WORKERS=6
 MAP_NAME="Austin"
 EGO_RACELINE="raceline1"
 OPP_RACELINES=("raceline0" "raceline1" "raceline2")
