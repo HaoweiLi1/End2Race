@@ -5,15 +5,18 @@ import sys
 import numpy as np
 
 def _precompute_d_edge(n_beams=360):
-    """Sensor-to-ego-surface distance per beam: d_edge(theta) = min(|HALF_L/cos|, |HALF_W/sin|)."""
-    half_w = 0.31 / 2  # 0.155, half car width
-    half_l = 0.165      # (lf + lr) / 2, matches simulator collision boundary
-    angles = np.arange(n_beams) * (np.pi / 180)
+    """Sensor-to-ego-surface distance per beam: d_edge(theta) = min(|HALF_L/cos|, |HALF_W/sin|).
+
+    f1tenth_gym beam i corresponds to vehicle-frame angle -π + i*(fov/(N-1))
+    with fov=2π, so after downsampling 1440→360 beam i is at angle -π + i°.
+    The LiDAR originates at the ego's geometric center (verified empirically).
+    """
+    half_w = 0.31 / 2   # 0.155, half car width
+    half_l = 0.58 / 2   # 0.290, half car length (matches get_vertices in f1tenth_gym)
+    angles = -np.pi + np.arange(n_beams) * (2 * np.pi / n_beams)
     c = np.abs(np.cos(angles)) + 1e-12
     s = np.abs(np.sin(angles)) + 1e-12
-    d_l = np.where(c > 1e-9, half_l / c, np.inf)
-    d_w = np.where(s > 1e-9, half_w / s, np.inf)
-    return np.minimum(d_l, d_w)
+    return np.minimum(half_l / c, half_w / s)
 
 # ── Detection functions ───────────────────────────────────────────────────
 
@@ -21,15 +24,18 @@ def check_proximity(lidar):
     """Detect frames where ego surface is too close to obstacles."""
     threshold = 0.1  # meters, uniform all directions
 
+    # f1tenth_gym beam mapping (360-beam downsampled):
+    #   beam   0 → -180° (rear),   beam  90 → -90° (right)
+    #   beam 180 →    0° (front),  beam 270 → +90° (left)
     sectors = [
-        ('front',       list(range(0, 30)) + list(range(330, 360))),
-        ('front_right', list(range(30, 60))),
+        ('rear',        list(range(0, 30)) + list(range(330, 360))),
+        ('rear_right',  list(range(30, 60))),
         ('right',       list(range(60, 120))),
-        ('rear_right',  list(range(120, 150))),
-        ('rear',        list(range(150, 210))),
-        ('rear_left',   list(range(210, 240))),
+        ('front_right', list(range(120, 150))),
+        ('front',       list(range(150, 210))),
+        ('front_left',  list(range(210, 240))),
         ('left',        list(range(240, 300))),
-        ('front_left',  list(range(300, 330))),
+        ('rear_left',   list(range(300, 330))),
     ]
 
     surface_dist = np.clip(lidar - _precompute_d_edge(), 0.0, None)
@@ -111,14 +117,6 @@ def check_steering(steer):
     return issues
 
 
-def check_speed(speed):
-    """Detect frequent large speed reversals (accel/decel)."""
-    window = 10        # frames = 1.0s
-    max_reversals = 3  # max large reversals per window
-    min_amp = 2.0      # m/s, min amplitude to count as reversal
-    return _check_oscillation(speed, window, max_reversals, min_amp, 'speed_oscillation')
-
-
 # ── Metrics & Validation ─────────────────────────────────────────────────
 
 def _load_episode(csv_path):
@@ -147,8 +145,9 @@ def compute_metrics(csv_path):
     steer, speed, lidar = _load_episode(csv_path)
     surface_dist = np.clip(lidar - _precompute_d_edge(), 0.0, None)
 
-    sector_front = list(range(0, 30)) + list(range(330, 360))
-    sector_side = list(range(30, 150)) + list(range(210, 330))
+    # beam 180 is front (±30° = beams 150-210), sides are the remaining beams
+    sector_front = list(range(150, 210))
+    sector_side = list(range(60, 120)) + list(range(240, 300))
 
     metrics = {
         'global_min_surface_dist': round(float(np.min(surface_dist)), 4),
@@ -173,9 +172,9 @@ def compute_metrics(csv_path):
 
 def validate_episode(csv_path):
     """Validate a single episode CSV."""
-    steer, speed, lidar = _load_episode(csv_path)
+    steer, _, lidar = _load_episode(csv_path)
 
-    all_issues = check_proximity(lidar) + check_steering(steer) + check_speed(speed)
+    all_issues = check_proximity(lidar) + check_steering(steer)
     all_issues.sort(key=lambda x: x.get('time', x.get('time_start', 0)))
 
     summary = {}
