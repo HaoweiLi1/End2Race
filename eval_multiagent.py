@@ -10,7 +10,7 @@ import imageio
 from f110_gym.envs.base_classes import Integrator
 import f110_gym.envs.f110_env as f110_env
 
-from model import End2Race
+from model import End2Race, End2RaceDualHead, End2RaceDeep, End2RaceDeepDualHead
 from latticeplanner.utils import project_point_to_centerline, obsDict2oppoArray
 from demonstration import setup_opp_planner
 from utils import *
@@ -21,6 +21,9 @@ def parse_arguments():
     
     # Model parameters
     parser.add_argument("--model_path", type=str, default='pretrained/end2race.pth')
+    parser.add_argument("--model_type", type=str, default='base',
+                        choices=('base', 'dual_head', 'deep', 'deep_dual'),
+                        help="Model architecture variant (must match the one used during training).")
     parser.add_argument("--hidden_scale", type=int, default=4)
     parser.add_argument("--noise", type=float, default=0.0)
     
@@ -114,9 +117,14 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     opponent = setup_opp_planner(map_name, opp_raceline)
     tracker_steps = 10  # Default tracker steps
     
-    # Initialize model state
-    hidden_size = model.gru.hidden_size
-    hidden_state = torch.zeros((1, 1, hidden_size), device=device)
+    # Initialize model state (deep variants stack two separate GRUs with different hidden sizes).
+    if hasattr(model, 'gru1'):
+        hidden_state = (
+            torch.zeros((1, 1, model.gru1.hidden_size), device=device),
+            torch.zeros((1, 1, model.gru2.hidden_size), device=device),
+        )
+    else:
+        hidden_state = torch.zeros((1, 1, model.gru.hidden_size), device=device)
     prev_speed = initial_speeds[0] * 0.9
     
     # Load centerline
@@ -290,7 +298,13 @@ if __name__ == "__main__":
     
     # Set device - prefer CUDA if available, otherwise CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = End2Race(hidden_scale=args.hidden_scale).to(device)
+    model_cls = {
+        'base':      End2Race,
+        'dual_head': End2RaceDualHead,
+        'deep':      End2RaceDeep,
+        'deep_dual': End2RaceDeepDualHead,
+    }[args.model_type]
+    model = model_cls(hidden_scale=args.hidden_scale).to(device)
     model.load_state_dict(torch.load(args.model_path, map_location=device))
     model.eval()
     

@@ -2,9 +2,10 @@
 
 # Parameters (converted from argparse defaults)
 MODEL_PATH="pretrained/end2race.pth"
+MODEL_TYPE="base"                    # one of: base | dual_head | deep | deep_dual
 HIDDEN_SCALE=4
 NOISE=0.0
-NUM_WORKERS=6
+NUM_WORKERS=4
 MAP_NAME="Austin"
 RENDER=true
 SIM_DURATION=8.0
@@ -43,16 +44,16 @@ job_id=0
 for ego_idx in "${ego_idx_range[@]}"; do
     for opp_raceline in "${OPP_RACELINES[@]}"; do
         for speed_scale in "${OPP_SPEED_SCALES[@]}"; do
-            cmd="python eval_multiagent.py --model_path $MODEL_PATH --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE"
-            
+            cmd="python eval_multiagent.py --model_path $MODEL_PATH --model_type $MODEL_TYPE --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE"
+
             if [ "$RENDER" = true ]; then
                 cmd="$cmd --render"
             fi
-            
+
             while [ $(jobs -r | wc -l) -ge $NUM_WORKERS ]; do
                 sleep 0.1
             done
-            
+
             (eval "$cmd" >/dev/null 2>&1; echo $? > "$temp_dir/$job_id") &
             ((job_id++))
         done

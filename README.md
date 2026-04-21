@@ -14,6 +14,7 @@ https://github.com/user-attachments/assets/5369f5ea-13fa-44c3-a6aa-5b3c2b59b10c
 - [Data Collection](#data-collection)
 - [Training](#training)
 - [Raceline Generation (Optional)](#raceline-generation-optional)
+- [Handoff Notes](.claude/HANDOFF.md)
 
 ## Code Structure
 ```
@@ -31,10 +32,10 @@ end2race/
 ├── model.py                        # GRU network architecture
 ├── train.py                        # Training script
 ├── demonstration.py                # Lattice planner expert demonstration
-├── episode_validator.py            # Episode quality validator
-├── collect_multiparameters.sh      # Batch collection with parameter sweeps
-├── evaluate_singleagent.py         # Single-agent lap completion evaluation
-├── evaluate_multiagent.py          # Multi-agent competitive racing evaluation
+├── episode_validator.py            # Episode quality validator + dataset manifest builder
+├── collect.sh                      # Batch data collection (single or multi-parameter)
+├── eval_singleagent.py             # Single-agent lap completion evaluation
+├── eval_multiagent.py              # Multi-agent competitive racing evaluation
 ├── evaluate.sh                     # Parallel batch evaluation
 └── utils.py                        # Shared utility functions
 ```
@@ -141,39 +142,64 @@ python demonstration.py \
 
 ### Episode Quality Validation
 
-Validates collected demonstrations for data quality. Detects proximity violations, steering oscillation, steering jumps, low steering autocorrelation, and speed oscillation:
+Validates collected demonstrations for data quality. Detects proximity violations (car body within 0.1 m of any obstacle in any of 8 sectors) and steering issues (oscillation, single-step jumps, low lag-1 autocorrelation):
 
 ```bash
-python episode_validator.py --input_csv file.csv          # validate single file
-python episode_validator.py --input_csv Dataset/success/   # validate directory, save JSON
+python episode_validator.py --input_csv file.csv                     # single-file: print status + 4 metrics
+python episode_validator.py --input_dir Dataset_Austin/cw0.05_*_sm*  # directory: re-classify + write fails.csv
+python episode_validator.py --multidataset_dir Dataset_Austin  # parallel over every cw*/ group
 ```
 
-### Batch Collection with Parameter Sweeps
+In `--input_dir` mode the validator scans both `success/` and `low_quality/`, moves each CSV + matching MP4 to the correct subdirectory, writes `fails.csv` with every failure's metrics, and prints a percentile table over all episodes. The operation is idempotent. `--multidataset_dir` runs `--input_dir` on every `cw*/` subdirectory in parallel, merges each group's output into `<root>/validate.log`, and then writes 5 dataset manifests at the root (`manifest_best_group.csv`, `manifest_best_200.csv`, `manifest_follow_first.csv`, `manifest_overtake_first.csv`, `manifest_merge.csv`) for `train.py` to consume.
 
-Runs systematic parameter sweeps over `--cost_weights` and `--safety_margin`, collecting data for each combination and automatically validating results:
+### Batch Data Collection
+
+Collects demonstrations across opponent racelines, speed scales, and starting positions. Toggle `MULTIPARAMETERS` at the top of the script to additionally sweep lattice planner parameters (`--cost_weights` and `--safety_margin`):
 
 ```bash
-bash collect_multiparameters.sh
+bash collect.sh
 ```
 
-Parameter ranges are configured at the top of the script. Each parameter combination creates a separate output directory named by the parameters (e.g., `Dataset_Austin_cw0.05_2.0_0.3_0.5_sm0.03_0.04/`). After each group completes, the episode validator runs automatically and moves low-quality episodes to a `low_quality/` subdirectory.
+With `MULTIPARAMETERS=false` (default), outputs are written under `Dataset_{MAP_NAME}_*/`. With `MULTIPARAMETERS=true`, each lattice parameter combination creates its own subdirectory under `Dataset_{MAP_NAME}/cw*_sm*/`, and progress is tracked via `Dataset_{MAP_NAME}/progress.txt` so interrupted runs can resume.
+
+### Batch Validation
+
+After a multi-parameter collection, validate every group in parallel via the validator's multi-dataset mode (output merged into `Dataset_{MAP_NAME}/validate.log`):
+
+```bash
+python episode_validator.py --multidataset_dir Dataset_Austin              
+```
 
 ## Training
 Trains the End2Race model using imitation learning on collected demonstrations.
 
 ```bash
 python train.py \
-    --data_path Dataset_Austin \
+    --data_path Dataset_Austin/cw0.10_2.0_0.4_0.5_sm0.03_0.04/success \
     --model_path end2race.pth \
+    --model_type base \
     --hidden_scale 4 \
     --mask_prob 0.1 \
     --batch_size 16
 ```
-- `--data_path`: Path to training data directory 
+- `--data_path`: Single `success/` directory of CSVs (used when `--loading_type` is not given)
 - `--model_path`: Path to save/load model weights
+- `--model_type`: Architecture variant: `base` | `dual_head` | `deep` | `deep_dual`
 - `--hidden_scale`: GRU hidden size multiplier
-- `--mask_prob`: Probability of masking speed input during training 
-- `--batch_size`: Training batch size 
+- `--mask_prob`: Probability of masking speed input during training
+- `--batch_size`: Training batch size
+
+Once the validator has written manifests under `Dataset_{MAP_NAME}/` (via `--multidataset_dir`), you can train on a curated slice instead by passing `--loading_type` and `--dataset_dir` (which takes precedence over `--data_path`):
+
+```bash
+python train.py \
+    --dataset_dir Dataset_Austin \
+    --loading_type follow_first \
+    --model_type deep \
+    --model_path pretrained/end2race_deep_follow_first.pth
+```
+- `--dataset_dir`: Dataset root that contains the `manifest_*.csv` files
+- `--loading_type`: Which curated slice to train on — `best_group` (one best `cw*/`) | `best_200` (top-200 `cw*/` by PASS count) | `follow_first` (best follow per segment, overtake fallback) | `overtake_first` (best overtake per segment, follow fallback) | `merge` (both best follow and best overtake per segment)
 
 ## Raceline Generation (Optional)
 
