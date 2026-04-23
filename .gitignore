@@ -5,5 +5,3 @@ install/
 .claude*
 .vscode
 Dataset_*
-eval_results/
-pretrained/
