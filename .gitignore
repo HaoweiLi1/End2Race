@@ -2,3 +2,6 @@ __pycache__
 
 build/
 install/
+.vscode/
+.claude/
+Dataset_*/
