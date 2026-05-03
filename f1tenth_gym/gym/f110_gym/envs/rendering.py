@@ -31,6 +31,7 @@ import pyglet
 from pyglet.gl import *
 
 # other
+import ctypes
 import numpy as np
 from PIL import Image
 import yaml
@@ -54,18 +55,27 @@ class EnvRenderer(pyglet.window.Window):
 
     def __init__(self, width, height, *args, **kwargs):
         """
-        Class constructor
+        Class constructor. The window itself is always created hidden; all
+        drawing goes into an off-screen FBO and is read back via
+        ``read_rgba()`` to produce ``rgb_array`` frames.
 
         Args:
-            width (int): width of the window
-            height (int): height of the window
+            width (int): width of the framebuffer
+            height (int): height of the framebuffer
 
         Returns:
             None
         """
         conf = Config(sample_buffers=1, samples=4, depth_size=16, double_buffer=True)
         super().__init__(
-            width, height, config=conf, resizable=True, vsync=False, *args, **kwargs
+            width,
+            height,
+            config=conf,
+            resizable=True,
+            vsync=False,
+            visible=False,
+            *args,
+            **kwargs,
         )
 
         # gl init
@@ -110,6 +120,103 @@ class EnvRenderer(pyglet.window.Window):
         )
 
         self.fps_display = pyglet.window.FPSDisplay(self)
+
+        # Off-screen rendering setup. The window stays hidden; on many
+        # Linux/X11/GLX driver combinations a hidden window has no usable
+        # back buffer (glReadPixels returns black). Render into FBOs
+        # instead, which are independent of window mapping state.
+        # samples=4 matches the windowed Config(samples=4); higher counts
+        # (e.g. 8) over-smooth points and quad edges.
+        self._fbo_w = width
+        self._fbo_h = height
+        self._init_fbos(width, height, samples=4)
+
+    def _init_fbos(self, width, height, samples):
+        """
+        Allocate two FBOs:
+          - msaa_fbo:    multisampled color+depth, the active draw target.
+          - resolve_fbo: single-sampled color, the readback target.
+
+        on_draw() renders into msaa_fbo. read_rgba() blits msaa -> resolve
+        (the GPU performs the multisample resolve) and then glReadPixels
+        reads from resolve.
+        """
+        self.switch_to()  # ensure this window's GL context is current
+
+        # ----- MSAA FBO (drawing target) -----
+        msaa = GLuint(0)
+        glGenFramebuffers(1, ctypes.byref(msaa))
+        self._msaa_fbo = msaa.value
+        glBindFramebuffer(GL_FRAMEBUFFER, self._msaa_fbo)
+
+        msaa_color = GLuint(0)
+        glGenRenderbuffers(1, ctypes.byref(msaa_color))
+        self._msaa_color = msaa_color.value
+        glBindRenderbuffer(GL_RENDERBUFFER, self._msaa_color)
+        glRenderbufferStorageMultisample(
+            GL_RENDERBUFFER, samples, GL_RGBA8, width, height
+        )
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_RENDERBUFFER, self._msaa_color,
+        )
+
+        msaa_depth = GLuint(0)
+        glGenRenderbuffers(1, ctypes.byref(msaa_depth))
+        self._msaa_depth = msaa_depth.value
+        glBindRenderbuffer(GL_RENDERBUFFER, self._msaa_depth)
+        glRenderbufferStorageMultisample(
+            GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT24, width, height
+        )
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+            GL_RENDERBUFFER, self._msaa_depth,
+        )
+
+        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
+            raise RuntimeError("Headless MSAA FBO incomplete")
+
+        # ----- Resolve FBO (readback target) -----
+        resolve = GLuint(0)
+        glGenFramebuffers(1, ctypes.byref(resolve))
+        self._resolve_fbo = resolve.value
+        glBindFramebuffer(GL_FRAMEBUFFER, self._resolve_fbo)
+
+        resolve_color = GLuint(0)
+        glGenRenderbuffers(1, ctypes.byref(resolve_color))
+        self._resolve_color = resolve_color.value
+        glBindRenderbuffer(GL_RENDERBUFFER, self._resolve_color)
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height)
+        glFramebufferRenderbuffer(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_RENDERBUFFER, self._resolve_color,
+        )
+
+        if glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE:
+            raise RuntimeError("Headless resolve FBO incomplete")
+
+        # Restore MSAA FBO as the default draw target for on_draw().
+        glBindFramebuffer(GL_FRAMEBUFFER, self._msaa_fbo)
+
+    def read_rgba(self):
+        """
+        Return the most recently drawn frame as (H, W, 4) uint8 RGBA.
+        Resolves the MSAA FBO into the single-sample resolve FBO via
+        glBlitFramebuffer and reads pixels from there.
+        """
+        w, h = self._fbo_w, self._fbo_h
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, self._msaa_fbo)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._resolve_fbo)
+        glBlitFramebuffer(
+            0, 0, w, h, 0, 0, w, h,
+            GL_COLOR_BUFFER_BIT, GL_NEAREST,
+        )
+        glBindFramebuffer(GL_FRAMEBUFFER, self._resolve_fbo)
+        buf = (ctypes.c_uint8 * (w * h * 4))()
+        glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf)
+        # Restore MSAA FBO as draw target for the next frame.
+        glBindFramebuffer(GL_FRAMEBUFFER, self._msaa_fbo)
+        return np.frombuffer(buf, dtype=np.uint8).reshape(h, w, 4)
 
     def update_map(self, map_path, map_ext):
         """
@@ -284,6 +391,11 @@ class EnvRenderer(pyglet.window.Window):
             raise Exception("Map not set for renderer.")
         if self.poses is None:
             raise Exception("Agent poses not updated for renderer.")
+
+        # Render into the multisampled off-screen FBO; the window itself
+        # is hidden and has no usable back buffer.
+        glBindFramebuffer(GL_FRAMEBUFFER, self._msaa_fbo)
+        glViewport(0, 0, self._fbo_w, self._fbo_h)
 
         # Initialize Projection matrix
         glMatrixMode(GL_PROJECTION)

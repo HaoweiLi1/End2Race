@@ -453,19 +453,11 @@ class F110Env(gym.Env):
         F110Env.renderer.on_draw()
 
         if mode == 'rgb_array':
-            # Get the buffer and convert to NumPy array
-            buffer = pyglet.image.get_buffer_manager().get_color_buffer()
-            image_data = buffer.get_image_data()
-            arr = np.frombuffer(image_data.get_data(), dtype=np.uint8)
-            # Reshape based on buffer format and dimensions
-            arr = arr.reshape(buffer.height, buffer.width, 4) # Assuming RGBA format
-            arr = arr[::-1, :, :3] # Flip vertically and drop alpha channel (convert RGBA to RGB)
-            F110Env.renderer.flip() # Still need to flip to update window if also rendering 'human'
-            return arr
-        else:
-            F110Env.renderer.flip()
-            if mode == 'human':
-                time.sleep(0.005)
-            elif mode == 'human_fast':
-                pass
-            return None
+            # Read back from the off-screen MSAA-resolved FBO and flip the
+            # GL bottom-left origin to top-left for image consumers.
+            arr = F110Env.renderer.read_rgba()
+            return arr[::-1, :, :3]
+
+        if mode == 'human':
+            time.sleep(0.005)
+        return None
