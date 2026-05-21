@@ -5,3 +5,5 @@ install/
 .vscode/
 .claude/
 Dataset_*/
+pretrained/end2race_ppo*.pth
+pretrained/end2race_ppo*.pt
