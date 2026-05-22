@@ -6,4 +6,3 @@ install/
 .claude/
 Dataset_*/
 guidance_doc/
-tests/

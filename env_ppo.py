@@ -61,23 +61,29 @@ class RewardWeights:
     w_progress: float = 1.0
     w_rel_progress: float = 0.2
     w_overtake_progress: float = 0.4
-    w_opponent_risk: float = 2.0
-    w_collision: float = 80.0
-    w_overtake_success: float = 15.0
-    w_smooth: float = 0.002
-    w_steer_mag: float = 0.001
+    safe_factor_power: float = 1.0
+    w_opponent_risk: float = 1.0
+    w_unsafe_merge_back: float = 2.0
+    w_collision: float = 120.0
+    w_post_overtake_collision: float = 60.0
+    w_overtake_success: float = 25.0
+    w_smooth: float = 0.01
+    w_steer_mag: float = 0.003
     w_speed: float = 0.0
     w_timeout: float = 0.0
 
     side_s_thresh: float = 0.5
     side_dist_thresh: float = 1.5
-    rear_s_thresh: float = 1.5
-    rear_dist_thresh: float = 2.0
+    rear_s_thresh: float = 2.0
+    rear_dist_thresh: float = 2.5
     front_s_thresh: float = 1.5
     front_too_close_s: float = 0.8
-    overtake_margin_s: float = 0.3
+    overtake_margin_s: float = 0.6
     severe_ttc: float = 0.15
-    safe_overtake_hold_duration: float = 0.4
+    safe_overtake_hold_duration: float = 0.7
+    rear_clearance_safe_s: float = 2.0
+    rear_clearance_safe_dist: float = 2.5
+    lateral_clearance_safe: float = 0.6
     progress_clip_back: float = 0.05
     progress_clip_forward: float = 0.12
     rel_progress_clip: float = 0.08
@@ -246,7 +252,7 @@ def compute_shaped_reward(
 
     progress_raw = float(np.clip(delta_ego_s, -rw.progress_clip_back, rw.progress_clip_forward))
     rel_progress_raw = float(np.clip(delta_rel_s, -rw.rel_progress_clip, rw.rel_progress_clip))
-    risk_weight = 1.0 + risk["opponent_risk"]
+    safe_factor = max(0.0, 1.0 - risk["opponent_risk"]) ** rw.safe_factor_power
     overtake_progress_raw = max(rel_progress_raw, 0.0)
 
     prev_exec_action = np.asarray(prev_exec_action, dtype=np.float64)
@@ -278,18 +284,43 @@ def compute_shaped_reward(
 
     reward_state.severe_unsafe = bool(risk["severe_unsafe"])
 
+    rear_clearance_deficit = 0.0
+    dist_deficit = 0.0
+    lateral_deficit = 0.0
+    unsafe_merge_back = 0.0
+    if reward_state.overtake_started and rel_s > 0.0:
+        rear_clearance_deficit = max(0.0, rw.rear_clearance_safe_s - rel_s) / max(
+            rw.rear_clearance_safe_s, 1e-6
+        )
+        dist_deficit = max(0.0, rw.rear_clearance_safe_dist - metrics["rel_dist"]) / max(
+            rw.rear_clearance_safe_dist, 1e-6
+        )
+        lateral_deficit = max(0.0, rw.lateral_clearance_safe - abs(metrics["rel_y_ego"])) / max(
+            rw.lateral_clearance_safe, 1e-6
+        )
+        steer_aggression = abs(executed_ego_action[0]) / 0.52
+        unsafe_merge_back = max(
+            risk["rear_risk"],
+            rear_clearance_deficit * max(dist_deficit, lateral_deficit),
+        )
+        unsafe_merge_back *= 1.0 + steer_aggression
+
     success_bonus = 0.0
     if reward_state.safe_overtake_held and not reward_state.had_safe_overtake_bonus:
         success_bonus = 1.0
         reward_state.had_safe_overtake_bonus = True
 
     reward_progress = rw.w_progress * progress_raw
-    reward_rel_progress = rw.w_rel_progress * risk_weight * rel_progress_raw
-    reward_overtake_progress = rw.w_overtake_progress * risk_weight * overtake_progress_raw
+    reward_rel_progress = rw.w_rel_progress * safe_factor * rel_progress_raw
+    reward_overtake_progress = rw.w_overtake_progress * safe_factor * overtake_progress_raw
     reward_opponent_risk = -rw.w_opponent_risk * risk["opponent_risk"]
+    reward_unsafe_merge_back = -rw.w_unsafe_merge_back * unsafe_merge_back
     reward_smooth = -rw.w_smooth * smooth_raw
     reward_steer_mag = -rw.w_steer_mag * steer_mag_raw
     reward_collision = -rw.w_collision if collision else 0.0
+    reward_post_overtake_collision = (
+        -rw.w_post_overtake_collision if reward_state.post_overtake_collision and collision else 0.0
+    )
     reward_overtake_success = rw.w_overtake_success * success_bonus
     reward_speed = rw.w_speed * metrics["ego_v"]
     reward_timeout = -rw.w_timeout if timeout else 0.0
@@ -299,9 +330,11 @@ def compute_shaped_reward(
         + reward_rel_progress
         + reward_overtake_progress
         + reward_opponent_risk
+        + reward_unsafe_merge_back
         + reward_smooth
         + reward_steer_mag
         + reward_collision
+        + reward_post_overtake_collision
         + reward_overtake_success
         + reward_speed
         + reward_timeout
@@ -316,9 +349,11 @@ def compute_shaped_reward(
         "reward_rel_progress": float(reward_rel_progress),
         "reward_overtake_progress": float(reward_overtake_progress),
         "reward_opponent_risk": float(reward_opponent_risk),
+        "reward_unsafe_merge_back": float(reward_unsafe_merge_back),
         "reward_smooth": float(reward_smooth),
         "reward_steer_mag": float(reward_steer_mag),
         "reward_collision": float(reward_collision),
+        "reward_post_overtake_collision": float(reward_post_overtake_collision),
         "reward_overtake_success": float(reward_overtake_success),
         "reward_speed": float(reward_speed),
         "reward_timeout": float(reward_timeout),
@@ -326,9 +361,15 @@ def compute_shaped_reward(
         "delta_opp_s": float(delta_opp_s),
         "delta_rel_s": float(delta_rel_s),
         "rel_s": float(rel_s),
+        "rel_y_ego": float(metrics["rel_y_ego"]),
         "rel_dist": float(metrics["rel_dist"]),
         "rel_v": float(metrics["rel_v"]),
         "opponent_risk": float(risk["opponent_risk"]),
+        "safe_factor": float(safe_factor),
+        "unsafe_merge_back": float(unsafe_merge_back),
+        "lateral_deficit": float(lateral_deficit),
+        "rear_clearance_deficit": float(rear_clearance_deficit),
+        "distance_clearance_deficit": float(dist_deficit),
         "side_risk": float(risk["side_risk"]),
         "rear_risk": float(risk["rear_risk"]),
         "front_risk": float(risk["front_risk"]),

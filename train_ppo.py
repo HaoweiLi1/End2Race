@@ -29,13 +29,19 @@ MEAN_INFO_KEYS = (
     "reward_rel_progress",
     "reward_overtake_progress",
     "reward_opponent_risk",
+    "reward_unsafe_merge_back",
     "reward_smooth",
     "reward_steer_mag",
     "reward_collision",
+    "reward_post_overtake_collision",
     "reward_overtake_success",
     "reward_speed",
     "reward_timeout",
     "opponent_risk",
+    "safe_factor",
+    "unsafe_merge_back",
+    "lateral_deficit",
+    "rear_clearance_deficit",
     "safe_overtake_hold_time",
 )
 
@@ -424,6 +430,8 @@ def ppo_update(
     out["early_stopped"] = float(early_stopped)
     out["std_steer"] = float(ac.log_std.detach().exp()[0].item())
     out["std_speed"] = float(ac.log_std.detach().exp()[1].item())
+    out["log_std_steer"] = float(ac.log_std.detach()[0].item())
+    out["log_std_speed"] = float(ac.log_std.detach()[1].item())
     return out
 
 
@@ -615,6 +623,7 @@ def main() -> None:
                     f"s_anc {update_metrics['steer_anchor']:.4f}  "
                     f"v_anc {update_metrics['speed_anchor']:.4f}  "
                     f"std_v {update_metrics['std_speed']:.3f}  "
+                    f"logstd_v {update_metrics['log_std_speed']:.3f}  "
                     f"early {int(update_metrics['early_stopped'])}"
                 )
 
