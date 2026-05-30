@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Parameters (converted from argparse defaults)
-WORKERS=4
+WORKERS=8
 RENDER=true
 MAP_NAME="Austin"
 EGO_RACELINE="raceline1"

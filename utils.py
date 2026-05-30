@@ -1,19 +1,51 @@
 import os
 import numpy as np
+from latticeplanner.utils import find_corresponding_waypoint as _find_corresponding_waypoint
+
+
+def _raceline_csv_path(map_name, raceline):
+    raceline_file = raceline if raceline.endswith(".csv") else f"{raceline}.csv"
+    return os.path.join("f1tenth_racetracks", map_name, raceline_file)
+
+
+def load_raceline_xytheta_speed(map_name, raceline):
+    """Load raceline waypoints as [x, y, theta, speed]."""
+    waypoints = np.loadtxt(_raceline_csv_path(map_name, raceline), delimiter=";", skiprows=1)
+    waypoints = np.atleast_2d(waypoints)
+    return np.vstack((waypoints[:, 1], waypoints[:, 2], waypoints[:, 3], waypoints[:, 5])).T
+
+
+def resolve_two_agent_indices(map_name, ego_raceline, opp_raceline, ego_idx, interval_idx, opp_idx=None):
+    """Resolve ego and opponent waypoint indices for a two-agent scenario."""
+    ego_waypoints = load_raceline_xytheta_speed(map_name, ego_raceline)
+    opp_waypoints = load_raceline_xytheta_speed(map_name, opp_raceline)
+
+    ego_idx = int(ego_idx) % len(ego_waypoints)
+    if opp_idx is None:
+        if opp_raceline == ego_raceline:
+            opp_idx = ego_idx + int(interval_idx)
+        else:
+            ego_map_idx = _find_corresponding_waypoint(ego_waypoints[ego_idx], opp_waypoints)
+            opp_idx = int(ego_map_idx) + int(interval_idx)
+    opp_idx = int(opp_idx) % len(opp_waypoints)
+    return ego_idx, opp_idx
+
+
+def load_two_agent_positions_and_speeds(map_name, ego_raceline, opp_raceline, ego_idx, opp_idx):
+    """Load two-agent initial poses and speeds from resolved raceline indices."""
+    ego_waypoints = load_raceline_xytheta_speed(map_name, ego_raceline)
+    opp_waypoints = load_raceline_xytheta_speed(map_name, opp_raceline)
+    ego_idx = int(ego_idx) % len(ego_waypoints)
+    opp_idx = int(opp_idx) % len(opp_waypoints)
+    positions = np.array([ego_waypoints[ego_idx, :3], opp_waypoints[opp_idx, :3]])
+    initial_speeds = np.array([ego_waypoints[ego_idx, 3], opp_waypoints[opp_idx, 3]])
+    return positions, initial_speeds
+
 
 def load_raceline_with_speed(map_name, raceline_file, start_idx):
     """Load raceline waypoints with position and speed information"""
-    raceline_path = f"f1tenth_racetracks/{map_name}/{raceline_file}"
-    with open(raceline_path, 'r') as f:
-        lines = f.readlines()[1:]
-    
-    waypoints = []
-    for line in lines:
-        parts = line.strip().split(';')
-        if len(parts) >= 6:
-            waypoints.append([float(parts[1]), float(parts[2]), float(parts[3]), float(parts[5])])
-    waypoints = np.array(waypoints)
-    
+    waypoints = load_raceline_xytheta_speed(map_name, raceline_file)
+
     # Get starting position and speed
     idx = start_idx % len(waypoints)
     start_pose = np.array([[waypoints[idx, 0], waypoints[idx, 1], waypoints[idx, 2]]])
@@ -161,46 +193,17 @@ def create_single_agent_render_callback(render_info, visited_points, drawn_point
 
 def find_corresponding_waypoint(ego_waypoint, opp_waypoints):
     """Find the waypoint on opponent raceline closest to ego waypoint spatially"""
-    ego_position = ego_waypoint[:2]
-    distances = np.linalg.norm(opp_waypoints[:, :2] - ego_position, axis=1)
-    return np.argmin(distances)
+    return _find_corresponding_waypoint(ego_waypoint, opp_waypoints)
 
 def load_positions_and_speeds_from_params(params, map_name):
     """Load initial positions and speeds based on segment parameters (from run_lattice_planner.py)"""
-    base_path = f"f1tenth_racetracks/{map_name}"
-    
-    # Load ego raceline with speed
-    ego_path = os.path.join(base_path, params['ego_raceline'] + '.csv')
-    with open(ego_path, 'r') as f:
-        lines = f.readlines()[1:]
-    ego_waypoints = []
-    for line in lines:
-        parts = line.strip().split(';')
-        if len(parts) >= 6:
-            ego_waypoints.append([float(parts[1]), float(parts[2]), float(parts[3]), float(parts[5])])
-    ego_waypoints = np.array(ego_waypoints)
-    
-    # Load opponent raceline with speed
-    opp_path = os.path.join(base_path, params['opp_raceline'] + '.csv')
-    if params['opp_raceline'] != params['ego_raceline']:
-        with open(opp_path, 'r') as f:
-            lines = f.readlines()[1:]
-        opp_waypoints = []
-        for line in lines:
-            parts = line.strip().split(';')
-            if len(parts) >= 6:
-                opp_waypoints.append([float(parts[1]), float(parts[2]), float(parts[3]), float(parts[5])])
-        opp_waypoints = np.array(opp_waypoints)
-    else:
-        opp_waypoints = ego_waypoints
-    
-    # Get positions and speeds using direct indices
-    ego_idx = params['ego_idx'] % len(ego_waypoints)
-    opp_idx = params['opp_idx'] % len(opp_waypoints)
-    positions = np.array([ego_waypoints[ego_idx, :3], opp_waypoints[opp_idx, :3]])
-    initial_speeds = np.array([ego_waypoints[ego_idx, 3], opp_waypoints[opp_idx, 3]])
-    
-    return positions, initial_speeds
+    return load_two_agent_positions_and_speeds(
+        map_name,
+        params['ego_raceline'],
+        params['opp_raceline'],
+        params['ego_idx'],
+        params['opp_idx'],
+    )
 
 def get_ego_idx_range(map_name, ego_raceline, num_startpoints):
     """Generate evenly distributed evaluation points"""

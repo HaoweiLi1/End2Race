@@ -4,5 +4,7 @@ build/
 install/
 .vscode/
 .claude/
+.codex/
+.agents/
 Dataset_*/
-guidance_doc/
+eval_results/

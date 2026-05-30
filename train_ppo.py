@@ -8,8 +8,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from model import End2Race
-from model_ppo import End2RaceActorCritic, load_actor_critic, load_frozen_bc
+from model import End2Race, End2RaceActorCritic
 from env_ppo import End2RacePPOEnv, RewardWeights
 
 
@@ -42,8 +41,76 @@ MEAN_INFO_KEYS = (
     "unsafe_merge_back",
     "lateral_deficit",
     "rear_clearance_deficit",
+    "distance_clearance_deficit",
     "safe_overtake_hold_time",
 )
+
+
+def load_actor_critic(
+    ac: End2RaceActorCritic,
+    path: str,
+    device: torch.device,
+) -> dict:
+    """Load full PPO, actor-only, or plain End2Race checkpoints into actor-critic."""
+    ckpt = torch.load(path, map_location=device, weights_only=False)
+
+    if isinstance(ckpt, dict) and "actor_critic" in ckpt:
+        ac.load_state_dict(ckpt["actor_critic"])
+        return ckpt
+
+    if isinstance(ckpt, dict) and "actor" in ckpt:
+        ac.actor.load_state_dict(ckpt["actor"])
+        return ckpt
+
+    ac.actor.load_state_dict(ckpt)
+    return {}
+
+
+def load_frozen_bc(
+    path: str,
+    device: torch.device,
+    hidden_scale: int = 4,
+) -> End2Race:
+    """Load a frozen BC model for PPO anchor computation."""
+    bc = End2Race(mask_prob=0.0, hidden_scale=hidden_scale).to(device)
+    ckpt = torch.load(path, map_location=device, weights_only=False)
+    if isinstance(ckpt, dict) and "actor" in ckpt:
+        bc.load_state_dict(ckpt["actor"])
+    else:
+        bc.load_state_dict(ckpt)
+    bc.eval()
+    for p in bc.parameters():
+        p.requires_grad = False
+    return bc
+
+
+def save_actor_backbone(ac: End2RaceActorCritic, path: str) -> None:
+    """Save plain End2Race actor weights loadable by original evaluators."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    torch.save(ac.actor.state_dict(), path)
+
+
+def save_full_checkpoint(
+    ac: End2RaceActorCritic,
+    path: str,
+    optimizer: torch.optim.Optimizer,
+    iteration: int,
+    config: dict,
+) -> None:
+    """Save full PPO training checkpoint for resume."""
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    torch.save(
+        {
+            "actor_critic": ac.state_dict(),
+            "actor": ac.actor.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "iteration": iteration,
+            "config": config,
+            "hidden_scale": ac.actor.hidden_scale,
+            "log_std": ac.log_std.data.clone(),
+        },
+        path,
+    )
 
 
 class RolloutBuffer:
@@ -628,11 +695,11 @@ def main() -> None:
                 )
 
             if (it + 1) % args.save_every == 0:
-                ac.save_full_checkpoint(args.save_full_path, optimizer, it + 1, vars(args))
+                save_full_checkpoint(ac, args.save_full_path, optimizer, it + 1, vars(args))
                 print(f"Saved checkpoint at iteration {it + 1}")
 
-        ac.save_full_checkpoint(args.save_full_path, optimizer, args.total_iterations, vars(args))
-        ac.save_actor_backbone(args.save_actor_path)
+        save_full_checkpoint(ac, args.save_full_path, optimizer, args.total_iterations, vars(args))
+        save_actor_backbone(ac, args.save_actor_path)
 
         test_model = End2Race(hidden_scale=args.hidden_scale)
         test_model.load_state_dict(torch.load(args.save_actor_path, map_location="cpu"))

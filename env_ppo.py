@@ -12,13 +12,19 @@ import numpy as np
 import f110_gym  # noqa: F401 - registers f110-v0 with gym.
 from f110_gym.envs.base_classes import Integrator
 
-from latticeplanner.utils import obsDict2oppoArray, project_point_to_centerline
-try:
-    from latticeplanner.utils import load_centerline_from_map as _load_centerline_from_map
-except ImportError:
-    _load_centerline_from_map = None
+from latticeplanner.utils import (
+    find_corresponding_waypoint,
+    load_centerline_from_map,
+    obsDict2oppoArray,
+    project_point_to_centerline,
+)
 
 from demonstration import setup_opp_planner
+from utils import (
+    load_raceline_xytheta_speed,
+    load_two_agent_positions_and_speeds,
+    resolve_two_agent_indices,
+)
 
 
 def centerline_arc_length(centerline: np.ndarray) -> float:
@@ -129,26 +135,7 @@ class RewardState:
 
 def _load_centerline(map_name: str) -> np.ndarray:
     map_directory = os.path.join("f1tenth_racetracks", map_name)
-    if _load_centerline_from_map is not None:
-        try:
-            return np.asarray(_load_centerline_from_map(map_directory), dtype=np.float64)
-        except Exception:
-            pass
-
-    centerline_path = os.path.join(map_directory, "raceline1.csv")
-    centerline_wp = np.loadtxt(centerline_path, delimiter=";", skiprows=1)
-    return np.vstack((centerline_wp[:, 1], centerline_wp[:, 2])).T.astype(np.float64)
-
-
-def _load_raceline_xytheta_speed(map_name: str, raceline: str) -> np.ndarray:
-    path = os.path.join("f1tenth_racetracks", map_name, f"{raceline}.csv")
-    waypoints = np.loadtxt(path, delimiter=";", skiprows=1)
-    return np.vstack((waypoints[:, 1], waypoints[:, 2], waypoints[:, 3], waypoints[:, 5])).T
-
-
-def _find_corresponding_waypoint(ego_waypoint: np.ndarray, opp_waypoints: np.ndarray) -> int:
-    distances = np.linalg.norm(opp_waypoints[:, :2] - ego_waypoint[:2], axis=1)
-    return int(np.argmin(distances))
+    return np.asarray(load_centerline_from_map(map_directory), dtype=np.float64)
 
 
 def _relative_metrics(obs: Dict[str, Any], centerline: np.ndarray, rw: RewardWeights) -> Dict[str, float]:
@@ -418,8 +405,8 @@ def sample_scenario(
 ) -> Dict[str, Any]:
     ego_raceline = str(rng.choice(list(ego_raceline_choices)))
     opp_raceline = str(rng.choice(list(opp_raceline_choices)))
-    ego_waypoints = _load_raceline_xytheta_speed(map_name, ego_raceline)
-    opp_waypoints = _load_raceline_xytheta_speed(map_name, opp_raceline)
+    ego_waypoints = load_raceline_xytheta_speed(map_name, ego_raceline)
+    opp_waypoints = load_raceline_xytheta_speed(map_name, opp_raceline)
 
     ego_idx = int(rng.integers(0, len(ego_waypoints)))
     if stage <= 1:
@@ -432,7 +419,7 @@ def sample_scenario(
     if opp_raceline == ego_raceline:
         opp_idx = (ego_idx + interval_idx) % len(opp_waypoints)
     else:
-        ego_map_idx = _find_corresponding_waypoint(ego_waypoints[ego_idx], opp_waypoints)
+        ego_map_idx = int(find_corresponding_waypoint(ego_waypoints[ego_idx], opp_waypoints))
         opp_idx = (ego_map_idx + interval_idx) % len(opp_waypoints)
 
     return {
@@ -635,29 +622,24 @@ class End2RacePPOEnv:
         scenario.setdefault("interval_idx", 15)
         scenario.setdefault("opp_speedscale", sample_opp_speedscale(self.stage, self.rng))
 
-        ego_waypoints = _load_raceline_xytheta_speed(self.map_name, scenario["ego_raceline"])
-        opp_waypoints = _load_raceline_xytheta_speed(self.map_name, scenario["opp_raceline"])
-        scenario["ego_idx"] = int(scenario["ego_idx"]) % len(ego_waypoints)
-        if "opp_idx" not in scenario:
-            if scenario["opp_raceline"] == scenario["ego_raceline"]:
-                scenario["opp_idx"] = (scenario["ego_idx"] + int(scenario["interval_idx"])) % len(opp_waypoints)
-            else:
-                ego_map_idx = _find_corresponding_waypoint(ego_waypoints[scenario["ego_idx"]], opp_waypoints)
-                scenario["opp_idx"] = (ego_map_idx + int(scenario["interval_idx"])) % len(opp_waypoints)
-        scenario["opp_idx"] = int(scenario["opp_idx"]) % len(opp_waypoints)
+        ego_idx, opp_idx = resolve_two_agent_indices(
+            self.map_name,
+            scenario["ego_raceline"],
+            scenario["opp_raceline"],
+            scenario["ego_idx"],
+            scenario["interval_idx"],
+            scenario.get("opp_idx"),
+        )
+        scenario["ego_idx"] = ego_idx
+        scenario["opp_idx"] = opp_idx
         return scenario
 
     def _scenario_positions(self, scenario: Dict[str, Any]) -> Tuple[np.ndarray, np.ndarray]:
-        ego_waypoints = _load_raceline_xytheta_speed(self.map_name, scenario["ego_raceline"])
-        opp_waypoints = _load_raceline_xytheta_speed(self.map_name, scenario["opp_raceline"])
-        ego_idx = int(scenario["ego_idx"]) % len(ego_waypoints)
-        opp_idx = int(scenario["opp_idx"]) % len(opp_waypoints)
-        positions = np.array(
-            [
-                ego_waypoints[ego_idx, :3],
-                opp_waypoints[opp_idx, :3],
-            ],
-            dtype=np.float64,
+        positions, initial_speeds = load_two_agent_positions_and_speeds(
+            self.map_name,
+            scenario["ego_raceline"],
+            scenario["opp_raceline"],
+            scenario["ego_idx"],
+            scenario["opp_idx"],
         )
-        initial_speeds = np.array([ego_waypoints[ego_idx, 3], opp_waypoints[opp_idx, 3]], dtype=np.float64)
-        return positions, initial_speeds
+        return positions.astype(np.float64), initial_speeds.astype(np.float64)

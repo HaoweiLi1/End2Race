@@ -1,6 +1,9 @@
+import math
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
-from typing import Optional, Tuple
+
 
 class End2Race(nn.Module):
 
@@ -63,20 +66,9 @@ class End2Race(nn.Module):
         # Initialize dummy embedding
         nn.init.xavier_normal_(self.dummy_embedding)
     
-    def forward(self, x: torch.Tensor, speed_input: Optional[torch.Tensor] = None, 
-                hidden: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward pass with speed conditioning.
-        
-        Args:
-            x: LiDAR input tensor [batch, seq_len, num_features]
-            speed_input: Previous speed tensor [batch, seq_len, 1]
-            hidden: Hidden state from previous timestep
-            
-        Returns:
-            actions: Predicted actions [steering, speed]
-            last_hidden: Updated hidden state
-        """
+    def forward_features(self, x: torch.Tensor, speed_input: Optional[torch.Tensor] = None,
+                         hidden: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Return GRU features shared by BC inference and PPO actor-critic."""
         # Process LiDAR with learnable sigmoid transformation
         processed_lidar = (-1 / (1 + torch.exp(-self.k * x)) + 1) * 2
         
@@ -93,8 +85,82 @@ class End2Race(nn.Module):
         # Concatenate features
         features = torch.cat([processed_lidar, speed_embedding], dim=2)
         
-        # Forward pass through GRU and output layer
+        # Forward pass through GRU
         gru_out, last_hidden = self.gru(features, hidden)
+        return gru_out, last_hidden
+
+    def forward(self, x: torch.Tensor, speed_input: Optional[torch.Tensor] = None,
+                hidden: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Forward pass with speed conditioning.
+
+        Args:
+            x: LiDAR input tensor [batch, seq_len, num_features]
+            speed_input: Previous speed tensor [batch, seq_len, 1]
+            hidden: Hidden state from previous timestep
+
+        Returns:
+            actions: Predicted actions [steering, speed]
+            last_hidden: Updated hidden state
+        """
+        gru_out, last_hidden = self.forward_features(x, speed_input, hidden)
         actions = self.output_layer(gru_out)
-        
+
         return actions, last_hidden
+
+
+class End2RaceActorCritic(nn.Module):
+    """PPO actor-critic wrapping the plain End2Race BC model."""
+
+    def __init__(self, hidden_scale: int = 4,
+                 steer_std: float = 0.03, speed_std: float = 0.25):
+        super().__init__()
+
+        self.actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
+        hidden_size = self.actor.gru.hidden_size
+
+        self.value_head = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size // 4),
+            nn.ReLU(),
+            nn.Linear(hidden_size // 4, 1),
+        )
+        self.log_std = nn.Parameter(
+            torch.tensor([math.log(steer_std), math.log(speed_std)], dtype=torch.float32)
+        )
+
+    def forward_features(
+        self,
+        lidar: torch.Tensor,
+        speed_input: torch.Tensor,
+        hidden: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.actor.forward_features(lidar, speed_input, hidden)
+
+    def forward(
+        self,
+        lidar: torch.Tensor,
+        speed_input: torch.Tensor,
+        hidden: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.distributions.Normal, torch.Tensor, torch.Tensor]:
+        """Return policy distribution, value estimate, and updated hidden state."""
+        gru_out, last_hidden = self.forward_features(lidar, speed_input, hidden)
+
+        mean = self.actor.output_layer(gru_out)
+        std = self.log_std.exp().view(1, 1, -1).expand_as(mean)
+        dist = torch.distributions.Normal(mean, std)
+        value = self.value_head(gru_out).squeeze(-1)
+
+        return dist, value, last_hidden
+
+    def act(
+        self,
+        lidar: torch.Tensor,
+        speed_input: torch.Tensor,
+        hidden: Optional[torch.Tensor],
+        deterministic: bool = False,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return action, log probability, value, and updated hidden state."""
+        dist, value, new_hidden = self.forward(lidar, speed_input, hidden)
+        action = dist.mean if deterministic else dist.sample()
+        logp = dist.log_prob(action).sum(-1)
+        return action, logp, value, new_hidden
