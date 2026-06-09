@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 import warnings
 import gym
@@ -43,6 +44,7 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     
     np.random.seed(42)
     num_features = 360
+    sim_timestep = 0.01
     result_dir = get_eval_results_dir(model_path, map_name, noise_level)
     
     # Calculate opponent index using same logic as run_lattice_planner.py
@@ -85,7 +87,7 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     params['opp_idx'] = opp_idx
     
     # Setup environment
-    env = gym.make("f110-v0", map=f"f1tenth_racetracks/{map_name}/{map_name}_map", map_ext=".png", num_agents=2, timestep=0.01, integrator=Integrator.RK4)
+    env = gym.make("f110-v0", map=f"f1tenth_racetracks/{map_name}/{map_name}_map", map_ext=".png", num_agents=2, timestep=sim_timestep, integrator=Integrator.RK4)
     
     # Add render callback for proper camera positioning and trajectory visualization
     if render:
@@ -147,14 +149,19 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     speeds = []
     tracker_count = 0
     opp_traj = None
+    validation_steers = []
+    validation_lidars = []
     
     # Main simulation loop
     while not done and lap_time < sim_duration:
         # Model inference for ego
-        lidar = np.array(obs["scans"][0]).flatten()
-        if len(lidar) > num_features:
-            indices = np.linspace(0, len(lidar)-1, num_features, dtype=int)
-            lidar = lidar[indices]
+        raw_lidar = np.array(obs["scans"][0]).flatten()
+        if len(raw_lidar) != num_features:
+            indices = np.linspace(0, len(raw_lidar)-1, num_features, dtype=int)
+            lidar_360 = raw_lidar[indices]
+        else:
+            lidar_360 = raw_lidar
+        lidar = lidar_360.copy()
         
         # Apply noise
         if noise_level > 0:
@@ -173,6 +180,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             ego_speed = action_tensor[0, 1].item()
         
         ego_steer = np.clip(ego_steer, -0.52, 0.52)
+        validation_steers.append(float(ego_steer))
+        validation_lidars.append(lidar_360.copy())
         prev_speed = obs['linear_vels_x'][0]
         
         # Opponent lattice planner
@@ -260,7 +269,9 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     
     # Calculate final metrics
     avg_speed, speed_variance, total_distance = calculate_metrics(ego_trajectory, speeds)
-    
+    proximity_quality = evaluate_proximity_quality(np.array(validation_lidars))
+    steering_quality = evaluate_steering_quality(np.array(validation_steers), sample_interval=sim_timestep)
+
     # Determine final state number
     if collision_occurred:
         final_state_num = 3
@@ -278,7 +289,14 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         'avg_speed': avg_speed if not collision_occurred else 0,
         'speed_variance': speed_variance if not collision_occurred else 0,
         'total_distance': total_distance,
-        'collision_occurred': collision_occurred
+        'collision_occurred': collision_occurred,
+        'global_min_surface_dist': proximity_quality['global_min_surface_dist'],
+        'danger_sectors': proximity_quality['danger_sectors'],
+        'proximity_below_threshold_timesteps': proximity_quality['proximity_below_threshold_timesteps'],
+        'steering_anomaly_timesteps': steering_quality['steering_anomaly_timesteps'],
+        'max_steer_delta': steering_quality['max_steer_delta'],
+        'max_steer_reversals': steering_quality['max_steer_reversals'],
+        'steer_autocorr_lag1': steering_quality['steer_autocorr_lag1'],
     }
 
 if __name__ == "__main__":
@@ -306,6 +324,13 @@ if __name__ == "__main__":
     print(f"AVG_SPEED={result['avg_speed']}")
     print(f"SPEED_VARIANCE={result['speed_variance']}")
     print(f"TOTAL_DISTANCE={result['total_distance']}")
+    print(f"GLOBAL_MIN_SURFACE_DIST={result['global_min_surface_dist']}")
+    print(f"DANGER_SECTORS={json.dumps(result['danger_sectors'], sort_keys=True)}")
+    print(f"PROXIMITY_BELOW_THRESHOLD_TIMESTEPS={json.dumps(result['proximity_below_threshold_timesteps'])}")
+    print(f"STEERING_ANOMALY_TIMESTEPS={json.dumps(result['steering_anomaly_timesteps'])}")
+    print(f"MAX_STEER_DELTA={result['max_steer_delta']}")
+    print(f"MAX_STEER_REVERSALS={result['max_steer_reversals']}")
+    print(f"STEER_AUTOCORR_LAG1={result['steer_autocorr_lag1']}")
     
     # Exit with state code
     sys.exit(result['state'])

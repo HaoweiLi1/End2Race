@@ -180,6 +180,24 @@ def parse_log(path):
             values[key] = value
     return values
 
+def optional_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+def optional_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+def optional_json(value, fallback):
+    try:
+        return json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return fallback
+
 batch_keys = []
 for path in sorted(Path(temp_dir).glob("*.log")):
     values = parse_log(path)
@@ -195,6 +213,9 @@ for path in sorted(Path(temp_dir).glob("*.log")):
         continue
     state_label = values.get("STATE_LABEL", "unknown")
     collision_occurred = values.get("COLLISION_OCCURRED", "").lower() == "true"
+    danger_sectors = optional_json(values.get("DANGER_SECTORS", "{}"), {})
+    proximity_timesteps = optional_json(values.get("PROXIMITY_BELOW_THRESHOLD_TIMESTEPS", "[]"), [])
+    steering_timesteps = optional_json(values.get("STEERING_ANOMALY_TIMESTEPS", "[]"), [])
     episodes[episode_key] = {
         "state": state,
         "state_label": state_label,
@@ -202,6 +223,13 @@ for path in sorted(Path(temp_dir).glob("*.log")):
         "speed_variance": speed_variance,
         "total_distance": total_distance,
         "collision_occurred": collision_occurred,
+        "global_min_surface_dist": optional_float(values.get("GLOBAL_MIN_SURFACE_DIST")),
+        "danger_sectors": danger_sectors,
+        "proximity_below_threshold_timesteps": proximity_timesteps,
+        "steering_anomaly_timesteps": steering_timesteps,
+        "max_steer_delta": optional_float(values.get("MAX_STEER_DELTA")),
+        "max_steer_reversals": optional_int(values.get("MAX_STEER_REVERSALS")),
+        "steer_autocorr_lag1": optional_float(values.get("STEER_AUTOCORR_LAG1")),
     }
     batch_keys.append(episode_key)
 
@@ -218,22 +246,53 @@ def mean_metric(name):
     ]
     return round(sum(values) / len(values), 6) if values else 0.0
 
+proximity_danger_episode_count = sum(
+    1
+    for metric in batch_metrics
+    if metric.get("proximity_below_threshold_timesteps")
+)
+steering_anomaly_episode_count = sum(
+    1
+    for metric in batch_metrics
+    if metric.get("steering_anomaly_timesteps")
+)
+proximity_danger_timestep_count = sum(
+    len(metric.get("proximity_below_threshold_timesteps") or [])
+    for metric in batch_metrics
+)
+steering_anomaly_timestep_count = sum(
+    len(metric.get("steering_anomaly_timesteps") or [])
+    for metric in batch_metrics
+)
+
 ordered_episodes = {
     key: episodes[key]
     for key in sorted(episodes, key=multi_episode_sort_key)
 }
 final = {
     "total_episodes": total_segments,
+    "recorded_episodes": len(batch_keys),
     "following_count": following_count,
     "overtaking_count": overtaking_count,
+    "success_count": success_count,
     "collision_count": collision_count,
     "error_count": error_count,
+    "proximity_danger_episode_count": proximity_danger_episode_count,
+    "steering_anomaly_episode_count": steering_anomaly_episode_count,
+    "proximity_danger_timestep_count": proximity_danger_timestep_count,
+    "steering_anomaly_timestep_count": steering_anomaly_timestep_count,
     "success_rate": pct(success_count),
     "collision_rate": pct(collision_count),
     "error_rate": pct(error_count),
+    "proximity_danger_episode_rate": pct(proximity_danger_episode_count),
+    "steering_anomaly_episode_rate": pct(steering_anomaly_episode_count),
     "avg_speed_mean": mean_metric("avg_speed"),
     "speed_variance_mean": mean_metric("speed_variance"),
     "total_distance_mean": mean_metric("total_distance"),
+    "global_min_surface_dist_mean": mean_metric("global_min_surface_dist"),
+    "max_steer_delta_mean": mean_metric("max_steer_delta"),
+    "max_steer_reversals_mean": mean_metric("max_steer_reversals"),
+    "steer_autocorr_lag1_mean": mean_metric("steer_autocorr_lag1"),
     "elapsed_seconds": int(elapsed),
 }
 data = {

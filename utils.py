@@ -63,6 +63,125 @@ def calculate_metrics(trajectory, speeds):
                         for i in range(len(trajectory)-1)) if len(trajectory) > 1 else 0
     return avg_speed, speed_variance, total_distance
 
+PROXIMITY_THRESHOLD = 0.15
+STEER_WINDOW_SECONDS = 1.0
+STEER_MAX_REVERSALS = 6
+STEER_MIN_AMP = 0.3
+STEER_MAX_JUMP = 0.6
+
+LIDAR_SECTORS = [
+    ('rear', list(range(0, 30)) + list(range(330, 360))),
+    ('rear_right', list(range(30, 60))),
+    ('right', list(range(60, 120))),
+    ('front_right', list(range(120, 150))),
+    ('front', list(range(150, 210))),
+    ('front_left', list(range(210, 240))),
+    ('left', list(range(240, 300))),
+    ('rear_left', list(range(300, 330))),
+]
+
+def _lidar_edge_distance(n_beams):
+    half_length = 0.58 / 2
+    half_width = 0.31 / 2
+    angles = -np.pi + np.arange(n_beams) * (2 * np.pi / n_beams)
+    cos_abs = np.abs(np.cos(angles)) + 1e-12
+    sin_abs = np.abs(np.sin(angles)) + 1e-12
+    return np.minimum(half_length / cos_abs, half_width / sin_abs)
+
+def _surface_distance_from_lidar(lidar):
+    lidar = np.asarray(lidar, dtype=float)
+    if lidar.ndim == 1:
+        lidar = lidar.reshape(1, -1)
+    return np.clip(lidar - _lidar_edge_distance(lidar.shape[1]), 0.0, None)
+
+def evaluate_proximity_quality(lidar):
+    """Return distance quality metrics from a [T, N] lidar sequence."""
+    surface_dist = _surface_distance_from_lidar(lidar)
+    min_dist_per_step = np.min(surface_dist, axis=1)
+    danger_sectors = {}
+    for name, indices in LIDAR_SECTORS:
+        sector_min = float(np.min(surface_dist[:, indices]))
+        if sector_min < PROXIMITY_THRESHOLD:
+            danger_sectors[name] = round(sector_min, 4)
+
+    return {
+        'global_min_surface_dist': round(float(np.min(surface_dist)), 4),
+        'danger_sectors': danger_sectors,
+        'proximity_below_threshold_timesteps': np.flatnonzero(
+            min_dist_per_step < PROXIMITY_THRESHOLD
+        ).astype(int).tolist(),
+    }
+
+def _steer_window_frames(sample_interval):
+    return max(1, int(round(STEER_WINDOW_SECONDS / sample_interval)))
+
+def _large_steer_delta_signs(steer):
+    delta = np.diff(steer)
+    return np.where(np.abs(delta) >= STEER_MIN_AMP, np.sign(delta), 0.0)
+
+def _steer_reversal_timesteps(steer):
+    signs = _large_steer_delta_signs(steer)
+    timesteps = []
+    prev_sign = 0.0
+    for delta_idx, sign in enumerate(signs):
+        if sign == 0:
+            continue
+        if prev_sign != 0 and sign != prev_sign:
+            timesteps.append(delta_idx + 1)
+        prev_sign = sign
+    return timesteps
+
+def _max_steer_reversals(steer, window_size):
+    reversal_timesteps = _steer_reversal_timesteps(steer)
+    max_reversals = 0
+    for start in range(max(1, len(steer) - window_size + 1)):
+        end = start + window_size
+        count = sum(start <= step < end for step in reversal_timesteps)
+        max_reversals = max(max_reversals, count)
+    return max_reversals
+
+def _steer_jump_timesteps(steer):
+    if len(steer) < 2:
+        return []
+    return (np.flatnonzero(np.abs(np.diff(steer)) > STEER_MAX_JUMP) + 1).astype(int).tolist()
+
+def _steer_oscillation_timesteps(steer, window_size):
+    reversal_timesteps = _steer_reversal_timesteps(steer)
+    if not reversal_timesteps:
+        return []
+
+    timesteps = set()
+    for start in range(max(1, len(steer) - window_size + 1)):
+        end = min(len(steer), start + window_size)
+        count = sum(start <= step < end for step in reversal_timesteps)
+        if count > STEER_MAX_REVERSALS:
+            timesteps.update(range(start, end))
+    return sorted(timesteps)
+
+def _steer_autocorr_lag1(steer):
+    if len(steer) < 2:
+        return 1.0
+    centered = steer - np.mean(steer)
+    norm = float(np.sum(centered ** 2))
+    if norm == 0.0:
+        return 1.0
+    return float(np.sum(centered[:-1] * centered[1:]) / norm)
+
+def evaluate_steering_quality(steer, sample_interval):
+    """Return steering quality metrics from one uniformly sampled steering sequence."""
+    steer = np.asarray(steer, dtype=float)
+    window_size = _steer_window_frames(sample_interval)
+    jump_timesteps = _steer_jump_timesteps(steer)
+    oscillation_timesteps = _steer_oscillation_timesteps(steer, window_size)
+    max_delta = float(np.max(np.abs(np.diff(steer)))) if len(steer) >= 2 else 0.0
+
+    return {
+        'steering_anomaly_timesteps': sorted(set(jump_timesteps + oscillation_timesteps)),
+        'max_steer_delta': round(max_delta, 4),
+        'max_steer_reversals': _max_steer_reversals(steer, window_size),
+        'steer_autocorr_lag1': round(_steer_autocorr_lag1(steer), 4),
+    }
+
 def follow_vehicle_camera(event, car_index=0, margin=800.0):
     """Center the camera on the specified vehicle and apply symmetric margins."""
     x_vertices = event.cars[car_index].vertices[::2]
