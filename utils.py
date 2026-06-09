@@ -1,5 +1,39 @@
 import os
+import json
 import numpy as np
+
+def get_eval_results_dir(model_path, map_name, noise_level):
+    """Return the shared eval_results directory for a model/map/noise setting."""
+    model_name = os.path.splitext(os.path.basename(model_path))[0]
+    parts = [model_name, map_name]
+    if noise_level > 0:
+        parts.append(f"noise{int(noise_level * 100)}")
+    return os.path.join("eval_results", "_".join(parts))
+
+def load_json_file(path):
+    if not os.path.exists(path):
+        return {}
+    with open(path, 'r') as f:
+        return json.load(f)
+
+def write_json_file(path, data):
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, 'w') as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    os.replace(tmp_path, path)
+
+def write_json_entry(path, key, value):
+    data = load_json_file(path)
+    data[key] = value
+    write_json_file(path, data)
+
+def multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale):
+    opp_raceline_num = opp_raceline.replace('raceline', '')
+    return f"ol{opp_raceline_num}_e{ego_idx}_o{opp_idx}_s{opp_speed_scale}"
 
 def load_raceline_with_speed(map_name, raceline_file, start_idx):
     """Load raceline waypoints with position and speed information"""

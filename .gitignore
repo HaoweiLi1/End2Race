@@ -4,4 +4,6 @@ build/
 install/
 .vscode/
 .claude/
+.codex
 Dataset_*/
+eval_results

@@ -28,7 +28,7 @@ def parse_arguments():
     
     return parser.parse_args()
 
-def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
+def evaluate_laps(model, device, noise_level, map_name, render, lap_num, model_path):
     """Evaluate model's ability to complete laps independently"""
     
     np.random.seed(42)
@@ -37,20 +37,13 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     raceline = f'{map_name}_raceline.csv'
     env = gym.make("f110-v0", map=f"f1tenth_racetracks/{map_name}/{map_name}_map", map_ext=".png", num_agents=1, timestep=0.01, integrator=Integrator.RK4)
 
+    result_dir = get_eval_results_dir(model_path, map_name, noise_level)
+
     # Generate video path if rendering
     video_path = None
     if render:
-        model_name = os.path.splitext(os.path.basename(args.model_path))[0]
-        noise_str = f"_noise{int(noise_level*100)}" if noise_level > 0 else ""
-        lap_str = f"_lap{lap_num}"
-        
-        # Create the desired directory structure: eval_results/model_name+noise+lapnum/
-        video_dir = os.path.join("eval_results", f"{model_name}{noise_str}{lap_str}")
-        
-        # Create directory if it doesn't exist
-        os.makedirs(video_dir, exist_ok=True)
-        
-        video_path = os.path.join(video_dir, f"{model_name}_{map_name}{noise_str}{lap_str}.mp4")
+        os.makedirs(result_dir, exist_ok=True)
+        video_path = os.path.join(result_dir, f"lap{lap_num}.mp4")
     
     # Initialize visualization
     render_info = {"speed": 0.0, "steer": 0.0, "lap_time": 0.0, "laps": 0}
@@ -211,9 +204,6 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
         env.render_callbacks = []
         
         if len(video_frames) > 0:
-            video_dir = os.path.dirname(video_path)
-            if video_dir and not os.path.exists(video_dir):
-                os.makedirs(video_dir, exist_ok=True)
             imageio.mimwrite(video_path, video_frames, fps=100, macro_block_size=1)
             print(f"Video saved to {video_path}")
     
@@ -222,6 +212,21 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     
     # Calculate final metrics
     avg_speed, speed_variance, total_distance = calculate_metrics(trajectory, speeds)
+    result = {
+        'lap_progress': float(total_lap_progress),
+        'collision_occurred': bool(collision_occurred),
+        'time_elapsed': float(lap_time),
+        'lap_times': [float(t) for t in lap_times],
+        'mean_lap_time': float(mean_lap_time),
+        'lap_time_variance': float(lap_time_variance),
+        'avg_speed': float(avg_speed),
+        'speed_variance': float(speed_variance),
+        'total_distance': float(total_distance)
+    }
+
+    result_path = os.path.join(result_dir, "results_single.json")
+    write_json_entry(result_path, f"lap{lap_num}", result)
+    print(f"Metrics saved to {result_path}")
     
     # Print results directly
     print("\n" + "="*50)
@@ -249,6 +254,8 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     else:
         print(f"\nStatus: Incomplete - stopped before completing all laps")
 
+    return result
+
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -262,7 +269,5 @@ if __name__ == "__main__":
     model.eval()
     
     # Run evaluation
-    evaluate_laps(model, device, args.noise, args.map_name, args.render, args.lap_num)
-
-
+    evaluate_laps(model, device, args.noise, args.map_name, args.render, args.lap_num, args.model_path)
 

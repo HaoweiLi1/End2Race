@@ -29,7 +29,7 @@ def parse_arguments():
     parser.add_argument("--ego_idx", type=int, default=0)
     parser.add_argument("--interval_idx", type=int, default=15)
     parser.add_argument("--ego_raceline", type=str, default="raceline1")
-    parser.add_argument("--opp_raceline", type=str, default="raceline1")
+    parser.add_argument("--opp_raceline", type=str, default="raceline0")
     parser.add_argument("--opp_speedscale", type=float, default=0.5)
     parser.add_argument("--sim_duration", type=float, default=8.0)
     parser.add_argument("--render", action='store_true')
@@ -37,11 +37,13 @@ def parse_arguments():
     return parser.parse_args()
 
 def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx, 
-                    ego_raceline, opp_raceline, opp_speed_scale, sim_duration, render=False):
+                    ego_raceline, opp_raceline, opp_speed_scale, sim_duration,
+                    render=False, model_path='pretrained/end2race.pth'):
     """Evaluate a single segment with model against lattice planner opponent"""
     
     np.random.seed(42)
     num_features = 360
+    result_dir = get_eval_results_dir(model_path, map_name, noise_level)
     
     # Calculate opponent index using same logic as run_lattice_planner.py
     params = {
@@ -238,18 +240,11 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             state_prefix = "c"  # 'c' for collision
         else:
             state_prefix = "o" if final_state == "overtaking" else "f"
-        opp_raceline_num = opp_raceline.replace('raceline', '')
-        video_filename = f"{state_prefix}_ol{opp_raceline_num}_e{ego_idx}_o{opp_idx}_s{opp_speed_scale}.mp4"
+        episode_key = multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale)
+        video_filename = f"{state_prefix}_{episode_key}.mp4"
         
-        # Create the desired directory structure: eval_results/model_name+noise/
-        model_name = os.path.splitext(os.path.basename(args.model_path))[0]
-        noise_str = f"_noise{int(noise_level*100)}" if noise_level > 0 else ""
-        video_dir = os.path.join("eval_results", f"{model_name}_{map_name}{noise_str}")
-        
-        # Create directory if it doesn't exist
-        os.makedirs(video_dir, exist_ok=True)
-        
-        video_path = os.path.join(video_dir, video_filename)
+        os.makedirs(result_dir, exist_ok=True)
+        video_path = os.path.join(result_dir, video_filename)
         
         imageio.mimwrite(video_path, video_frames, fps=100, macro_block_size=1)
         print(f"Video saved to {video_path}")
@@ -274,15 +269,16 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     else:
         final_state_num = 1
     
+    state_label = "collision" if collision_occurred else final_state
+
     return {
+        'episode_key': multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale),
         'state': final_state_num,
+        'state_label': state_label,
         'avg_speed': avg_speed if not collision_occurred else 0,
         'speed_variance': speed_variance if not collision_occurred else 0,
         'total_distance': total_distance,
-        'ego_idx': ego_idx,
-        'opp_idx': opp_idx,
-        'opp_raceline': opp_raceline,
-        'opp_speed_scale': opp_speed_scale
+        'collision_occurred': collision_occurred
     }
 
 if __name__ == "__main__":
@@ -299,14 +295,17 @@ if __name__ == "__main__":
         model, device, args.noise,
         args.map_name, args.ego_idx, args.interval_idx,
         args.ego_raceline, args.opp_raceline, args.opp_speedscale,
-        args.sim_duration, args.render
+        args.sim_duration, args.render, args.model_path
     )
-    
+
     # Print results
+    print(f"EPISODE_KEY={result['episode_key']}")
     print(f"STATE={result['state']}")
-    print(f"AVG_SPEED={result['avg_speed']:.3f}")
-    print(f"SPEED_VARIANCE={result['speed_variance']:.3f}")
-    print(f"TOTAL_DISTANCE={result['total_distance']:.3f}")
+    print(f"STATE_LABEL={result['state_label']}")
+    print(f"COLLISION_OCCURRED={str(result['collision_occurred']).lower()}")
+    print(f"AVG_SPEED={result['avg_speed']}")
+    print(f"SPEED_VARIANCE={result['speed_variance']}")
+    print(f"TOTAL_DISTANCE={result['total_distance']}")
     
     # Exit with state code
     sys.exit(result['state'])
