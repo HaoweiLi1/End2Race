@@ -11,12 +11,14 @@ def get_eval_results_dir(model_path, map_name, noise_level):
     return os.path.join("eval_results", "_".join(parts))
 
 def load_json_file(path):
+    """Load a JSON object from path, returning an empty dict if it does not exist."""
     if not os.path.exists(path):
         return {}
     with open(path, 'r') as f:
         return json.load(f)
 
 def write_json_file(path, data):
+    """Atomically write data as indented JSON, creating parent directories as needed."""
     directory = os.path.dirname(path)
     if directory:
         os.makedirs(directory, exist_ok=True)
@@ -27,13 +29,156 @@ def write_json_file(path, data):
     os.replace(tmp_path, path)
 
 def write_json_entry(path, key, value):
+    """Insert or replace a single keyed entry in the JSON object stored at path."""
     data = load_json_file(path)
     data[key] = value
     write_json_file(path, data)
 
 def multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale):
+    """Build the canonical episode key for a multiagent evaluation segment."""
     opp_raceline_num = opp_raceline.replace('raceline', '')
     return f"ol{opp_raceline_num}_e{ego_idx}_o{opp_idx}_s{opp_speed_scale}"
+
+def _multi_episode_sort_key(key):
+    parts = key.split('_')
+    if len(parts) != 4:
+        return (float('inf'), float('inf'), float('inf'), float('inf'), key)
+    try:
+        return (
+            int(parts[0].replace('ol', '')),
+            int(parts[1].replace('e', '')),
+            int(parts[2].replace('o', '')),
+            float(parts[3].replace('s', '')),
+            key
+        )
+    except ValueError:
+        return (float('inf'), float('inf'), float('inf'), float('inf'), key)
+
+def _parse_key_value_log(path):
+    values = {}
+    with open(path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            values[key] = value
+    return values
+
+def _parse_multi_episode_log(path):
+    values = _parse_key_value_log(path)
+    episode_key = values.get('EPISODE_KEY')
+    if not episode_key:
+        return None
+    try:
+        return episode_key, {
+            'state': int(values['STATE']),
+            'state_label': values.get('STATE_LABEL', 'unknown'),
+            'avg_speed': float(values['AVG_SPEED']),
+            'speed_variance': float(values['SPEED_VARIANCE']),
+            'total_distance': float(values['TOTAL_DISTANCE']),
+            'collision_occurred': values.get('COLLISION_OCCURRED', '').lower() == 'true',
+            'global_min_surface_dist': float(values['GLOBAL_MIN_SURFACE_DIST']),
+            'danger_sectors': json.loads(values.get('DANGER_SECTORS', '{}')),
+            'proximity_below_threshold_timesteps': json.loads(
+                values.get('PROXIMITY_BELOW_THRESHOLD_TIMESTEPS', '[]')
+            ),
+            'steering_anomaly_timesteps': json.loads(values.get('STEERING_ANOMALY_TIMESTEPS', '[]')),
+            'max_steer_delta': float(values['MAX_STEER_DELTA']),
+            'max_steer_reversals': int(values['MAX_STEER_REVERSALS']),
+            'steer_autocorr_lag1': float(values['STEER_AUTOCORR_LAG1']),
+        }
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return None
+
+def _percentage(count, total):
+    if total == 0:
+        return 0
+    value = round(count * 100.0 / total, 1)
+    return int(value) if value.is_integer() else value
+
+def _mean_metric(metrics, name):
+    values = [
+        metric[name]
+        for metric in metrics
+        if isinstance(metric.get(name), (int, float))
+    ]
+    return round(sum(values) / len(values), 6) if values else 0
+
+def write_multiagent_results_from_logs(
+    model_path,
+    map_name,
+    noise_level,
+    log_dir,
+    total_episodes,
+    following_count,
+    overtaking_count,
+    collision_count,
+    error_count,
+):
+    """Merge multiagent episode logs and write results_multi.json."""
+    result_path = os.path.join(
+        get_eval_results_dir(model_path, map_name, noise_level),
+        'results_multi.json'
+    )
+    data = load_json_file(result_path)
+    episodes = data.get('episodes', {})
+    if not isinstance(episodes, dict):
+        episodes = {}
+
+    batch_metrics = []
+    for filename in sorted(os.listdir(log_dir)):
+        if not filename.endswith('.log'):
+            continue
+        parsed = _parse_multi_episode_log(os.path.join(log_dir, filename))
+        if parsed is None:
+            continue
+        episode_key, metric = parsed
+        episodes[episode_key] = metric
+        batch_metrics.append(metric)
+
+    success_count = following_count + overtaking_count
+    ordered_episodes = {
+        key: episodes[key]
+        for key in sorted(episodes, key=_multi_episode_sort_key)
+    }
+    final = {
+        'total_episodes': total_episodes,
+        'following_count': following_count,
+        'overtaking_count': overtaking_count,
+        'success_count': success_count,
+        'collision_count': collision_count,
+        'error_count': error_count,
+        'following_rate': _percentage(following_count, total_episodes),
+        'overtaking_rate': _percentage(overtaking_count, total_episodes),
+        'success_rate': _percentage(success_count, total_episodes),
+        'collision_rate': _percentage(collision_count, total_episodes),
+        'avg_speed_mean': _mean_metric(batch_metrics, 'avg_speed'),
+        'speed_variance_mean': _mean_metric(batch_metrics, 'speed_variance'),
+        'total_distance_mean': _mean_metric(batch_metrics, 'total_distance'),
+    }
+    write_json_file(result_path, {
+        'final': final,
+        'episodes': ordered_episodes,
+    })
+    return result_path
+
+def write_multiagent_results_from_logs_cli():
+    """CLI bridge used by evaluate.sh to keep bash aggregation short."""
+    import sys
+
+    result_path = write_multiagent_results_from_logs(
+        sys.argv[1],
+        sys.argv[2],
+        float(sys.argv[3]),
+        sys.argv[4],
+        int(sys.argv[5]),
+        int(sys.argv[6]),
+        int(sys.argv[7]),
+        int(sys.argv[8]),
+        int(sys.argv[9]),
+    )
+    print(result_path)
 
 def load_raceline_with_speed(map_name, raceline_file, start_idx):
     """Load raceline waypoints with position and speed information"""

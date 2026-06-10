@@ -15,7 +15,6 @@ from model import End2Race
 from latticeplanner.utils import project_point_to_centerline, obsDict2oppoArray
 from demonstration import setup_opp_planner
 from utils import *
-import warnings
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Evaluate model on segment with opponent')
@@ -34,7 +33,7 @@ def parse_arguments():
     parser.add_argument("--opp_speedscale", type=float, default=0.5)
     parser.add_argument("--sim_duration", type=float, default=8.0)
     parser.add_argument("--render", action='store_true')
-    
+
     return parser.parse_args()
 
 def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx, 
@@ -155,12 +154,10 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     # Main simulation loop
     while not done and lap_time < sim_duration:
         # Model inference for ego
-        raw_lidar = np.array(obs["scans"][0]).flatten()
-        if len(raw_lidar) != num_features:
-            indices = np.linspace(0, len(raw_lidar)-1, num_features, dtype=int)
-            lidar_360 = raw_lidar[indices]
-        else:
-            lidar_360 = raw_lidar
+        lidar_360 = np.array(obs["scans"][0]).flatten()
+        if len(lidar_360) != num_features:
+            indices = np.linspace(0, len(lidar_360)-1, num_features, dtype=int)
+            lidar_360 = lidar_360[indices]
         lidar = lidar_360.copy()
         
         # Apply noise
@@ -286,10 +283,10 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         'episode_key': multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale),
         'state': final_state_num,
         'state_label': state_label,
-        'avg_speed': avg_speed if not collision_occurred else 0,
-        'speed_variance': speed_variance if not collision_occurred else 0,
-        'total_distance': total_distance,
-        'collision_occurred': collision_occurred,
+        'avg_speed': float(avg_speed) if not collision_occurred else 0,
+        'speed_variance': float(speed_variance) if not collision_occurred else 0,
+        'total_distance': float(total_distance),
+        'collision_occurred': bool(collision_occurred),
         'global_min_surface_dist': proximity_quality['global_min_surface_dist'],
         'danger_sectors': proximity_quality['danger_sectors'],
         'proximity_below_threshold_timesteps': proximity_quality['proximity_below_threshold_timesteps'],
@@ -316,7 +313,7 @@ if __name__ == "__main__":
         args.sim_duration, args.render, args.model_path
     )
 
-    # Print results
+    # Print metrics to stdout (terminal for standalone runs; parsed from logs by evaluate.sh)
     print(f"EPISODE_KEY={result['episode_key']}")
     print(f"STATE={result['state']}")
     print(f"STATE_LABEL={result['state_label']}")
@@ -331,6 +328,6 @@ if __name__ == "__main__":
     print(f"MAX_STEER_DELTA={result['max_steer_delta']}")
     print(f"MAX_STEER_REVERSALS={result['max_steer_reversals']}")
     print(f"STEER_AUTOCORR_LAG1={result['steer_autocorr_lag1']}")
-    
+
     # Exit with state code
     sys.exit(result['state'])
