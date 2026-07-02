@@ -1,0 +1,634 @@
+#!/usr/bin/env python3
+"""Compact v1 PPO fine-tuning script for End2Race.
+
+Design assumptions:
+- Actor observation stays deployable: LiDAR 360 + previous ego speed + GRU hidden.
+- The model class is End2Race_PPO from model.py.
+- Reward uses simulator geometry internally but does not expose privileged state to actor.
+- Collision is true termination. Time limit is truncation and bootstraps V(s_next).
+"""
+
+import os
+import math
+import argparse
+import gym
+import f110_gym
+import numpy as np
+import torch
+import torch.optim as optim
+from f110_gym.envs.base_classes import Integrator
+from latticeplanner.utils import obsDict2oppoArray
+from demonstration import setup_opp_planner
+from model import End2Race, End2Race_PPO
+from utils import (STEER_LIMIT, LIDAR_DIM, ACTION_DIM, downsample_lidar_for_model,
+                   load_positions_and_speeds_from_params, load_reference_line,
+                   resolve_two_agent_indices)
+from ppo_utils import (BOOL_INFO_KEYS, MEAN_INFO_KEYS, RewardWeights, RewardState,
+                       apply_reward_overrides, compute_shaped_reward,
+                       forward_frozen_bc_sequence, forward_policy_sequence,
+                       load_actor_critic, load_frozen_bc, make_fixed_scenario,
+                       obs_to_tensors, reward_weight_names, sample_opp_speedscale,
+                       sample_scenario, save_actor_backbone, save_full_checkpoint,
+                       summarize_iteration, validate_replay_identity, value_of_obs,
+                       zero_hidden)
+
+def parse_arguments():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description='Compact v1 PPO fine-tuning for End2Race.')
+
+    # Data and model paths
+    parser.add_argument("--model_path", type=str, default="pretrained/end2race.pth")
+    parser.add_argument("--bc_model_path", type=str, default="pretrained/end2race.pth")
+    parser.add_argument("--resume", type=str, default="")
+    parser.add_argument("--save_actor_path", type=str, default="pretrained/end2race_ppo_v1.pth")
+    parser.add_argument("--save_full_path", type=str, default="pretrained/end2race_ppo_v1_full.pt")
+
+    # Environment and scenario configuration
+    parser.add_argument("--map_name", type=str, default="Austin")
+    parser.add_argument("--max_speed", type=float, default=20.0)
+    parser.add_argument("--sim_duration", type=float, default=8.0)
+    parser.add_argument("--stage", type=int, default=1)
+    parser.add_argument("--fixed_scenario", action="store_true")
+    parser.add_argument("--ego_idx", type=int, default=0)
+    parser.add_argument("--interval_idx", type=int, default=15)
+    parser.add_argument("--ego_raceline", type=str, default="raceline1")
+    parser.add_argument("--opp_raceline", type=str, default="raceline1")
+    parser.add_argument("--opp_speedscale", type=float, default=0.5)
+
+    # PPO configuration
+    parser.add_argument("--rollout_steps", type=int, default=1024)
+    parser.add_argument("--ppo_epochs", type=int, default=3)
+    parser.add_argument("--gamma", type=float, default=0.997)
+    parser.add_argument("--gae_lambda", type=float, default=0.95)
+    parser.add_argument("--clip_eps", type=float, default=0.05)
+    parser.add_argument("--actor_lr", type=float, default=1e-5)
+    parser.add_argument("--critic_lr", type=float, default=5e-5)
+    parser.add_argument("--vf_coef", type=float, default=0.5)
+    parser.add_argument("--ent_coef", type=float, default=0.001)
+    parser.add_argument("--beta_bc", type=float, default=2.0)
+    parser.add_argument("--bound_coef", type=float, default=0.01)
+    parser.add_argument("--target_kl", type=float, default=0.03)
+    parser.add_argument("--max_grad_norm", type=float, default=0.5)
+
+    # Model configuration
+    parser.add_argument("--hidden_scale", type=int, default=4)
+    parser.add_argument("--steer_std", type=float, default=0.03)
+    parser.add_argument("--speed_std", type=float, default=0.25)
+
+    # Training configuration
+    parser.add_argument("--total_iterations", type=int, default=1000)
+    parser.add_argument("--save_every", type=int, default=50)
+    parser.add_argument("--log_every", type=int, default=1)
+    parser.add_argument("--train_seed", type=int, default=0)
+    parser.add_argument("--device", type=str, default="auto")
+
+    # Replay identity validation
+    replay_group = parser.add_mutually_exclusive_group()
+    replay_group.add_argument("--validate_replay_identity", dest="validate_replay_identity", action="store_true", default=True)
+    replay_group.add_argument("--no_validate_replay_identity", "--no-validate_replay_identity", dest="validate_replay_identity", action="store_false")
+    parser.add_argument("--replay_identity_atol", type=float, default=1e-5)
+
+    # Reward weight overrides
+    for name in reward_weight_names():
+        parser.add_argument(f"--{name}", type=float, default=None)
+
+    return parser.parse_args()
+
+class End2RacePPOEnv:
+    """Two-agent F1Tenth PPO environment for End2Race v1 training.
+
+    Ego action comes from the PPO actor. Opponent action comes from the same
+    lattice planner used by the original multi-agent evaluation scripts.
+    """
+
+    def __init__(self, map_name, max_speed=20.0, sim_duration=8.0, seed=0,
+                 reward_weights=None, ego_raceline_choices=None, opp_raceline_choices=None):
+        self.map_name = map_name
+        self.max_speed = float(max_speed)
+        self.sim_duration = float(sim_duration)
+        self.reward_weights = reward_weights or RewardWeights()
+        self.rng = np.random.default_rng(seed)
+        self.stage = 1
+        self.ego_raceline_choices = tuple(ego_raceline_choices or ('raceline1',))
+        self.opp_raceline_choices = tuple(opp_raceline_choices or ('raceline1',))
+
+        # Setup environment
+        self.env = gym.make(
+            "f110-v0",
+            map=f"f1tenth_racetracks/{map_name}/{map_name}_map",
+            map_ext=".png",
+            num_agents=2,
+            timestep=0.01,
+            integrator=Integrator.RK4,
+        )
+        self.timestep = float(self.env.timestep)
+        self.ref = load_reference_line(map_name, 'raceline1')
+
+        # Episode state
+        self._raw_obs = None
+        self._reward_state = None
+        self._opponent = None
+        self._opp_traj = None
+        self._tracker_count = 0
+        self._tracker_steps = 10
+        self._prev_speed = 0.0
+        self._t = 0.0
+        self._step_count = 0
+        self._max_episode_steps = int(round(self.sim_duration / self.timestep))
+        self._scenario = None
+
+    def close(self):
+        self.env.close()
+
+    def reset(self, scenario=None):
+        self._scenario = self._complete_scenario(
+            sample_scenario(
+                self.stage,
+                self.rng,
+                self.map_name,
+                self.ego_raceline_choices,
+                self.opp_raceline_choices,
+            )
+            if scenario is None
+            else dict(scenario)
+        )
+
+        self._reset_opponent()
+        positions, initial_speeds = load_positions_and_speeds_from_params(self._scenario, self.map_name)
+        obs, _, _, _ = self.env.reset(poses=positions.astype(np.float64))
+
+        self._raw_obs = obs
+        self._prev_speed = float(initial_speeds[0]) * 0.9
+        self._reward_state = RewardState.from_obs(obs, self.ref)
+        self._step_count = 0
+        self._t = 0.0
+        return self._policy_obs(obs)
+
+    def step(self, raw_ego_action):
+        raw_ego_action = np.asarray(raw_ego_action, dtype=np.float32).reshape(2)
+        ego_action = self._clip_ego_action(raw_ego_action)
+        opp_action = self._opponent_action(self._raw_obs)
+
+        # Step environment
+        actions = np.vstack((ego_action, opp_action)).astype(np.float32)
+        obs, _, env_done, env_info = self.env.step(actions)
+        self._step_count += 1
+        self._t = self._step_count * self.timestep
+
+        reward, reward_terms = compute_shaped_reward(
+            obs,
+            self._reward_state,
+            self.ref,
+            self.reward_weights,
+            self.timestep,
+        )
+
+        # Termination bookkeeping
+        collision = bool(np.any(obs['collisions']))
+        timeout = bool(self._step_count >= self._max_episode_steps)
+        terminated = bool(collision or env_done)
+        truncated = bool((not terminated) and timeout)
+        success = bool(self._reward_state.safe_overtake_held)
+
+        self._raw_obs = obs
+        self._prev_speed = float(obs['linear_vels_x'][0])
+
+        info = {
+            **reward_terms,
+            'terminated': terminated,
+            'truncated': truncated,
+            'collision': collision,
+            'env_done': bool(env_done),
+            'timeout': timeout,
+            'success': success,
+            'time': float(self._t),
+            'raw_ego_action': raw_ego_action.copy(),
+            'executed_ego_action': ego_action.copy(),
+            'action_was_clipped': bool(np.any(np.abs(raw_ego_action - ego_action) > 1e-6)),
+            'opp_action': opp_action.copy(),
+            'env_info': env_info,
+        }
+        return self._policy_obs(obs), float(reward), terminated, truncated, info
+
+    def _complete_scenario(self, scenario):
+        scenario.setdefault('ego_raceline', self.ego_raceline_choices[0])
+        scenario.setdefault('opp_raceline', self.opp_raceline_choices[0])
+        scenario.setdefault('ego_idx', 0)
+        scenario.setdefault('interval_idx', 15)
+        scenario.setdefault('opp_speedscale', sample_opp_speedscale(self.stage, self.rng))
+        ego_idx, opp_idx = resolve_two_agent_indices(
+            self.map_name,
+            scenario['ego_raceline'],
+            scenario['opp_raceline'],
+            scenario['ego_idx'],
+            scenario['interval_idx'],
+            scenario.get('opp_idx'),
+        )
+        scenario['ego_idx'] = ego_idx
+        scenario['opp_idx'] = opp_idx
+        return scenario
+
+    def _reset_opponent(self):
+        self._opponent = setup_opp_planner(self.map_name, self._scenario['opp_raceline'])
+        self._opp_traj = None
+        self._tracker_count = 0
+        self._tracker_steps = int(self._opponent.conf.tracker_steps)
+        self._opponent.tracker.prev_error = 0.0
+        self._opponent.prev_opp_pose = np.array([0.0, 0.0])
+        self._opponent.prev_traj_local = np.zeros_like(self._opponent.prev_traj_local)
+        self._opponent.best_traj = None
+        self._opponent.goal_grid = None
+
+    def _policy_obs(self, obs):
+        return {
+            'lidar': downsample_lidar_for_model(obs['scans'][0]),
+            'prev_speed': np.array([self._prev_speed], dtype=np.float32),
+        }
+
+    def _clip_ego_action(self, raw_action):
+        action = np.asarray(raw_action, dtype=np.float32).reshape(2).copy()
+        action[0] = np.clip(action[0], -STEER_LIMIT, STEER_LIMIT)
+        action[1] = np.clip(action[1], 0.0, self.max_speed)
+        return action
+
+    def _opponent_action(self, obs):
+        # Replan only every tracker_steps; reuse the cached trajectory otherwise.
+        if self._tracker_count == 0 or self._opp_traj is None:
+            self._opp_traj = self._opponent.plan(
+                obs['poses_x'][1],
+                obs['poses_y'][1],
+                obs['poses_theta'][1],
+                obsDict2oppoArray(obs, 1),
+                obs['linear_vels_x'][1],
+            )
+
+        opp_steer, opp_speed = self._opponent.tracker.plan(
+            obs['poses_x'][1],
+            obs['poses_y'][1],
+            obs['poses_theta'][1],
+            obs['linear_vels_x'][1],
+            self._opp_traj,
+        )
+        self._tracker_count = (self._tracker_count + 1) % self._tracker_steps
+
+        return np.array(
+            [
+                float(np.clip(opp_steer, -STEER_LIMIT, STEER_LIMIT)),
+                float(opp_speed) * float(self._scenario['opp_speedscale']),
+            ],
+            dtype=np.float32,
+        )
+
+class RolloutBuffer:
+    """Serial recurrent PPO buffer with true termination and truncation separated."""
+
+    def __init__(self, rollout_steps, gamma, gae_lambda):
+        self.rollout_steps = int(rollout_steps)
+        self.gamma = float(gamma)
+        self.gae_lambda = float(gae_lambda)
+        self.lidar = np.zeros((self.rollout_steps, LIDAR_DIM), dtype=np.float32)
+        self.prev_speed = np.zeros((self.rollout_steps, 1), dtype=np.float32)
+        self.raw_actions = np.zeros((self.rollout_steps, ACTION_DIM), dtype=np.float32)
+        self.rewards = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.values = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.log_probs = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.terminateds = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.truncateds = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.trunc_next_values = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.episode_starts = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.advantages = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.returns = np.zeros((self.rollout_steps,), dtype=np.float32)
+        self.ptr = 0
+
+    def reset(self):
+        self.ptr = 0
+
+    def add(self, obs, raw_action, reward, value, log_prob,
+            terminated, truncated, trunc_next_value, episode_start):
+        if self.ptr >= self.rollout_steps:
+            raise RuntimeError("RolloutBuffer overflow.")
+        self.lidar[self.ptr] = np.asarray(obs["lidar"], dtype=np.float32).reshape(LIDAR_DIM)
+        self.prev_speed[self.ptr] = np.asarray(obs["prev_speed"], dtype=np.float32).reshape(1)
+        self.raw_actions[self.ptr] = np.asarray(raw_action, dtype=np.float32).reshape(ACTION_DIM)
+        self.rewards[self.ptr] = float(reward)
+        self.values[self.ptr] = float(value)
+        self.log_probs[self.ptr] = float(log_prob)
+        self.terminateds[self.ptr] = float(terminated)
+        self.truncateds[self.ptr] = float(truncated)
+        self.trunc_next_values[self.ptr] = float(trunc_next_value)
+        self.episode_starts[self.ptr] = float(episode_start)
+        self.ptr += 1
+
+    def compute_returns_and_advantage(self, candidate_last_value):
+        """Compute GAE.
+
+        Collisions/true terminations use zero bootstrap. Time-limit truncations use
+        the stored V(s_next), because the task could have continued beyond the
+        artificial cutoff.
+        """
+        if self.ptr != self.rollout_steps:
+            raise RuntimeError(f"Buffer has {self.ptr} steps, expected {self.rollout_steps}.")
+
+        gae = 0.0
+        for t in reversed(range(self.rollout_steps)):
+            if self.terminateds[t] > 0.5:
+                next_value = 0.0
+                boundary = True
+            elif self.truncateds[t] > 0.5:
+                next_value = float(self.trunc_next_values[t])
+                boundary = True
+            elif t == self.rollout_steps - 1:
+                next_value = float(candidate_last_value)
+                boundary = False
+            else:
+                next_value = float(self.values[t + 1])
+                boundary = False
+
+            delta = self.rewards[t] + self.gamma * next_value - self.values[t]
+            gae = delta if boundary else delta + self.gamma * self.gae_lambda * gae
+            self.advantages[t] = gae
+
+        self.returns = self.advantages + self.values
+
+    def tensors(self, device):
+        return (
+            torch.as_tensor(self.lidar, dtype=torch.float32, device=device).unsqueeze(0),
+            torch.as_tensor(self.prev_speed, dtype=torch.float32, device=device).unsqueeze(0),
+            torch.as_tensor(self.raw_actions, dtype=torch.float32, device=device).unsqueeze(0),
+            torch.as_tensor(self.log_probs, dtype=torch.float32, device=device).unsqueeze(0),
+            torch.as_tensor(self.advantages, dtype=torch.float32, device=device).unsqueeze(0),
+            torch.as_tensor(self.returns, dtype=torch.float32, device=device).unsqueeze(0),
+            torch.as_tensor(self.episode_starts, dtype=torch.float32, device=device).unsqueeze(0),
+        )
+
+def collect_rollout(env, ac, buffer, device, scenario):
+    """Collect one on-policy rollout with the current actor-critic."""
+    buffer.reset()
+    obs = env.reset(scenario=scenario)
+    hidden = zero_hidden(ac.actor.gru.hidden_size, device)
+    episode_start = True
+
+    episode_return = 0.0
+    completed_returns = []
+    info_values = {key: [] for key in BOOL_INFO_KEYS + MEAN_INFO_KEYS}
+
+    for _ in range(buffer.rollout_steps):
+        lidar_t, speed_t = obs_to_tensors(obs, device)
+        with torch.no_grad():
+            action_t, logp_t, value_t, next_hidden = ac.act(
+                lidar_t, speed_t, hidden, deterministic=False
+            )
+
+        raw_action = action_t.view(-1).detach().cpu().numpy().astype(np.float32)
+        next_obs, reward, terminated, truncated, info = env.step(raw_action)
+
+        trunc_next_value = 0.0
+        if truncated:
+            trunc_next_value = value_of_obs(ac, next_obs, next_hidden, device)
+
+        buffer.add(
+            obs=obs,
+            raw_action=raw_action,
+            reward=reward,
+            value=float(value_t.view(-1)[0].item()),
+            log_prob=float(logp_t.view(-1)[0].item()),
+            terminated=terminated,
+            truncated=truncated,
+            trunc_next_value=trunc_next_value,
+            episode_start=episode_start,
+        )
+
+        episode_return += float(reward)
+        for key, values in info_values.items():
+            if key in info:
+                values.append(float(info[key]))
+
+        if terminated or truncated:
+            completed_returns.append(episode_return)
+            episode_return = 0.0
+            obs = env.reset(scenario=scenario)
+            hidden = zero_hidden(ac.actor.gru.hidden_size, device)
+            episode_start = True
+        else:
+            obs = next_obs
+            hidden = next_hidden.detach()
+            episode_start = False
+
+    candidate_last_value = value_of_obs(ac, obs, hidden, device)
+    buffer.compute_returns_and_advantage(candidate_last_value=candidate_last_value)
+
+    metrics = {
+        "rollout_return": float(np.sum(buffer.rewards)),
+        "completed_episodes": float(len(completed_returns)),
+        "mean_completed_return": float(np.mean(completed_returns)) if completed_returns else float("nan"),
+        "partial_episode_return": float(episode_return),
+        "bootstrap_value": float(candidate_last_value),
+        "adv_mean": float(np.mean(buffer.advantages)),
+        "adv_std": float(np.std(buffer.advantages)),
+        "return_mean": float(np.mean(buffer.returns)),
+        "return_std": float(np.std(buffer.returns)),
+    }
+
+    for key in BOOL_INFO_KEYS:
+        values = info_values[key]
+        metrics[f"{key}_rate"] = float(np.mean(values)) if values else float("nan")
+    for key in MEAN_INFO_KEYS:
+        values = info_values[key]
+        metrics[f"mean_{key}"] = float(np.mean(values)) if values else float("nan")
+
+    return metrics
+
+def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
+    """Run clipped PPO epochs with BC anchor, bound loss, and KL early stop."""
+    lidar_b, speed_b, act_b, old_logp_b, adv_b, ret_b, starts_b = buffer.tensors(device)
+    adv_b = (adv_b - adv_b.mean()) / (adv_b.std(unbiased=False) + 1e-8)
+
+    metrics = {
+        "policy_loss": [],
+        "value_loss": [],
+        "entropy": [],
+        "bc_anchor": [],
+        "steer_anchor": [],
+        "speed_anchor": [],
+        "bound_loss": [],
+        "approx_kl": [],
+        "post_step_approx_kl": [],
+        "clip_fraction": [],
+        "ratio_mean": [],
+        "ratio_min": [],
+        "ratio_max": [],
+        "grad_norm": [],
+    }
+    updates = 0
+    early_stopped = False
+
+    action_scale = torch.tensor([STEER_LIMIT, args.max_speed], dtype=torch.float32, device=device).view(1, 1, 2)
+
+    for _ in range(args.ppo_epochs):
+        dist, values = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
+        new_logp = dist.log_prob(act_b).sum(-1)
+        log_ratio = new_logp - old_logp_b
+        ratio = torch.exp(log_ratio)
+
+        with torch.no_grad():
+            approx_kl = ((ratio - 1.0) - log_ratio).mean()
+            clip_fraction = ((ratio - 1.0).abs() > args.clip_eps).float().mean()
+            ratio_mean = ratio.mean()
+            ratio_min = ratio.min()
+            ratio_max = ratio.max()
+
+        surr1 = ratio * adv_b
+        surr2 = torch.clamp(ratio, 1.0 - args.clip_eps, 1.0 + args.clip_eps) * adv_b
+        policy_loss = -torch.min(surr1, surr2).mean()
+        value_loss = 0.5 * (values - ret_b).pow(2).mean()
+        entropy = dist.entropy().sum(-1).mean()
+
+        with torch.no_grad():
+            bc_mean = forward_frozen_bc_sequence(frozen_bc, lidar_b, speed_b, starts_b, device)
+        anchor_per_dim = ((dist.mean - bc_mean) / action_scale).pow(2)
+        steer_anchor = anchor_per_dim[..., 0].mean()
+        speed_anchor = anchor_per_dim[..., 1].mean()
+        bc_anchor = steer_anchor + speed_anchor
+
+        steer_bound = torch.relu(dist.mean[..., 0].abs() - STEER_LIMIT).pow(2).mean()
+        speed_bound = (
+            torch.relu(-dist.mean[..., 1]).pow(2).mean()
+            + torch.relu(dist.mean[..., 1] - args.max_speed).pow(2).mean()
+        )
+        bound_loss = steer_bound + speed_bound
+
+        loss = (
+            policy_loss
+            + args.vf_coef * value_loss
+            - args.ent_coef * entropy
+            + args.beta_bc * bc_anchor
+            + args.bound_coef * bound_loss
+        )
+
+        metrics["policy_loss"].append(float(policy_loss.item()))
+        metrics["value_loss"].append(float(value_loss.item()))
+        metrics["entropy"].append(float(entropy.item()))
+        metrics["bc_anchor"].append(float(bc_anchor.item()))
+        metrics["steer_anchor"].append(float(steer_anchor.item()))
+        metrics["speed_anchor"].append(float(speed_anchor.item()))
+        metrics["bound_loss"].append(float(bound_loss.item()))
+        metrics["approx_kl"].append(float(approx_kl.item()))
+        metrics["clip_fraction"].append(float(clip_fraction.item()))
+        metrics["ratio_mean"].append(float(ratio_mean.item()))
+        metrics["ratio_min"].append(float(ratio_min.item()))
+        metrics["ratio_max"].append(float(ratio_max.item()))
+
+        if approx_kl.item() > args.target_kl * 1.5:
+            early_stopped = True
+            break
+
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        grad_norm = torch.nn.utils.clip_grad_norm_(ac.parameters(), args.max_grad_norm)
+        optimizer.step()
+        updates += 1
+
+        with torch.no_grad():
+            post_dist, _ = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
+            post_logp = post_dist.log_prob(act_b).sum(-1)
+            post_log_ratio = post_logp - old_logp_b
+            post_kl = ((post_log_ratio.exp() - 1.0) - post_log_ratio).mean()
+        metrics["grad_norm"].append(float(grad_norm.item()))
+        metrics["post_step_approx_kl"].append(float(post_kl.item()))
+
+    out = {key: float(np.mean(value)) if value else float("nan") for key, value in metrics.items()}
+    out["num_updates"] = float(updates)
+    out["early_stopped"] = float(early_stopped)
+    out["std_steer"] = float(ac.log_std.detach().exp()[0].item())
+    out["std_speed"] = float(ac.log_std.detach().exp()[1].item())
+    return out
+
+def main():
+    args = parse_arguments()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else torch.device(args.device)
+    torch.manual_seed(args.train_seed)
+    np.random.seed(args.train_seed)
+
+    # Setup environment
+    env = End2RacePPOEnv(
+        map_name=args.map_name,
+        max_speed=args.max_speed,
+        sim_duration=args.sim_duration,
+        seed=args.train_seed,
+    )
+    env.stage = args.stage
+    apply_reward_overrides(env.reward_weights, args)
+
+    min_rollout_steps = int(math.ceil(args.sim_duration / env.timestep))
+    if args.rollout_steps < min_rollout_steps:
+        raise ValueError(
+            f"--rollout_steps must be at least one full episode: {min_rollout_steps}; "
+            f"got {args.rollout_steps}."
+        )
+
+    # Create actor-critic and load pretrained weights
+    ac = End2Race_PPO(
+        hidden_scale=args.hidden_scale,
+        steer_std=args.steer_std,
+        speed_std=args.speed_std,
+    ).to(device)
+
+    source_path = args.resume if args.resume else args.model_path
+    if not os.path.exists(source_path):
+        raise FileNotFoundError(source_path)
+    loaded_ckpt = load_actor_critic(ac, source_path, device)
+    ac.train()
+
+    frozen_bc = load_frozen_bc(args.bc_model_path, device, args.hidden_scale)
+    buffer = RolloutBuffer(args.rollout_steps, args.gamma, args.gae_lambda)
+
+    # Setup optimizer with separate actor/critic learning rates
+    critic_params = list(ac.value_head.parameters())
+    critic_param_ids = {id(param) for param in critic_params}
+    actor_params = [param for param in ac.parameters() if id(param) not in critic_param_ids]
+    optimizer = optim.Adam(
+        [
+            {"params": critic_params, "lr": args.critic_lr},
+            {"params": actor_params, "lr": args.actor_lr},
+        ]
+    )
+
+    start_iter = 0
+    if args.resume:
+        if "optimizer" not in loaded_ckpt or "iteration" not in loaded_ckpt:
+            raise RuntimeError("--resume checkpoint must contain optimizer and iteration.")
+        optimizer.load_state_dict(loaded_ckpt["optimizer"])
+        start_iter = int(loaded_ckpt["iteration"])
+
+    scenario = make_fixed_scenario(args)
+
+    # Train model
+    try:
+        for iteration in range(start_iter, args.total_iterations):
+            rollout_metrics = collect_rollout(env, ac, buffer, device, scenario)
+            replay_metrics = {}
+            if args.validate_replay_identity:
+                replay_metrics = validate_replay_identity(ac, buffer, device, args.replay_identity_atol)
+            update_metrics = ppo_update(ac, frozen_bc, buffer, optimizer, device, args)
+
+            if args.log_every > 0 and ((iteration + 1) % args.log_every == 0 or iteration == start_iter):
+                print(summarize_iteration(iteration + 1, rollout_metrics, {**update_metrics, **replay_metrics}))
+
+            if args.save_every > 0 and (iteration + 1) % args.save_every == 0:
+                save_full_checkpoint(ac, args.save_full_path, optimizer, iteration + 1, vars(args))
+                save_actor_backbone(ac, args.save_actor_path)
+
+        save_full_checkpoint(ac, args.save_full_path, optimizer, args.total_iterations, vars(args))
+        save_actor_backbone(ac, args.save_actor_path)
+
+        # Fail fast if the actor-only checkpoint is not loadable by the original End2Race evaluator.
+        test_actor = End2Race(mask_prob=0.0, hidden_scale=args.hidden_scale).to(device)
+        test_actor.load_state_dict(torch.load(args.save_actor_path, map_location=device, weights_only=False))
+        print(f"Saved actor-only checkpoint: {args.save_actor_path}")
+        print(f"Saved full PPO checkpoint:   {args.save_full_path}")
+    finally:
+        env.close()
+
+if __name__ == "__main__":
+    main()

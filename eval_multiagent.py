@@ -33,6 +33,7 @@ def parse_arguments():
     parser.add_argument("--opp_speedscale", type=float, default=0.5)
     parser.add_argument("--sim_duration", type=float, default=8.0)
     parser.add_argument("--render", action='store_true')
+    parser.add_argument("--metrics_out", type=str, default=None, help="write the episode metrics dict as JSON to this path.")
 
     return parser.parse_args()
 
@@ -283,8 +284,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         'episode_key': multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale),
         'state': final_state_num,
         'state_label': state_label,
-        'avg_speed': float(avg_speed) if not collision_occurred else 0,
-        'speed_variance': float(speed_variance) if not collision_occurred else 0,
+        'avg_speed': float(avg_speed) if not collision_occurred else 0.0,
+        'speed_variance': float(speed_variance) if not collision_occurred else 0.0,
         'total_distance': float(total_distance),
         'collision_occurred': bool(collision_occurred),
         'global_min_surface_dist': proximity_quality['global_min_surface_dist'],
@@ -313,21 +314,11 @@ if __name__ == "__main__":
         args.sim_duration, args.render, args.model_path
     )
 
-    # Print metrics to stdout (terminal for standalone runs; parsed from logs by evaluate.sh)
-    print(f"EPISODE_KEY={result['episode_key']}")
-    print(f"STATE={result['state']}")
-    print(f"STATE_LABEL={result['state_label']}")
-    print(f"COLLISION_OCCURRED={str(result['collision_occurred']).lower()}")
-    print(f"AVG_SPEED={result['avg_speed']}")
-    print(f"SPEED_VARIANCE={result['speed_variance']}")
-    print(f"TOTAL_DISTANCE={result['total_distance']}")
-    print(f"GLOBAL_MIN_SURFACE_DIST={result['global_min_surface_dist']}")
-    print(f"DANGER_SECTORS={json.dumps(result['danger_sectors'], sort_keys=True)}")
-    print(f"PROXIMITY_BELOW_THRESHOLD_TIMESTEPS={json.dumps(result['proximity_below_threshold_timesteps'])}")
-    print(f"STEERING_ANOMALY_TIMESTEPS={json.dumps(result['steering_anomaly_timesteps'])}")
-    print(f"MAX_STEER_DELTA={result['max_steer_delta']}")
-    print(f"MAX_STEER_REVERSALS={result['max_steer_reversals']}")
-    print(f"STEER_AUTOCORR_LAG1={result['steer_autocorr_lag1']}")
+    # Persist metrics for evaluate.sh aggregation (JSON file), or show them for standalone runs.
+    if args.metrics_out:
+        write_json_file(args.metrics_out, result)
+    else:
+        print(json.dumps(result, indent=2))
 
     # Exit with state code
     sys.exit(result['state'])

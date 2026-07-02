@@ -56,6 +56,7 @@ for ego_idx in "${ego_idx_range[@]}"; do
         for speed_scale in "${OPP_SPEED_SCALES[@]}"; do
             exit_result_path="$temp_dir/$job_id.exit"
             log_result_path="$temp_dir/$job_id.log"
+            json_result_path="$temp_dir/$job_id.json"
             cmd=(
                 python eval_multiagent.py
                 --model_path "$MODEL_PATH"
@@ -68,6 +69,7 @@ for ego_idx in "${ego_idx_range[@]}"; do
                 --sim_duration "$SIM_DURATION"
                 --hidden_scale "$HIDDEN_SCALE"
                 --noise "$NOISE"
+                --metrics_out "$json_result_path"
             )
 
             if [ "$RENDER" = true ]; then
@@ -111,7 +113,7 @@ done
 
 success_count=$((following_count + overtaking_count))
 
-if ! result_path=$(python -c 'from utils import write_multiagent_results_from_logs_cli; write_multiagent_results_from_logs_cli()' \
+if ! result_path=$(python -c 'from utils import write_multiagent_results_cli; write_multiagent_results_cli()' \
     "$MODEL_PATH" "$MAP_NAME" "$NOISE" "$temp_dir" "$total_segments" \
     "$following_count" "$overtaking_count" "$collision_count" "$error_count"); then
     echo "ERROR: failed to aggregate metrics" >&2
