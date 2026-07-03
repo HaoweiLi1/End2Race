@@ -213,18 +213,20 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num, model_p
     # Calculate final metrics
     avg_speed, speed_variance, total_distance = calculate_metrics(trajectory, speeds)
     result = {
+        'target_laps': int(lap_num),
         'lap_progress': float(total_lap_progress),
-        'collision_occurred': bool(collision_occurred),
         'time_elapsed': float(lap_time),
+        'average_speed': float(avg_speed),
+        'speed_variance': float(speed_variance),
+        'total_distance': float(total_distance),
         'lap_times': [float(t) for t in lap_times],
         'mean_lap_time': float(mean_lap_time),
         'lap_time_variance': float(lap_time_variance),
-        'avg_speed': float(avg_speed),
-        'speed_variance': float(speed_variance),
-        'total_distance': float(total_distance)
+        'collision_occurred': bool(collision_occurred),
+        'noise': float(noise_level)
     }
 
-    result_path = os.path.join(result_dir, "results_single.json")
+    result_path = os.path.join(result_dir, "results.json")
     write_json_entry(result_path, f"lap{lap_num}", result)
     print(f"Metrics saved to {result_path}")
     
@@ -270,4 +272,3 @@ if __name__ == "__main__":
     
     # Run evaluation
     evaluate_laps(model, device, args.noise, args.map_name, args.render, args.lap_num, args.model_path)
-

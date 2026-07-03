@@ -4,7 +4,7 @@
 MODEL_PATH="pretrained/end2race.pth"
 HIDDEN_SCALE=4
 NOISE=0.0
-NUM_WORKERS=10
+NUM_WORKERS=8
 MAP_NAME="Austin"
 RENDER=true
 SIM_DURATION=8.0
@@ -12,7 +12,7 @@ EGO_RACELINE="raceline1"
 OPP_RACELINES=("raceline0" "raceline1" "raceline2")
 OPP_SPEED_SCALES=(0.5 0.6 0.7 0.8)
 INTERVAL_IDX=15
-NUM_STARTPOINTS=2
+NUM_STARTPOINTS=50
 
 # Generate ego_idx_range
 raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"

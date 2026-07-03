@@ -149,8 +149,21 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     speeds = []
     tracker_count = 0
     opp_traj = None
-    validation_steers = []
-    validation_lidars = []
+    episode_data = {
+        'time': [],
+        'ego_lidar': [],
+        'opp_lidar': [],
+        'ego_desired_steer': [],
+        'ego_desired_speed': [],
+        'ego_actual_speed': [],
+        'ego_pose': [],
+        'ego_progress': [],
+        'opp_desired_steer': [],
+        'opp_desired_speed': [],
+        'opp_actual_speed': [],
+        'opp_pose': [],
+        'opp_progress': [],
+    }
     
     # Main simulation loop
     while not done and lap_time < sim_duration:
@@ -159,6 +172,10 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         if len(lidar_360) != num_features:
             indices = np.linspace(0, len(lidar_360)-1, num_features, dtype=int)
             lidar_360 = lidar_360[indices]
+        opp_lidar_360 = np.array(obs["scans"][1]).flatten()
+        if len(opp_lidar_360) != num_features:
+            indices = np.linspace(0, len(opp_lidar_360)-1, num_features, dtype=int)
+            opp_lidar_360 = opp_lidar_360[indices]
         lidar = lidar_360.copy()
         
         # Apply noise
@@ -178,8 +195,6 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             ego_speed = action_tensor[0, 1].item()
         
         ego_steer = np.clip(ego_steer, -0.52, 0.52)
-        validation_steers.append(float(ego_steer))
-        validation_lidars.append(lidar_360.copy())
         prev_speed = obs['linear_vels_x'][0]
         
         # Opponent lattice planner
@@ -191,6 +206,29 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         
         opp_steer = np.clip(opp_steer, -0.52, 0.52)
         opp_speed *= opp_speed_scale
+
+        ego_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][0], obs['poses_y'][0]]), centerline)
+        opp_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][1], obs['poses_y'][1]]), centerline)
+
+        # Handle lap wrapping
+        if ego_progress < initial_ego_progress - centerline_total_length/2:
+            ego_progress += centerline_total_length
+        if opp_progress < initial_opp_progress - centerline_total_length/2:
+            opp_progress += centerline_total_length
+
+        episode_data['time'].append(float(lap_time))
+        episode_data['ego_lidar'].append(lidar_360.copy())
+        episode_data['opp_lidar'].append(opp_lidar_360.copy())
+        episode_data['ego_desired_steer'].append(float(ego_steer))
+        episode_data['ego_desired_speed'].append(float(ego_speed))
+        episode_data['ego_actual_speed'].append(float(obs['linear_vels_x'][0]))
+        episode_data['ego_pose'].append([obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0]])
+        episode_data['ego_progress'].append(float(ego_progress))
+        episode_data['opp_desired_steer'].append(float(opp_steer))
+        episode_data['opp_desired_speed'].append(float(opp_speed))
+        episode_data['opp_actual_speed'].append(float(obs['linear_vels_x'][1]))
+        episode_data['opp_pose'].append([obs['poses_x'][1], obs['poses_y'][1], obs['poses_theta'][1]])
+        episode_data['opp_progress'].append(float(opp_progress))
         
         # Update render info and trajectory tracking
         if render:
@@ -240,18 +278,61 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         
         tracker_count = (tracker_count + 1) % tracker_steps
     
+    if collision_occurred:
+        state_prefix = "c"  # 'c' for collision
+        state_dir = "collision"
+    else:
+        if final_state == "overtaking":
+            state_prefix = "o"
+            state_dir = "overtake"
+        else:
+            state_prefix = "f"
+            state_dir = "follow"
+    state_label = "collision" if collision_occurred else final_state
+    episode_key = multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale)
+    episode_filename = f"{state_prefix}_{episode_key}"
+    episode_dir = os.path.join(result_dir, state_dir)
+    os.makedirs(episode_dir, exist_ok=True)
+    episode_path = os.path.join(episode_dir, f"{episode_filename}.npz")
+
+    time = np.array(episode_data['time'], dtype=np.float32)
+    ego_lidar = np.array(episode_data['ego_lidar'], dtype=np.float32)
+    opp_lidar = np.array(episode_data['opp_lidar'], dtype=np.float32)
+    ego_desired_steer = np.array(episode_data['ego_desired_steer'], dtype=np.float32)
+    ego_desired_speed = np.array(episode_data['ego_desired_speed'], dtype=np.float32)
+    ego_actual_speed = np.array(episode_data['ego_actual_speed'], dtype=np.float32)
+    ego_pose = np.array(episode_data['ego_pose'], dtype=np.float32)
+    ego_progress = np.array(episode_data['ego_progress'], dtype=np.float32)
+    opp_desired_steer = np.array(episode_data['opp_desired_steer'], dtype=np.float32)
+    opp_desired_speed = np.array(episode_data['opp_desired_speed'], dtype=np.float32)
+    opp_actual_speed = np.array(episode_data['opp_actual_speed'], dtype=np.float32)
+    opp_pose = np.array(episode_data['opp_pose'], dtype=np.float32)
+    opp_progress = np.array(episode_data['opp_progress'], dtype=np.float32)
+
+    np.savez(
+        episode_path,
+        time=time,
+        ego_lidar=ego_lidar,
+        opp_lidar=opp_lidar,
+        ego_desired_steer=ego_desired_steer,
+        ego_desired_speed=ego_desired_speed,
+        ego_actual_speed=ego_actual_speed,
+        ego_pose=ego_pose,
+        ego_progress=ego_progress,
+        opp_desired_steer=opp_desired_steer,
+        opp_desired_speed=opp_desired_speed,
+        opp_actual_speed=opp_actual_speed,
+        opp_pose=opp_pose,
+        opp_progress=opp_progress,
+        collision=np.array(collision_occurred, dtype=bool),
+        state_label=np.array(state_label)
+    )
+    print(f"Episode data saved to {episode_path}")
+
     # Save video if rendering was enabled
     if render and video_frames:
-        # Generate video filename
-        if collision_occurred:
-            state_prefix = "c"  # 'c' for collision
-        else:
-            state_prefix = "o" if final_state == "overtaking" else "f"
-        episode_key = multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale)
-        video_filename = f"{state_prefix}_{episode_key}.mp4"
-        
-        os.makedirs(result_dir, exist_ok=True)
-        video_path = os.path.join(result_dir, video_filename)
+        video_filename = f"{episode_filename}.mp4"
+        video_path = os.path.join(episode_dir, video_filename)
         
         imageio.mimwrite(video_path, video_frames, fps=100, macro_block_size=1)
         print(f"Video saved to {video_path}")
@@ -267,8 +348,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     
     # Calculate final metrics
     avg_speed, speed_variance, total_distance = calculate_metrics(ego_trajectory, speeds)
-    proximity_quality = evaluate_proximity_quality(np.array(validation_lidars))
-    steering_quality = evaluate_steering_quality(np.array(validation_steers), sample_interval=sim_timestep)
+    proximity_quality = evaluate_proximity_quality(ego_lidar)
+    steering_quality = evaluate_steering_quality(ego_desired_steer, sample_interval=sim_timestep)
 
     # Determine final state number
     if collision_occurred:
@@ -278,10 +359,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     else:
         final_state_num = 1
     
-    state_label = "collision" if collision_occurred else final_state
-
     return {
-        'episode_key': multi_episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale),
+        'episode_key': episode_key,
         'state': final_state_num,
         'state_label': state_label,
         'avg_speed': float(avg_speed) if not collision_occurred else 0.0,

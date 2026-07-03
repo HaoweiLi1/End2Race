@@ -91,10 +91,10 @@ def write_multiagent_results(
     collision_count,
     error_count,
 ):
-    """Merge per-episode metric JSON files and write results_multi.json."""
+    """Merge per-episode metric JSON files and write results.json."""
     result_path = os.path.join(
         get_eval_results_dir(model_path, map_name, noise_level),
-        'results_multi.json'
+        'results.json'
     )
     data = load_json_file(result_path)
     episodes = data.get('episodes', {})
@@ -132,10 +132,9 @@ def write_multiagent_results(
         'speed_variance_mean': _mean_metric(batch_metrics, 'speed_variance'),
         'total_distance_mean': _mean_metric(batch_metrics, 'total_distance'),
     }
-    write_json_file(result_path, {
-        'final': final,
-        'episodes': ordered_episodes,
-    })
+    data['final'] = final
+    data['episodes'] = ordered_episodes
+    write_json_file(result_path, data)
     return result_path
 
 def write_multiagent_results_cli():
