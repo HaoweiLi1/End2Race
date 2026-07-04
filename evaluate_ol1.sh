@@ -1,13 +1,16 @@
 #!/bin/bash
 # ol1-focused batch evaluation: opponent on raceline1 only (200 segments).
-# Usage: bash evaluate_ol1.sh [model_path] [speed_model_path] [result_tag]
+# Usage: bash evaluate_ol1.sh [model_path] [speed_model_path] [result_tag] [start_offset]
 # When speed_model_path is given, steering comes from model_path and speed
 # from speed_model_path (composite policy).
+# start_offset shifts every ego start waypoint, giving a disjoint segment grid
+# for statistical reinforcement runs (0 = the canonical grid).
 
 # Parameters (converted from argparse defaults)
 MODEL_PATH="${1:-pretrained/end2race.pth}"
 SPEED_MODEL_PATH="${2:-}"
 RESULT_TAG="${3:-}"
+START_OFFSET="${4:-0}"
 HIDDEN_SCALE=4
 NOISE=0.0
 NUM_WORKERS=8
@@ -25,7 +28,11 @@ raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
 max_waypoints=$(tail -n +3 "$raceline_path" | wc -l)
 ego_idx_range=()
 for ((i=0; i<NUM_STARTPOINTS; i++)); do
-    idx=$((i * max_waypoints / (NUM_STARTPOINTS - 1)))
+    idx=$(( i * max_waypoints / (NUM_STARTPOINTS - 1) ))
+    # Keep the canonical grid bit-identical when offset is 0; wrap only when shifted.
+    if [ "$START_OFFSET" != "0" ]; then
+        idx=$(( (idx + START_OFFSET) % max_waypoints ))
+    fi
     ego_idx_range+=($idx)
 done
 
@@ -39,6 +46,9 @@ if [ -n "$SPEED_MODEL_PATH" ]; then
 fi
 if [ -n "$RESULT_TAG" ]; then
     echo "Result tag: $RESULT_TAG"
+fi
+if [ "$START_OFFSET" != "0" ]; then
+    echo "Start offset: $START_OFFSET"
 fi
 echo "Map: $MAP_NAME"
 echo "Workers: $NUM_WORKERS"
