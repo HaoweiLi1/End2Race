@@ -448,7 +448,9 @@ def collision(vertices1, vertices2):
 def get_actuation(pose_theta, lookahead_point, position, lookahead_distance, wheelbase):
     waypoint_y = np.dot(np.array([np.sin(-pose_theta), np.cos(-pose_theta)]), lookahead_point[0:2] - position)
     speed = lookahead_point[2]
-    if np.abs(waypoint_y) < 1e-6:
+    # A degenerate lookahead (point on top of the car) has no defined curvature;
+    # hold course instead of dividing by zero.
+    if np.abs(waypoint_y) < 1e-6 or lookahead_distance ** 2 < 1e-8:
         return speed, 0.
     # curvature & steering
     radius = 1 / (2.0 * waypoint_y / lookahead_distance ** 2)
@@ -459,6 +461,10 @@ def get_actuation(pose_theta, lookahead_point, position, lookahead_distance, whe
 def get_actuation_PD(pose_theta, lookahead_point, position, lookahead_distance, wheelbase, prev_error, P, D):
     waypoint_y = np.dot(np.array([np.sin(-pose_theta), np.cos(-pose_theta)]), lookahead_point[0:2] - position)
     speed = lookahead_point[2]
+    # A degenerate lookahead (point on top of the car) has no defined curvature;
+    # hold course and carry the previous error instead of dividing by zero.
+    if lookahead_distance ** 2 < 1e-8:
+        return speed, 0., prev_error
     error = 2.0 * waypoint_y / lookahead_distance ** 2
     if np.abs(waypoint_y) < 1e-4:
         return speed, 0., error
