@@ -5,7 +5,10 @@ Design assumptions:
 - Actor observation stays deployable: LiDAR 360 + previous ego speed + GRU hidden.
 - The model class is End2Race_PPO from model.py.
 - Reward uses simulator geometry internally but does not expose privileged state to actor.
-- Collision is true termination. Time limit is truncation and bootstraps V(s_next).
+- The critic is privileged and asymmetric: it consumes simulator-state features
+  ('priv' in the observation dict) and is discarded at deployment.
+- Ego collision is true termination. Time limit and opponent-only collisions are
+  truncations and bootstrap V(s_next).
 """
 
 import os
@@ -19,18 +22,21 @@ import torch.optim as optim
 from f110_gym.envs.base_classes import Integrator
 from latticeplanner.utils import obsDict2oppoArray
 from demonstration import setup_opp_planner
-from model import End2Race, End2Race_PPO
+from model import End2Race, End2Race_PPO, PRIV_DIM
 from utils import (STEER_LIMIT, LIDAR_DIM, ACTION_DIM, downsample_lidar_for_model,
                    load_positions_and_speeds_from_params, load_reference_line,
-                   resolve_two_agent_indices)
+                   resolve_two_agent_indices, wrap_rel_s)
 from ppo_utils import (BOOL_INFO_KEYS, MEAN_INFO_KEYS, RewardWeights, RewardState,
                        apply_reward_overrides, compute_shaped_reward,
                        forward_frozen_bc_sequence, forward_policy_sequence,
                        load_actor_critic, load_frozen_bc, make_fixed_scenario,
-                       obs_to_tensors, reward_weight_names, sample_opp_speedscale,
-                       sample_scenario, save_actor_backbone, save_full_checkpoint,
-                       summarize_iteration, validate_replay_identity, value_of_obs,
-                       zero_hidden)
+                       obs_to_tensors, relative_geometry, reward_weight_names,
+                       sample_opp_speedscale, sample_scenario, save_actor_backbone,
+                       save_full_checkpoint, summarize_iteration,
+                       validate_replay_identity, value_of_obs, zero_hidden)
+
+# Speed normalization for the privileged critic input: raceline vx max (m/s).
+PRIV_SPEED_NORM = 7.5
 
 def parse_arguments():
     """Parse command line arguments"""
@@ -66,6 +72,11 @@ def parse_arguments():
     parser.add_argument("--vf_coef", type=float, default=0.5)
     parser.add_argument("--ent_coef", type=float, default=0.001)
     parser.add_argument("--beta_bc", type=float, default=2.0)
+    parser.add_argument("--anchor_speed_scale", type=float, default=None)
+    parser.add_argument("--pre_overtake_bc_multiplier", type=float, default=1.0)
+    parser.add_argument("--freeze_speed", action="store_true",
+                        help="Composite policy: speed comes from the frozen BC net at rollout and eval; "
+                             "PPO trains steering only (1-D Gaussian).")
     parser.add_argument("--bound_coef", type=float, default=0.01)
     parser.add_argument("--target_kl", type=float, default=0.03)
     parser.add_argument("--max_grad_norm", type=float, default=0.5)
@@ -183,11 +194,14 @@ class End2RacePPOEnv:
             self.timestep,
         )
 
-        # Termination bookkeeping
-        collision = bool(np.any(obs['collisions']))
+        # Termination bookkeeping. Only an ego collision is a true failure
+        # terminal; an opponent-only collision (e.g. solo wall crash) ends the
+        # episode as a truncation so ego is not charged for it.
+        ego_collision = bool(obs['collisions'][0])
+        opp_collision = bool(np.any(obs['collisions'][1:]))
         timeout = bool(self._step_count >= self._max_episode_steps)
-        terminated = bool(collision or env_done)
-        truncated = bool((not terminated) and timeout)
+        terminated = bool(ego_collision)
+        truncated = bool((not terminated) and (timeout or opp_collision or env_done))
         success = bool(self._reward_state.safe_overtake_held)
 
         self._raw_obs = obs
@@ -197,7 +211,8 @@ class End2RacePPOEnv:
             **reward_terms,
             'terminated': terminated,
             'truncated': truncated,
-            'collision': collision,
+            'collision': ego_collision,
+            'opp_collision': opp_collision,
             'env_done': bool(env_done),
             'timeout': timeout,
             'success': success,
@@ -243,7 +258,34 @@ class End2RacePPOEnv:
         return {
             'lidar': downsample_lidar_for_model(obs['scans'][0]),
             'prev_speed': np.array([self._prev_speed], dtype=np.float32),
+            'priv': self._priv_state(obs),
         }
+
+    def _priv_state(self, obs):
+        """Privileged simulator-state features for the critic only.
+
+        Must be built after the RewardState update for the same obs so that
+        hold-time and overtake flags stay in sync with the returned observation.
+        """
+        geom = relative_geometry(obs, self.ref)
+        rw = self.reward_weights
+        rs = self._reward_state
+        rel_s = wrap_rel_s(geom['ego_s_raw'] - geom['opp_s_raw'], self.ref.track_length)
+        track_phase = 2.0 * math.pi * geom['ego_s_raw'] / self.ref.track_length
+        return np.array([
+            rel_s / rw.rel_behind_cap,
+            geom['lat_gap'],
+            geom['ego_v_s'] / PRIV_SPEED_NORM,
+            geom['opp_v_s'] / PRIV_SPEED_NORM,
+            geom['ego_d'],
+            geom['opp_d'],
+            rs.safe_overtake_hold_time / rw.safe_overtake_hold_duration,
+            float(rs.overtake_started),
+            float(rs.had_safe_overtake_bonus),
+            float(self._scenario['opp_speedscale']),
+            math.sin(track_phase),
+            math.cos(track_phase),
+        ], dtype=np.float32)
 
     def _clip_ego_action(self, raw_action):
         action = np.asarray(raw_action, dtype=np.float32).reshape(2).copy()
@@ -288,6 +330,7 @@ class RolloutBuffer:
         self.gae_lambda = float(gae_lambda)
         self.lidar = np.zeros((self.rollout_steps, LIDAR_DIM), dtype=np.float32)
         self.prev_speed = np.zeros((self.rollout_steps, 1), dtype=np.float32)
+        self.priv = np.zeros((self.rollout_steps, PRIV_DIM), dtype=np.float32)
         self.raw_actions = np.zeros((self.rollout_steps, ACTION_DIM), dtype=np.float32)
         self.rewards = np.zeros((self.rollout_steps,), dtype=np.float32)
         self.values = np.zeros((self.rollout_steps,), dtype=np.float32)
@@ -309,6 +352,7 @@ class RolloutBuffer:
             raise RuntimeError("RolloutBuffer overflow.")
         self.lidar[self.ptr] = np.asarray(obs["lidar"], dtype=np.float32).reshape(LIDAR_DIM)
         self.prev_speed[self.ptr] = np.asarray(obs["prev_speed"], dtype=np.float32).reshape(1)
+        self.priv[self.ptr] = np.asarray(obs["priv"], dtype=np.float32).reshape(PRIV_DIM)
         self.raw_actions[self.ptr] = np.asarray(raw_action, dtype=np.float32).reshape(ACTION_DIM)
         self.rewards[self.ptr] = float(reward)
         self.values[self.ptr] = float(value)
@@ -354,6 +398,7 @@ class RolloutBuffer:
         return (
             torch.as_tensor(self.lidar, dtype=torch.float32, device=device).unsqueeze(0),
             torch.as_tensor(self.prev_speed, dtype=torch.float32, device=device).unsqueeze(0),
+            torch.as_tensor(self.priv, dtype=torch.float32, device=device).unsqueeze(0),
             torch.as_tensor(self.raw_actions, dtype=torch.float32, device=device).unsqueeze(0),
             torch.as_tensor(self.log_probs, dtype=torch.float32, device=device).unsqueeze(0),
             torch.as_tensor(self.advantages, dtype=torch.float32, device=device).unsqueeze(0),
@@ -361,36 +406,54 @@ class RolloutBuffer:
             torch.as_tensor(self.episode_starts, dtype=torch.float32, device=device).unsqueeze(0),
         )
 
-def collect_rollout(env, ac, buffer, device, scenario):
-    """Collect one on-policy rollout with the current actor-critic."""
+def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_speed=False):
+    """Collect one on-policy rollout with the current actor-critic.
+
+    With freeze_speed, the executed speed command comes from the frozen BC net
+    (its own recurrent state) and the stored action/log-prob cover steering only.
+    """
     buffer.reset()
     obs = env.reset(scenario=scenario)
     hidden = zero_hidden(ac.actor.gru.hidden_size, device)
+    bc_hidden = zero_hidden(frozen_bc.gru.hidden_size, device) if freeze_speed else None
     episode_start = True
 
     episode_return = 0.0
     completed_returns = []
+    steer_devs = []
     info_values = {key: [] for key in BOOL_INFO_KEYS + MEAN_INFO_KEYS}
 
     for _ in range(buffer.rollout_steps):
         lidar_t, speed_t = obs_to_tensors(obs, device)
-        with torch.no_grad():
-            action_t, logp_t, value_t, next_hidden = ac.act(
-                lidar_t, speed_t, hidden, deterministic=False
-            )
+        if freeze_speed:
+            with torch.no_grad():
+                dist, next_hidden = ac(lidar_t, speed_t, hidden)
+                bc_out, next_bc_hidden = frozen_bc(lidar_t, speed_t, bc_hidden)
+                sampled = dist.sample()
+                logp_t = dist.log_prob(sampled)[..., 0]
+            raw_steer = float(sampled.view(-1)[0].item())
+            bc_speed = float(bc_out.view(-1)[1].item())
+            raw_action = np.array([raw_steer, bc_speed], dtype=np.float32)
+            steer_devs.append(abs(float(dist.mean.view(-1)[0].item()) - float(bc_out.view(-1)[0].item())))
+        else:
+            with torch.no_grad():
+                action_t, logp_t, next_hidden = ac.act(
+                    lidar_t, speed_t, hidden, deterministic=False
+                )
+            raw_action = action_t.view(-1).detach().cpu().numpy().astype(np.float32)
+        value = value_of_obs(ac, obs, device)
 
-        raw_action = action_t.view(-1).detach().cpu().numpy().astype(np.float32)
         next_obs, reward, terminated, truncated, info = env.step(raw_action)
 
         trunc_next_value = 0.0
         if truncated:
-            trunc_next_value = value_of_obs(ac, next_obs, next_hidden, device)
+            trunc_next_value = value_of_obs(ac, next_obs, device)
 
         buffer.add(
             obs=obs,
             raw_action=raw_action,
             reward=reward,
-            value=float(value_t.view(-1)[0].item()),
+            value=value,
             log_prob=float(logp_t.view(-1)[0].item()),
             terminated=terminated,
             truncated=truncated,
@@ -408,16 +471,25 @@ def collect_rollout(env, ac, buffer, device, scenario):
             episode_return = 0.0
             obs = env.reset(scenario=scenario)
             hidden = zero_hidden(ac.actor.gru.hidden_size, device)
+            if freeze_speed:
+                bc_hidden = zero_hidden(frozen_bc.gru.hidden_size, device)
             episode_start = True
         else:
             obs = next_obs
             hidden = next_hidden.detach()
+            if freeze_speed:
+                bc_hidden = next_bc_hidden.detach()
             episode_start = False
 
-    candidate_last_value = value_of_obs(ac, obs, hidden, device)
+    candidate_last_value = value_of_obs(ac, obs, device)
     buffer.compute_returns_and_advantage(candidate_last_value=candidate_last_value)
 
+    return_var = float(np.var(buffer.returns))
+    value_ev = float(1.0 - np.var(buffer.returns - buffer.values) / max(return_var, 1e-8))
+
     metrics = {
+        "value_ev": value_ev,
+        "steer_dev": float(np.mean(steer_devs)) if steer_devs else float("nan"),
         "rollout_return": float(np.sum(buffer.rewards)),
         "completed_episodes": float(len(completed_returns)),
         "mean_completed_return": float(np.mean(completed_returns)) if completed_returns else float("nan"),
@@ -440,14 +512,25 @@ def collect_rollout(env, ac, buffer, device, scenario):
 
 def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
     """Run clipped PPO epochs with BC anchor, bound loss, and KL early stop."""
-    lidar_b, speed_b, act_b, old_logp_b, adv_b, ret_b, starts_b = buffer.tensors(device)
+    lidar_b, speed_b, priv_b, act_b, old_logp_b, adv_b, ret_b, starts_b = buffer.tensors(device)
     adv_b = (adv_b - adv_b.mean()) / (adv_b.std(unbiased=False) + 1e-8)
+
+    # The frozen BC replay depends only on rollout inputs, so compute it once
+    # for all epochs.
+    with torch.no_grad():
+        bc_mean = forward_frozen_bc_sequence(frozen_bc, lidar_b, speed_b, starts_b, device)
 
     metrics = {
         "policy_loss": [],
         "value_loss": [],
         "entropy": [],
         "bc_anchor": [],
+        "bc_anchor_unweighted": [],
+        "bc_anchor_pre": [],
+        "bc_anchor_post": [],
+        "bc_pre_fraction": [],
+        "bc_weight_mean": [],
+        "anchor_speed_scale": [],
         "steer_anchor": [],
         "speed_anchor": [],
         "bound_loss": [],
@@ -462,11 +545,18 @@ def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
     updates = 0
     early_stopped = False
 
-    action_scale = torch.tensor([STEER_LIMIT, args.max_speed], dtype=torch.float32, device=device).view(1, 1, 2)
+    anchor_speed_scale = args.max_speed if args.anchor_speed_scale is None else float(args.anchor_speed_scale)
+    if anchor_speed_scale <= 0.0:
+        raise ValueError("--anchor_speed_scale must be positive when set.")
+    action_scale = torch.tensor([STEER_LIMIT, anchor_speed_scale], dtype=torch.float32, device=device).view(1, 1, 2)
 
     for _ in range(args.ppo_epochs):
-        dist, values = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
-        new_logp = dist.log_prob(act_b).sum(-1)
+        dist = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
+        values = ac.critic(priv_b).squeeze(-1)
+        if args.freeze_speed:
+            new_logp = dist.log_prob(act_b)[..., 0]
+        else:
+            new_logp = dist.log_prob(act_b).sum(-1)
         log_ratio = new_logp - old_logp_b
         ratio = torch.exp(log_ratio)
 
@@ -481,21 +571,32 @@ def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
         surr2 = torch.clamp(ratio, 1.0 - args.clip_eps, 1.0 + args.clip_eps) * adv_b
         policy_loss = -torch.min(surr1, surr2).mean()
         value_loss = 0.5 * (values - ret_b).pow(2).mean()
-        entropy = dist.entropy().sum(-1).mean()
+        entropy = dist.entropy()[..., 0].mean() if args.freeze_speed else dist.entropy().sum(-1).mean()
 
-        with torch.no_grad():
-            bc_mean = forward_frozen_bc_sequence(frozen_bc, lidar_b, speed_b, starts_b, device)
         anchor_per_dim = ((dist.mean - bc_mean) / action_scale).pow(2)
-        steer_anchor = anchor_per_dim[..., 0].mean()
-        speed_anchor = anchor_per_dim[..., 1].mean()
-        bc_anchor = steer_anchor + speed_anchor
+        # In freeze_speed mode the speed head is unused, so it gets no anchor pressure.
+        anchor_per_step = anchor_per_dim[..., 0] if args.freeze_speed else anchor_per_dim.sum(dim=-1)
+
+        pre_overtake_mask = ((priv_b[..., 0] < 0.0) & (priv_b[..., 7] < 0.5)).float()
+        pre_multiplier = max(float(args.pre_overtake_bc_multiplier), 0.0)
+        bc_weights = 1.0 + (pre_multiplier - 1.0) * pre_overtake_mask
+
+        steer_anchor = (anchor_per_dim[..., 0] * bc_weights).mean()
+        speed_anchor = (anchor_per_dim[..., 1] * bc_weights).mean()
+        bc_anchor = (anchor_per_step * bc_weights).mean()
+        bc_anchor_unweighted = anchor_per_step.mean()
+        pre_count = pre_overtake_mask.sum().clamp_min(1.0)
+        post_mask = 1.0 - pre_overtake_mask
+        post_count = post_mask.sum().clamp_min(1.0)
+        bc_anchor_pre = (anchor_per_step * pre_overtake_mask).sum() / pre_count
+        bc_anchor_post = (anchor_per_step * post_mask).sum() / post_count
 
         steer_bound = torch.relu(dist.mean[..., 0].abs() - STEER_LIMIT).pow(2).mean()
         speed_bound = (
             torch.relu(-dist.mean[..., 1]).pow(2).mean()
             + torch.relu(dist.mean[..., 1] - args.max_speed).pow(2).mean()
         )
-        bound_loss = steer_bound + speed_bound
+        bound_loss = steer_bound if args.freeze_speed else steer_bound + speed_bound
 
         loss = (
             policy_loss
@@ -509,6 +610,12 @@ def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
         metrics["value_loss"].append(float(value_loss.item()))
         metrics["entropy"].append(float(entropy.item()))
         metrics["bc_anchor"].append(float(bc_anchor.item()))
+        metrics["bc_anchor_unweighted"].append(float(bc_anchor_unweighted.item()))
+        metrics["bc_anchor_pre"].append(float(bc_anchor_pre.item()))
+        metrics["bc_anchor_post"].append(float(bc_anchor_post.item()))
+        metrics["bc_pre_fraction"].append(float(pre_overtake_mask.mean().item()))
+        metrics["bc_weight_mean"].append(float(bc_weights.mean().item()))
+        metrics["anchor_speed_scale"].append(float(anchor_speed_scale))
         metrics["steer_anchor"].append(float(steer_anchor.item()))
         metrics["speed_anchor"].append(float(speed_anchor.item()))
         metrics["bound_loss"].append(float(bound_loss.item()))
@@ -529,8 +636,11 @@ def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
         updates += 1
 
         with torch.no_grad():
-            post_dist, _ = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
-            post_logp = post_dist.log_prob(act_b).sum(-1)
+            post_dist = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
+            if args.freeze_speed:
+                post_logp = post_dist.log_prob(act_b)[..., 0]
+            else:
+                post_logp = post_dist.log_prob(act_b).sum(-1)
             post_log_ratio = post_logp - old_logp_b
             post_kl = ((post_log_ratio.exp() - 1.0) - post_log_ratio).mean()
         metrics["grad_norm"].append(float(grad_norm.item()))
@@ -584,7 +694,7 @@ def main():
     buffer = RolloutBuffer(args.rollout_steps, args.gamma, args.gae_lambda)
 
     # Setup optimizer with separate actor/critic learning rates
-    critic_params = list(ac.value_head.parameters())
+    critic_params = list(ac.critic.parameters())
     critic_param_ids = {id(param) for param in critic_params}
     actor_params = [param for param in ac.parameters() if id(param) not in critic_param_ids]
     optimizer = optim.Adam(
@@ -606,10 +716,15 @@ def main():
     # Train model
     try:
         for iteration in range(start_iter, args.total_iterations):
-            rollout_metrics = collect_rollout(env, ac, buffer, device, scenario)
+            rollout_metrics = collect_rollout(
+                env, ac, buffer, device, scenario,
+                frozen_bc=frozen_bc, freeze_speed=args.freeze_speed,
+            )
             replay_metrics = {}
             if args.validate_replay_identity:
-                replay_metrics = validate_replay_identity(ac, buffer, device, args.replay_identity_atol)
+                replay_metrics = validate_replay_identity(
+                    ac, buffer, device, args.replay_identity_atol, steer_only=args.freeze_speed
+                )
             update_metrics = ppo_update(ac, frozen_bc, buffer, optimizer, device, args)
 
             if args.log_every > 0 and ((iteration + 1) % args.log_every == 0 or iteration == start_iter):

@@ -14,9 +14,9 @@ LIDAR_MAX_RANGE = 30.0
 # ---------------------------------------------------------------------------
 # Evaluation results: JSON I/O, episode keys & multiagent aggregation
 # ---------------------------------------------------------------------------
-def get_eval_results_dir(model_path, map_name, noise_level):
+def get_eval_results_dir(model_path, map_name, noise_level, result_tag=None):
     """Return the shared eval_results directory for a model/map/noise setting."""
-    model_name = os.path.splitext(os.path.basename(model_path))[0]
+    model_name = result_tag or os.path.splitext(os.path.basename(model_path))[0]
     parts = [model_name, map_name]
     if noise_level > 0:
         parts.append(f"noise{int(noise_level * 100)}")
@@ -90,10 +90,11 @@ def write_multiagent_results(
     overtaking_count,
     collision_count,
     error_count,
+    result_tag=None,
 ):
     """Merge per-episode metric JSON files and write results.json."""
     result_path = os.path.join(
-        get_eval_results_dir(model_path, map_name, noise_level),
+        get_eval_results_dir(model_path, map_name, noise_level, result_tag=result_tag),
         'results.json'
     )
     data = load_json_file(result_path)
@@ -151,6 +152,7 @@ def write_multiagent_results_cli():
         int(sys.argv[7]),
         int(sys.argv[8]),
         int(sys.argv[9]),
+        sys.argv[10] if len(sys.argv) > 10 else None,
     )
     print(result_path)
 

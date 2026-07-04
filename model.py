@@ -3,6 +3,9 @@ import torch.nn as nn
 from typing import Optional, Tuple
 import math
 
+# Privileged critic input size (see End2RacePPOEnv._priv_state in train_ppo.py).
+PRIV_DIM = 12
+
 class End2Race(nn.Module):
 
     def __init__(self, mask_prob=0.0, hidden_scale=4):
@@ -124,13 +127,16 @@ class End2Race_PPO(nn.Module):
 
         # Common actor backbone
         self.actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
-        hidden_size = self.actor.gru.hidden_size
 
-        # Critic output layer
-        self.value_head = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size // 4),
+        # Privileged critic: trained on simulator-state features, discarded at
+        # deployment. Fully separate from the actor so value gradients never
+        # touch the BC-pretrained backbone.
+        self.critic = nn.Sequential(
+            nn.Linear(PRIV_DIM, 128),
             nn.ReLU(),
-            nn.Linear(hidden_size // 4, 1)
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
         )
 
         # Trainable policy standard deviation
@@ -141,20 +147,20 @@ class End2Race_PPO(nn.Module):
 
     def _initialize_parameters(self):
         """Initialize PPO-specific parameters."""
-        for module in self.value_head.modules():
+        for module in self.critic.modules():
             if isinstance(module, nn.Linear):
                 nn.init.xavier_uniform_(module.weight)
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
 
     def forward(self, x: torch.Tensor, speed_input: Optional[torch.Tensor] = None,
-        hidden: Optional[torch.Tensor] = None) -> Tuple[torch.distributions.Normal, torch.Tensor, torch.Tensor]:
+        hidden: Optional[torch.Tensor] = None) -> Tuple[torch.distributions.Normal, torch.Tensor]:
         """
-        PPO actor-critic forward.
+        PPO actor forward. Values come from the privileged critic instead:
+        call self.critic(priv) with the simulator-state features.
 
         returns:
             dist:         policy distribution over [steering, speed]
-            value:        value estimate [batch, seq_len]
             last_hidden:  [1, batch, hidden_size]
         """
         gru_out, last_hidden = self.actor.forward_features(x, speed_input, hidden)
@@ -162,23 +168,21 @@ class End2Race_PPO(nn.Module):
         mean = self.actor.output_layer(gru_out)
         std = self.log_std.exp().view(1, 1, -1).expand_as(mean)
         dist = torch.distributions.Normal(mean, std)
-        value = self.value_head(gru_out).squeeze(-1)
 
-        return dist, value, last_hidden
+        return dist, last_hidden
 
-    def act(self, x: torch.Tensor, speed_input: Optional[torch.Tensor] = None, hidden: Optional[torch.Tensor] = None, 
-            deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def act(self, x: torch.Tensor, speed_input: Optional[torch.Tensor] = None, hidden: Optional[torch.Tensor] = None,
+            deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         PPO action helper.
 
         returns:
             action:      sampled or deterministic action [batch, seq_len, 2]
             logp:        action log probability [batch, seq_len]
-            value:       value estimate [batch, seq_len]
             last_hidden: [1, batch, hidden_size]
         """
-        dist, value, last_hidden = self.forward(x, speed_input, hidden)
+        dist, last_hidden = self.forward(x, speed_input, hidden)
         action = dist.mean if deterministic else dist.sample()
         logp = dist.log_prob(action).sum(-1)
 
-        return action, logp, value, last_hidden
+        return action, logp, last_hidden

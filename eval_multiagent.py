@@ -21,6 +21,10 @@ def parse_arguments():
     
     # Model parameters
     parser.add_argument("--model_path", type=str, default='pretrained/end2race.pth')
+    parser.add_argument("--speed_model_path", type=str, default="",
+                        help="Optional composite policy: steering from --model_path, speed from this checkpoint.")
+    parser.add_argument("--result_tag", type=str, default="",
+                        help="Optional eval_results directory tag. Use this for composite policies.")
     parser.add_argument("--hidden_scale", type=int, default=4)
     parser.add_argument("--noise", type=float, default=0.0)
     
@@ -37,15 +41,16 @@ def parse_arguments():
 
     return parser.parse_args()
 
-def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx, 
+def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx,
                     ego_raceline, opp_raceline, opp_speed_scale, sim_duration,
-                    render=False, model_path='pretrained/end2race.pth'):
+                    render=False, model_path='pretrained/end2race.pth', speed_model=None,
+                    result_tag=None):
     """Evaluate a single segment with model against lattice planner opponent"""
     
     np.random.seed(42)
     num_features = 360
     sim_timestep = 0.01
-    result_dir = get_eval_results_dir(model_path, map_name, noise_level)
+    result_dir = get_eval_results_dir(model_path, map_name, noise_level, result_tag=result_tag)
     
     # Calculate opponent index using same logic as run_lattice_planner.py
     params = {
@@ -121,6 +126,10 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     # Initialize model state
     hidden_size = model.gru.hidden_size
     hidden_state = torch.zeros((1, 1, hidden_size), device=device)
+    speed_hidden_state = (
+        torch.zeros((1, 1, speed_model.gru.hidden_size), device=device)
+        if speed_model is not None else None
+    )
     prev_speed = initial_speeds[0] * 0.9
     
     # Load centerline
@@ -189,10 +198,13 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             lidar_tensor = torch.tensor(lidar, dtype=torch.float32, device=device).unsqueeze(0).unsqueeze(0)
             speed_tensor = torch.tensor([[[prev_speed]]], dtype=torch.float32, device=device)
             action_sequence, hidden_state = model(lidar_tensor, speed_tensor, hidden_state)
-            
+
             action_tensor = action_sequence[:, -1, :]
             ego_steer = action_tensor[0, 0].item()
             ego_speed = action_tensor[0, 1].item()
+            if speed_model is not None:
+                speed_sequence, speed_hidden_state = speed_model(lidar_tensor, speed_tensor, speed_hidden_state)
+                ego_speed = speed_sequence[0, -1, 1].item()
         
         ego_steer = np.clip(ego_steer, -0.52, 0.52)
         prev_speed = obs['linear_vels_x'][0]
@@ -384,13 +396,21 @@ if __name__ == "__main__":
     model = End2Race(hidden_scale=args.hidden_scale).to(device)
     model.load_state_dict(torch.load(args.model_path, map_location=device))
     model.eval()
-    
+
+    speed_model = None
+    if args.speed_model_path:
+        speed_model = End2Race(hidden_scale=args.hidden_scale).to(device)
+        speed_model.load_state_dict(torch.load(args.speed_model_path, map_location=device))
+        speed_model.eval()
+
     # Run evaluation
     result = evaluate_segment(
         model, device, args.noise,
         args.map_name, args.ego_idx, args.interval_idx,
         args.ego_raceline, args.opp_raceline, args.opp_speedscale,
-        args.sim_duration, args.render, args.model_path
+        args.sim_duration, args.render, args.model_path,
+        speed_model=speed_model,
+        result_tag=args.result_tag or None
     )
 
     # Persist metrics for evaluate.sh aggregation (JSON file), or show them for standalone runs.

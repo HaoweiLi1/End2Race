@@ -20,6 +20,7 @@ BOOL_INFO_KEYS = (
     "terminated",
     "truncated",
     "collision",
+    "opp_collision",
     "timeout",
     "success",
     "action_was_clipped",
@@ -36,6 +37,7 @@ MEAN_INFO_KEYS = (
     "rel_s",
     "rel_progress_potential",
     "delta_rel_potential",
+    "delta_rel_potential_gated",
     "ego_d",
     "opp_d",
     "lat_gap",
@@ -206,7 +208,19 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
     delta_rel_phi = float(np.clip(phi - prev_phi, -rw.rel_progress_clip, rw.rel_progress_clip))
 
     risk = clearance_risk(rel_s, geom['lat_gap'], geom['ego_v_s'], geom['opp_v_s'], rw)
-    collision = bool(np.any(obs['collisions']))
+
+    # Front-risk gate on the positive part only: closing on the opponent inside
+    # the front-risk corridor earns nothing, while losing ground always costs
+    # full price. An overtake through the lateral corridor (front_risk = 0)
+    # keeps the full closing reward, and the asymmetry blocks the
+    # "close offset, retreat aligned" reward-pumping loop.
+    delta_rel_gated = float(
+        max(delta_rel_phi, 0.0) * (1.0 - risk['front_risk']) + min(delta_rel_phi, 0.0)
+    )
+
+    # Only an ego collision is penalized; an opponent-only crash (e.g. solo
+    # wall hit) must not charge ego the collision penalty.
+    collision = bool(obs['collisions'][0])
 
     # Training segments start with opponent ahead. Once ego establishes a
     # positive lead beyond the start margin, the overtake phase has begun.
@@ -238,7 +252,7 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
 
     progress_raw = float(np.clip(delta_ego_s, -rw.progress_clip_back, rw.progress_clip_forward))
     reward_progress = rw.w_progress * progress_raw
-    reward_rel_progress = rw.w_rel_progress * delta_rel_phi
+    reward_rel_progress = rw.w_rel_progress * delta_rel_gated
     reward_clearance = -rw.w_clearance_risk * risk['clearance_risk'] * float(dt)
     reward_collision = -rw.w_collision if collision else 0.0
     reward_overtake_success = rw.w_overtake_success * success_bonus
@@ -259,6 +273,7 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
         'rel_s': float(rel_s),
         'rel_progress_potential': float(phi),
         'delta_rel_potential': float(delta_rel_phi),
+        'delta_rel_potential_gated': float(delta_rel_gated),
         'ego_d': float(geom['ego_d']),
         'opp_d': float(geom['opp_d']),
         'lat_gap': float(geom['lat_gap']),
@@ -423,19 +438,16 @@ def zero_hidden(hidden_size, device):
 def forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device):
     """Replay a recurrent rollout and reset hidden at stored episode starts."""
     hidden = zero_hidden(ac.actor.gru.hidden_size, device)
-    means, stds, values = [], [], []
+    means, stds = [], []
 
     for t in range(lidar_b.shape[1]):
         if starts_b[0, t].item() > 0.5:
             hidden = zero_hidden(ac.actor.gru.hidden_size, device)
-        dist_t, value_t, hidden = ac(lidar_b[:, t:t + 1], speed_b[:, t:t + 1], hidden)
+        dist_t, hidden = ac(lidar_b[:, t:t + 1], speed_b[:, t:t + 1], hidden)
         means.append(dist_t.mean)
         stds.append(dist_t.stddev)
-        values.append(value_t)
 
-    dist = torch.distributions.Normal(torch.cat(means, dim=1), torch.cat(stds, dim=1))
-    value = torch.cat(values, dim=1)
-    return dist, value
+    return torch.distributions.Normal(torch.cat(means, dim=1), torch.cat(stds, dim=1))
 
 def forward_frozen_bc_sequence(bc, lidar_b, speed_b, starts_b, device):
     """Replay the frozen BC actor on the same recurrent sequence."""
@@ -449,11 +461,11 @@ def forward_frozen_bc_sequence(bc, lidar_b, speed_b, starts_b, device):
     return torch.cat(means, dim=1)
 
 @torch.no_grad()
-def validate_replay_identity(ac, buffer, device, atol):
+def validate_replay_identity(ac, buffer, device, atol, steer_only=False):
     """Check that recurrent replay reproduces rollout log probabilities before PPO update."""
-    lidar_b, speed_b, act_b, old_logp_b, _, _, starts_b = buffer.tensors(device)
-    dist, _ = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
-    replay_logp = dist.log_prob(act_b).sum(-1)
+    lidar_b, speed_b, _, act_b, old_logp_b, _, _, starts_b = buffer.tensors(device)
+    dist = forward_policy_sequence(ac, lidar_b, speed_b, starts_b, device)
+    replay_logp = dist.log_prob(act_b)[..., 0] if steer_only else dist.log_prob(act_b).sum(-1)
     abs_err = (replay_logp - old_logp_b).abs()
     max_err = float(abs_err.max().item())
     mean_err = float(abs_err.mean().item())
@@ -465,11 +477,10 @@ def validate_replay_identity(ac, buffer, device, atol):
     return {"replay_logp_max_error": max_err, "replay_logp_mean_error": mean_err}
 
 @torch.no_grad()
-def value_of_obs(ac, obs, hidden, device):
-    """Evaluate the critic value of a single observation."""
-    lidar_t, speed_t = obs_to_tensors(obs, device)
-    _, value, _ = ac(lidar_t, speed_t, hidden)
-    return float(value.view(-1)[0].item())
+def value_of_obs(ac, obs, device):
+    """Evaluate the privileged critic on a single observation."""
+    priv = torch.as_tensor(obs["priv"], dtype=torch.float32, device=device)
+    return float(ac.critic(priv).view(-1)[0].item())
 
 # ---------------------------------------------------------------------------
 # PPO logging helpers
@@ -482,10 +493,20 @@ def summarize_iteration(iteration, rollout, update):
         ("succ", rollout.get("success_rate")),
         ("clip", rollout.get("action_was_clipped_rate")),
         ("clear", rollout.get("mean_clearance_risk")),
+        ("rel_s", rollout.get("mean_rel_s")),
+        ("lat", rollout.get("mean_lat_gap")),
+        ("ot", rollout.get("mean_overtake_started")),
+        ("fr", rollout.get("mean_front_risk")),
+        ("dsteer", rollout.get("steer_dev")),
         ("pol", update.get("policy_loss")),
         ("vf", update.get("value_loss")),
+        ("ev", rollout.get("value_ev")),
         ("kl", update.get("post_step_approx_kl")),
         ("bc", update.get("bc_anchor")),
+        ("bcpre", update.get("bc_anchor_pre")),
+        ("bcpost", update.get("bc_anchor_post")),
+        ("bcw", update.get("bc_weight_mean")),
+        ("ascale", update.get("anchor_speed_scale")),
         ("std_s", update.get("std_steer")),
         ("std_v", update.get("std_speed")),
     ]
