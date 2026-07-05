@@ -77,6 +77,11 @@ def parse_arguments():
     parser.add_argument("--freeze_speed", action="store_true",
                         help="Composite policy: speed comes from the frozen BC net at rollout and eval; "
                              "PPO trains steering only (1-D Gaussian).")
+    parser.add_argument("--lateral_offset_prob", type=float, default=0.0,
+                        help="D1-b curriculum: fraction of episodes where ego spawns laterally "
+                             "offset from the raceline (0 disables, preserving D1-a behavior).")
+    parser.add_argument("--lateral_offset_min", type=float, default=0.3)
+    parser.add_argument("--lateral_offset_max", type=float, default=0.8)
     parser.add_argument("--bound_coef", type=float, default=0.01)
     parser.add_argument("--target_kl", type=float, default=0.03)
     parser.add_argument("--max_grad_norm", type=float, default=0.5)
@@ -113,13 +118,18 @@ class End2RacePPOEnv:
     """
 
     def __init__(self, map_name, max_speed=20.0, sim_duration=8.0, seed=0,
-                 reward_weights=None, ego_raceline_choices=None, opp_raceline_choices=None):
+                 reward_weights=None, ego_raceline_choices=None, opp_raceline_choices=None,
+                 lateral_offset_prob=0.0, lateral_offset_min=0.3, lateral_offset_max=0.8):
         self.map_name = map_name
         self.max_speed = float(max_speed)
         self.sim_duration = float(sim_duration)
         self.reward_weights = reward_weights or RewardWeights()
         self.rng = np.random.default_rng(seed)
         self.stage = 1
+        self.lateral_offset_prob = float(lateral_offset_prob)
+        self.lateral_offset_min = float(lateral_offset_min)
+        self.lateral_offset_max = float(lateral_offset_max)
+        self._ego_lat_offset = 0.0
         self.ego_raceline_choices = tuple(ego_raceline_choices or ('raceline1',))
         self.opp_raceline_choices = tuple(opp_raceline_choices or ('raceline1',))
 
@@ -166,7 +176,7 @@ class End2RacePPOEnv:
 
         self._reset_opponent()
         positions, initial_speeds = load_positions_and_speeds_from_params(self._scenario, self.map_name)
-        obs, _, _, _ = self.env.reset(poses=positions.astype(np.float64))
+        obs = self._reset_sim_with_offset(positions.astype(np.float64))
 
         self._raw_obs = obs
         self._prev_speed = float(initial_speeds[0]) * 0.9
@@ -217,6 +227,7 @@ class End2RacePPOEnv:
             'timeout': timeout,
             'success': success,
             'time': float(self._t),
+            'ego_lat_offset': float(abs(self._ego_lat_offset)),
             'raw_ego_action': raw_ego_action.copy(),
             'executed_ego_action': ego_action.copy(),
             'action_was_clipped': bool(np.any(np.abs(raw_ego_action - ego_action) > 1e-6)),
@@ -224,6 +235,30 @@ class End2RacePPOEnv:
             'env_info': env_info,
         }
         return self._policy_obs(obs), float(reward), terminated, truncated, info
+
+    def _reset_sim_with_offset(self, poses):
+        """Reset the simulator, optionally spawning ego laterally offset (D1-b curriculum).
+
+        Offset spawns are rejected and resampled when the ego starts too close
+        to a wall; after repeated failures the episode falls back to the
+        on-raceline spawn.
+        """
+        self._ego_lat_offset = 0.0
+        if self.lateral_offset_prob > 0.0 and self.rng.random() < self.lateral_offset_prob:
+            for _ in range(10):
+                offset = float(self.rng.uniform(self.lateral_offset_min, self.lateral_offset_max))
+                if self.rng.random() < 0.5:
+                    offset = -offset
+                candidate = poses.copy()
+                theta = candidate[0, 2]
+                candidate[0, 0] += -math.sin(theta) * offset
+                candidate[0, 1] += math.cos(theta) * offset
+                obs, _, _, _ = self.env.reset(poses=candidate)
+                if float(np.min(obs['scans'][0])) > 0.45:
+                    self._ego_lat_offset = offset
+                    return obs
+        obs, _, _, _ = self.env.reset(poses=poses)
+        return obs
 
     def _complete_scenario(self, scenario):
         scenario.setdefault('ego_raceline', self.ego_raceline_choices[0])
@@ -487,7 +522,17 @@ def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_sp
     return_var = float(np.var(buffer.returns))
     value_ev = float(1.0 - np.var(buffer.returns - buffer.values) / max(return_var, 1e-8))
 
+    # Alongside diagnostics: how much pass-attempt exposure the rollout had and
+    # how much lateral clearance the policy kept while alongside.
+    rel_arr = np.asarray(info_values["rel_s"], dtype=np.float64)
+    lat_arr = np.asarray(info_values["lat_gap"], dtype=np.float64)
+    alongside = np.abs(rel_arr) < 0.6
+    alongside_frac = float(alongside.mean()) if len(alongside) else float("nan")
+    alongside_lat_gap = float(lat_arr[alongside].mean()) if alongside.any() else float("nan")
+
     metrics = {
+        "alongside_frac": alongside_frac,
+        "alongside_lat_gap": alongside_lat_gap,
         "value_ev": value_ev,
         "steer_dev": float(np.mean(steer_devs)) if steer_devs else float("nan"),
         "rollout_return": float(np.sum(buffer.rewards)),
@@ -666,6 +711,9 @@ def main():
         max_speed=args.max_speed,
         sim_duration=args.sim_duration,
         seed=args.train_seed,
+        lateral_offset_prob=args.lateral_offset_prob,
+        lateral_offset_min=args.lateral_offset_min,
+        lateral_offset_max=args.lateral_offset_max,
     )
     env.stage = args.stage
     apply_reward_overrides(env.reward_weights, args)
@@ -728,7 +776,7 @@ def main():
             update_metrics = ppo_update(ac, frozen_bc, buffer, optimizer, device, args)
 
             if args.log_every > 0 and ((iteration + 1) % args.log_every == 0 or iteration == start_iter):
-                print(summarize_iteration(iteration + 1, rollout_metrics, {**update_metrics, **replay_metrics}))
+                print(summarize_iteration(iteration + 1, rollout_metrics, {**update_metrics, **replay_metrics}), flush=True)
 
             if args.save_every > 0 and (iteration + 1) % args.save_every == 0:
                 save_full_checkpoint(ac, args.save_full_path, optimizer, iteration + 1, vars(args))

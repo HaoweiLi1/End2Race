@@ -55,6 +55,7 @@ MEAN_INFO_KEYS = (
     "started_behind",
     "safe_overtake_hold_time",
     "safe_overtake_held",
+    "ego_lat_offset",
 )
 
 REQUIRED_V1_REWARD_FIELDS = (
@@ -498,11 +499,16 @@ def summarize_iteration(iteration, rollout, update):
         ("ot", rollout.get("mean_overtake_started")),
         ("fr", rollout.get("mean_front_risk")),
         ("dsteer", rollout.get("steer_dev")),
+        ("loff", rollout.get("mean_ego_lat_offset")),
+        ("along", rollout.get("alongside_frac")),
+        ("alat", rollout.get("alongside_lat_gap")),
         ("pol", update.get("policy_loss")),
         ("vf", update.get("value_loss")),
         ("ev", rollout.get("value_ev")),
         ("kl", update.get("post_step_approx_kl")),
         ("bc", update.get("bc_anchor")),
+        ("sanc", update.get("steer_anchor")),
+        ("vanc", update.get("speed_anchor")),
         ("bcpre", update.get("bc_anchor_pre")),
         ("bcpost", update.get("bc_anchor_post")),
         ("bcw", update.get("bc_weight_mean")),

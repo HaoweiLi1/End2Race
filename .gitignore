@@ -11,3 +11,5 @@ eval_results/
 logs/
 pretrained/end2race_ppo*
 pretrained/end2race_bc*
+pretrained/end2race_anchor*
+HANDOFF*
