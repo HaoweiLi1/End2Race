@@ -32,6 +32,7 @@ MEAN_INFO_KEYS = (
     "reward_clearance",
     "reward_collision",
     "reward_overtake_success",
+    "reward_closing_potential",
     "delta_ego_s",
     "delta_opp_s",
     "rel_s",
@@ -100,9 +101,16 @@ class RewardWeights:
         self.time_gap = 0.40
         self.side_longitudinal_margin = 0.75
 
+        # D3: potential-based closing-speed shaping, Phi = -k * closing * front_risk.
+        # 0 disables (bit-exact legacy behavior). closing_potential_gamma must equal
+        # the RL discount for policy invariance; train_ppo syncs it to args.gamma
+        # unless explicitly overridden.
+        self.w_closing_potential = 0.0
+        self.closing_potential_gamma = 0.997
+
 class RewardState:
 
-    def __init__(self, last_ego_s, last_opp_s, started_behind):
+    def __init__(self, last_ego_s, last_opp_s, started_behind, last_closing_phi=0.0):
         self.last_ego_s = last_ego_s
         self.last_opp_s = last_opp_s
         self.started_behind = started_behind
@@ -110,16 +118,23 @@ class RewardState:
         self.safe_overtake_hold_time = 0.0
         self.safe_overtake_held = False
         self.had_safe_overtake_bonus = False
+        self.last_closing_phi = float(last_closing_phi)
 
     @classmethod
-    def from_obs(cls, obs, ref):
+    def from_obs(cls, obs, ref, rw=None):
         geom = relative_geometry(obs, ref)
         ego_s, opp_s = geom['ego_s_raw'], geom['opp_s_raw']
         rel_s = wrap_rel_s(ego_s - opp_s, ref.track_length)
+        last_closing_phi = 0.0
+        if rw is not None and rw.w_closing_potential != 0.0:
+            risk = clearance_risk(rel_s, geom['lat_gap'], geom['ego_v_s'], geom['opp_v_s'], rw)
+            closing = max(0.0, geom['ego_v_s'] - geom['opp_v_s'])
+            last_closing_phi = -rw.w_closing_potential * closing * risk['front_risk']
         return cls(
             last_ego_s=ego_s,
             last_opp_s=opp_s,
             started_behind=rel_s < 0.0,
+            last_closing_phi=last_closing_phi,
         )
 
 # ---------------------------------------------------------------------------
@@ -210,18 +225,37 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
 
     risk = clearance_risk(rel_s, geom['lat_gap'], geom['ego_v_s'], geom['opp_v_s'], rw)
 
-    # Front-risk gate on the positive part only: closing on the opponent inside
-    # the front-risk corridor earns nothing, while losing ground always costs
+    # Risk gate on the positive part only: closing on the opponent inside the
+    # front-risk corridor earns nothing, while losing ground always costs
     # full price. An overtake through the lateral corridor (front_risk = 0)
     # keeps the full closing reward, and the asymmetry blocks the
-    # "close offset, retreat aligned" reward-pumping loop.
+    # "close offset, retreat aligned" reward-pumping loop. side_risk joins the
+    # gate so that squeezing past alongside with insufficient lateral gap
+    # cannot net positive relative progress (front_risk vanishes near
+    # rel_s = 0, which D1-b showed makes narrow-gap squeezes profitable).
     delta_rel_gated = float(
-        max(delta_rel_phi, 0.0) * (1.0 - risk['front_risk']) + min(delta_rel_phi, 0.0)
+        max(delta_rel_phi, 0.0) * (1.0 - max(risk['front_risk'], risk['side_risk']))
+        + min(delta_rel_phi, 0.0)
     )
 
     # Only an ego collision is penalized; an opponent-only crash (e.g. solo
     # wall hit) must not charge ego the collision penalty.
     collision = bool(obs['collisions'][0])
+
+    # D3: potential-based closing-speed shaping (optimal-policy invariant).
+    # Phi <= 0 is a "closing-speed debt" inside the front corridor; reducing
+    # closing speed there refunds potential immediately, giving braking its
+    # first dense positive credit. True termination uses Phi = 0, consistent
+    # with the V(terminal) = 0 bootstrap; truncations keep the actual Phi.
+    reward_closing_potential = 0.0
+    if rw.w_closing_potential != 0.0:
+        closing = max(0.0, geom['ego_v_s'] - geom['opp_v_s'])
+        closing_phi = -rw.w_closing_potential * closing * risk['front_risk']
+        phi_next = 0.0 if collision else closing_phi
+        reward_closing_potential = (
+            rw.closing_potential_gamma * phi_next - reward_state.last_closing_phi
+        )
+        reward_state.last_closing_phi = closing_phi
 
     # Training segments start with opponent ahead. Once ego establishes a
     # positive lead beyond the start margin, the overtake phase has begun.
@@ -259,6 +293,8 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
     reward_overtake_success = rw.w_overtake_success * success_bonus
 
     total = reward_progress + reward_rel_progress + reward_clearance + reward_collision + reward_overtake_success
+    if rw.w_closing_potential != 0.0:
+        total += reward_closing_potential
 
     reward_state.last_ego_s = ego_s
     reward_state.last_opp_s = opp_s
@@ -269,6 +305,7 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
         'reward_clearance': float(reward_clearance),
         'reward_collision': float(reward_collision),
         'reward_overtake_success': float(reward_overtake_success),
+        'reward_closing_potential': float(reward_closing_potential),
         'delta_ego_s': float(delta_ego_s),
         'delta_opp_s': float(delta_opp_s),
         'rel_s': float(rel_s),
@@ -374,6 +411,24 @@ def make_fixed_scenario(args):
 # ---------------------------------------------------------------------------
 # Checkpoint helpers
 # ---------------------------------------------------------------------------
+def _load_actor_state(actor, state):
+    """Load an actor state_dict, tolerating a fresh residual head in residual mode.
+
+    A plain BC checkpoint has no res_head/residual_budgets entries; those stay
+    at their init values (zero residual output). Any other mismatch is fatal.
+    """
+    residual_only_prefixes = ("res_head.", "residual_budgets")
+    has_residual_keys = any(key.startswith(residual_only_prefixes) for key in state.keys())
+    if hasattr(actor, "res_head") and not has_residual_keys:
+        missing, unexpected = actor.load_state_dict(state, strict=False)
+        bad_missing = [key for key in missing if not key.startswith(residual_only_prefixes)]
+        if bad_missing or unexpected:
+            raise RuntimeError(
+                f"Residual actor load mismatch: missing={bad_missing}, unexpected={list(unexpected)}."
+            )
+        return
+    actor.load_state_dict(state)
+
 def load_actor_critic(ac, path, device):
     """Load a full PPO checkpoint, an actor-only checkpoint, or a plain BC checkpoint."""
     ckpt = torch.load(path, map_location=device, weights_only=False)
@@ -383,10 +438,10 @@ def load_actor_critic(ac, path, device):
         return ckpt
 
     if isinstance(ckpt, dict) and "actor" in ckpt:
-        ac.actor.load_state_dict(ckpt["actor"])
+        _load_actor_state(ac.actor, ckpt["actor"])
         return ckpt
 
-    ac.actor.load_state_dict(ckpt)
+    _load_actor_state(ac.actor, ckpt)
     return {}
 
 def load_frozen_bc(path, device, hidden_scale):
@@ -407,21 +462,21 @@ def save_actor_backbone(ac, path):
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     torch.save(ac.actor.state_dict(), path)
 
-def save_full_checkpoint(ac, path, optimizer, iteration, config):
+def save_full_checkpoint(ac, path, optimizer, iteration, config, adv_norm_state=None):
     """Save a full PPO checkpoint for resume."""
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    torch.save(
-        {
-            "actor_critic": ac.state_dict(),
-            "actor": ac.actor.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "iteration": int(iteration),
-            "config": dict(config),
-            "hidden_scale": ac.actor.hidden_scale,
-            "log_std": ac.log_std.detach().cpu().clone(),
-        },
-        path,
-    )
+    payload = {
+        "actor_critic": ac.state_dict(),
+        "actor": ac.actor.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "iteration": int(iteration),
+        "config": dict(config),
+        "hidden_scale": ac.actor.hidden_scale,
+        "log_std": ac.log_std.detach().cpu().clone(),
+    }
+    if adv_norm_state is not None:
+        payload["adv_norm_state"] = dict(adv_norm_state)
+    torch.save(payload, path)
 
 # ---------------------------------------------------------------------------
 # Torch tensor and recurrent replay helpers
@@ -499,12 +554,17 @@ def summarize_iteration(iteration, rollout, update):
         ("ot", rollout.get("mean_overtake_started")),
         ("fr", rollout.get("mean_front_risk")),
         ("dsteer", rollout.get("steer_dev")),
+        ("dspeed", rollout.get("speed_dev")),
+        ("dspd_c", rollout.get("speed_dev_corridor")),
+        ("clos_c", rollout.get("closing_corridor")),
+        ("rsat", rollout.get("residual_sat_frac")),
         ("loff", rollout.get("mean_ego_lat_offset")),
         ("along", rollout.get("alongside_frac")),
         ("alat", rollout.get("alongside_lat_gap")),
         ("pol", update.get("policy_loss")),
         ("vf", update.get("value_loss")),
         ("ev", rollout.get("value_ev")),
+        ("ascl", update.get("adv_scale")),
         ("kl", update.get("post_step_approx_kl")),
         ("bc", update.get("bc_anchor")),
         ("sanc", update.get("steer_anchor")),

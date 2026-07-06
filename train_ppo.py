@@ -22,7 +22,7 @@ import torch.optim as optim
 from f110_gym.envs.base_classes import Integrator
 from latticeplanner.utils import obsDict2oppoArray
 from demonstration import setup_opp_planner
-from model import End2Race, End2Race_PPO, PRIV_DIM
+from model import End2Race, End2RaceResidual, End2Race_PPO, PRIV_DIM
 from utils import (STEER_LIMIT, LIDAR_DIM, ACTION_DIM, downsample_lidar_for_model,
                    load_positions_and_speeds_from_params, load_reference_line,
                    resolve_two_agent_indices, wrap_rel_s)
@@ -77,6 +77,26 @@ def parse_arguments():
     parser.add_argument("--freeze_speed", action="store_true",
                         help="Composite policy: speed comes from the frozen BC net at rollout and eval; "
                              "PPO trains steering only (1-D Gaussian).")
+    parser.add_argument("--residual", action="store_true",
+                        help="D2 bounded asymmetric residual: frozen BC backbone, trainable residual "
+                             "head on GRU features, PPO distribution in pre-tanh residual space. "
+                             "steer = BC + tanh(r)*steer_budget; speed = BC + tanh(r)*(down|up budget).")
+    parser.add_argument("--residual_steer_budget", type=float, default=0.2)
+    parser.add_argument("--residual_speed_up_budget", type=float, default=0.2)
+    parser.add_argument("--residual_speed_down_budget", type=float, default=1.0)
+    parser.add_argument("--residual_steer_std", type=float, default=0.15,
+                        help="Pre-tanh residual std for steer; effective action noise near zero "
+                             "residual is steer_budget * std (0.2*0.15 = 0.03 rad, matching BC-mode).")
+    parser.add_argument("--residual_speed_std", type=float, default=0.25,
+                        help="Pre-tanh residual std for speed; brake-side effective noise near zero "
+                             "residual is speed_down_budget * std (1.0*0.25 = 0.25 m/s).")
+    parser.add_argument("--residual_lr", type=float, default=3e-5,
+                        help="Learning rate for the fresh residual head (Adam is scale-free per "
+                             "coordinate, so the tanh*budget squash slows action-space movement "
+                             "~5x for steer at equal lr; 3e-5 vs the 1e-5 fine-tune default).")
+    parser.add_argument("--residual_presat_limit", type=float, default=2.0,
+                        help="Bound loss activates on |r_mean| beyond this pre-tanh magnitude to "
+                             "prevent tanh saturation lock-in (tanh(2.0) = 0.96).")
     parser.add_argument("--lateral_offset_prob", type=float, default=0.0,
                         help="D1-b curriculum: fraction of episodes where ego spawns laterally "
                              "offset from the raceline (0 disables, preserving D1-a behavior).")
@@ -85,6 +105,17 @@ def parse_arguments():
     parser.add_argument("--bound_coef", type=float, default=0.01)
     parser.add_argument("--target_kl", type=float, default=0.03)
     parser.add_argument("--max_grad_norm", type=float, default=0.5)
+    parser.add_argument("--adv_norm", type=str, default="batch", choices=("batch", "running"),
+                        help="Advantage normalization: 'batch' divides by the per-batch std "
+                             "(compresses rare -120 spikes batch-relative); 'running' centers "
+                             "per batch but scales by an EMA of batch variance so rare-event "
+                             "advantages keep their magnitude across batches.")
+    parser.add_argument("--adv_norm_decay", type=float, default=0.99,
+                        help="EMA decay for the running advantage variance (adv_norm=running).")
+    parser.add_argument("--snapshot_every", type=int, default=0,
+                        help="Additionally save non-overwriting actor snapshots every N iterations "
+                             "(<save_actor_path>_iterNNNN.pth); 0 disables. Enables the "
+                             "pre-registered 'last good checkpoint' rule for stop-loss runs.")
 
     # Model configuration
     parser.add_argument("--hidden_scale", type=int, default=4)
@@ -180,7 +211,7 @@ class End2RacePPOEnv:
 
         self._raw_obs = obs
         self._prev_speed = float(initial_speeds[0]) * 0.9
-        self._reward_state = RewardState.from_obs(obs, self.ref)
+        self._reward_state = RewardState.from_obs(obs, self.ref, self.reward_weights)
         self._step_count = 0
         self._t = 0.0
         return self._policy_obs(obs)
@@ -441,11 +472,16 @@ class RolloutBuffer:
             torch.as_tensor(self.episode_starts, dtype=torch.float32, device=device).unsqueeze(0),
         )
 
-def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_speed=False):
+def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_speed=False,
+                    residual=False):
     """Collect one on-policy rollout with the current actor-critic.
 
     With freeze_speed, the executed speed command comes from the frozen BC net
     (its own recurrent state) and the stored action/log-prob cover steering only.
+
+    With residual, the policy distribution lives in pre-tanh residual space:
+    the buffer stores the sampled residuals (whose log-probs the PPO ratio is
+    built on) while the environment executes the composed BC+residual action.
     """
     buffer.reset()
     obs = env.reset(scenario=scenario)
@@ -456,6 +492,8 @@ def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_sp
     episode_return = 0.0
     completed_returns = []
     steer_devs = []
+    speed_devs = []
+    residual_sat = []
     info_values = {key: [] for key in BOOL_INFO_KEYS + MEAN_INFO_KEYS}
 
     for _ in range(buffer.rollout_steps):
@@ -469,13 +507,27 @@ def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_sp
             raw_steer = float(sampled.view(-1)[0].item())
             bc_speed = float(bc_out.view(-1)[1].item())
             raw_action = np.array([raw_steer, bc_speed], dtype=np.float32)
+            policy_action = raw_action
             steer_devs.append(abs(float(dist.mean.view(-1)[0].item()) - float(bc_out.view(-1)[0].item())))
+        elif residual:
+            with torch.no_grad():
+                dist, base, next_hidden = ac.forward_residual_rollout(lidar_t, speed_t, hidden)
+                sampled_r = dist.sample()
+                logp_t = dist.log_prob(sampled_r).sum(-1)
+                env_action = ac.actor.compose(base, sampled_r)
+                mean_delta = ac.actor.residual_delta(dist.mean)
+            raw_action = env_action.view(-1).detach().cpu().numpy().astype(np.float32)
+            policy_action = sampled_r.view(-1).detach().cpu().numpy().astype(np.float32)
+            steer_devs.append(abs(float(mean_delta.view(-1)[0].item())))
+            speed_devs.append(float(mean_delta.view(-1)[1].item()))
+            residual_sat.append(float((dist.mean.abs() > 2.0).float().mean().item()))
         else:
             with torch.no_grad():
                 action_t, logp_t, next_hidden = ac.act(
                     lidar_t, speed_t, hidden, deterministic=False
                 )
             raw_action = action_t.view(-1).detach().cpu().numpy().astype(np.float32)
+            policy_action = raw_action
         value = value_of_obs(ac, obs, device)
 
         next_obs, reward, terminated, truncated, info = env.step(raw_action)
@@ -486,7 +538,7 @@ def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_sp
 
         buffer.add(
             obs=obs,
-            raw_action=raw_action,
+            raw_action=policy_action,
             reward=reward,
             value=value,
             log_prob=float(logp_t.view(-1)[0].item()),
@@ -530,11 +582,28 @@ def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_sp
     alongside_frac = float(alongside.mean()) if len(alongside) else float("nan")
     alongside_lat_gap = float(lat_arr[alongside].mean()) if alongside.any() else float("nan")
 
+    # D3 corridor diagnostics: does the (residual) policy mean brake inside the
+    # front corridor? speed_devs is per-step in residual mode, aligned with info.
+    speed_dev_corridor = float("nan")
+    closing_corridor = float("nan")
+    fr_arr = np.asarray(info_values["front_risk"], dtype=np.float64)
+    corridor = fr_arr > 0.1
+    if corridor.any():
+        ego_v = np.asarray(info_values["ego_v_s"], dtype=np.float64)
+        opp_v = np.asarray(info_values["opp_v_s"], dtype=np.float64)
+        closing_corridor = float(np.maximum(ego_v - opp_v, 0.0)[corridor].mean())
+        if len(speed_devs) == len(fr_arr):
+            speed_dev_corridor = float(np.asarray(speed_devs, dtype=np.float64)[corridor].mean())
+
     metrics = {
         "alongside_frac": alongside_frac,
         "alongside_lat_gap": alongside_lat_gap,
         "value_ev": value_ev,
         "steer_dev": float(np.mean(steer_devs)) if steer_devs else float("nan"),
+        "speed_dev": float(np.mean(speed_devs)) if speed_devs else float("nan"),
+        "speed_dev_corridor": speed_dev_corridor,
+        "closing_corridor": closing_corridor,
+        "residual_sat_frac": float(np.mean(residual_sat)) if residual_sat else float("nan"),
         "rollout_return": float(np.sum(buffer.rewards)),
         "completed_episodes": float(len(completed_returns)),
         "mean_completed_return": float(np.mean(completed_returns)) if completed_returns else float("nan"),
@@ -555,15 +624,32 @@ def collect_rollout(env, ac, buffer, device, scenario, frozen_bc=None, freeze_sp
 
     return metrics
 
-def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
+def ppo_update(ac, frozen_bc, buffer, optimizer, device, args, adv_norm_state=None):
     """Run clipped PPO epochs with BC anchor, bound loss, and KL early stop."""
     lidar_b, speed_b, priv_b, act_b, old_logp_b, adv_b, ret_b, starts_b = buffer.tensors(device)
-    adv_b = (adv_b - adv_b.mean()) / (adv_b.std(unbiased=False) + 1e-8)
+    adv_scale = None
+    if args.adv_norm == "running":
+        # Center per batch, but scale by an EMA of batch variance: a batch
+        # containing a rare -120 collision advantage no longer has that spike
+        # squashed to a fixed z-score by its own inflated std.
+        batch_var = float(adv_b.var(unbiased=False).item())
+        if adv_norm_state.get("var") is None:
+            adv_norm_state["var"] = batch_var
+        else:
+            decay = float(args.adv_norm_decay)
+            adv_norm_state["var"] = decay * adv_norm_state["var"] + (1.0 - decay) * batch_var
+        adv_scale = math.sqrt(max(adv_norm_state["var"], 0.0))
+        adv_b = (adv_b - adv_b.mean()) / (adv_scale + 1e-8)
+    else:
+        adv_b = (adv_b - adv_b.mean()) / (adv_b.std(unbiased=False) + 1e-8)
 
     # The frozen BC replay depends only on rollout inputs, so compute it once
-    # for all epochs.
-    with torch.no_grad():
-        bc_mean = forward_frozen_bc_sequence(frozen_bc, lidar_b, speed_b, starts_b, device)
+    # for all epochs. In residual mode the composed mean minus BC base IS the
+    # applied residual, so no BC replay is needed for the anchor terms.
+    bc_mean = None
+    if not args.residual:
+        with torch.no_grad():
+            bc_mean = forward_frozen_bc_sequence(frozen_bc, lidar_b, speed_b, starts_b, device)
 
     metrics = {
         "policy_loss": [],
@@ -618,7 +704,12 @@ def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
         value_loss = 0.5 * (values - ret_b).pow(2).mean()
         entropy = dist.entropy()[..., 0].mean() if args.freeze_speed else dist.entropy().sum(-1).mean()
 
-        anchor_per_dim = ((dist.mean - bc_mean) / action_scale).pow(2)
+        if args.residual:
+            # Deviation from BC equals the applied (bounded) residual at the
+            # policy mean; with beta_bc = 0 this is diagnostics only.
+            anchor_per_dim = (ac.actor.residual_delta(dist.mean) / action_scale).pow(2)
+        else:
+            anchor_per_dim = ((dist.mean - bc_mean) / action_scale).pow(2)
         # In freeze_speed mode the speed head is unused, so it gets no anchor pressure.
         anchor_per_step = anchor_per_dim[..., 0] if args.freeze_speed else anchor_per_dim.sum(dim=-1)
 
@@ -636,12 +727,19 @@ def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
         bc_anchor_pre = (anchor_per_step * pre_overtake_mask).sum() / pre_count
         bc_anchor_post = (anchor_per_step * post_mask).sum() / post_count
 
-        steer_bound = torch.relu(dist.mean[..., 0].abs() - STEER_LIMIT).pow(2).mean()
-        speed_bound = (
-            torch.relu(-dist.mean[..., 1]).pow(2).mean()
-            + torch.relu(dist.mean[..., 1] - args.max_speed).pow(2).mean()
-        )
-        bound_loss = steer_bound if args.freeze_speed else steer_bound + speed_bound
+        if args.residual:
+            # Actions are bounded by construction; instead keep the pre-tanh
+            # residual mean out of the tanh saturation zone (dead gradients).
+            bound_loss = (
+                torch.relu(dist.mean.abs() - args.residual_presat_limit).pow(2).sum(dim=-1).mean()
+            )
+        else:
+            steer_bound = torch.relu(dist.mean[..., 0].abs() - STEER_LIMIT).pow(2).mean()
+            speed_bound = (
+                torch.relu(-dist.mean[..., 1]).pow(2).mean()
+                + torch.relu(dist.mean[..., 1] - args.max_speed).pow(2).mean()
+            )
+            bound_loss = steer_bound if args.freeze_speed else steer_bound + speed_bound
 
         loss = (
             policy_loss
@@ -696,10 +794,15 @@ def ppo_update(ac, frozen_bc, buffer, optimizer, device, args):
     out["early_stopped"] = float(early_stopped)
     out["std_steer"] = float(ac.log_std.detach().exp()[0].item())
     out["std_speed"] = float(ac.log_std.detach().exp()[1].item())
+    if adv_scale is not None:
+        out["adv_scale"] = float(adv_scale)
     return out
 
 def main():
     args = parse_arguments()
+
+    if args.residual and args.freeze_speed:
+        raise ValueError("--residual and --freeze_speed are mutually exclusive modes.")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else torch.device(args.device)
     torch.manual_seed(args.train_seed)
@@ -717,6 +820,10 @@ def main():
     )
     env.stage = args.stage
     apply_reward_overrides(env.reward_weights, args)
+    # PBRS invariance requires the shaping gamma to equal the RL discount;
+    # sync unless the user explicitly overrode --closing_potential_gamma.
+    if args.closing_potential_gamma is None:
+        env.reward_weights.closing_potential_gamma = args.gamma
 
     min_rollout_steps = int(math.ceil(args.sim_duration / env.timestep))
     if args.rollout_steps < min_rollout_steps:
@@ -725,11 +832,16 @@ def main():
             f"got {args.rollout_steps}."
         )
 
-    # Create actor-critic and load pretrained weights
+    # Create actor-critic and load pretrained weights. In residual mode the
+    # Gaussian stds are pre-tanh residual stds.
     ac = End2Race_PPO(
         hidden_scale=args.hidden_scale,
-        steer_std=args.steer_std,
-        speed_std=args.speed_std,
+        steer_std=args.residual_steer_std if args.residual else args.steer_std,
+        speed_std=args.residual_speed_std if args.residual else args.speed_std,
+        residual_mode=args.residual,
+        residual_steer_budget=args.residual_steer_budget,
+        residual_speed_up_budget=args.residual_speed_up_budget,
+        residual_speed_down_budget=args.residual_speed_down_budget,
     ).to(device)
 
     source_path = args.resume if args.resume else args.model_path
@@ -738,26 +850,58 @@ def main():
     loaded_ckpt = load_actor_critic(ac, source_path, device)
     ac.train()
 
+    # D2 hard isolation: freeze the entire BC backbone; only the residual
+    # head (plus log_std and the critic, which live outside ac.actor) train.
+    frozen_param_snapshot = {}
+    if args.residual:
+        for param in ac.actor.parameters():
+            param.requires_grad = False
+        for param in ac.actor.res_head.parameters():
+            param.requires_grad = True
+        frozen_param_snapshot = {
+            name: param.detach().clone()
+            for name, param in ac.actor.named_parameters()
+            if not param.requires_grad
+        }
+
+    def assert_residual_isolation(stage):
+        for name, param in ac.actor.named_parameters():
+            if name not in frozen_param_snapshot:
+                continue
+            if param.grad is not None and float(param.grad.abs().max().item()) > 0.0:
+                raise RuntimeError(f"[{stage}] Frozen actor param received gradient: {name}")
+            if not torch.equal(param.detach(), frozen_param_snapshot[name]):
+                raise RuntimeError(f"[{stage}] Frozen actor param changed: {name}")
+
     frozen_bc = load_frozen_bc(args.bc_model_path, device, args.hidden_scale)
     buffer = RolloutBuffer(args.rollout_steps, args.gamma, args.gae_lambda)
 
-    # Setup optimizer with separate actor/critic learning rates
+    # Setup optimizer with separate actor/critic learning rates. Frozen
+    # backbone params are excluded (no-op for the legacy modes, where every
+    # actor param is trainable).
     critic_params = list(ac.critic.parameters())
     critic_param_ids = {id(param) for param in critic_params}
-    actor_params = [param for param in ac.parameters() if id(param) not in critic_param_ids]
+    actor_params = [
+        param for param in ac.parameters()
+        if id(param) not in critic_param_ids and param.requires_grad
+    ]
+    actor_lr = args.residual_lr if args.residual else args.actor_lr
     optimizer = optim.Adam(
         [
             {"params": critic_params, "lr": args.critic_lr},
-            {"params": actor_params, "lr": args.actor_lr},
+            {"params": actor_params, "lr": actor_lr},
         ]
     )
 
     start_iter = 0
+    adv_norm_state = {"var": None}
     if args.resume:
         if "optimizer" not in loaded_ckpt or "iteration" not in loaded_ckpt:
             raise RuntimeError("--resume checkpoint must contain optimizer and iteration.")
         optimizer.load_state_dict(loaded_ckpt["optimizer"])
         start_iter = int(loaded_ckpt["iteration"])
+        if "adv_norm_state" in loaded_ckpt:
+            adv_norm_state = dict(loaded_ckpt["adv_norm_state"])
 
     scenario = make_fixed_scenario(args)
 
@@ -767,26 +911,41 @@ def main():
             rollout_metrics = collect_rollout(
                 env, ac, buffer, device, scenario,
                 frozen_bc=frozen_bc, freeze_speed=args.freeze_speed,
+                residual=args.residual,
             )
             replay_metrics = {}
             if args.validate_replay_identity:
                 replay_metrics = validate_replay_identity(
                     ac, buffer, device, args.replay_identity_atol, steer_only=args.freeze_speed
                 )
-            update_metrics = ppo_update(ac, frozen_bc, buffer, optimizer, device, args)
+            update_metrics = ppo_update(ac, frozen_bc, buffer, optimizer, device, args,
+                                        adv_norm_state=adv_norm_state)
+            if args.residual and iteration == start_iter:
+                assert_residual_isolation("after first update")
 
             if args.log_every > 0 and ((iteration + 1) % args.log_every == 0 or iteration == start_iter):
                 print(summarize_iteration(iteration + 1, rollout_metrics, {**update_metrics, **replay_metrics}), flush=True)
 
             if args.save_every > 0 and (iteration + 1) % args.save_every == 0:
-                save_full_checkpoint(ac, args.save_full_path, optimizer, iteration + 1, vars(args))
+                save_full_checkpoint(ac, args.save_full_path, optimizer, iteration + 1, vars(args),
+                                     adv_norm_state=adv_norm_state)
                 save_actor_backbone(ac, args.save_actor_path)
+            if args.snapshot_every > 0 and (iteration + 1) % args.snapshot_every == 0:
+                snap_base, snap_ext = os.path.splitext(args.save_actor_path)
+                save_actor_backbone(ac, f"{snap_base}_iter{iteration + 1:04d}{snap_ext}")
 
-        save_full_checkpoint(ac, args.save_full_path, optimizer, args.total_iterations, vars(args))
+        save_full_checkpoint(ac, args.save_full_path, optimizer, args.total_iterations, vars(args),
+                             adv_norm_state=adv_norm_state)
         save_actor_backbone(ac, args.save_actor_path)
 
-        # Fail fast if the actor-only checkpoint is not loadable by the original End2Race evaluator.
-        test_actor = End2Race(mask_prob=0.0, hidden_scale=args.hidden_scale).to(device)
+        if args.residual:
+            assert_residual_isolation("after training")
+
+        # Fail fast if the actor-only checkpoint is not loadable by the evaluator.
+        if args.residual:
+            test_actor = End2RaceResidual(hidden_scale=args.hidden_scale).to(device)
+        else:
+            test_actor = End2Race(mask_prob=0.0, hidden_scale=args.hidden_scale).to(device)
         test_actor.load_state_dict(torch.load(args.save_actor_path, map_location=device, weights_only=False))
         print(f"Saved actor-only checkpoint: {args.save_actor_path}")
         print(f"Saved full PPO checkpoint:   {args.save_full_path}")

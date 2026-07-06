@@ -11,7 +11,23 @@ import imageio
 from f110_gym.envs.base_classes import Integrator
 import f110_gym.envs.f110_env as f110_env
 
-from model import End2Race
+from model import End2Race, End2RaceResidual
+
+def load_eval_model(model_path, hidden_scale, device):
+    """Load a checkpoint as End2Race, or End2RaceResidual when it carries a residual head.
+
+    Residual (D2) checkpoints are self-describing: the residual budgets are
+    registered buffers inside the state_dict, and forward() keeps the
+    End2Race interface, so the evaluation loop is unchanged.
+    """
+    state = torch.load(model_path, map_location=device)
+    if isinstance(state, dict) and any(key.startswith("res_head.") for key in state.keys()):
+        model = End2RaceResidual(hidden_scale=hidden_scale).to(device)
+    else:
+        model = End2Race(hidden_scale=hidden_scale).to(device)
+    model.load_state_dict(state)
+    model.eval()
+    return model
 from latticeplanner.utils import project_point_to_centerline, obsDict2oppoArray
 from demonstration import setup_opp_planner
 from utils import *
@@ -393,15 +409,11 @@ if __name__ == "__main__":
     
     # Set device - prefer CUDA if available, otherwise CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = End2Race(hidden_scale=args.hidden_scale).to(device)
-    model.load_state_dict(torch.load(args.model_path, map_location=device))
-    model.eval()
+    model = load_eval_model(args.model_path, args.hidden_scale, device)
 
     speed_model = None
     if args.speed_model_path:
-        speed_model = End2Race(hidden_scale=args.hidden_scale).to(device)
-        speed_model.load_state_dict(torch.load(args.speed_model_path, map_location=device))
-        speed_model.eval()
+        speed_model = load_eval_model(args.speed_model_path, args.hidden_scale, device)
 
     # Run evaluation
     result = evaluate_segment(
