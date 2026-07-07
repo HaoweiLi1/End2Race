@@ -102,6 +102,14 @@ def parse_arguments():
                              "offset from the raceline (0 disables, preserving D1-a behavior).")
     parser.add_argument("--lateral_offset_min", type=float, default=0.3)
     parser.add_argument("--lateral_offset_max", type=float, default=0.8)
+    parser.add_argument("--opp_speedscale_min", type=float, default=None,
+                        help="D4-A eval-aligned sampling: override opponent speedscale range "
+                             "(with --opp_speedscale_max). None keeps the stage schedule.")
+    parser.add_argument("--opp_speedscale_max", type=float, default=None)
+    parser.add_argument("--interval_min", type=int, default=None,
+                        help="D4-A: override the ego-opponent gap (interval_idx) sampling range "
+                             "(with --interval_max). None keeps the stage schedule.")
+    parser.add_argument("--interval_max", type=int, default=None)
     parser.add_argument("--bound_coef", type=float, default=0.01)
     parser.add_argument("--target_kl", type=float, default=0.03)
     parser.add_argument("--max_grad_norm", type=float, default=0.5)
@@ -150,7 +158,8 @@ class End2RacePPOEnv:
 
     def __init__(self, map_name, max_speed=20.0, sim_duration=8.0, seed=0,
                  reward_weights=None, ego_raceline_choices=None, opp_raceline_choices=None,
-                 lateral_offset_prob=0.0, lateral_offset_min=0.3, lateral_offset_max=0.8):
+                 lateral_offset_prob=0.0, lateral_offset_min=0.3, lateral_offset_max=0.8,
+                 speedscale_range=None, interval_range=None):
         self.map_name = map_name
         self.max_speed = float(max_speed)
         self.sim_duration = float(sim_duration)
@@ -160,6 +169,9 @@ class End2RacePPOEnv:
         self.lateral_offset_prob = float(lateral_offset_prob)
         self.lateral_offset_min = float(lateral_offset_min)
         self.lateral_offset_max = float(lateral_offset_max)
+        # D4-A eval-aligned sampling overrides (None keeps the stage schedule).
+        self.speedscale_range = speedscale_range
+        self.interval_range = interval_range
         self._ego_lat_offset = 0.0
         self.ego_raceline_choices = tuple(ego_raceline_choices or ('raceline1',))
         self.opp_raceline_choices = tuple(opp_raceline_choices or ('raceline1',))
@@ -200,6 +212,8 @@ class End2RacePPOEnv:
                 self.map_name,
                 self.ego_raceline_choices,
                 self.opp_raceline_choices,
+                interval_range=self.interval_range,
+                speedscale_range=self.speedscale_range,
             )
             if scenario is None
             else dict(scenario)
@@ -296,7 +310,7 @@ class End2RacePPOEnv:
         scenario.setdefault('opp_raceline', self.opp_raceline_choices[0])
         scenario.setdefault('ego_idx', 0)
         scenario.setdefault('interval_idx', 15)
-        scenario.setdefault('opp_speedscale', sample_opp_speedscale(self.stage, self.rng))
+        scenario.setdefault('opp_speedscale', sample_opp_speedscale(self.stage, self.rng, self.speedscale_range))
         ego_idx, opp_idx = resolve_two_agent_indices(
             self.map_name,
             scenario['ego_raceline'],
@@ -808,6 +822,18 @@ def main():
     torch.manual_seed(args.train_seed)
     np.random.seed(args.train_seed)
 
+    # D4-A eval-aligned sampling overrides (both bounds required, or neither).
+    speedscale_range = None
+    if (args.opp_speedscale_min is None) != (args.opp_speedscale_max is None):
+        raise ValueError("--opp_speedscale_min and --opp_speedscale_max must be set together.")
+    if args.opp_speedscale_min is not None:
+        speedscale_range = (float(args.opp_speedscale_min), float(args.opp_speedscale_max))
+    interval_range = None
+    if (args.interval_min is None) != (args.interval_max is None):
+        raise ValueError("--interval_min and --interval_max must be set together.")
+    if args.interval_min is not None:
+        interval_range = (int(args.interval_min), int(args.interval_max))
+
     # Setup environment
     env = End2RacePPOEnv(
         map_name=args.map_name,
@@ -817,6 +843,8 @@ def main():
         lateral_offset_prob=args.lateral_offset_prob,
         lateral_offset_min=args.lateral_offset_min,
         lateral_offset_max=args.lateral_offset_max,
+        speedscale_range=speedscale_range,
+        interval_range=interval_range,
     )
     env.stage = args.stage
     apply_reward_overrides(env.reward_weights, args)

@@ -49,6 +49,7 @@ MEAN_INFO_KEYS = (
     "front_risk",
     "rear_risk",
     "side_risk",
+    "side_risk_gate",
     "lateral_overlap",
     "required_front_gap",
     "required_rear_gap",
@@ -107,6 +108,16 @@ class RewardWeights:
         # unless explicitly overridden.
         self.w_closing_potential = 0.0
         self.closing_potential_gamma = 0.997
+
+        # D4-A: sharper side-risk scale used ONLY in the positive relative-progress
+        # gate (the dense clearance penalty keeps the original side_risk). The base
+        # side_risk under-weights near-edge contact: at lat_gap 0.35 (edges ~4 cm
+        # apart) it reads only ~0.31, so the gate still leaves ~69% of the squeeze
+        # reward. This rescales the gate's lateral overlap over EDGE clearance in
+        # [0, side_gate_edge_margin], so a squeeze inside the margin loses its
+        # progress reward while a clean pass (edge clearance >= margin) keeps it.
+        # 0 disables (bit-exact: gate falls back to the original side_risk).
+        self.side_gate_edge_margin = 0.0
 
 class RewardState:
 
@@ -200,11 +211,22 @@ def clearance_risk(rel_s, lat_gap, ego_v_s, opp_v_s, rw):
     longitudinal_overlap = float(np.clip((side_gap - abs(rel_s)) / side_gap, 0.0, 1.0))
     side_risk = longitudinal_overlap * lateral_overlap
 
+    # D4-A gate-only sharper side risk: ramp lateral overlap over edge clearance
+    # (lat_gap - car_width) in [0, margin]. Defaults to side_risk when disabled.
+    side_risk_gate = side_risk
+    if rw.side_gate_edge_margin > 0.0:
+        edge_gap = max(0.0, lat_gap - rw.car_width)
+        lateral_overlap_edge = float(
+            np.clip((rw.side_gate_edge_margin - edge_gap) / rw.side_gate_edge_margin, 0.0, 1.0)
+        )
+        side_risk_gate = longitudinal_overlap * lateral_overlap_edge
+
     return {
         'clearance_risk': float(np.clip(max(front_risk, rear_risk, side_risk), 0.0, 1.0)),
         'front_risk': float(front_risk),
         'rear_risk': float(rear_risk),
         'side_risk': float(side_risk),
+        'side_risk_gate': float(side_risk_gate),
         'lateral_overlap': float(lateral_overlap),
         'required_front_gap': float(required_front_gap),
         'required_rear_gap': float(required_rear_gap),
@@ -234,7 +256,7 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
     # cannot net positive relative progress (front_risk vanishes near
     # rel_s = 0, which D1-b showed makes narrow-gap squeezes profitable).
     delta_rel_gated = float(
-        max(delta_rel_phi, 0.0) * (1.0 - max(risk['front_risk'], risk['side_risk']))
+        max(delta_rel_phi, 0.0) * (1.0 - max(risk['front_risk'], risk['side_risk_gate']))
         + min(delta_rel_phi, 0.0)
     )
 
@@ -322,6 +344,7 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
         'front_risk': float(risk['front_risk']),
         'rear_risk': float(risk['rear_risk']),
         'side_risk': float(risk['side_risk']),
+        'side_risk_gate': float(risk['side_risk_gate']),
         'lateral_overlap': float(risk['lateral_overlap']),
         'required_front_gap': float(risk['required_front_gap']),
         'required_rear_gap': float(risk['required_rear_gap']),
@@ -335,22 +358,35 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
 # ---------------------------------------------------------------------------
 # PPO scenario curriculum
 # ---------------------------------------------------------------------------
-def sample_opp_speedscale(stage, rng):
-    """Sample the opponent speed scale for the given curriculum stage."""
+def sample_opp_speedscale(stage, rng, speedscale_range=None):
+    """Sample the opponent speed scale for the given curriculum stage.
+
+    speedscale_range=(lo, hi) overrides the stage schedule (D4-A eval-aligned
+    sampling); None keeps the original stage behavior bit-for-bit.
+    """
+    if speedscale_range is not None:
+        return float(rng.uniform(speedscale_range[0], speedscale_range[1]))
     if stage <= 1:
         return float(rng.uniform(0.45, 0.75))
     if stage == 2:
         return float(rng.uniform(0.50, 0.90))
     return float(rng.uniform(0.40, 1.00))
 
-def sample_scenario(stage, rng, map_name, ego_raceline_choices, opp_raceline_choices):
-    """Sample a training segment with opponent initialized ahead of ego."""
+def sample_scenario(stage, rng, map_name, ego_raceline_choices, opp_raceline_choices,
+                    interval_range=None, speedscale_range=None):
+    """Sample a training segment with opponent initialized ahead of ego.
+
+    interval_range/speedscale_range override the stage schedule (D4-A); None
+    keeps the original stage behavior bit-for-bit.
+    """
     ego_raceline = str(rng.choice(tuple(ego_raceline_choices)))
     opp_raceline = str(rng.choice(tuple(opp_raceline_choices)))
     _, _, ego_wp = load_raceline_with_speed(map_name, f"{ego_raceline}.csv", 0)
 
     ego_idx = int(rng.integers(0, len(ego_wp)))
-    if stage <= 1:
+    if interval_range is not None:
+        interval_idx = int(rng.integers(interval_range[0], interval_range[1]))
+    elif stage <= 1:
         interval_idx = int(rng.integers(8, 22))
     elif stage == 2:
         interval_idx = int(rng.integers(5, 32))
@@ -367,7 +403,7 @@ def sample_scenario(stage, rng, map_name, ego_raceline_choices, opp_raceline_cho
         'ego_idx': ego_idx,
         'interval_idx': interval_idx,
         'opp_idx': opp_idx,
-        'opp_speedscale': sample_opp_speedscale(stage, rng),
+        'opp_speedscale': sample_opp_speedscale(stage, rng, speedscale_range),
     }
 
 # ---------------------------------------------------------------------------
@@ -553,6 +589,8 @@ def summarize_iteration(iteration, rollout, update):
         ("lat", rollout.get("mean_lat_gap")),
         ("ot", rollout.get("mean_overtake_started")),
         ("fr", rollout.get("mean_front_risk")),
+        ("sr", rollout.get("mean_side_risk")),
+        ("srg", rollout.get("mean_side_risk_gate")),
         ("dsteer", rollout.get("steer_dev")),
         ("dspeed", rollout.get("speed_dev")),
         ("dspd_c", rollout.get("speed_dev_corridor")),
