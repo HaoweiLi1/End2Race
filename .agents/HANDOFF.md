@@ -1330,3 +1330,204 @@ ending at HEAD `a4b0128`. The commits capture D0/D2/D2.5/D2R/B+ code, PPO/eval
 changes, specs/plans, and a consolidated experiment record. They were not
 reset, amended, pushed, or otherwise rewritten by Tier 3. The remaining
 Tier-3 indexes/organization documentation is visible in the local worktree.
+
+## 20. Repository restructure, agent contract, and run-policy reversal (2026-07-12)
+
+This section supersedes §19's description of the local workspace layout and
+supersedes every earlier statement of the run policy (notably the "experiments
+run only on the remote host" rule and the hash/cross-device verification
+discipline). It changes **no scientific result**. No dataset was opened, no
+sealed test was touched, no failed gate was relabelled, and no remote run was
+authorized.
+
+### 20.1 What was done
+
+**1. Committed 28,526 lines of previously untracked code.** The entire
+evidence-producing codebase (`d0/`, `d2/`, `d25/`, `d2r/`, `bplus_v22/`,
+`tests/`) had **never been committed** — the last commit was a docs-only commit
+on 2026-07-10. A `git clean` or an accidental deletion would have destroyed two
+days of work. Now committed as seven logical commits on branch
+`chore/commit-evidence-pipeline`.
+
+**2. Restructured experiments into `Experiments/`** under a round-based scheme
+(A = diagnostic phase, complete; B = Route-R2 policy, in progress; C reserved).
+Each experiment directory is self-contained (logs + artifacts + models).
+`pretrained/` now holds **only** the original BC model. Root holds only the
+original sources, the two PPO files, `run.sh`, and runtime dependencies.
+Every move is recorded in `Experiments/PATH_MIGRATION.tsv`. **Nothing was
+deleted.**
+
+**3. Replaced ad-hoc ssh one-liners with reviewable Jobs.** All batch/unattended
+work is declared in `Experiments/runner.py` and driven by `./run.sh`.
+
+**4. Created the agent contract at `.agents/`** (`README.md`, `HANDOFF.md` —
+this file, moved from `CURRENT_HANDOFF.md` — and `REPO_GUIDE.md`).
+
+**5. Wrote `docs/EXPERIMENT_RECORD.md`**, the consolidated history of every
+track, its result, and why it ended.
+
+**6. Delivered an audit that found a real defect** (see §20.2).
+
+**7. Wrote the next plan**:
+`docs/superpowers/plans/2026-07-12-ppo-pilot-bc-direct.md`.
+
+### 20.2 Defect found and fixed this session: the warm-start gate
+
+Codex reported Task 6 warm-start as "loss decreased on all three arms, but the
+deterministic brake gate still selects NO_OP everywhere; gate_recall=0" and
+characterized it as not invalidating Task-6 integrity, to be examined later.
+
+**That characterization was wrong and the audit proved it numerically.**
+
+Root cause: `INITIAL_BRAKE_LOGIT = -6.0` implies a brake prior of **0.2473%**,
+while the warm-start training data is **22.91%** brake-positive — a **93x**
+mismatch. With zero-initialized gate weights, initial logits equal the bias for
+every input, so `gate_choice = (logit > 0)` is uniformly NO_OP and
+`gate_recall` is **necessarily** 0.
+
+Confirmation: the theoretical BCE at a constant logit of `-6.0` with
+`p = 0.2291` is **1.3770**, matching the released `diagnostic_before.gate_loss`
+of **1.3770** for all three arms to six decimals. Post-training `gate_loss`
+(0.83–0.86) was still **worse** than a constant marginal-rate predictor
+(0.5382) — the gate had not even recovered the marginal.
+
+Design conflict exposed: `-6.0` was chosen **deliberately** to keep the initial
+policy near-NO_OP so the zero-residual identity gate holds. One constant was
+serving the identity gate and the warm-start objective simultaneously, and the
+two are in direct conflict.
+
+Resolution (Codex, after the audit): the two initialization phases were
+explicitly separated — fresh/identity keeps `-6.0` unchanged (so the 16/16
+identity evidence needed **no** rerun), while warm-start re-initializes the gate
+bias from the empirical fit-fold prevalence. Task 6 then passed. The failed
+release was preserved as FAILED, not overwritten.
+
+**Lesson recorded in `.agents/README.md` §2.2: integrity PASS and substance PASS
+are different things.** "Loss decreased but the metric did not move" is a
+signal to suspect initialization/calibration *now*, not later.
+
+### 20.3 Corrections to earlier claims made by the assistant
+
+The assistant made five overclaims this session. Codex rebutted them with
+citations, and they are recorded here because the record must not carry them:
+
+1. **"The TTC gate was arbitrarily added and never approved."** **False.** It is
+   written in `#### Pre-registered gate` of
+   `docs/superpowers/specs/2026-07-10-ppo-safety-first-bplus-design.md`, whose
+   status is `Approved design`. Codex was executing an approved specification.
+2. **"67/91 is a 74% ceiling."** **False.** It is the confirmed-recoverable set
+   of a **fixed branch library** on the **non-test ego-collision subset**. It is
+   not a theoretical ceiling and does not convert to a full-distribution
+   any-agent RR.
+3. **"beta_bc=5.0 proves the soft anchor was too strong."** Insufficient
+   evidence: two seeds, no ablation.
+4. **"Danger is perceivable, therefore perception is not the bottleneck."** Too
+   strong. Probe decodability does not imply PPO can learn it from sparse reward.
+5. **"~10 brake attempts per iteration under the current prior."** Miscalculated;
+   the correct figure is ~1.
+
+The first is the most serious: it was a persuasive causal narrative constructed
+**without reading the specification it was about**. See `.agents/README.md` §2.1.
+
+### 20.4 Policy reversal (project owner, 2026-07-12)
+
+These supersede all earlier run-policy statements:
+
+- **`ssh haowei@192.168.2.127` is the ONLY connection method.** The Tailscale
+  address (`100.95.251.103`) is retired.
+- **After local validation passes, PPO training and evaluation run on BOTH hosts
+  in parallel** to speed experiments up: **~1/4 local, ~3/4 remote** (local is an
+  RTX 3080 Laptop; remote an RTX 4080 SUPER). Implemented as
+  `./run.sh split <job>`, which shards a job across both GPUs at once.
+- **This is a throughput split, NOT a cross-check.** Do not run the same task on
+  both devices to compare them.
+- **New work does not build hash manifests.** Existing hashes stay as historical
+  fact; no new hash chains.
+- **Cross-validate only when a result is obviously wrong** (physically impossible
+  value, large run-to-run variance, or flat contradiction with a known baseline).
+
+Rationale recorded by the owner: the hash/cross-device discipline carried real
+overhead and **never caught a single bug** in this project. Every real defect —
+the 93x gate-bias mismatch, the brake-only speed channel, the systematic TTC
+over-estimation in the danger zone, the ungated steering residual, the 87x
+positive-class starvation, the vacuous `7/75` check — was found by **reading
+numbers and reading code**, not by a hash mismatch.
+
+### 20.5 Accepted, approved cost: old releases cannot be re-validated
+
+Moving evidence from `logs/` to `Experiments/` breaks path-resolving validators
+for **already-completed releases**, because their immutable `config.json` /
+`pinned_inputs.json` freeze the old `logs/…` paths and cannot be rewritten. The
+project owner approved this explicitly.
+
+**Nothing was lost, and this was verified item by item:**
+
+- each release's own `output_manifest.sha256` still self-checks — artifact
+  **content** is byte-intact;
+- the D2 test seal still hashes to
+  `cee71d818bc050b0ca0647ee32ed1b5655e471ea60b39133aed7b37fc9c1a87e`;
+- the BC model still hashes to
+  `b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4`.
+
+Only automatic *path resolution* of old releases is lost. One test fails as a
+result — `tests/test_bplus_v22_hierarchical_warmstart.py` — and this failure is
+**expected and approved**, not a regression. Test status: **32/33**.
+
+### 20.6 Open items for the next session
+
+1. **`latticeplanner/__pycache__` is 3.9 GB** of regenerable Numba cache (10,588
+   `.nbc`/`.nbi` files). Deleting it was blocked by a permission policy. Zero
+   risk, largest easy win:
+   `find . -name __pycache__ -type d -not -path "./.git/*" -prune -exec rm -rf {} +`
+
+2. **`Experiments/_archive/` holds the only local copies** of 33 GB of
+   `eval_results/` and 9 GB of checkpoints. They are **not backed up on the
+   remote** — they predate the 2026-07-08 remote-only policy and are all
+   `*_local_*` runs. They belong to superseded tracks and are referenced by no
+   live evidence, but **deletion still requires owner approval**. Not deleted.
+
+3. **Branch `chore/commit-evidence-pipeline` is not merged.** Ten commits.
+   `git checkout main && git merge chore/commit-evidence-pipeline`.
+
+4. `docs/superpowers/specs/` and `docs/archive/handoffs/` still cite the old
+   `CURRENT_HANDOFF.md` / `logs/…` paths. **This is deliberate** — they are frozen
+   pre-registered specs and historical handoffs. Do not "fix" them; editing them
+   would falsify the record. Live code and live docs were updated.
+
+### 20.7 Recommendation to the next session
+
+**Stop building intermediate artifacts. Write the PPO training loop and measure
+the owner's actual KPIs for the first time.**
+
+The state to internalize:
+
+- The owner's objective (collision rate down at `RR ≤ 0.70`, overtake rate not
+  below BC) **has never been directly measured, not once**, in two weeks.
+- Five perception-probe families failed a TTC gate that has since been
+  **overridden** — PPO does not need calibrated seconds-to-collision.
+- Warm-start distillation failed **twice**, in mirror-image ways: batch mix at
+  34% brake positives produced a policy that brakes everywhere (Task 10: 78 new
+  collisions vs 11 fixed, net overtake loss on all three arms); natural
+  prevalence at 0.57% produced a policy that never brakes (`gate_recall = 0`).
+  The pendulum has no landing point in between, because the task is distilling
+  an **oracle search** (90 branches, chosen with knowledge of the outcome) into a
+  **reactive policy** from only **67 witness episodes**.
+- **The PPO training loop does not exist.** Not one line. Everything else in
+  `bplus_v22/` — macro action, bounded composition, multi-objective buffer,
+  variable-discount GAE, separate critics, overtake dual, lexicographic selector,
+  closed-loop evaluator — is already built and tested.
+
+The plan is written: `docs/superpowers/plans/2026-07-12-ppo-pilot-bc-direct.md`.
+It solves exploration by **measuring** it rather than distilling it — sweep the
+intervention prior through the existing zero-learning closed-loop evaluator,
+pick the largest prior whose no-learning KPI damage stays inside a pre-registered
+bound (`apply_intervention_logit_offset` already exists at
+`bplus_v22/remediated_model.py:301`) — then run the three-arm pilot from a
+BC-direct init and read the result against collision and overtake rates.
+
+That makes "is warm-start necessary?" a **falsifiable hypothesis measured on the
+deliverable**, instead of a third self-imposed gate. It also answers the v2.2
+spec's real causal question (does a trainable risk sidecar help?) in the same run.
+
+**The plan requires owner approval before execution**, because it pauses the
+warm-start track that Codex is currently waiting to re-run.
