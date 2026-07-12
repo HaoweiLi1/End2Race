@@ -523,7 +523,10 @@ def _critical_environment(python: str) -> dict[str, str]:
     code = r'''
 import importlib.metadata as m, json, platform
 names = ["torch", "numpy", "numba", "gym", "scipy"]
-result = {"python": platform.python_version()}
+# Python patch releases are intentionally host-local.  B2 requires the same
+# language ABI (major.minor) and exact critical package versions on both GPUs;
+# a 3.10.x security/bugfix patch difference is not an experimental variable.
+result = {"python": ".".join(platform.python_version_tuple()[:2])}
 for name in names:
     try: result[name] = m.version(name)
     except m.PackageNotFoundError: result[name] = "MISSING"

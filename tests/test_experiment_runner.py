@@ -31,7 +31,7 @@ SPEC.loader.exec_module(runner)
 def host_specs(run_id: str) -> tuple[runner.HostSpec, runner.HostSpec]:
     root = f"/home/haowei/end2race_runs/{run_id}"
     environment = {
-        "python": "3.10.19",
+        "python": "3.10",
         "torch": "2.7.0",
         "numpy": "2.0.0",
         "numba": "0.61.0",
@@ -1051,6 +1051,11 @@ def test_stage_publication_is_required() -> None:
                 assert "environment drift" in str(error)
 
 
+def test_critical_environment_normalizes_python_patch() -> None:
+    environment = runner._critical_environment(runner.PINNED_PYTHON)
+    assert environment["python"] == f"{sys.version_info.major}.{sys.version_info.minor}"
+
+
 def main() -> None:
     test_plan_digest_and_tamper()
     test_learner_queues_are_complete_and_nonshardable()
@@ -1068,6 +1073,7 @@ def main() -> None:
     test_collect_status_first_failure_then_clean_retry()
     test_extracted_source_drift_is_rejected()
     test_stage_publication_is_required()
+    test_critical_environment_normalizes_python_patch()
     print("ALL TESTS PASSED")
 
 
