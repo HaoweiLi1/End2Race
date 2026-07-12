@@ -6,6 +6,9 @@ install/
 .claude/
 .codex/
 .agent*
+# .agents/ holds the agent handoff and repo contract; it is tracked on purpose.
+!.agents/
+!.agents/**
 Dataset_*/
 eval_results/
 logs/

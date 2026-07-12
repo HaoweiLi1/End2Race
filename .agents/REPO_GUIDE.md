@@ -4,7 +4,7 @@ Updated: 2026-07-12 after local Tier-3 log organization.
 
 ## Entry points
 
-- `CURRENT_HANDOFF.md` — current authority and chronological provenance.
+- `.agents/HANDOFF.md` — current authority and chronological provenance.
 - `docs/ppo/README.md` — concise project state.
 - `docs/EXPERIMENT_RECORD.md` — detailed Chinese cross-stage experiment record.
 - `docs/ppo/EXPERIMENT_HISTORY.md` — shorter evidence/claim ledger.

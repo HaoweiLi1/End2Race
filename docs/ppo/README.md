@@ -61,7 +61,7 @@ distribution and must be included in the recorded PPO log-probability.
    experiment.
 3. [ARTIFACT_RETENTION.md](ARTIFACT_RETENTION.md) — what local evidence is
    retained and how historical material was archived.
-4. `CURRENT_HANDOFF.md` — full historical authority ledger; newest numbered
+4. `.agents/HANDOFF.md` — full historical authority ledger; newest numbered
    section wins when older sections conflict.
 
 For exhaustive lookup, use `AUTHORITY_INDEX.md`,

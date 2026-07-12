@@ -5,7 +5,7 @@ workspace and makes its authority boundary explicit.
 
 ## Current authority
 
-`CURRENT_HANDOFF.md` is the only current handoff. Newer numbered sections
+`.agents/HANDOFF.md` is the only current handoff. Newer numbered sections
 supersede older sections. Its newest §19 records the local Tier-3 organization
 and the proposed BC-direct PPO direction; it does not authorize a numerical
 PPO run.
@@ -27,7 +27,7 @@ provenance, not live instructions.
 
 | file | historical scope | current status |
 |---|---|---|
-| `HANDOFF.md` | early PPO continuation state | superseded by `CURRENT_HANDOFF.md` |
+| `HANDOFF.md` | early PPO continuation state | superseded by `.agents/HANDOFF.md` |
 | `ppo_handoff_20260705.md` | early PPO failure/sweep status | summarized by P1/D0.1 reports |
 | `d1b_local_failure_handoff_20260705.md` | one local D1 failure handoff | legacy diagnostic only |
 | `ppo_audit_handoff_20260710.md` | P0/P1 audit and B+ transition | important provenance; §§13–19 are newer authority |
@@ -42,7 +42,7 @@ authority.
 
 1. `docs/ppo/README.md`.
 2. `docs/ppo/EXPERIMENT_HISTORY.md`.
-3. `CURRENT_HANDOFF.md` newest section, then only the historical sections
+3. `.agents/HANDOFF.md` newest section, then only the historical sections
    needed for provenance.
 4. `docs/ppo/NEXT_PPO_DIRECTION.md` for the proposed, not-yet-run experiment.
 5. Original canonical reports when exact numbers or hashes are required.

@@ -67,7 +67,7 @@ _RUNCONFIG = {
     "bootstrap": {"B": 10000, "seed": 20260710},
     "reconciliation_targets": {
         "reviewer_predictions": {
-            "source": "CURRENT_HANDOFF.md section 6 Tier 3",
+            "source": ".agents/HANDOFF.md section 6 Tier 3",
             "modes": ["full"],
             "values": {
                 "geometry_reconciliation.exact_N": 3072,
