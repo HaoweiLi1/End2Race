@@ -62,7 +62,7 @@ from d2r.data import D2RDataset
 from ppo_utils import load_frozen_bc
 
 
-D25_RELPATH = "logs/d25_counterfactual_20260711/artifacts/full_oracle_20260711_185500"
+D25_RELPATH = "Experiments/A4_d25_counterfactual/artifacts/full_oracle_20260711_185500"
 D25_OUTPUT_MANIFEST_SHA256 = (
     "42a31686a1c654bfe702085d0a7ae4f587e02e4807ae9eba33fae7ad600dcca3"
 )
@@ -73,7 +73,7 @@ D25_BRANCH_RESULTS_SHA256 = (
     "252af4959dfd9aeb91e4599e6fce47a68cfda54af759aa51a3c628389fdd0a2e"
 )
 D01_RELPATH = (
-    "logs/ppo_next_unattended_20260710_230212/artifacts/"
+    "Experiments/A0_project_registry/artifacts/"
     "d01_full_reconcile_20260711_170200_a"
 )
 D01_OUTPUT_MANIFEST_SHA256 = (
@@ -83,7 +83,7 @@ D01_CANONICAL_SHA256 = (
     "793193deefc942f556ec23ee4e34fea3597eac761eb0b1f676af2667ff6b62e2"
 )
 SIDECAR_RELEASE_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/sidecar_init_20260712_080012"
+    "Experiments/B1_route_r2_scaffold/artifacts/sidecar_init_20260712_080012"
 )
 SIDECAR_OUTPUT_MANIFEST_SHA256 = (
     "ac9e10661102efb1164aaa7b6d57fdbf0a63be9c1af454ddc9954d30031163a7"
@@ -99,14 +99,14 @@ EXPECTED_REGISTRY_AFTER_SHA256 = (
     "aff5f03db06836c6c51ff53944ed2ec2e521fbe777cc7d26228a15a9362d0b0d"
 )
 FAILED_WARMSTART_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/"
+    "Experiments/B1_route_r2_scaffold/artifacts/"
     "warmstart_smoke_20260712_091950"
 )
 FAILED_WARMSTART_OUTPUT_MANIFEST_SHA256 = (
     "150b41fa68fbec40442741bdc6613355ab41b44cc0fdb4591fa9e455438dc8be"
 )
 PRIOR_WARMSTART_MANIFEST_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/"
+    "Experiments/B1_route_r2_scaffold/artifacts/"
     "warmstart_manifest_20260712_091851"
 )
 PRIOR_WARMSTART_MANIFEST_OUTPUT_SHA256 = (

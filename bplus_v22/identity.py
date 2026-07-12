@@ -28,9 +28,9 @@ from d25.search import trajectory_digest
 
 EXPECTED_MAPS = ("Austin", "Hockenheim", "MoscowRaceway", "Nuerburgring")
 EXPECTED_REGISTRY_SHA256 = "59c8967034e12dbcbcc57f776b6ff246c5a313c9b1ec58641d7eba151c4b4663"
-REGISTRY_RELPATH = "logs/ppo_next_unattended_20260710_230212/opened_registry.tsv"
+REGISTRY_RELPATH = "Experiments/A0_project_registry/opened_registry.tsv"
 CASE_SOURCE_RELPATH = (
-    "logs/d25_counterfactual_20260711/artifacts/full_oracle_20260711_185500/"
+    "Experiments/A4_d25_counterfactual/artifacts/full_oracle_20260711_185500/"
     "case_manifest.tsv"
 )
 BC_MODEL_RELPATH = "pretrained/end2race.pth"

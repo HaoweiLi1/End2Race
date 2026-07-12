@@ -45,16 +45,16 @@ from d2r.train import PREDICTION_NAMES, predict_model, train_model
 
 
 DATASET_RELPATH = (
-    "logs/d2_representation_20260711_174039/artifacts/"
+    "Experiments/A3_d2_representation/artifacts/"
     "non_test_full_20260711_175713"
 )
-SPLIT_RELPATH = "logs/d2_representation_20260711_174039/artifacts/split_lock"
+SPLIT_RELPATH = "Experiments/A3_d2_representation/artifacts/split_lock"
 SIGNALS_RELPATH = (
-    "logs/d2_representation_20260711_174039/artifacts/"
+    "Experiments/A3_d2_representation/artifacts/"
     "deployable_signals_20260711_182229"
 )
-REGISTRY_RELPATH = "logs/ppo_next_unattended_20260710_230212/opened_registry.tsv"
-EVIDENCE_RELPATH = "logs/bplus_v22_d3r2_20260711"
+REGISTRY_RELPATH = "Experiments/A0_project_registry/opened_registry.tsv"
+EVIDENCE_RELPATH = "Experiments/B1_route_r2_scaffold"
 
 EXPECTED_REGISTRY_BEFORE_SHA256 = (
     "59c8967034e12dbcbcc57f776b6ff246c5a313c9b1ec58641d7eba151c4b4663"
@@ -76,10 +76,10 @@ D2R_FULL_OUTPUT_MANIFEST_SHA256 = (
     "be7936acc95b9a98a3a97d4248d94b11ea8c4ed8adacc82a3dde513323b7c057"
 )
 D2R_FULL_CONFIG_RELPATH = (
-    "logs/d2r_geometry_20260711/artifacts/full_oof_20260711_210200/config.json"
+    "Experiments/A5_d2r_geometry/artifacts/full_oof_20260711_210200/config.json"
 )
 D2R_FULL_OUTPUT_MANIFEST_RELPATH = (
-    "logs/d2r_geometry_20260711/artifacts/full_oof_20260711_210200/"
+    "Experiments/A5_d2r_geometry/artifacts/full_oof_20260711_210200/"
     "output_manifest.sha256"
 )
 D2R_CORE_SOURCE_SHA256 = {
@@ -246,7 +246,7 @@ def _validate_sealed_test_absence(
     ]
     if forbidden_registry:
         raise ValueError("sidecar registry contains sealed-test reuse")
-    artifact_root = root / "logs/d2_representation_20260711_174039/artifacts"
+    artifact_root = root / "Experiments/A3_d2_representation/artifacts"
     forbidden_artifacts = sorted(
         path.name
         for pattern in (

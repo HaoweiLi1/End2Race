@@ -56,12 +56,17 @@ distribution and must be included in the recorded PPO log-probability.
 
 1. [EXPERIMENT_HISTORY.md](EXPERIMENT_HISTORY.md) — result ledger and claim
    boundaries.
+   The longer Chinese record is `docs/EXPERIMENT_RECORD.md`.
 2. [NEXT_PPO_DIRECTION.md](NEXT_PPO_DIRECTION.md) — simplified proposed PPO
    experiment.
 3. [ARTIFACT_RETENTION.md](ARTIFACT_RETENTION.md) — what local evidence is
-   retained and what generated data was removed.
+   retained and how historical material was archived.
 4. `CURRENT_HANDOFF.md` — full historical authority ledger; newest numbered
    section wins when older sections conflict.
+
+For exhaustive lookup, use `AUTHORITY_INDEX.md`,
+`ANALYSIS_AND_REPORT_INDEX.md`, `DOCUMENT_INDEX.tsv`, and
+`LOG_FILE_INDEX.tsv` in this directory.
 
 ## Execution boundary
 
@@ -71,4 +76,3 @@ distribution and must be included in the recorded PPO log-probability.
 - Do not open the D2 test or a fresh/final pool during development.
 - Do not claim generalization from Task 6, Task 9, Task 10, or the 288-scenario
   development population.
-

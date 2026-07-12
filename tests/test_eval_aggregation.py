@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression tests for aggregate_eval.py completeness validation.
+"""Regression tests for scripts/aggregate_eval.py completeness validation.
 
 The anchor case reproduces the full_disc_r8192 seed1 iter300 failure
 (2026-07-09 sweep): 600 workers launched, 112 crashed with Python's
@@ -52,7 +52,7 @@ def make_episode(sandbox, tmp_dir, i, outcome, exit_code=0, write_json=True,
 def run_aggregate(sandbox, tmp_dir, expected_total, result_tag):
     env = dict(os.environ, PYTHONPATH=REPO)
     return subprocess.run(
-        [PY, os.path.join(REPO, "aggregate_eval.py"),
+        [PY, os.path.join(REPO, "scripts", "aggregate_eval.py"),
          "--tmp_dir", tmp_dir,
          "--expected_total", str(expected_total),
          "--model_path", "pretrained/fake.pth",

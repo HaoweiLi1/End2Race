@@ -75,7 +75,7 @@ def main() -> None:
         # state, so this regression remains valid after later stages append.
         shutil.copyfile(
             root
-            / "logs/bplus_v22_d3r2_20260711/artifacts/"
+            / "Experiments/B1_route_r2_scaffold/artifacts/"
             "registry_plan_20260712_075931/registry_before.snapshot.tsv",
             before,
         )

@@ -115,7 +115,7 @@ def main() -> None:
         registry = Path(temporary) / "registry.tsv"
         immutable_before = (
             root
-            / "logs/bplus_v22_d3r2_20260711/artifacts/"
+            / "Experiments/B1_route_r2_scaffold/artifacts/"
             "sidecar_init_20260712_080012/opened_registry.snapshot.tsv"
         )
         shutil.copyfile(immutable_before, registry)

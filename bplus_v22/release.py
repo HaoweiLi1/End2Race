@@ -33,25 +33,25 @@ PINNED_INPUTS = {
         BC_CHECKPOINT_SHA256,
     ),
     "d2_dataset_manifest": (
-        "logs/d2_representation_20260711_174039/artifacts/"
+        "Experiments/A3_d2_representation/artifacts/"
         "non_test_full_20260711_175713/dataset_manifest.json",
         D2_DATASET_MANIFEST_SHA256,
     ),
     "d2_scenario_split": (
-        "logs/d2_representation_20260711_174039/artifacts/split_lock/scenario_split.tsv",
+        "Experiments/A3_d2_representation/artifacts/split_lock/scenario_split.tsv",
         D2_SPLIT_MANIFEST_SHA256,
     ),
     "d2_test_seal": (
-        "logs/d2_representation_20260711_174039/artifacts/split_lock/test_seal.json",
+        "Experiments/A3_d2_representation/artifacts/split_lock/test_seal.json",
         D2_TEST_SEAL_SHA256,
     ),
     "d2r_signals_manifest": (
-        "logs/d2_representation_20260711_174039/artifacts/"
+        "Experiments/A3_d2_representation/artifacts/"
         "deployable_signals_20260711_182229/signals_manifest.json",
         D2R_SIGNALS_MANIFEST_SHA256,
     ),
     "d25_output_manifest": (
-        "logs/d25_counterfactual_20260711/artifacts/"
+        "Experiments/A4_d25_counterfactual/artifacts/"
         "full_oracle_20260711_185500/output_manifest.sha256",
         D25_OUTPUT_MANIFEST_SHA256,
     ),
@@ -83,7 +83,7 @@ SOURCE_PATHS = (
     "bplus_v22/hierarchical_checkpoint_preflight.py",
     "bplus_v22/hierarchical_closed_loop.py",
     "bplus_v22/release.py",
-    "bplus_v22_cli.py",
+    "bplus_v22/cli.py",
     "model.py",
     "ppo_utils.py",
     "train_ppo.py",

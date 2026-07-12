@@ -24,7 +24,7 @@ from d25.search import trajectory_digest
 
 
 WARMSTART_RELEASE_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/warmstart_remediation_20260712_100124"
+    "Experiments/B1_route_r2_scaffold/artifacts/warmstart_remediation_20260712_100124"
 )
 WARMSTART_OUTPUT_MANIFEST_SHA256 = (
     "57c6f900d57da1c59b46354c1502304576ad2ab352b03a29c8756f4bfce83252"

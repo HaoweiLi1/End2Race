@@ -18,8 +18,8 @@ _RUNCONFIG = {
     "repository_root": "/home/haowei/Documents/End2Race",
     "eval_root": "eval_results",
     "assets_root": "f1tenth_racetracks",
-    "goal_root": "logs/ppo_next_unattended_20260710_230212",
-    "opened_registry": "logs/ppo_next_unattended_20260710_230212/opened_registry.tsv",
+    "goal_root": "Experiments/A0_project_registry",
+    "opened_registry": "Experiments/A0_project_registry/opened_registry.tsv",
     "opened_at_utc": "2026-07-10T23:02:12+08:00",
     "tag_template": "p1v_{run}_{model}_{map}_off{offset}",
     "result_dir_template": "eval_results/{tag}_{map}",
@@ -29,15 +29,15 @@ _RUNCONFIG = {
             "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
         },
         "cand160": {
-            "path": "pretrained/end2race_ppo_full_disc_r8192_seed1_20260709_210827_iter0160.pth",
+            "path": "Experiments/A1_p1_validation/models/end2race_ppo_full_disc_r8192_seed1_20260709_210827_iter0160.pth",
             "sha256": "77cd79904f0f57c1e7a4914dd0b52384628dce225f9222e4e2274e0eda3b5aa6",
         },
         "cand120": {
-            "path": "pretrained/end2race_ppo_full_disc_r8192_seed1_20260709_210827_iter0120.pth",
+            "path": "Experiments/A1_p1_validation/models/end2race_ppo_full_disc_r8192_seed1_20260709_210827_iter0120.pth",
             "sha256": "9f2f47bf46363946ba29c1fe5fcada3a3d5fe514ece6eb160c03b25d8f82b3b3",
         },
         "cand040": {
-            "path": "pretrained/end2race_ppo_full_disc_r8192_seed0_20260709_210827_iter0040.pth",
+            "path": "Experiments/A1_p1_validation/models/end2race_ppo_full_disc_r8192_seed0_20260709_210827_iter0040.pth",
             "sha256": "c7a72f5564a191e103d319a7f66167e6969fb3528534b90bafba77ceb598d7e1",
         },
     },
@@ -93,7 +93,7 @@ _RUNCONFIG = {
             },
         },
         "d0_v1_sensitivity_reference": {
-            "source": "logs/d0_canonical_audit_20260710_121955/d0_summary.json",
+            "source": "Experiments/A2_d0_canonical_audit/d0_summary.json",
             "source_sha256": "c697cd498b9b9a7eb3e443df5f7027a34571315ae26bc63737a32c2d90af70f0",
             "modes": ["full"],
             "values": {

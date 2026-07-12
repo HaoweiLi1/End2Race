@@ -39,7 +39,7 @@ from d25.oracle import ARRAY_KEYS, classify_trajectory, simulate_episode
 from d25.search import trajectory_digest
 
 
-OOF_RELPATH = "logs/d2r_geometry_20260711/artifacts/full_oof_20260711_210200"
+OOF_RELPATH = "Experiments/A5_d2r_geometry/artifacts/full_oof_20260711_210200"
 OOF_OUTPUT_MANIFEST_SHA256 = (
     "be7936acc95b9a98a3a97d4248d94b11ea8c4ed8adacc82a3dde513323b7c057"
 )

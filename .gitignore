@@ -9,7 +9,10 @@ install/
 Dataset_*/
 eval_results/
 logs/
-pretrained/end2race_ppo*
-pretrained/end2race_bc*
-pretrained/end2race_anchor*
+# Experiment artifacts (models, npz, releases) are large and live on the
+# remote host. Only the index, migration record and job runner are tracked.
+Experiments/*
+!Experiments/INDEX.md
+!Experiments/PATH_MIGRATION.tsv
+!Experiments/runner.py
 HANDOFF*

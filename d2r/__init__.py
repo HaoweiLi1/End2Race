@@ -14,7 +14,7 @@ TTC_BIN_COUNT = 50
 BACKGROUND_STRIDE = 20
 SEED = 20260711
 REGISTRY_OPENED_AT = "2026-07-11T21:00:00+08:00"
-EVIDENCE_RELPATH = "logs/d2r_geometry_20260711"
+EVIDENCE_RELPATH = "Experiments/A5_d2r_geometry"
 
 
 @dataclass(frozen=True)

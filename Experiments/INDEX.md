@@ -1,0 +1,72 @@
+# Experiments 索引
+
+实验按**轮次**编号。大写字母 = 一轮大实验，轮内用数字（`A1`），需要再拆分时用小写字母（`A1a`）。
+每个实验目录**自包含**：日志、产物、模型都在里面。
+
+所有移动都记录在 `PATH_MIGRATION.tsv`（旧路径 → 新路径）。
+
+---
+
+## A 轮 — 诊断期（已完成）
+
+回答的问题是：**PPO 为什么改不动碰撞率？** 结论是感知与动作空间都不是死路，但没有一个探针通过它自己设的 TTC 门。
+
+| 编号 | 原路径 | 内容 | 结论 |
+|---|---|---|---|
+| `A0_project_registry` | `logs/ppo_next_unattended_20260710_230212` | 追加式 registry（项目总账）+ D0.1 证据报告 | 基础设施，跨实验共用 |
+| `A1_p1_validation` | `logs/p1_validation_20260710_121955` | cand160 vs BC 配对验证 + 3 个候选 checkpoint | **统计等价**，不得声称优越 |
+| `A2_d0_canonical_audit` | `logs/d0_canonical_audit_20260710_121955` | 正典审计 | estimand 修正 N=3024 → **3036** |
+| `A3_d2_representation` | `logs/d2_representation_20260711_174039` | 表示探针（4 家族）+ **封存的 test seal** | 4 家族**全部未过** TTC 门 |
+| `A4_d25_counterfactual` | `logs/d25_counterfactual_20260711` | 反事实可恢复性 oracle | **67/91 可恢复**，Route-R2 动作空间可行 |
+| `A5_d2r_geometry` | `logs/d2r_geometry_20260711` | 时空几何探针 | **未过** TTC + 2s 误报门 |
+
+`A3` 里的 `artifacts/split_lock/test_seal.json`（SHA256 `cee71d81…a87e`）是**从未打开的分组测试集**的封条。不要动它。
+
+## B 轮 — Route-R2 策略（进行中）
+
+| 编号 | 原路径 | 内容 | 状态 |
+|---|---|---|---|
+| `B1_route_r2_scaffold` | `logs/bplus_v22_d3r2_20260711` | v2.2 支架：层级动作、identity 门、warm-start、闭环评估（Task 1–10） | Task 10 **FAILED**；warm-start 两次失败 |
+| `B2_ppo_pilot` | — | PPO 训练循环 + 三臂 pilot（BC-direct 探索） | **未开始**，计划见 `docs/superpowers/plans/2026-07-12-ppo-pilot-bc-direct.md` |
+
+## C 轮 — 预留
+
+## `_archive/` — 已废弃轨道
+
+废弃的 PPO 调参期（D1 / 旧 D2 / D4a / D4c / anchor，07-04 至 07-08）。结论已固化在 `_archive/legacy_reports/`，原始产物按字节保留、未删除。
+
+- `_archive/models/` — 187 个废弃轨道 checkpoint
+- `_archive/legacy_runs/`、`legacy_reports/`、`reviews/`、`superseded_artifacts/`
+
+---
+
+## 已知破坏：旧 release 无法重新校验
+
+2026-07-12 的这次迁移，把证据目录从 `logs/` 移到了 `Experiments/`。项目所有者**明确批准**了随之而来的代价：
+
+**已完成 release 的 `config.json` / `pinned_inputs.json` 里冻结记录着旧的 `logs/…` 路径。这些 JSON 是不可变证据（它们自身的哈希被记在 manifest 里），不能改写。因此 `validate-source-preflight`、`validate-warmstart` 等按路径解析的校验，对旧 release 会失败。**
+
+**没有丢失的东西**（已逐项核验）：
+
+- 每个 release 内部的 `output_manifest.sha256` 仍然自校验通过——**产物内容逐字节完好**；
+- test seal 哈希迁移前后一致：`cee71d818bc050b0ca0647ee32ed1b5655e471ea60b39133aed7b37fc9c1a87e`；
+- 原始 BC 模型哈希一致：`b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4`。
+
+失效的只有"按旧路径去仓库根下找文件"这一步。**证据内容可验，证据位置的自动解析不可验。**
+
+新 release 使用新路径，校验正常。
+
+---
+
+## 怎么跑实验
+
+不要手敲 ssh 命令。所有批量/托管运行都在 `Experiments/runner.py` 里声明为 Job，用仓库根的 `run.sh` 执行：
+
+```bash
+./run.sh list                    # 列出所有 job
+./run.sh show b2-ppo-pilot-seed0 # 只打印命令，不执行
+./run.sh run  b2-ppo-pilot-seed0 # 在远端 GPU 上跑
+./run.sh run  <job> --local      # 在本地跑
+```
+
+新增托管工作时**在 `runner.py` 里加 Job**，不要写成散落的 shell 命令——一个 job 应该在烧 GPU 之前就可以被审阅。

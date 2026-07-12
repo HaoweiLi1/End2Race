@@ -15,30 +15,30 @@ from d0.identity import REGISTRY_FIELDS, validate_registry_row
 
 
 METADATA_RELPATH = (
-    "logs/d2_representation_20260711_174039/artifacts/"
+    "Experiments/A3_d2_representation/artifacts/"
     "non_test_full_20260711_175713/episode_metadata.tsv"
 )
 METADATA_SHA256 = "468d8be50aecad19f89fbf2c35dc421acb4244a61f957f77dcfff1acd227eda3"
 SPLIT_RELPATH = (
-    "logs/d2_representation_20260711_174039/artifacts/split_lock/scenario_split.tsv"
+    "Experiments/A3_d2_representation/artifacts/split_lock/scenario_split.tsv"
 )
 SPLIT_SHA256 = "2f8146d7be0e36c3abcc084dcdbfa9e3df85983c37c6249294ab19b1431c49f3"
 WARMSTART_MANIFEST_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/"
+    "Experiments/B1_route_r2_scaffold/artifacts/"
     "warmstart_remediation_manifest_20260712_100032"
 )
 WARMSTART_MANIFEST_SHA256 = (
     "72b3ef0e25a41984e256454218e36640bd9e045430671b57af570e7d1896f24e"
 )
 D25_RESULTS_RELPATH = (
-    "logs/d25_counterfactual_20260711/artifacts/"
+    "Experiments/A4_d25_counterfactual/artifacts/"
     "full_oracle_20260711_185500/case_results.tsv"
 )
 D25_RESULTS_SHA256 = "0ef0a09adba1d46d76151187a4d295ce149ad8409a458befc7950d7d3f7b7c1b"
-REGISTRY_RELPATH = "logs/ppo_next_unattended_20260710_230212/opened_registry.tsv"
+REGISTRY_RELPATH = "Experiments/A0_project_registry/opened_registry.tsv"
 REGISTRY_SHA256 = "aff5f03db06836c6c51ff53944ed2ec2e521fbe777cc7d26228a15a9362d0b0d"
 REGISTRY_BASE_SNAPSHOT_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/"
+    "Experiments/B1_route_r2_scaffold/artifacts/"
     "warmstart_remediation_manifest_20260712_100032/registry_after.expected.tsv"
 )
 

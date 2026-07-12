@@ -94,7 +94,7 @@ SCORE_SCHEMA = "bplus-v2.2-hierarchical-calibration-scores-1"
 RELEASE_LABEL = "HIERARCHICAL_ACTION_WARMSTART_REMEDIATION"
 
 OLD_MANIFEST_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/"
+    "Experiments/B1_route_r2_scaffold/artifacts/"
     "warmstart_manifest_20260712_091851"
 )
 OLD_EPISODES_SHA256 = (
@@ -108,7 +108,7 @@ CANONICAL_EPISODES_SHA256 = (
     "793193deefc942f556ec23ee4e34fea3597eac761eb0b1f676af2667ff6b62e2"
 )
 TASK8_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/"
+    "Experiments/B1_route_r2_scaffold/artifacts/"
     "task8_manifests_20260712_113241/development_scenarios.tsv"
 )
 TASK8_SHA256 = (
@@ -118,7 +118,7 @@ SPLIT_SHA256 = (
     "2f8146d7be0e36c3abcc084dcdbfa9e3df85983c37c6249294ab19b1431c49f3"
 )
 FAILED_TASK10_RELPATH = (
-    "logs/bplus_v22_d3r2_20260711/artifacts/"
+    "Experiments/B1_route_r2_scaffold/artifacts/"
     "task10_warmstart_20260712_105740"
 )
 FAILED_TASK10_OUTPUT_SHA256 = (

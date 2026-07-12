@@ -17,22 +17,24 @@ process, registry, checkpoint, or artifact is modified.
 - source packages, CLIs, registry, specifications, decisions, experiment
   ledgers, and structural tests.
 
-## Removed generated data
+## Archived during Tier 3
 
-- `eval_results/**`: local raw rollout mirror. Canonical counts, reports,
-  manifests, hashes, and higher-level evidence artifacts are retained.
-- historical checkpoint snapshots not in the four-checkpoint canonical set;
-- Python/Numba test caches and bytecode;
-- aborted-run payloads and `.partial` directories;
-- explicitly superseded D0.1 duplicate/intermediate releases;
-- explicitly superseded B+ source-preflight and Task-8 manifest copies;
-- legacy per-run directories whose conclusions are already consolidated in
-  P1/D0.1/current experiment records.
+- historical per-run directories were moved to `logs/archive/legacy_runs/`;
+- historical summaries/designs were moved to
+  `logs/archive/legacy_reports/`;
+- reviewer briefs were moved to `logs/archive/reviews/`;
+- historical handoffs were moved to `docs/archive/handoffs/`;
+- explicitly superseded D0.1/B+ artifacts were moved to
+  `logs/archive/superseded_artifacts/`.
 
-Removal is a local storage/organization decision. It does not invalidate,
-promote, or rewrite an experiment. Where reproducibility requires a removed
-large raw mirror, the original canonical report identifies the authoritative
-remote release and hashes.
+These files were not deleted. Canonical artifact paths were not moved.
+
+## Not yet removed
+
+- `eval_results/**` remains present locally;
+- all historical checkpoint snapshots remain present;
+- caches and aborted payloads remain present inside the archive;
+- no source or test file was removed as part of Tier 3.
 
 ## Code retention decisions
 
@@ -41,9 +43,8 @@ remote release and hashes.
 - isolated `d0/`, `d2/`, `d25/`, `d2r/`, and `bplus_v22/` packages are
   retained because canonical validators and future direct-PPO work depend on
   them.
-- old D4 scenario-sampling changes in `train_ppo.py` and `ppo_utils.py` are
-  removed from the live diff because they are not used by the current B+
-  route and obscure the future PPO implementation baseline.
+- old D4 scenario-sampling changes in `train_ppo.py` and `ppo_utils.py` remain
+  in the live diff pending a separate code-design decision.
 - the speculative generated Superpowers-style direct-PPO implementation plan
   is removed; the concise, owner-readable proposal is
   `docs/ppo/NEXT_PPO_DIRECTION.md`.
@@ -55,4 +56,3 @@ run directory containing `STATUS.md`, `DECISIONS.md`, `EXPERIMENTS.md`, an
 `artifacts/` directory, and explicit `canonical`/`superseded` labels. A new
 run must not copy full raw evaluation trees locally unless needed for active
 analysis.
-
