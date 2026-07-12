@@ -1,13 +1,22 @@
 #!/bin/bash
-# Single entry point for every batch / unattended run in this project.
+# Single entry point for the immutable experiment control plane.
 #
-#   ./run.sh list                 show every registered job
-#   ./run.sh show <job>           print the exact command without running it
-#   ./run.sh run  <job>           run it on the remote GPU host
-#   ./run.sh run  <job> --local   run it here instead
+#   ./run.sh list
+#   ./run.sh plan ...
+#   ./run.sh show PLAN
+#   ./run.sh stage PLAN --all-hosts --dry-run
+#   ./run.sh baseline-preflight PLAN --dry-run
+#   ./run.sh preflight PLAN --all-hosts --dry-run
+#   ./run.sh execute PLAN --all-hosts --dry-run
+#   ./run.sh resume PLAN --host remote --dry-run
 #
-# Jobs are declared in Experiments/runner.py. Add new unattended work there,
-# never as a loose shell command — a job must be reviewable before it burns GPU.
+# B2 execution always consumes a previously frozen RunPlan.  There is no
+# dynamic `run <job>` path and no command may execute from the remote worktree.
 set -euo pipefail
 cd "$(dirname "$0")"
-exec python3 Experiments/runner.py "$@"
+PYTHON=/home/haowei/miniconda3/envs/end2race/bin/python
+if [[ ! -x "$PYTHON" ]]; then
+    echo "pinned interpreter is missing: $PYTHON" >&2
+    exit 2
+fi
+exec "$PYTHON" Experiments/runner.py "$@"

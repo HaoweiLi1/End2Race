@@ -3,12 +3,28 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, Sequence
 
 import torch
 import torch.nn as nn
 
-from bplus_v22 import BRAKE_BUDGET, INITIAL_BRAKE_LOGIT, STEER_BUDGET
+from bplus_v22 import (
+    ACTION_CORE_LR,
+    ARM_SIDECAR_FINETUNE,
+    BRAKE_BUDGET,
+    INITIAL_BRAKE_LOGIT,
+    SIDECAR_FINETUNE_LR,
+    STEER_BUDGET,
+)
+from bplus_v22.exploration import (
+    ActionNoiseKey,
+    BehaviorExplorationBatch,
+    DETERMINISTIC_CENTERED,
+    DETERMINISTIC_MODES,
+    DETERMINISTIC_STANDARD,
+    KeyedComponentDraws,
+    keyed_component_draws,
+)
 from bplus_v22.model import V22Policy
 
 
@@ -16,6 +32,7 @@ INITIAL_INTERVENTION_LOGIT = -6.0
 STEER_LIMIT = 0.52
 ACTION_SCHEMA = "bplus-v2.2-hierarchical-residual-action-1"
 CHECKPOINT_SCHEMA = "bplus-v2.2-hierarchical-warmstart-checkpoint-1"
+B2_HEAD_LEARNING_RATE = 3e-4
 
 
 @dataclass(frozen=True)
@@ -114,6 +131,8 @@ class HierarchicalResidualDistribution:
             raise ValueError("hierarchical distribution contains nonfinite value")
         if torch.any(steer_std <= 0) or torch.any(brake_std <= 0):
             raise ValueError("hierarchical standard deviation must be positive")
+        self.intervention_logits = intervention_logits
+        self.conditional_brake_logits = brake_logits
         self.intervention = torch.distributions.Bernoulli(logits=intervention_logits)
         self.steer = torch.distributions.Normal(steer_mean, steer_std)
         self.brake_gate_distribution = torch.distributions.Bernoulli(logits=brake_logits)
@@ -124,8 +143,18 @@ class HierarchicalResidualDistribution:
         return self.intervention.probs
 
     @property
-    def brake_probability(self) -> torch.Tensor:
+    def conditional_brake_probability(self) -> torch.Tensor:
         return self.brake_gate_distribution.probs
+
+    @property
+    def unconditional_brake_probability(self) -> torch.Tensor:
+        return self.intervention_probability * self.conditional_brake_probability
+
+    @property
+    def brake_probability(self) -> torch.Tensor:
+        """Historical alias for conditional ``P(BRAKE | INTERVENE)``."""
+
+        return self.conditional_brake_probability
 
     def sample(self) -> HierarchicalResidualAction:
         intervention = self.intervention.sample()
@@ -137,11 +166,75 @@ class HierarchicalResidualDistribution:
             brake_gate * self.brake.sample(),
         )
 
-    def deterministic(self) -> HierarchicalResidualAction:
-        intervention = (self.intervention.logits > 0).to(self.intervention.logits.dtype)
-        brake = intervention * (self.brake_gate_distribution.logits > 0).to(
-            self.brake_gate_distribution.logits.dtype
+    def sample_from_draws(
+        self, draws: KeyedComponentDraws
+    ) -> HierarchicalResidualAction:
+        """Sample from all four pre-generated component draws without global RNG."""
+
+        reference = self.steer.mean
+        values = (
+            draws.intervention_uniform,
+            draws.steer_standard_normal,
+            draws.brake_uniform,
+            draws.brake_standard_normal,
         )
+        if any(
+            value.shape != reference.shape
+            or value.dtype != reference.dtype
+            or value.device != reference.device
+            for value in values
+        ):
+            raise ValueError("keyed component draws do not match distribution")
+        with torch.no_grad():
+            intervention = (
+                draws.intervention_uniform < self.intervention_probability
+            ).to(reference.dtype)
+            conditional_brake = (
+                draws.brake_uniform < self.conditional_brake_probability
+            ).to(reference.dtype)
+            brake_gate = intervention * conditional_brake
+            steer = self.steer.mean + self.steer.stddev * draws.steer_standard_normal
+            brake = self.brake.mean + self.brake.stddev * draws.brake_standard_normal
+            return HierarchicalResidualAction(
+                intervention,
+                intervention * steer,
+                brake_gate,
+                brake_gate * brake,
+            )
+
+    def sample_keyed(
+        self, keys: Sequence[ActionNoiseKey]
+    ) -> HierarchicalResidualAction:
+        """Sample all components from frozen, domain-separated per-macro keys."""
+
+        return self.sample_from_draws(keyed_component_draws(keys, self.steer.mean))
+
+    def deterministic(self) -> HierarchicalResidualAction:
+        return self.deterministic_at_thresholds(0.0, 0.0)
+
+    def deterministic_at_thresholds(
+        self,
+        intervention_logit_threshold: float,
+        conditional_brake_logit_threshold: float,
+    ) -> HierarchicalResidualAction:
+        """Use strict raw-logit thresholds; equality always selects NO_OP."""
+
+        thresholds = torch.tensor(
+            [
+                float(intervention_logit_threshold),
+                float(conditional_brake_logit_threshold),
+            ],
+            dtype=torch.float64,
+        )
+        if not torch.all(torch.isfinite(thresholds)):
+            raise ValueError("deterministic hierarchical threshold is nonfinite")
+        intervention = (
+            self.intervention_logits > float(intervention_logit_threshold)
+        ).to(self.intervention_logits.dtype)
+        brake = intervention * (
+            self.conditional_brake_logits
+            > float(conditional_brake_logit_threshold)
+        ).to(self.conditional_brake_logits.dtype)
         return HierarchicalResidualAction(
             intervention,
             intervention * self.steer.mean,
@@ -168,9 +261,33 @@ class HierarchicalResidualDistribution:
         return value.squeeze(-1)
 
     def entropy(self) -> torch.Tensor:
-        conditional = self.steer.entropy() + self.brake_gate_distribution.entropy()
-        conditional = conditional + self.brake_probability * self.brake.entropy()
-        return (self.intervention.entropy() + self.intervention_probability * conditional).squeeze(-1)
+        return self.entropy_components()["total"]
+
+    def entropy_components(self) -> dict[str, torch.Tensor]:
+        """Return total entropy and the four explicit hierarchy components.
+
+        Conditional entries are the raw conditional entropies.  ``total`` is
+        the correctly probability-weighted joint entropy used by PPO.
+        """
+
+        intervention = self.intervention.entropy().squeeze(-1)
+        steer = self.steer.entropy().squeeze(-1)
+        brake_gate = self.brake_gate_distribution.entropy().squeeze(-1)
+        brake_magnitude = self.brake.entropy().squeeze(-1)
+        conditional = steer + brake_gate + self.conditional_brake_probability.squeeze(
+            -1
+        ) * brake_magnitude
+        total = intervention + self.intervention_probability.squeeze(-1) * conditional
+        values = {
+            "intervention": intervention,
+            "steer_given_intervention": steer,
+            "brake_gate_given_intervention": brake_gate,
+            "brake_magnitude_given_brake": brake_magnitude,
+            "total": total,
+        }
+        if any(not torch.all(torch.isfinite(value)) for value in values.values()):
+            raise FloatingPointError("hierarchical entropy component is nonfinite")
+        return values
 
     @staticmethod
     def requested_residual(action: HierarchicalResidualAction) -> torch.Tensor:
@@ -262,14 +379,14 @@ class RemediatedV22Policy(V22Policy):
             parameter.requires_grad = True
         self.register_buffer("intervention_logit_offset", torch.zeros(1))
 
-    def distribution(self, bc_feature, lidar_history, scalar_history):
+    def _distribution_parameters(self, bc_feature, lidar_history, scalar_history):
         feature = self.action_core(
             self.policy_feature(bc_feature, lidar_history, scalar_history)
         )
         steer_std = self.log_steer_std.exp().expand(len(feature), 1)
         brake_std = self.log_brake_std.exp().expand(len(feature), 1)
-        return HierarchicalResidualDistribution(
-            self.intervention_gate(feature) + self.intervention_logit_offset,
+        return (
+            self.intervention_gate(feature),
             self.steer_mean(feature),
             steer_std,
             self.brake_gate(feature),
@@ -277,9 +394,126 @@ class RemediatedV22Policy(V22Policy):
             brake_std,
         )
 
+    def distribution(self, bc_feature, lidar_history, scalar_history):
+        """Historical distribution, including its persistent calibration buffer."""
+
+        top, steer, steer_std, brake_gate, brake, brake_std = (
+            self._distribution_parameters(bc_feature, lidar_history, scalar_history)
+        )
+        return HierarchicalResidualDistribution(
+            top + self.intervention_logit_offset,
+            steer,
+            steer_std,
+            brake_gate,
+            brake,
+            brake_std,
+        )
+
+    def behavior_distribution(
+        self,
+        bc_feature: torch.Tensor,
+        lidar_history: torch.Tensor,
+        scalar_history: torch.Tensor,
+        exploration: BehaviorExplorationBatch,
+    ) -> HierarchicalResidualDistribution:
+        """Construct B2 behavior probabilities without mutating policy state."""
+
+        if not isinstance(exploration, BehaviorExplorationBatch):
+            raise TypeError("B2 behavior distribution requires exploration batch")
+        if not torch.equal(
+            self.intervention_logit_offset,
+            torch.zeros_like(self.intervention_logit_offset),
+        ):
+            raise ValueError("B2 behavior requires zero historical calibration offset")
+        top, steer, steer_std, brake_gate, brake, brake_std = (
+            self._distribution_parameters(bc_feature, lidar_history, scalar_history)
+        )
+        exploration.validate_like(top)
+        return HierarchicalResidualDistribution(
+            top + exploration.intervention_logit_offset,
+            steer,
+            steer_std * exploration.steer_std_scale,
+            brake_gate + exploration.conditional_brake_logit_offset,
+            brake,
+            brake_std * exploration.brake_std_scale,
+        )
+
+    def deterministic_action(
+        self,
+        bc_feature: torch.Tensor,
+        lidar_history: torch.Tensor,
+        scalar_history: torch.Tensor,
+        mode: str = DETERMINISTIC_CENTERED,
+    ) -> HierarchicalResidualAction:
+        """Zero-exploration primary centered action or standard-mode diagnostic."""
+
+        if mode not in DETERMINISTIC_MODES:
+            raise ValueError(f"unknown deterministic mode: {mode}")
+        if not torch.equal(
+            self.intervention_logit_offset,
+            torch.zeros_like(self.intervention_logit_offset),
+        ):
+            raise ValueError("B2 deterministic action requires zero exploration offset")
+        top, steer, steer_std, brake_gate, brake, brake_std = (
+            self._distribution_parameters(bc_feature, lidar_history, scalar_history)
+        )
+        distribution = HierarchicalResidualDistribution(
+            top, steer, steer_std, brake_gate, brake, brake_std
+        )
+        if mode == DETERMINISTIC_CENTERED:
+            return distribution.deterministic_at_thresholds(
+                INITIAL_INTERVENTION_LOGIT, INITIAL_BRAKE_LOGIT
+            )
+        if mode == DETERMINISTIC_STANDARD:
+            return distribution.deterministic()
+        raise AssertionError("unreachable deterministic mode")
+
     @staticmethod
     def compose(base_action, action):
         return HierarchicalResidualDistribution.compose(base_action, action).command
+
+    def optimizer_parameter_groups(self) -> list[dict]:
+        """B2 actor groups with a reachable, separately audited head LR."""
+
+        named = dict(self.named_parameters())
+        core_prefixes = ("bc_adapter.", "action_core.")
+        head_prefixes = (
+            "intervention_gate.",
+            "steer_mean.",
+            "brake_gate.",
+            "brake_mean.",
+        )
+        core = [
+            value
+            for name, value in named.items()
+            if value.requires_grad and name.startswith(core_prefixes)
+        ]
+        heads = [
+            value
+            for name, value in named.items()
+            if value.requires_grad
+            and (name.startswith(head_prefixes) or name in {"log_steer_std", "log_brake_std"})
+        ]
+        groups = [
+            {"name": "representation_core", "params": core, "lr": ACTION_CORE_LR},
+            {"name": "action_heads", "params": heads, "lr": B2_HEAD_LEARNING_RATE},
+        ]
+        if self.arm == ARM_SIDECAR_FINETUNE:
+            sidecar = [
+                value
+                for name, value in named.items()
+                if value.requires_grad and name.startswith("policy_sidecar.")
+            ]
+            groups.append(
+                {"name": "sidecar", "params": sidecar, "lr": SIDECAR_FINETUNE_LR}
+            )
+        if any(not group["params"] for group in groups):
+            raise AssertionError("B2 actor optimizer group is empty")
+        ids = [id(value) for group in groups for value in group["params"]]
+        expected = {id(value) for value in self.parameters() if value.requires_grad}
+        if len(ids) != len(set(ids)) or set(ids) != expected:
+            raise AssertionError("B2 actor optimizer groups overlap or omit trainable state")
+        return groups
 
     def load_hierarchical_state_dict(self, state: Mapping[str, torch.Tensor]) -> None:
         """Fail closed on old three-dimensional/single-gate policy states."""

@@ -3,6 +3,9 @@
 **任何 agent（Claude / Codex）开工前先读这一份。**
 
 - 当前状态与下一步 → `.agents/HANDOFF.md`（唯一权威入口）
+- B2 BC-direct PPO 执行计划（已批准）→ `.agents/B2_PPO_PLAN.md`
+- B2 Opus 4.8/max 独立审计与裁定 → `.agents/B2_PPO_REVIEW.md`
+- B2 pre-GPU 实现复核（GO_FOR_STAGING）→ `.agents/B2_IMPLEMENTATION_REVIEW.md`
 - 仓库结构 → `.agents/REPO_GUIDE.md`
 - 实验编号与索引 → `Experiments/INDEX.md`
 - 完整实验史 → `docs/EXPERIMENT_RECORD.md`
@@ -66,7 +69,9 @@ Task 6 第一次 warm-start：三臂 loss 都下降、结构测试全过、manif
 
 ### 2.4 恒真检查伪装成通过项（Codex）
 
-`false_intervention_episodes_le_7_of_75` 这条 check **永远为 True**——阈值规则取"第 8 大负例"，构造上就保证恰好 7 个越线。它出现在汇总表里像个成绩，实际不携带任何信息。
+`false_intervention_episodes_le_7_of_75` 这条 check **永远为 True**——阈值规则取
+`nextafter(第8大负例,+inf)`，构造上保证 `<=7`；并列时可以少于7，本次 release
+观测到恰好7。它出现在汇总表里像个成绩，实际不携带任何模型信息。
 
 **防御：每条 check 问一句「它有可能失败吗？」不可能失败的，别列进通过项。**
 
@@ -102,7 +107,10 @@ ssh haowei@192.168.2.127
 
 **本地验证无误后，PPO 训练和 PPO 评估在本地与远端同时跑，加速实验。**
 
-- **本地约 1/4，远端约 3/4**（按 GPU 算力配比）。
+- learner 以完整 seed queue 分配：seed1 的 A/B/C 本地串行，seed0 的 A/B/C
+  远端串行；两台 host 并行，但每张 GPU 同时只允许一个 learner。
+- 只有冻结 checkpoint 的 scenario evaluation 才按**本地 1/4、远端 3/4**分片；
+  远端 shards 1–3 在同一 GPU lock 内串行。
 - 分流的目的是**并行加速**，不是交叉验证。
 - **不要**为了"验证两台设备结果一致"而在两边跑同一个任务——那是浪费算力。
 
@@ -126,17 +134,28 @@ ssh haowei@192.168.2.127
 
 ## 4. 怎么跑实验
 
-所有批量/托管运行都在 `Experiments/runner.py` 里声明为 Job，用仓库根的 `run.sh` 执行：
+所有批量/托管运行都由 `Experiments/runner.py` 的不可变 RunPlan 控制，用仓库根
+的 `run.sh` 执行。B2 runner 完成后使用：
 
 ```bash
-./run.sh list                     # 列出所有 job
-./run.sh show <job>               # 只打印命令，不烧 GPU
-./run.sh run  <job>               # 远端执行（默认）
-./run.sh run  <job> --local       # 本地执行
-./run.sh split <job-prefix>       # 本地 1/4 + 远端 3/4 并行分流
+./run.sh plan ...                 # 生成一次、不可覆盖的计划
+./run.sh show <plan.json>         # 只打印冻结命令
+./run.sh stage <plan.json>        # 两端仓库外隔离部署
+./run.sh baseline-preflight <plan.json> # 本地先重放 BC 288 行并锁死 24/138
+./run.sh preflight <plan.json>    # source/input/env/GPU/CLI fail-closed
+./run.sh execute <plan.json>      # 只消费同一计划
+./run.sh resume <plan.json>       # 仅从已验证的完整 iteration 边界显式恢复
+./run.sh status <plan.json>       # 状态
+./run.sh collect <plan.json>      # 本地/远端结果回收并重验 COMPLETE envelope
 ```
 
 **新增托管工作 → 在 `runner.py` 里加 Job，不要写成 shell 单行命令。** 一个 job 应该在烧 GPU 之前就能被审阅、被 dry-run。
+
+> **B2 当前处于实现/preflight 阶段：** 旧 `b2-exploration-sweep` 与
+> `b2-ppo-pilot-seed0` 占位 job 不得执行。owner 已授权 managed B2，但只有
+> `.agents/B2_PPO_PLAN.md` 的 Tasks 0–6、测试、隔离 staging 和 preflight
+> 全部通过后才可启动冻结的20轮数值 pilot。远端旧 dirty repository 永不作为
+> B2 执行目录。
 
 ---
 
@@ -150,7 +169,18 @@ ssh haowei@192.168.2.127
 
 ## 6. 当前位置（2026-07-12）
 
-- **用户的目标（碰撞率 / 超车率）至今没有被直接测量过一次。**
-- 五个感知探针全部失败于一道已被 override 的 TTC 门；warm-start 两次失败于类别配比（34% ↔ 0.57% 两个极端）。
-- **PPO 训练循环一行都还没写。** `bplus_v22/` 里其他零件（宏动作、有界合成、多目标 buffer、双 critic、超车 dual、词典序选择器、闭环评估器）全部就绪。
-- 下一步计划：`docs/superpowers/plans/2026-07-12-ppo-pilot-bc-direct.md` —— 写 PPO 循环，用测量（而非猜测）标定探索先验，从纯 BC 起步跑三臂 pilot，**首次直接测量真实 KPI**。
+- 历史 PPO/P1 与 B1 Task 10 记录过碰撞和超车；真正缺失的是：**尚无
+  B+ v2.2 PPO 学习后的 candidate 接受当前词典序开发门或 fresh 产品门。**
+- 五个感知探针保留其原始 TTC-gate FAIL，TTC 已被 owner 前瞻性降为
+  policy diagnostic；旧 warm-start 闭环有害，hierarchical replacement
+  Task 6 又出现 positive recall 0，因此 warm-start 不再建议作为 PPO 准入门。
+- 仓库有历史 `train_ppo.py`；B+ v2.2 的层级 rollout、完整 replay、two-head
+  constrained clipped PPO、双层探索、exact checkpoint/resume、直接 KPI evaluator
+  与隔离 RunPlan runner 现已接通。两轮 Opus 实现审计已闭环为
+  `GO_FOR_STAGING`；数值 pilot 尚未启动，仍须完成 clean commit、BC-only 288
+  基准预检、两端 staging/preflight 和四图 plumbing smoke。
+- 已批准下一步见 `.agents/B2_PPO_PLAN.md`：从 BC-identical fresh policy
+  开始三臂 PPO，用完整记账的 top/conditional-brake 训练期探索，直接评估
+  collision RR 与 corrected overtake。Claude Code `claude-opus-4-8` / max 的
+  设计审计与实现复核分别记录在 `.agents/B2_PPO_REVIEW.md`、
+  `.agents/B2_IMPLEMENTATION_REVIEW.md`。

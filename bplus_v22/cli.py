@@ -4,7 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import csv
+from dataclasses import asdict
+import hashlib
 import json
+import os
+from pathlib import Path
+
+import torch
 
 from bplus_v22.release import create_source_preflight, validate_source_preflight
 from bplus_v22.identity import run_zero_identity, validate_zero_identity
@@ -44,11 +51,353 @@ from bplus_v22.hierarchical_closed_loop import (
     run_hierarchical_closed_loop,
     validate_hierarchical_closed_loop,
 )
+from bplus_v22.ppo_runner import (
+    CHECKPOINT_SCHEMA as B2_CHECKPOINT_SCHEMA,
+    load_policy_only_checkpoint,
+    run_pilot_job,
+    validate_pilot_plan,
+)
+from bplus_v22.ppo_eval import (
+    CandidateCheckpoint,
+    EvaluationShard,
+    LoadedCandidatePolicy,
+    evaluate_shard,
+    evaluate_bc_baseline_preflight,
+    merge_evaluation_shards,
+    read_task8_development,
+)
+from d25.oracle import load_bc_model
+
+
+B2_CAPABILITIES_SCHEMA = "bplus-v22-cli-capabilities-1"
+B2_COMMANDS = (
+    "ppo-baseline-preflight",
+    "ppo-pilot",
+    "ppo-evaluate",
+    "ppo-merge-eval",
+)
+B2_RUN_PLAN_SCHEMA = "end2race-b2-run-plan-1"
+
+
+def _canonical_json(value) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode(
+        "utf-8"
+    )
+
+
+def _sha256_file(path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_eval_plan(plan_path: str | Path, job_id: str | None = None):
+    path = Path(plan_path).resolve()
+    plan = json.loads(path.read_text(encoding="utf-8"))
+    if plan.get("schema") != B2_RUN_PLAN_SCHEMA or plan.get("kind") != "b2_eval":
+        raise ValueError("B2 evaluator requires a b2_eval RunPlan")
+    observed = str(plan.get("plan_sha256", ""))
+    unsigned = dict(plan)
+    unsigned.pop("plan_sha256", None)
+    expected = hashlib.sha256(_canonical_json(unsigned)).hexdigest()
+    if observed != expected:
+        raise ValueError("B2 eval RunPlan digest mismatch")
+    parent_plan_sha = str(plan.get("parent_plan_sha256", ""))
+    if len(parent_plan_sha) != 64 or any(
+        character not in "0123456789abcdef" for character in parent_plan_sha
+    ):
+        raise ValueError("B2 eval RunPlan parent digest is invalid")
+    root = path.parent.parent
+    if Path.cwd().resolve() != (root / "repo").resolve():
+        raise ValueError("B2 evaluator must execute from staged repository")
+    contract = plan.get("evaluation_contract")
+    if not isinstance(contract, dict):
+        raise ValueError("B2 eval plan lacks evaluation contract")
+    if (
+        int(contract.get("expected_scenario_count", -1)) != 288
+        or int(contract.get("expected_episode_rows", -1)) != 2016
+        or int(contract.get("shard_count", -1)) != 4
+        or len(contract.get("checkpoint_set", ())) != 6
+    ):
+        raise ValueError("B2 eval Cartesian contract drift")
+    jobs = {str(row["job_id"]): row for row in plan.get("jobs", [])}
+    selected = None
+    if job_id is not None:
+        if job_id not in jobs:
+            raise ValueError(f"unknown B2 eval job: {job_id}")
+        selected = jobs[job_id]
+        if selected.get("kind") != "evaluation_shard":
+            raise ValueError("B2 eval job kind drift")
+        output = root / str(selected["output_relpath"])
+        if output.exists() or output.with_name(output.name + ".partial").exists():
+            raise FileExistsError(output)
+    manifest = root / str(contract["manifest_relpath"])
+    if not manifest.is_file() or _sha256_file(manifest) != contract["manifest_sha256"]:
+        raise ValueError("B2 eval Task-8 manifest drift")
+    return path, plan, root, contract, selected
+
+
+def _checkpoint_specs(root: Path, contract: dict, parent_plan_sha256: str):
+    training_sha = str(contract.get("training_manifest_sha256", ""))
+    if len(training_sha) != 64:
+        raise ValueError("B2 eval plan lacks training-manifest digest")
+    specs = []
+    paths = {}
+    for row in contract["checkpoint_set"]:
+        path = root / str(row["relpath"])
+        if not path.is_file() or _sha256_file(path) != row["sha256"]:
+            raise ValueError("B2 eval checkpoint file drift")
+        payload = torch.load(path, map_location="cpu", weights_only=False)
+        if (
+            payload.get("schema") != B2_CHECKPOINT_SCHEMA
+            or payload.get("arm") != row["arm"]
+            or payload.get("seed") != int(row["seed"])
+            or payload.get("iteration") != 20
+            or payload.get("training_manifest_sha256") != training_sha
+            or payload.get("run_plan_sha256") != parent_plan_sha256
+        ):
+            raise ValueError("B2 eval checkpoint envelope mismatch")
+        spec = CandidateCheckpoint(
+            arm=str(row["arm"]),
+            seed=int(row["seed"]),
+            checkpoint_id=str(payload["checkpoint_id"]),
+            checkpoint_sha256=str(row["sha256"]),
+            training_manifest_sha256=training_sha,
+        )
+        specs.append(spec)
+        paths[spec.variant] = path
+    return tuple(specs), paths, training_sha
+
+
+def validate_eval_plan(plan_path: str | Path) -> dict:
+    _, plan, root, contract, _ = _load_eval_plan(plan_path)
+    specs, _, training_sha = _checkpoint_specs(
+        root, contract, str(plan["parent_plan_sha256"])
+    )
+    return {
+        "passed": len(specs) == 6,
+        "checkpoint_count": len(specs),
+        "training_manifest_sha256": training_sha,
+        "scenario_count": int(contract["expected_scenario_count"]),
+    }
+
+
+def run_bc_baseline_preflight(
+    plan_path: str | Path,
+    output_path: str | Path,
+    device_name: str = "cuda:0",
+) -> dict:
+    validated = validate_pilot_plan(plan_path)
+    plan = validated["plan"]
+    paths = validated["paths"]
+    device = torch.device(device_name)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        raise ValueError("B2 BC baseline preflight requested unavailable CUDA")
+    manifest = paths["task8"] / "development_scenarios.tsv"
+    manifest_sha = _sha256_file(manifest)
+    rows = read_task8_development(manifest, manifest_sha)
+    bc_sha = _sha256_file(paths["bc"])
+    bc = load_bc_model(str(paths["bc"]), device)
+    result = evaluate_bc_baseline_preflight(
+        task8_rows=rows,
+        scenario_manifest_sha256=manifest_sha,
+        bc_model=bc,
+        bc_checkpoint_sha256=bc_sha,
+        device=device,
+    )
+    result.update(
+        {
+            "run_plan_sha256": plan["plan_sha256"],
+            "source_commit": plan["source_commit"],
+            "opened_development_only": True,
+            "candidate_evaluated": False,
+        }
+    )
+    output = Path(output_path)
+    if output.exists() or output.with_suffix(output.suffix + ".partial").exists():
+        raise FileExistsError(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    partial = output.with_suffix(output.suffix + ".partial")
+    partial.write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    os.replace(partial, output)
+    return {
+        "passed": True,
+        "scenario_count": result["scenario_count"],
+        "collision": result["collision"],
+        "terminal_overtake": result["terminal_overtake"],
+    }
+
+
+def _write_tsv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, delimiter="\t", fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def run_eval_job(plan_path: str | Path, job_id: str, device_name: str = "cuda:0") -> dict:
+    _, plan, root, contract, job = _load_eval_plan(plan_path, job_id)
+    parent_plan_sha = str(plan["parent_plan_sha256"])
+    specs, checkpoint_paths, training_sha = _checkpoint_specs(
+        root, contract, parent_plan_sha
+    )
+    device = torch.device(device_name)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        raise ValueError("B2 evaluation CUDA requested but unavailable")
+    manifest = root / str(contract["manifest_relpath"])
+    rows = read_task8_development(manifest, contract["manifest_sha256"])
+    bc_path = root / "repo/pretrained/end2race.pth"
+    bc_sha = _sha256_file(bc_path)
+    bc = load_bc_model(str(bc_path), device)
+
+    def loader(expected, target_device):
+        policy, payload = load_policy_only_checkpoint(
+            checkpoint_paths[expected.variant],
+            expected_arm=expected.arm,
+            expected_seed=expected.seed,
+            expected_iteration=20,
+            expected_training_manifest_sha256=training_sha,
+            expected_plan_sha256=parent_plan_sha,
+            expected_checkpoint_sha256=expected.checkpoint_sha256,
+            device=target_device,
+        )
+        return LoadedCandidatePolicy(
+            policy=policy,
+            checkpoint_id=str(payload["checkpoint_id"]),
+            checkpoint_sha256=expected.checkpoint_sha256,
+            training_manifest_sha256=training_sha,
+        )
+
+    shard = evaluate_shard(
+        task8_rows=rows,
+        scenario_manifest_sha256=contract["manifest_sha256"],
+        checkpoint_manifest_sha256=training_sha,
+        bc_model=bc,
+        bc_checkpoint_sha256=bc_sha,
+        checkpoints=specs,
+        policy_loader=loader,
+        device=device,
+        shard_index=int(job["shard_index"]),
+        shard_count=int(job["shard_count"]),
+    )
+    output = root / str(job["output_relpath"])
+    partial = output.with_name(output.name + ".partial")
+    partial.mkdir(parents=True)
+    try:
+        (partial / "shard.json").write_text(
+            json.dumps(asdict(shard), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        control_rows = []
+        for row in shard.rows:
+            control_rows.append(
+                {
+                    **row,
+                    "row_index": row["task8_row_index"],
+                    "variant_id": row["variant"],
+                    "shard_index": shard.shard_index,
+                    "manifest_sha256": contract["manifest_sha256"],
+                    "checkpoint_set_sha256": contract["checkpoint_set_sha256"],
+                }
+            )
+        fields = sorted({name for row in control_rows for name in row})
+        _write_tsv(partial / "episodes.tsv", control_rows, fields)
+        (partial / "COMPLETE").write_text("COMPLETE\n", encoding="utf-8")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(partial, output)
+        return {
+            "passed": True,
+            "shard_index": shard.shard_index,
+            "scenario_count": len(shard.rows) // 7,
+            "episode_rows": len(shard.rows),
+        }
+    except Exception:
+        if partial.exists():
+            (partial / "FAILED").write_text("FAILED\n", encoding="utf-8")
+        raise
+
+
+def merge_eval_job(plan_path: str | Path, input_root: str | Path, output_dir: str | Path) -> dict:
+    _, plan, root, contract, _ = _load_eval_plan(plan_path)
+    specs, _, training_sha = _checkpoint_specs(
+        root, contract, str(plan["parent_plan_sha256"])
+    )
+    manifest = root / str(contract["manifest_relpath"])
+    task8_rows = read_task8_development(manifest, contract["manifest_sha256"])
+    source = Path(input_root)
+    shards = []
+    for index in range(4):
+        host = "local" if index == 0 else "remote"
+        path = source / f"hosts/{host}/outputs/eval/shard{index}/shard.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        shards.append(
+            EvaluationShard(
+                shard_index=int(payload["shard_index"]),
+                shard_count=int(payload["shard_count"]),
+                scenario_manifest_sha256=payload["scenario_manifest_sha256"],
+                checkpoint_manifest_sha256=payload["checkpoint_manifest_sha256"],
+                bc_checkpoint_sha256=payload["bc_checkpoint_sha256"],
+                checkpoint_sha256_by_variant=payload["checkpoint_sha256_by_variant"],
+                rows=tuple(payload["rows"]),
+                schema=payload["schema"],
+            )
+        )
+    bc_sha = _sha256_file(root / "repo/pretrained/end2race.pth")
+    rows, summary = merge_evaluation_shards(
+        shards=shards,
+        task8_rows=task8_rows,
+        scenario_manifest_sha256=contract["manifest_sha256"],
+        checkpoint_manifest_sha256=training_sha,
+        bc_checkpoint_sha256=bc_sha,
+        checkpoints=specs,
+    )
+    output = Path(output_dir)
+    partial = output.with_name(output.name + ".partial")
+    if output.exists() or partial.exists():
+        raise FileExistsError(output)
+    partial.mkdir(parents=True)
+    try:
+        fields = sorted({name for row in rows for name in row})
+        _write_tsv(partial / "episodes.tsv", rows, fields)
+        (partial / "summary.json").write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        (partial / "COMPLETE").write_text("COMPLETE\n", encoding="utf-8")
+        os.replace(partial, output)
+        return {"passed": True, **summary}
+    except Exception:
+        if partial.exists():
+            (partial / "FAILED").write_text("FAILED\n", encoding="utf-8")
+        raise
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="B+ v2.2 structural preflight")
     sub = parser.add_subparsers(dest="command", required=True)
+    capabilities = sub.add_parser("capabilities")
+    capabilities.add_argument("--json", action="store_true")
+    ppo_baseline = sub.add_parser("ppo-baseline-preflight")
+    ppo_baseline.add_argument("--run-plan", required=True)
+    ppo_baseline.add_argument("--output", required=True)
+    ppo_baseline.add_argument("--device", default="cuda:0")
+    ppo_pilot = sub.add_parser("ppo-pilot")
+    ppo_pilot.add_argument("--run-plan", required=True)
+    ppo_pilot.add_argument("--job-id")
+    ppo_pilot.add_argument("--validate-plan-only", action="store_true")
+    ppo_pilot.add_argument("--resume", action="store_true")
+    ppo_pilot.add_argument("--device", default="cuda:0")
+    ppo_evaluate = sub.add_parser("ppo-evaluate")
+    ppo_evaluate.add_argument("--run-plan", required=True)
+    ppo_evaluate.add_argument("--job-id")
+    ppo_evaluate.add_argument("--validate-plan-only", action="store_true")
+    ppo_evaluate.add_argument("--device", default="cuda:0")
+    ppo_merge = sub.add_parser("ppo-merge-eval")
+    ppo_merge.add_argument("--run-plan", required=True)
+    ppo_merge.add_argument("--input-root", required=True)
+    ppo_merge.add_argument("--output-dir", required=True)
     create = sub.add_parser("source-preflight")
     create.add_argument("--output-dir", required=True)
     create.add_argument("--created-at", required=True)
@@ -213,7 +562,42 @@ def parse_args():
 
 def main() -> None:
     args = parse_args()
-    if args.command == "source-preflight":
+    if args.command == "capabilities":
+        result = {
+            "schema": B2_CAPABILITIES_SCHEMA,
+            "commands": sorted(B2_COMMANDS),
+        }
+    elif args.command == "ppo-baseline-preflight":
+        result = run_bc_baseline_preflight(
+            args.run_plan, args.output, device_name=args.device
+        )
+    elif args.command == "ppo-pilot":
+        if args.validate_plan_only:
+            validated = validate_pilot_plan(args.run_plan)
+            result = {
+                "passed": True,
+                "job_count": len(validated["plan"]["jobs"]),
+                "plan_sha256": validated["plan"]["plan_sha256"],
+            }
+        else:
+            if not args.job_id:
+                raise ValueError("ppo-pilot execution requires --job-id")
+            result = run_pilot_job(
+                args.run_plan,
+                args.job_id,
+                device_name=args.device,
+                resume=args.resume,
+            )
+    elif args.command == "ppo-evaluate":
+        if args.validate_plan_only:
+            result = validate_eval_plan(args.run_plan)
+        else:
+            if not args.job_id:
+                raise ValueError("ppo-evaluate execution requires --job-id")
+            result = run_eval_job(args.run_plan, args.job_id, device_name=args.device)
+    elif args.command == "ppo-merge-eval":
+        result = merge_eval_job(args.run_plan, args.input_root, args.output_dir)
+    elif args.command == "source-preflight":
         result = create_source_preflight(args.output_dir, args.created_at, args.repo_root)
     elif args.command == "validate-source-preflight":
         result = validate_source_preflight(args.release_dir, args.repo_root)
@@ -386,7 +770,7 @@ def main() -> None:
     else:
         raise AssertionError(f"unhandled command: {args.command}")
     print(json.dumps(result, indent=2, sort_keys=True))
-    if not result["passed"]:
+    if result.get("passed") is not True and args.command not in {"capabilities"}:
         raise SystemExit(2)
 
 

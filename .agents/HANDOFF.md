@@ -1,39 +1,36 @@
 # End2Race Session Handoff — B+ v2.2 Objective-Aligned Policy Phase
 
-Generated: 2026-07-10; current checkpoint updated 2026-07-12T20:28:00+08:00.
+Generated: 2026-07-10; current checkpoint updated 2026-07-12 (B2 implementation checkpoint §22).
 Repository: `/home/haowei/Documents/End2Race` (local) ↔ `haowei@192.168.2.127:~/Documents/End2Race` (active remote, host `haowei-MSI`). The historical `100.95.251.103` address is retired unless the user changes it again.
 Audience: a new chat/agent continuing this work with zero conversational context.
 
 Authority: this file is the current new-chat entry point. Newer numbered
 sections supersede older state/authorization text. Current execution authority
-is §13; current technical state and proposed next direction are §19, with
-§§17–18 and the B+ v2.2 spec/plan retained as technical provenance.
+is §13 as amended by §§20.4 and 22; current technical handoff and next action
+are §22, with §§17–21 and the B+ v2.2 spec/plan retained as provenance.
 `docs/archive/handoffs/HANDOFF.md`, old remote-goal text, first D0 artifacts, unqualified
 P1/final-report bodies, and older Claude memories are historical evidence only.
 
-Concise project navigation is now `docs/ppo/README.md`. The full historical
-ledger below is intentionally retained for provenance; use newest §19 for the
-post-cleanup state, and use `docs/ppo/EXPERIMENT_HISTORY.md` for the readable
-result summary.
+Agent navigation is `.agents/README.md` and `.agents/REPO_GUIDE.md`. The full
+historical ledger below is intentionally retained; use newest §22 for B2,
+§21 for the prior Codex-chat handoff, §20 for Claude's restructure/run policy, and
+`docs/EXPERIMENT_RECORD.md` for the readable result summary.
 
 ## 0. Opening instruction for a new chat
 
-> Read `docs/ppo/README.md`, §19, then §§13 and 17–18. Consult
+> Read `.agents/README.md`, §22, `.agents/B2_PPO_PLAN.md`,
+> `.agents/B2_PPO_REVIEW.md`, §20.4–20.7, `Experiments/INDEX.md`, then
+> §§13 and 17–18 as needed. Consult
 > `docs/superpowers/specs/2026-07-11-ppo-safety-first-bplus-v2.2.md` only as
 > historical technical provenance. Verify live local/remote state before acting. The
 > remote Codex goal is revoked and must not be resumed. D2/D2R retain their
-> original failed gates; the project owner prospectively made TTC diagnostic
-> only for v2.2. Full-non-test sidecar initialization, fitted-checkpoint
-> identity and the amended Task 6 empirical-prior remediation have passed.
-> The first smoke remains FAILED and immutable; the new three-arm checkpoints
-> pass all recall/BCE/specificity bars and independent validation. Stop and
-> report before Tasks 7/8 or PPO, as the owner required. No arm has been
-> selected, no sixth probe is authorized, and no commit or push is implied.
-> Latest numerical state is §18.13: the hierarchical replacement fresh identity passed,
-> but replacement Task 6 failed its unchanged recall/type bars. Task 9/10/PPO
-> were not run. §19 documents the proposed BC-direct PPO redirect, but does
-> not itself authorize a numerical run. Do not use older checkpoint
-> eligibility text to proceed.
+> original failed gates; TTC is prospectively diagnostic-only for the policy
+> phase. B1 Task 10 failed, and the latest numerical result is the hierarchical
+> replacement Task 6 failure in §18.13; no full B+ PPO iteration, arm selection,
+> D2-test opening or fresh-pool result exists. B2 is now owner-authorized and
+> implemented through local P0/P1/one-episode P3 smoke; the full six-learner
+> pilot has not started. Execution must use §22's clean-commit immutable
+> RunPlan and isolated local/remote roots, never the stale remote worktree.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -1531,3 +1528,421 @@ spec's real causal question (does a trainable risk sidecar help?) in the same ru
 
 **The plan requires owner approval before execution**, because it pauses the
 warm-start track that Codex is currently waiting to re-run.
+
+## 21. Codex chat continuation record: work, failures, fixes, and next-chat guidance (2026-07-12)
+
+This section records the Codex-controlled chat that led into Claude's §20
+repository restructure. It is the newest handoff section. Where wording here
+narrows an older claim, use this section; it changes no frozen experimental
+result and authorizes no numerical run.
+
+### 21.1 What this chat was asked to do
+
+The owner first required Codex to read the live handoff rather than use stale
+memory, determine the real PPO-development state, synchronize essential
+context to the remote, and write an unattended remote goal. The owner then
+revoked that unattended authority, made the primary Codex agent responsible,
+and fixed the active SSH endpoint at `haowei@192.168.2.127`.
+
+The chat subsequently became an audit-and-execution loop: the owner relayed
+Claude reviews, Codex checked them against code/artifacts, implemented approved
+prospective amendments, ran the next authorized stage, and stopped at each
+failed gate. Finally the owner questioned why no PPO was being optimized,
+redirected attention to a BC-direct PPO pilot, and requested repository/log
+consolidation. Claude then performed the larger §20 restructure.
+
+Important authority boundary: §20.4 is now the newest run policy, but it was
+created after the earlier remote-only work. Do not infer that the restructured
+branch or `Experiments/` tree is already present on the remote; verify before
+using `./run.sh split`.
+
+### 21.2 Work completed in this chat
+
+#### A. Restored the product objective as the decision target
+
+Codex accepted the owner-approved prospective TTC override and v2.2 redirect:
+
+- D2 and D2R-G remain **FAILED under their original gates**;
+- TTC is diagnostic-only for the policy phase;
+- D2.5's `67/91` means a fixed bounded library produced confirmed-safe-pass
+  witnesses on 67 tested non-test BC ego-collision cases — not a theoretical
+  ceiling, full-population rate, or expected PPO RR;
+- the policy decision must be lexicographic: overtake feasibility first,
+  collision reduction second.
+
+The three arms were frozen as A (BC features), B (frozen risk sidecar), and C
+(fine-tuned sidecar). Codex also reconciled the development overtake tolerance
+with code, bounded the dual to `[0,3]`, initialized it at `1.0`, delayed its
+first update until 32 completed episodes, and documented that early dual lag
+or oscillation is diagnostic rather than an automatic arm failure.
+
+#### B. Built and executed the v2.2 pre-PPO staircase
+
+The detailed numerical releases are already recorded in §§18.5–18.13 and now
+live under `Experiments/B1_route_r2_scaffold/artifacts/`. The chat produced or
+audited the following chain:
+
+1. fresh zero-residual identity passed;
+2. one full-non-test sidecar initialization was fitted and checkpoint-backed
+   identity passed;
+3. the first Task-6 warm-start completed but had deterministic gate recall 0;
+4. the owner-approved two-phase initialization amendment preserved fresh
+   `-6.0`, re-initialized only at warm-start fit time, preserved the first
+   release as FAILED, and produced a replacement Task-6 PASS;
+5. Tasks 7–9 structural/outcome/checkpoint gates passed;
+6. Task 10 evaluated 288 development scenarios with nonzero residuals and
+   **FAILED**: every arm created more collisions than it fixed and lost more
+   overtakes than it gained; no PPO started;
+7. the action path was rewritten hierarchically so NO_OP gates both steer and
+   brake and physical composition is bound-preserving at every 100 Hz step;
+8. fresh hierarchical identity passed, but replacement Task 6 failed with
+   `0/9` positive episodes and `0/39` positive macros above the negative-only
+   thresholds; replacement Task 9/10 and PPO were not run.
+
+Latest substantive release:
+`Experiments/B1_route_r2_scaffold/artifacts/hierarchical_warmstart_20260712_160212`.
+It is integrity-valid and acceptance-FAILED. No checkpoint from it is
+PPO-eligible under the old warm-start staircase.
+
+#### C. Audited Claude's review claims instead of accepting them wholesale
+
+The chat agreed with several Claude findings: overtake had been absent from
+the D2/D2R evidence keys; Task 10 exposed excessive braking, ungated steering,
+and action clipping; warm-start should not rank arms; development data provides
+no policy-generalization evidence; and a direct KPI experiment is overdue.
+
+It also corrected important overstatements:
+
+- the TTC gate was approved in the original spec, even though the owner later
+  overrode it prospectively;
+- risk decodability does not prove perception is not a PPO bottleneck;
+- the monotone T1/T2/D2R pattern is not a clean freezing ablation;
+- the fold-4 positive raw-logit ranges `0.027/0.636/1.162` do not by
+  themselves prove useful input dependence; the corresponding calibration
+  episode-max ranking was in the wrong direction;
+- the negative-only threshold rule guarantees `false_intervention <= 7/75`,
+  not mathematically “exactly 7” when ties occur; the observed release had 7;
+- the natural-schedule failure supports exposure sparsity, batch variance and
+  coupled optimization problems, but does not uniquely prove “data shortage”;
+- the repository has a historical `train_ppo.py`; what is missing is the
+  **B+ v2.2 runner** connecting hierarchical actions, executed-action
+  log-probability, multi-objective GAE, dual updates, releases and paired KPI
+  evaluation.
+
+These corrections should also be kept in mind when reading the stronger prose
+in §20 and `.agents/README.md`.
+
+#### D. Clarified why BC-direct PPO is possible
+
+BC is still the driving policy. Fresh residual initialization is NO_OP and
+therefore behaviorally identical to BC. Supervised warm-start was only an
+attempt to improve exploration before PPO; it is not a theoretical
+prerequisite.
+
+Codex's recommended simplification is:
+
+- keep `INITIAL_INTERVENTION_LOGIT=-6.0` unchanged for fresh identity;
+- introduce exploration only in the stochastic **training behavior
+  distribution**, not by silently changing the model's identity constant;
+- ensure sampled action, executed action and stored log-probability describe
+  the same distribution and bound-preserving action;
+- evaluate deterministic snapshots directly on collision and corrected
+  overtake outcomes;
+- keep TTC/warning/warm-start metrics diagnostic-only.
+
+The proposed B2 plan now exists at
+`docs/superpowers/plans/2026-07-12-ppo-pilot-bc-direct.md`, but it still needs
+owner approval and an implementation/API audit before GPU execution. The
+registered B2 jobs are intentionally blocked because
+`bplus_v22/exploration.py` and the B+ PPO runner do not yet exist.
+
+#### E. Consolidated local records before Claude's larger restructure
+
+Codex first performed a conservative Tier-3 organization: canonical paths and
+all substantive FAILED releases were retained, legacy runs/reports/reviews and
+superseded intermediates were classified, five canonical manifests
+self-checked, and 33 standalone tests passed before the later move. During
+that work a concurrent process switched branches and created commits; Codex
+detected this via reflog, did not reset or overwrite the shared worktree, and
+reported it.
+
+Claude subsequently superseded that layout with §20's `Experiments/` scheme.
+Current branch/HEAD at the time this section was written:
+
+- branch: `chore/commit-evidence-pipeline`;
+- HEAD: `c1a22b601b32a757da321e0761350c601cc0f794`;
+- 11 commits after `32661d2`;
+- worktree was clean before this handoff edit.
+
+No large local archive was deleted. `Experiments/_archive/eval_results/` and
+`Experiments/_archive/models/` remain owner-protected local-only history.
+
+### 21.3 Problems encountered and how they were handled
+
+#### Problem 1 — proxy gates displaced the deliverable
+
+The work spent multiple stages proving TTC or supervised imitation properties
+while no v2.2 PPO candidate was evaluated against the product gate. Resolution:
+the owner prospectively made TTC diagnostic and the proposed next experiment
+returns to collision/overtake KPI. Historical failures remain unchanged.
+
+#### Problem 2 — one initialization constant served incompatible phases
+
+Fresh `-6.0` was load-bearing for natural-NO_OP identity but unusable as the
+warm-start fit prior. Resolution: keep the fresh constant byte-for-byte and
+apply empirical-prior re-initialization only at fit start. Existing identity
+evidence survived; the earlier Task-6 release remained FAILED.
+
+#### Problem 3 — step-level warm-start metrics hid closed-loop harm
+
+Task 6 could pass while Task 10 braked nearly everywhere, applied steering on
+NO_OP decisions, clipped composed actions, created new collisions and lost
+overtakes. Resolution: treat Task 6 as mechanics-only, add closed-loop
+transition accounting, gate both physical channels, and use per-micro-step
+bound-preserving composition. PPO stayed blocked.
+
+#### Problem 4 — the replacement schedule swung to the opposite extreme
+
+The first schedule encoded an artificial high intervention prior; the natural
+schedule produced only 1,502 intervention draws over 262,144 samples and 231
+zero-positive batches. Resolution: diagnose rather than rank arms. A balanced
+schedule was designed but **never implemented or rerun**, because the owner
+then questioned the value of continuing warm-start and redirected toward PPO.
+
+#### Problem 5 — cleanup started before the owner finished reviewing scope
+
+Codex initially created cleanup drafts and removed two non-evidence documents
+before the owner said to pause. It stopped immediately, disclosed the exact
+changes, performed no bulk deletion, and waited for Tier-3 approval. After
+approval it used conservative moves/indices rather than deleting experiment
+bytes. Claude later completed the larger owner-approved restructure.
+
+#### Problem 6 — shared-workspace state changed concurrently
+
+While Codex was organizing ignored logs, another process switched branches and
+created commits. Resolution: inspect reflog/status, preserve the new commits,
+avoid reset/checkout, and base subsequent documentation on the observed HEAD.
+
+#### Problem 7 — moving immutable releases breaks path-based validators
+
+Claude's later move to `Experiments/` preserved artifact bytes but invalidated
+old absolute/relative path resolution frozen inside release configs. The owner
+accepted this tradeoff. Content manifests, BC hash and test seal were checked;
+current expected test status is 32/33, with the hierarchical warm-start path
+test expected to fail. Do not “repair” immutable historical JSON just to make
+old path validators green.
+
+### 21.4 Temporary Codex sub-agents used in this chat
+
+Three named tasks appeared during the reasoning phase:
+
+- `balanced_schedule_audit` — read-only audit of exact class counts and a
+  deterministic balanced batch proposal;
+- `auc_diagnostic_audit` — read-only audit of what the reported logit ranges
+  actually measured and how to define fit episode-max AUC;
+- `warmstart_v2_code_audit` — intended read-only code-boundary audit, stopped
+  before producing a result when the owner requested analysis-only.
+
+These were **Codex platform collaboration sub-agents**, created for bounded
+parallel read-only checks. They were not Superpowers skills, plugins, Claude
+agents, or independent external authorities. Balanced/AUC results informed
+the audit, but no balanced-schedule code or experiment was run. The main agent
+retained responsibility for the conclusions.
+
+The unused schedule proposal was 256 examples per batch:
+64 witness-NO_OP, 64 preservation-NO_OP, 64 steer-only, 32 brake-only and
+32 combined, with `pos_weight=1`. It is historical design input only and must
+not be executed without a new owner decision.
+
+### 21.5 Exact state handed to the next chat
+
+- Scientific latest state: hierarchical replacement Task 6 FAILED; no B+
+  PPO iteration, arm selection, D2 test opening or fresh-pool result.
+- Repository latest state: Claude's `Experiments/` restructure and `.agents/`
+  contract at branch `chore/commit-evidence-pipeline`, HEAD `c1a22b6` before
+  this edit.
+- Current B1 evidence: `Experiments/B1_route_r2_scaffold/`.
+- Current registry/evidence rounds: `Experiments/A0_*` through `A5_*`.
+- B2 is planned, not implemented: `Experiments/B2_ppo_pilot` jobs refer to
+  missing code and must fail closed before GPU use.
+- D2 test seal remains unopened; do not use it for development.
+- Old release content is retained, but old path-resolving validators are not
+  expected to work after migration.
+- Remote restructure/sync state has not been verified in this final handoff
+  step. Check it before any split/local+remote execution.
+
+### 21.6 Recommendation for the next chat
+
+1. Read `.agents/README.md`, this §21, `Experiments/INDEX.md`,
+   `docs/EXPERIMENT_RECORD.md`, and the B2 plan. Treat older handoff sections
+   as provenance.
+2. Ask for or confirm explicit owner approval of the BC-direct B2 pilot before
+   implementing or running it. Do not silently interpret discussion as GPU-run
+   authorization.
+3. Before coding, audit the plan against live APIs and simplify it where a
+   proposed intermediate gate does not protect action/log-probability integrity
+   or the lexicographic product KPI.
+4. Preserve fresh `-6.0`. Exploration must be a declared training behavior
+   distribution and must be included in PPO log-probability/ratio accounting.
+5. Implement the smallest B+ runner that closes the loop: rollout → exact
+   hierarchical sample/execution ledger → multi-objective advantages → PPO
+   update → deterministic paired collision/overtake evaluation.
+6. Use only the minimum blocking preflights: BC identity, bound-preserving
+   composition/no hidden clipping, and sampled/executed/logged-action
+   consistency. Keep TTC and warm-start diagnostics nonblocking.
+7. Dry-run every job with `./run.sh show` or `./run.sh split ... --dry-run`.
+   Verify the remote branch and new `Experiments/` paths before launching.
+8. Follow §20.4's current throughput policy only after validation: roughly
+   one shard local and three remote, never duplicate shards as routine
+   cross-device checking.
+9. Do not delete `Experiments/_archive/`, rewrite frozen historical releases,
+   reopen warm-start balanced scheduling, or open the D2/fresh pool unless the
+   owner explicitly changes scope.
+10. Lead every report with the actual product outcome: corrected overtake
+    feasibility, then collision RR/paired transitions. Integrity and proxy
+    diagnostics are supporting evidence, never substitutes.
+
+## 22. B2 managed implementation checkpoint (2026-07-12)
+
+This section supersedes §21.6 items 2 and 7 for B2. The owner explicitly
+authorized Codex to manage B2 implementation, audit, the frozen pilot, and
+evidence-supported post-B2 optimization. It does not authorize D2-test/final-
+pool opening or a return to TTC/warm-start proxy work.
+
+### 22.1 Plan and independent review
+
+- The previously referenced
+  `docs/superpowers/plans/2026-07-12-ppo-pilot-bc-direct.md` never existed.
+- The live approved plan is `.agents/B2_PPO_PLAN.md`.
+- The independent review is `.agents/B2_PPO_REVIEW.md`.
+- Claude Code was invoked read-only with `--model opus --effort max`; the
+  actual serving model reported `claude-opus-4-8`. Verdict:
+  `APPROVE_WITH_BLOCKING_FIXES`.
+- The plan now directly trains PPO and evaluates corrected overtake first,
+  any-agent collision second. No exploration sweep, TTC gate, third
+  warm-start, or product-outcome proxy selector remains.
+
+The review found standard Bernoulli mode (`raw logit > 0`) unreachable from
+fresh `-6` in a 20-iteration clipped-PPO pilot. The prospective primary
+deployment contract is therefore centered and frozen before outcomes:
+
+```text
+INTERVENE iff raw learned top logit > fresh -6
+BRAKE iff intervening and raw learned brake logit > fresh -6
+strict equality is NO_OP; behavior offsets are zero at evaluation
+```
+
+Fresh identity remains BC. Standard `logit>0` mode is diagnostic-only.
+
+Training uses 16 complete episodes per iteration, fixed per seed and shared by
+A/B/C: 8 from the 81 opened BC-collision Task-8 training rows and 8 from the
+remaining 1,559. Across 20 iterations this gives 160 collision-bearing
+scenario exposures instead of approximately 14 naturally sampled collision
+events. Labels only select the curriculum; they never enter actor/critic
+inputs. The 288-row development panel is unchanged.
+
+Other frozen review fixes: explicit nonpersistent top+conditional-brake
+behavior offsets; steer sampling scale 0.1; keyed four-component action noise;
+two-head B2-only replay/critics; full-episode terminal signals; Adam,
+minibatch=128, three epochs; head LR 3e-4; collision-scale EMA 0.99 updated only
+by event-bearing rollouts; dual fixed at 1 while offsets are nonzero and then
+updated once per iteration; safe isolated remote staging.
+
+### 22.2 Code implemented at this checkpoint
+
+New B2 modules:
+
+- `bplus_v22/exploration.py`
+- `bplus_v22/ppo_env.py`
+- `bplus_v22/ppo_buffer.py`
+- `bplus_v22/ppo.py`
+- `bplus_v22/ppo_runner.py`
+- `bplus_v22/ppo_eval.py`
+
+Modified integration:
+
+- `bplus_v22/remediated_model.py`: explicit behavior distribution, keyed
+  sampling, centered deterministic action and disjoint optimizer groups;
+- `bplus_v22/cli.py`: capabilities, `ppo-pilot`, `ppo-evaluate`,
+  `ppo-merge-eval`;
+- `Experiments/runner.py` / `run.sh`: immutable RunPlan lifecycle; fake B2
+  jobs and unsafe generic `run/split` removed;
+- `.agents/README.md` and `Experiments/INDEX.md`: live paths and run policy.
+
+The runner never mutates the stale dirty remote repository. A clean committed
+tree is archived once and staged on both hosts under:
+
+```text
+/home/haowei/end2race_runs/<run_id>/{repo,inputs,outputs,cache,control}
+```
+
+Only BC, sidecar release, corrected Task-8 release, and opened D2 episode
+metadata are staged. Learners are complete seed queues: seed0 remote A/B/C
+sequential, seed1 local A/B/C sequential, one learner per GPU. Evaluation is
+the only sharded phase: local physical-row shard0; remote shards1–3 sequential;
+merge requires exactly `288 x 7 = 2016` paired rows.
+
+### 22.3 Verification already performed
+
+- 40 standalone test programs exist. 39 pass. The sole failure is the known
+  migrated historical `test_bplus_v22_hierarchical_warmstart.py` absolute/source
+  release validation described in §21.3 problem 7; it is not a B2 regression.
+- All new exploration, env/curriculum, replay, PPO, checkpoint, evaluator and
+  control-plane tests pass.
+- Real local RTX-3080 Austin P0: fresh centered A/B/C each produced exact BC
+  arrays/outcomes, 3/3 paired candidates, zero primary interventions.
+- Real stochastic P1 on one opened BC-collision scenario: 651 microsteps / 66
+  macros, 11 intervention macros, 4 brake macros, zero external clipping;
+  serialized old log-prob and entropy replayed bit-exactly.
+- Real one-episode P3 update: 66 macros, three PPO updates, finite losses, no KL
+  early stop, frozen-policy invariants held. Its collision/overtake outcome was
+  not used for selection or schedule changes.
+- No D2 seal/final pool was opened. No full B2 learner or iteration-20
+  development evaluation has run yet at this checkpoint.
+
+### 22.4 Immediate continuation
+
+1. Complete code review and fix any integration regressions.
+2. Commit the exact B2 source/docs/tests so `git archive` can pin it.
+3. Query remote GPU identity; create/show/dry-run the immutable RunPlan.
+4. Stage to both isolated roots and pass source/input/module/GPU/DISPLAY/CLI
+   preflight. Never sync the dirty remote worktree.
+5. Run the frozen four-scenario all-arm plumbing smoke without outcome-based
+   tuning.
+6. Execute all six 20-iteration learners. Do not filter by seed0.
+7. Freeze iteration-20 checkpoints, run the 288x7 paired evaluation, merge, and
+   lead the report with corrected overtake feasibility then collision RR.
+8. Continue only with an evidence-supported direct-KPI experiment; do not
+   return to warm-start/TTC proxy work.
+
+### 22.5 Pre-GPU implementation audit closure
+
+The internal audits and a second read-only `claude-opus-4-8` / max review found
+and prospectively fixed the remaining implementation blockers before any B2
+learner ran:
+
+- complete-rollout actor advantages now remain fixed across minibatches and a
+  singleton tail batch is covered by a real update regression;
+- every iteration persists the full macro replay/evidence ledger;
+- explicit resume consumes verified scenario/RNG/dual/critic/optimizer/update
+  cursors and can recover a torn ledger tail or an unpublished iteration;
+- training/eval COMPLETE envelopes and checkpoint-to-parent-RunPlan binding are
+  fail-closed;
+- the exact 288x7 merge now enforces the frozen 24/138 BC result and reports
+  per-seed/pooled lexicographic KPI verdicts, slices and L4 bootstrap;
+- production batch=1 collection versus batched float32 replay uses a frozen
+  `max |delta log_prob|`/`max |delta entropy| <= 1e-4` integrity bound rather
+  than impossible cross-shape bitwise equality. Measured perturbed-policy drift
+  was `1.03e-5` CPU and `8.11e-6` CUDA; the production-shaped test requires a
+  nonzero in-bound drift and separately proves a wrong offset is rejected;
+- before six learners, one local BC-only 288-row preflight must reproduce
+  exactly 24 any-agent collisions and 138 corrected overtakes; its marker is
+  bound to the RunPlan/source and required by both host preflights.
+
+The Opus follow-up verdict is `GO_FOR_STAGING`; full details are in
+`.agents/B2_IMPLEMENTATION_REVIEW.md`. No B2 learner or 288x7 candidate
+evaluation has run at this checkpoint. The local GPU was idle and identified
+as `GPU-f97ed85d-28b4-b599-30e5-2bbbcead8475`. The fixed remote endpoint was
+temporarily unreachable (`No route to host`) during the final local audit, so
+its live GPU UUID and staging state still must be checked; never substitute the
+old dirty remote worktree or silently change the two-host seed topology.

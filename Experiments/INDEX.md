@@ -27,7 +27,7 @@
 | 编号 | 原路径 | 内容 | 状态 |
 |---|---|---|---|
 | `B1_route_r2_scaffold` | `logs/bplus_v22_d3r2_20260711` | v2.2 支架：层级动作、identity 门、warm-start、闭环评估（Task 1–10） | Task 10 **FAILED**；warm-start 两次失败 |
-| `B2_ppo_pilot` | — | PPO 训练循环 + 三臂 pilot（BC-direct 探索） | **未开始**，计划见 `docs/superpowers/plans/2026-07-12-ppo-pilot-bc-direct.md` |
+| `B2_ppo_pilot` | — | B+ v2.2 PPO 接线 + 三臂 BC-direct pilot | **实现/preflight 中**；owner 已授权 managed B2，计划见 `.agents/B2_PPO_PLAN.md`，Opus审计见 `.agents/B2_PPO_REVIEW.md` |
 
 ## C 轮 — 预留
 
@@ -78,13 +78,20 @@
 
 ## 怎么跑实验
 
-不要手敲 ssh 命令。所有批量/托管运行都在 `Experiments/runner.py` 里声明为 Job，用仓库根的 `run.sh` 执行：
+不要手敲 ssh 命令。B2 由 `Experiments/runner.py` 生成不可变 RunPlan，再用
+仓库根的 `run.sh` 分阶段执行：
 
 ```bash
-./run.sh list                    # 列出所有 job
-./run.sh show b2-ppo-pilot-seed0 # 只打印命令，不执行
-./run.sh run  b2-ppo-pilot-seed0 # 在远端 GPU 上跑
-./run.sh run  <job> --local      # 在本地跑
+./run.sh plan ...                 # 从 clean commit 生成冻结 plan/source/input bundles
+./run.sh show <plan.json>         # 只打印，不执行
+./run.sh stage <plan.json> --all-hosts --dry-run
+./run.sh baseline-preflight <plan.json> --dry-run  # BC-only 288 rows, expect 24/138
+./run.sh preflight <plan.json> --all-hosts --dry-run
+./run.sh execute <plan.json> --all-hosts
+./run.sh resume <plan.json> --host <local|remote>  # only after an interrupted learner queue
+./run.sh status <plan.json> --all-hosts
+./run.sh collect <plan.json>
 ```
 
-新增托管工作时**在 `runner.py` 里加 Job**，不要写成散落的 shell 命令——一个 job 应该在烧 GPU 之前就可以被审阅。
+旧 `run <job>` / `split <job>` 与 B2 占位 job 已删除。learner 按完整 seed queue
+运行；只有冻结 checkpoint 的 evaluation 才能按 scenario shard。
