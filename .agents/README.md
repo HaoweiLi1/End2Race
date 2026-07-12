@@ -140,14 +140,20 @@ ssh haowei@192.168.2.127
 ```bash
 ./run.sh plan ...                 # 生成一次、不可覆盖的计划
 ./run.sh show <plan.json>         # 只打印冻结命令
-./run.sh stage <plan.json>        # 两端仓库外隔离部署
+./run.sh stage <plan.json> --all-hosts # 两端仓库外隔离部署
 ./run.sh baseline-preflight <plan.json> # 本地先重放 BC 288 行并锁死 24/138
-./run.sh preflight <plan.json>    # source/input/env/GPU/CLI fail-closed
-./run.sh execute <plan.json>      # 只消费同一计划
-./run.sh resume <plan.json>       # 仅从已验证的完整 iteration 边界显式恢复
-./run.sh status <plan.json>       # 状态
+./run.sh preflight <plan.json> --all-hosts # source/input/env/GPU/CLI fail-closed
+./run.sh plumbing-smoke <plan.json> # 四图×三臂各一次短更新，只验证接线
+./run.sh execute <plan.json> --all-hosts # 只消费同一计划
+./run.sh resume <plan.json> --host <local|remote> # 仅从完整 iteration 边界显式恢复
+./run.sh status <plan.json> --all-hosts # 状态
 ./run.sh collect <plan.json>      # 本地/远端结果回收并重验 COMPLETE envelope
 ```
+
+`plumbing-smoke` 会在三臂接线均通过后原子发布两端相同的 `READY.json`。
+learner 只接受 READY 所绑定的 RunPlan/source/input/baseline/P3 哈希，并在
+GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺少 READY
+也会 fail-closed。READY 不得手工创建或编辑。
 
 **新增托管工作 → 在 `runner.py` 里加 Job，不要写成 shell 单行命令。** 一个 job 应该在烧 GPU 之前就能被审阅、被 dry-run。
 
@@ -184,3 +190,6 @@ ssh haowei@192.168.2.127
   collision RR 与 corrected overtake。Claude Code `claude-opus-4-8` / max 的
   设计审计与实现复核分别记录在 `.agents/B2_PPO_REVIEW.md`、
   `.agents/B2_IMPLEMENTATION_REVIEW.md`。
+- 当前固定远端 `haowei@192.168.2.127` 不可达，尚未取得 live remote GPU UUID，
+  因而没有创建 RunPlan、没有运行 P3 或 learner。不得填占位 UUID，也不得改用
+  远端旧 worktree；主机恢复后从隔离 staging 流程继续。

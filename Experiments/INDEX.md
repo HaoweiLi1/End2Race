@@ -87,11 +87,16 @@
 ./run.sh stage <plan.json> --all-hosts --dry-run
 ./run.sh baseline-preflight <plan.json> --dry-run  # BC-only 288 rows, expect 24/138
 ./run.sh preflight <plan.json> --all-hosts --dry-run
+./run.sh plumbing-smoke <plan.json> --dry-run
 ./run.sh execute <plan.json> --all-hosts
 ./run.sh resume <plan.json> --host <local|remote>  # only after an interrupted learner queue
 ./run.sh status <plan.json> --all-hosts
 ./run.sh collect <plan.json>
 ```
+
+`plumbing-smoke` 通过后会生成并同步相同的 `READY.json`；`execute/resume`
+在 GPU lock 内重验完整 staged source、runtime inputs 与 READY 所绑定的
+BC/P3 marker 后才会启动 learner。不要手工创建或修改 READY。
 
 旧 `run <job>` / `split <job>` 与 B2 占位 job 已删除。learner 按完整 seed queue
 运行；只有冻结 checkpoint 的 evaluation 才能按 scenario shard。

@@ -54,6 +54,7 @@ from bplus_v22.hierarchical_closed_loop import (
 from bplus_v22.ppo_runner import (
     CHECKPOINT_SCHEMA as B2_CHECKPOINT_SCHEMA,
     load_policy_only_checkpoint,
+    run_plumbing_smoke,
     run_pilot_job,
     validate_pilot_plan,
 )
@@ -75,6 +76,7 @@ B2_COMMANDS = (
     "ppo-pilot",
     "ppo-evaluate",
     "ppo-merge-eval",
+    "ppo-plumbing-smoke",
 )
 B2_RUN_PLAN_SCHEMA = "end2race-b2-run-plan-1"
 
@@ -232,6 +234,28 @@ def run_bc_baseline_preflight(
     }
 
 
+def run_plumbing_smoke_release(
+    plan_path: str | Path,
+    output_path: str | Path,
+    device_name: str = "cuda:0",
+) -> dict:
+    result = run_plumbing_smoke(plan_path, device_name=device_name)
+    output = Path(output_path)
+    partial = output.with_suffix(output.suffix + ".partial")
+    if output.exists() or partial.exists():
+        raise FileExistsError(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    partial.write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    os.replace(partial, output)
+    return {
+        "passed": True,
+        "arm_count": len(result["arms"]),
+        "scenario_count_per_arm": 4,
+    }
+
+
 def _write_tsv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, delimiter="\t", fieldnames=fieldnames, lineterminator="\n")
@@ -383,6 +407,10 @@ def parse_args():
     ppo_baseline.add_argument("--run-plan", required=True)
     ppo_baseline.add_argument("--output", required=True)
     ppo_baseline.add_argument("--device", default="cuda:0")
+    ppo_plumbing = sub.add_parser("ppo-plumbing-smoke")
+    ppo_plumbing.add_argument("--run-plan", required=True)
+    ppo_plumbing.add_argument("--output", required=True)
+    ppo_plumbing.add_argument("--device", default="cuda:0")
     ppo_pilot = sub.add_parser("ppo-pilot")
     ppo_pilot.add_argument("--run-plan", required=True)
     ppo_pilot.add_argument("--job-id")
@@ -569,6 +597,10 @@ def main() -> None:
         }
     elif args.command == "ppo-baseline-preflight":
         result = run_bc_baseline_preflight(
+            args.run_plan, args.output, device_name=args.device
+        )
+    elif args.command == "ppo-plumbing-smoke":
+        result = run_plumbing_smoke_release(
             args.run_plan, args.output, device_name=args.device
         )
     elif args.command == "ppo-pilot":

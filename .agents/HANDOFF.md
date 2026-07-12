@@ -1946,3 +1946,62 @@ as `GPU-f97ed85d-28b4-b599-30e5-2bbbcead8475`. The fixed remote endpoint was
 temporarily unreachable (`No route to host`) during the final local audit, so
 its live GPU UUID and staging state still must be checked; never substitute the
 old dirty remote worktree or silently change the two-host seed topology.
+
+### 22.6 P3/control-plane hardening before the first immutable RunPlan
+
+The audited B2 implementation was committed locally as
+`9a75fc0ae012a559b989e714df374a480c56f32f`. No RunPlan or learner was created
+from that commit because the fixed remote endpoint remained unreachable and
+its real GPU UUID could not be observed. A placeholder UUID is forbidden.
+
+Before any P3 run, the plan and control plane were prospectively tightened:
+
+- live P3 now means four maps x all three arms, production-shaped
+  collect→replay→one finite update, with boolean proof that intervention,
+  steer-only and joint-brake branches were all exercised;
+- checkpoint/resume is not redundantly re-tested by four live scenarios. It
+  remains a blocking production-shaped interrupted-vs-uninterrupted regression;
+- P3 necessarily consumes frozen terminal signals inside its update, but its
+  public marker serializes no product outcome, rate, trajectory length,
+  minibatch count or early-stop behavior and performs no arm selection;
+- baseline evidence is semantically bound to the frozen 288-row Task-8
+  manifest and BC checkpoint, with exact row order/L2/L4/map identities,
+  trajectory hashes, typed outcome fields and recomputed 24/138 totals;
+- P3 evidence is bound to the frozen training manifest, BC, sidecar, D2
+  metadata and the exact first physical training row for each of four maps;
+- valid local baseline/P3 markers can be reused after a transfer interruption;
+  uncommitted partials are numbered and preserved; remote markers are validated
+  before atomic install and an existing different final marker is never
+  overwritten;
+- after P3, one identical two-host `READY.json` binds the RunPlan, source/input
+  archives and exact baseline/P3 marker hashes; execute/resume re-hash the full
+  extracted tracked source tree and every runtime input under the GPU lock and
+  re-probe the pinned Python/package environment and GPU under the lock. The
+  `ppo-pilot` CLI itself also refuses to start without READY;
+- `show` prints the only valid phase order: stage both → BC baseline → preflight
+  both → P3 → execute both → explicit resume only on failure → status → collect;
+- collection fetches and validates both COMPLETE status/event ledgers before
+  copying large outputs, collects both STAGED/preflight markers and both copies
+  of the shared baseline/P3 gates, requires the shared copies to be byte-equal,
+  and quarantines a failed `.partial` before a clean retry.
+
+The full standalone matrix was rerun after these changes: 39/40 programs pass.
+The only failure remains the known migrated immutable-path
+`test_bplus_v22_hierarchical_warmstart.py`; all B2/P3/control-plane tests pass.
+No simulator, P3, learner, candidate evaluation, D2-test opening or product KPI
+measurement was performed by this hardening step.
+
+Three read-only Opus/max passes and two Codex adversarial follow-ups are closed
+in `.agents/B2_IMPLEMENTATION_REVIEW.md` §7. The final Opus verdict is
+`GO_FOR_COMMIT`; both Codex follow-ups independently returned GO. The reviews
+first found and then verified closure of vacuous sentinel, staged-tree drift,
+cross-host marker divergence, hardlink/symlink, scalar-alias, collection retry
+and live environment-drift failures.
+
+Repeated read-only network checks at the fixed address
+`haowei@192.168.2.127` returned `No route to host` or timeout, with the neighbor
+entry `INCOMPLETE/FAILED`. Repository history contains no trusted remote GPU
+UUID. When the host returns, the next legal sequence is: observe the live UUID
+and environment → create the RunPlan from the then-clean committed HEAD →
+show/dry-run → isolated two-host stage → 288-row BC baseline → both preflights →
+P3 → six frozen learners. Never run from or modify the stale remote checkout.

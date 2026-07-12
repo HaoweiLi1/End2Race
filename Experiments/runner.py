@@ -14,6 +14,7 @@ The public workflow is deliberately split into reviewable phases::
     ./run.sh stage PLAN --all-hosts [--dry-run]
     ./run.sh baseline-preflight PLAN [--dry-run]
     ./run.sh preflight PLAN --all-hosts [--dry-run]
+    ./run.sh plumbing-smoke PLAN [--dry-run]
     ./run.sh execute PLAN --all-hosts [--dry-run]
     ./run.sh resume PLAN --host <local|remote> [--dry-run]
     ./run.sh status PLAN --all-hosts [--dry-run]
@@ -88,6 +89,7 @@ REQUIRED_TRAIN_CLI = (
     "ppo-pilot",
     "ppo-evaluate",
     "ppo-merge-eval",
+    "ppo-plumbing-smoke",
 )
 MODULE_PATH_CONTRACT = (
     "bplus_v22",
@@ -534,6 +536,16 @@ print(json.dumps(result, sort_keys=True))
     return {str(key): str(item) for key, item in value.items()}
 
 
+def _assert_live_environment(host: HostSpec) -> dict[str, str]:
+    actual = _critical_environment(host.python)
+    if actual != host.expected_environment:
+        raise RunnerError(
+            f"critical environment drift for {host.host_id}: "
+            f"{actual} != {host.expected_environment}"
+        )
+    return actual
+
+
 def _default_hosts(
     run_id: str,
     local_gpu_uuid: str,
@@ -975,7 +987,7 @@ def _remote_stage_commands(plan_path: Path, plan: RunPlan, host: HostSpec) -> li
     root = host.stage_root
     source_target, inputs_target, plan_target = _archive_targets(host)
     prepare = (
-        f"umask 077; test ! -e {shlex.quote(root)}; "
+        f"set -eu; umask 077; test ! -e {shlex.quote(root)}; "
         f"mkdir -p {shlex.quote(root + '/control')} {shlex.quote(root + '/repo')} "
         f"{shlex.quote(root + '/inputs')} {shlex.quote(root + '/outputs')} "
         f"{shlex.quote(root + '/cache')} /home/haowei/.cache/end2race/locks"
@@ -1034,6 +1046,53 @@ def _verify_staged_files(plan: RunPlan, host: HostSpec) -> None:
             raise RunnerError(f"missing staged input: {path}")
         if path.stat().st_size != entry.size or _sha256_file(path) != entry.sha256:
             raise RunnerError(f"staged input digest mismatch: {path}")
+    if any(path.is_symlink() for path in (root / "inputs").rglob("*")):
+        raise RunnerError("symlink appeared in staged runtime inputs")
+    expected_inputs = {entry.relpath for entry in plan.inputs}
+    actual_inputs = {
+        path.relative_to(root / "inputs").as_posix()
+        for path in (root / "inputs").rglob("*")
+        if path.is_file() and not path.is_symlink()
+    }
+    if actual_inputs != expected_inputs:
+        raise RunnerError("staged runtime input inventory drift")
+
+
+def _verify_extracted_source_tree(root: Path) -> None:
+    """Bind every extracted tracked source byte to the already verified source tar."""
+
+    archive_path = root / "control/source.tar"
+    expected: dict[str, tuple[int, str]] = {}
+    with tarfile.open(archive_path, "r") as archive:
+        for member in archive.getmembers():
+            if member.isdir():
+                continue
+            relpath = _safe_relative(member.name).as_posix()
+            if not member.isfile() or relpath in expected:
+                raise RunnerError(f"unsupported/duplicate staged source member: {relpath}")
+            handle = archive.extractfile(member)
+            if handle is None:
+                raise RunnerError(f"cannot hash staged source member: {relpath}")
+            digest = hashlib.sha256()
+            size = 0
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+                size += len(chunk)
+            expected[relpath] = (size, digest.hexdigest())
+    repo = root / "repo"
+    if any(path.is_symlink() for path in repo.rglob("*")):
+        raise RunnerError("symlink appeared in staged extracted source")
+    actual_paths = {
+        path.relative_to(repo).as_posix(): path
+        for path in repo.rglob("*")
+        if path.is_file() and not path.is_symlink()
+    }
+    if set(actual_paths) != set(expected):
+        raise RunnerError("staged extracted source inventory drift")
+    for relpath, path in actual_paths.items():
+        size, digest = expected[relpath]
+        if path.stat().st_size != size or _sha256_file(path) != digest:
+            raise RunnerError(f"staged extracted source digest drift: {relpath}")
 
 
 def _make_inputs_read_only(root: Path) -> None:
@@ -1078,6 +1137,32 @@ def _preflight_command(plan: RunPlan, host: HostSpec) -> list[str]:
     return argv if host.kind == "local" else _ssh_argv(host, argv)
 
 
+def _stage_check_command(plan: RunPlan, host: HostSpec) -> list[str]:
+    root = PurePosixPath(host.stage_root)
+    argv = [
+        host.python,
+        str(root / "repo/Experiments/runner.py"),
+        "_check-stage-host",
+        str(root / "control/run_plan.json"),
+        "--host",
+        host.host_id,
+    ]
+    return argv if host.kind == "local" else _ssh_argv(host, argv)
+
+
+def _preflight_check_command(plan: RunPlan, host: HostSpec) -> list[str]:
+    root = PurePosixPath(host.stage_root)
+    argv = [
+        host.python,
+        str(root / "repo/Experiments/runner.py"),
+        "_check-preflight-host",
+        str(root / "control/run_plan.json"),
+        "--host",
+        host.host_id,
+    ]
+    return argv if host.kind == "local" else _ssh_argv(host, argv)
+
+
 def _baseline_command(plan: RunPlan) -> list[str]:
     host = _host(plan, "local")
     root = PurePosixPath(host.stage_root)
@@ -1092,23 +1177,115 @@ def _baseline_command(plan: RunPlan) -> list[str]:
     return ["flock", "-n", _lock_path(host), *inner]
 
 
+def _frozen_entry_sha256(
+    plan: RunPlan, relpath: str, *, source: bool = False
+) -> str:
+    entries = plan.source_inputs if source else plan.inputs
+    matches = [entry.sha256 for entry in entries if entry.relpath == relpath]
+    if len(matches) != 1 or not SHA256_RE.fullmatch(matches[0]):
+        raise RunnerError(f"run plan lacks one frozen input identity: {relpath}")
+    return matches[0]
+
+
+def _marker_manifest_path(root: Path, filename: str) -> Path:
+    candidates = (
+        root / "inputs/task8" / filename,
+        root / "control/input_contract" / filename,
+    )
+    matches = [path for path in candidates if path.is_file() and not path.is_symlink()]
+    if len(matches) != 1:
+        raise RunnerError(f"marker validation lacks one trusted Task-8 manifest: {filename}")
+    return matches[0]
+
+
+def _read_tsv_rows(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle, delimiter="\t"))
+
+
+def _lexists(path: Path) -> bool:
+    return path.exists() or path.is_symlink()
+
+
+def _quarantine_uncommitted_marker(path: Path) -> Path | None:
+    partial = path.with_suffix(path.suffix + ".partial")
+    if not _lexists(partial):
+        return None
+    if partial.is_symlink() or not partial.is_file():
+        raise RunnerError(f"unsafe marker partial: {partial}")
+    base = path.parent / "attempt_failures" / path.stem
+    base.mkdir(parents=True, exist_ok=True)
+    attempt = 1
+    while (base / f"attempt_{attempt:03d}").exists():
+        attempt += 1
+    target = base / f"attempt_{attempt:03d}"
+    target.mkdir()
+    os.replace(partial, target / partial.name)
+    (target / "reason.json").write_text(
+        json.dumps(
+            {
+                "schema": "end2race-uncommitted-marker-attempt-1",
+                "marker": path.name,
+                "quarantined_at": _now(),
+                "reason": "uncommitted_partial_found_before_explicit_retry",
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return target
+
+
+def _marker_transfer_commands(
+    plan: RunPlan, local_marker: Path, remote: HostSpec, kind: str
+) -> list[list[str]]:
+    if kind not in {"baseline", "plumbing", "ready"}:
+        raise RunnerError(f"unsupported marker transfer kind: {kind}")
+    root = PurePosixPath(remote.stage_root)
+    incoming = root / "control" / f".{kind}.{plan.plan_sha256}.incoming.json"
+    install = [
+        remote.python,
+        str(root / "repo/Experiments/runner.py"),
+        "_install-marker",
+        str(root / "control/run_plan.json"),
+        "--host",
+        "remote",
+        "--kind",
+        kind,
+        "--source",
+        str(incoming),
+    ]
+    return [
+        [
+            "rsync",
+            "-a",
+            "--protect-args",
+            str(local_marker),
+            f"{remote.ssh_host}:{incoming}",
+        ],
+        _ssh_argv(remote, install),
+    ]
+
+
 def baseline_preflight(plan: RunPlan, dry_run: bool) -> int:
     if plan.kind != "b2_train":
         raise RunnerError("BC baseline preflight requires a B2 training plan")
     local = _host(plan, "local")
     remote = _host(plan, "remote")
     local_marker = Path(local.stage_root) / "control/bc_baseline_preflight.json"
-    remote_marker = f"{remote.stage_root}/control/bc_baseline_preflight.json"
-    commands = [
-        _baseline_command(plan),
-        [
-            "rsync",
-            "-a",
-            "--protect-args",
-            str(local_marker),
-            f"{remote.ssh_host}:{remote_marker}",
-        ],
+    commands: list[list[str]] = [
+        _stage_check_command(plan, local),
+        _stage_check_command(plan, remote),
     ]
+    if dry_run or not _lexists(local_marker):
+        if not dry_run:
+            _quarantine_uncommitted_marker(local_marker)
+        commands.append(_baseline_command(plan))
+    else:
+        _validate_baseline_marker(plan, Path(local.stage_root))
+    commands.extend(_marker_transfer_commands(plan, local_marker, remote, "baseline"))
     for command in commands:
         code = _run_command(command, dry_run=dry_run)
         if code:
@@ -1116,23 +1293,117 @@ def baseline_preflight(plan: RunPlan, dry_run: bool) -> int:
     return 0
 
 
-def _validate_baseline_marker(plan: RunPlan, root: Path) -> dict[str, Any]:
-    path = root / "control/bc_baseline_preflight.json"
-    if not path.is_file() or path.is_symlink():
+def _validate_baseline_marker(
+    plan: RunPlan, root: Path, marker_path: Path | None = None
+) -> dict[str, Any]:
+    path = marker_path or root / "control/bc_baseline_preflight.json"
+    if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
         raise RunnerError("BC baseline preflight marker is missing")
     value = json.loads(path.read_text(encoding="utf-8"))
+    expected_keys = {
+        "schema",
+        "passed",
+        "run_plan_sha256",
+        "source_commit",
+        "opened_development_only",
+        "candidate_evaluated",
+        "scenario_manifest_sha256",
+        "bc_checkpoint_sha256",
+        "scenario_count",
+        "collision",
+        "terminal_overtake",
+        "rows",
+    }
+    if not isinstance(value, dict) or set(value) != expected_keys:
+        raise RunnerError("BC baseline preflight marker schema mismatch")
+    manifest = _marker_manifest_path(root, "development_scenarios.tsv")
+    expected_manifest_sha = _frozen_entry_sha256(
+        plan, "task8/development_scenarios.tsv"
+    )
+    expected_bc_sha = _frozen_entry_sha256(
+        plan, "pretrained/end2race.pth", source=True
+    )
+    marker_rows = value.get("rows")
     if (
         value.get("schema") != "bplus-v2.2-b2-bc-baseline-preflight-1"
         or value.get("passed") is not True
         or value.get("run_plan_sha256") != plan.plan_sha256
         or value.get("source_commit") != plan.source_commit
+        or type(value.get("scenario_count")) is not int
         or value.get("scenario_count") != 288
+        or type(value.get("collision")) is not int
         or value.get("collision") != 24
+        or type(value.get("terminal_overtake")) is not int
         or value.get("terminal_overtake") != 138
         or value.get("candidate_evaluated") is not False
-        or len(value.get("rows", ())) != 288
+        or value.get("opened_development_only") is not True
+        or value.get("scenario_manifest_sha256") != expected_manifest_sha
+        or _sha256_file(manifest) != expected_manifest_sha
+        or value.get("bc_checkpoint_sha256") != expected_bc_sha
+        or expected_bc_sha != CANONICAL_BC_SHA256
+        or not isinstance(marker_rows, list)
+        or len(marker_rows) != 288
     ):
         raise RunnerError("BC baseline preflight marker/envelope mismatch")
+    manifest_rows = _read_tsv_rows(manifest)
+    if len(manifest_rows) != 288:
+        raise RunnerError("BC baseline preflight row inventory mismatch")
+    boolean_fields = (
+        "collision_any",
+        "ego_collision",
+        "opp_collision",
+        "terminal_overtake",
+        "confirmed_safe_pass",
+        "interaction_attempt",
+    )
+    state_contract = {
+        "collision": (True, False, False),
+        "confirmed_pass": (False, True, True),
+        "terminal_overtake_only": (False, True, False),
+        "safe_follow": (False, False, False),
+    }
+    expected_row_keys = {
+        "task8_row_index",
+        "l2_id",
+        "l4_id",
+        "map_name",
+        "trajectory_sha256",
+        "four_state",
+        *boolean_fields,
+    }
+    for index, (expected, observed) in enumerate(zip(manifest_rows, marker_rows)):
+        if (
+            not isinstance(observed, dict)
+            or set(observed) != expected_row_keys
+            or type(observed.get("task8_row_index")) is not int
+            or observed.get("task8_row_index") != index
+            or observed.get("l2_id") != expected.get("l2_id")
+            or observed.get("l4_id") != expected.get("l4_id")
+            or observed.get("map_name") != expected.get("map_name")
+            or type(observed.get("trajectory_sha256")) is not str
+            or not SHA256_RE.fullmatch(observed["trajectory_sha256"])
+            or observed.get("four_state") not in state_contract
+            or any(not isinstance(observed.get(field), bool) for field in boolean_fields)
+        ):
+            raise RunnerError(f"BC baseline preflight semantic row mismatch: {index}")
+        expected_state = state_contract[observed["four_state"]]
+        observed_state = (
+            observed["collision_any"],
+            observed["terminal_overtake"],
+            observed["confirmed_safe_pass"],
+        )
+        if (
+            observed_state != expected_state
+            or observed["collision_any"]
+            != (observed["ego_collision"] or observed["opp_collision"])
+        ):
+            raise RunnerError(f"BC baseline preflight four-state mismatch: {index}")
+    if (
+        len({row["l2_id"] for row in marker_rows}) != 288
+        or sum(row["collision_any"] for row in marker_rows) != 24
+        or sum(row["terminal_overtake"] for row in marker_rows) != 138
+    ):
+        raise RunnerError("BC baseline preflight recomputed totals mismatch")
     return value
 
 
@@ -1141,11 +1412,10 @@ def baseline_host(plan_path: Path, host_id: str) -> int:
         raise RunnerError("BC baseline preflight runs once on the local host")
     plan = load_plan(plan_path)
     host = _host(plan, host_id)
-    _verify_staged_files(plan, host)
+    check_stage_host(plan_path, host_id)
     subprocess.run(["xdpyinfo", "-display", host.display], check=True, capture_output=True)
     _probe_gpu(host)
-    if _critical_environment(host.python) != host.expected_environment:
-        raise RunnerError("BC baseline preflight environment mismatch")
+    _assert_live_environment(host)
     root = Path(host.stage_root)
     probe_job = JobSpec(
         "bc-baseline-preflight",
@@ -1179,6 +1449,410 @@ def baseline_host(plan_path: Path, host_id: str) -> int:
         env=env,
     )
     _validate_baseline_marker(plan, root)
+    os.chmod(output, 0o444)
+    return 0
+
+
+def _plumbing_command(plan: RunPlan) -> list[str]:
+    host = _host(plan, "local")
+    root = PurePosixPath(host.stage_root)
+    inner = [
+        host.python,
+        str(root / "repo/Experiments/runner.py"),
+        "_plumbing-host",
+        str(root / "control/run_plan.json"),
+        "--host",
+        "local",
+    ]
+    return ["flock", "-n", _lock_path(host), *inner]
+
+
+def _ready_command(plan: RunPlan) -> list[str]:
+    host = _host(plan, "local")
+    root = PurePosixPath(host.stage_root)
+    return [
+        host.python,
+        str(root / "repo/Experiments/runner.py"),
+        "_ready-host",
+        str(root / "control/run_plan.json"),
+        "--host",
+        "local",
+    ]
+
+
+def plumbing_smoke(plan: RunPlan, dry_run: bool) -> int:
+    if plan.kind != "b2_train":
+        raise RunnerError("plumbing smoke requires a B2 training plan")
+    local = _host(plan, "local")
+    remote = _host(plan, "remote")
+    local_marker = Path(local.stage_root) / "control/plumbing_smoke.json"
+    commands: list[list[str]] = [
+        _preflight_check_command(plan, local),
+        _preflight_check_command(plan, remote),
+    ]
+    if dry_run or not _lexists(local_marker):
+        if not dry_run:
+            _quarantine_uncommitted_marker(local_marker)
+        commands.append(_plumbing_command(plan))
+    else:
+        _validate_plumbing_marker(plan, Path(local.stage_root))
+    commands.extend(_marker_transfer_commands(plan, local_marker, remote, "plumbing"))
+    ready_marker = Path(local.stage_root) / "control/READY.json"
+    commands.append(_ready_command(plan))
+    commands.extend(_marker_transfer_commands(plan, ready_marker, remote, "ready"))
+    for command in commands:
+        code = _run_command(command, dry_run=dry_run)
+        if code:
+            return code
+    return 0
+
+
+def _validate_plumbing_marker(
+    plan: RunPlan, root: Path, marker_path: Path | None = None
+) -> dict[str, Any]:
+    path = marker_path or root / "control/plumbing_smoke.json"
+    if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
+        raise RunnerError("B2 plumbing smoke marker is missing")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    expected_keys = {
+        "schema",
+        "passed",
+        "run_plan_sha256",
+        "source_commit",
+        "training_manifest_sha256",
+        "bc_checkpoint_sha256",
+        "sidecar_bundle_sha256",
+        "d2_episode_metadata_sha256",
+        "scenario_selection",
+        "selected_scenarios",
+        "arms",
+        "product_outcomes_reported_or_compared",
+        "arm_selection_performed",
+        "ppo_pilot_iteration_completed",
+    }
+    if not isinstance(value, dict) or set(value) != expected_keys:
+        raise RunnerError("B2 plumbing smoke marker schema mismatch")
+    manifest = _marker_manifest_path(root, "training_scenarios.tsv")
+    expected_manifest_sha = _frozen_entry_sha256(plan, "task8/training_scenarios.tsv")
+    expected_bc_sha = _frozen_entry_sha256(
+        plan, "pretrained/end2race.pth", source=True
+    )
+    expected_sidecar_sha = _frozen_entry_sha256(
+        plan, "sidecar/sidecar_bundle.pt"
+    )
+    training_rows = _read_tsv_rows(manifest)
+    expected_maps = ("Austin", "Hockenheim", "MoscowRaceway", "Nuerburgring")
+    first_by_map: dict[str, dict[str, Any]] = {}
+    for physical_index, row in enumerate(training_rows):
+        if int(row.get("training_order", -1)) != physical_index:
+            raise RunnerError("plumbing smoke training manifest order drift")
+        first_by_map.setdefault(
+            row.get("map_name", ""),
+            {
+                "training_order": physical_index,
+                "map_name": row.get("map_name", ""),
+                "l2_id": row.get("l2_id", ""),
+                "l4_id": row.get("l4_id", ""),
+                "skill": row.get("skill", ""),
+                "opponent_raceline": row.get("opponent_raceline", ""),
+                "speedscale_hex": row.get("speedscale_hex", ""),
+                "resolved_ego_idx": int(row.get("resolved_ego_idx", -1)),
+            },
+        )
+    expected_selection = [first_by_map[name] for name in expected_maps if name in first_by_map]
+    expected_metadata_sha = _frozen_entry_sha256(
+        plan, "d2/episode_metadata.tsv"
+    )
+    arms = value.get("arms")
+    selected = value.get("selected_scenarios")
+    selected_keys = {
+        "training_order",
+        "map_name",
+        "l2_id",
+        "l4_id",
+        "skill",
+        "opponent_raceline",
+        "speedscale_hex",
+        "resolved_ego_idx",
+    }
+    selected_types_valid = (
+        isinstance(selected, list)
+        and len(selected) == 4
+        and all(
+            isinstance(row, dict)
+            and set(row) == selected_keys
+            and type(row.get("training_order")) is int
+            and type(row.get("resolved_ego_idx")) is int
+            and all(
+                type(row.get(field)) is str
+                for field in (
+                    "map_name",
+                    "l2_id",
+                    "l4_id",
+                    "skill",
+                    "opponent_raceline",
+                    "speedscale_hex",
+                )
+            )
+            for row in selected
+        )
+    )
+    if (
+        value.get("schema") != "bplus-v2.2-b2-plumbing-smoke-1"
+        or value.get("passed") is not True
+        or value.get("run_plan_sha256") != plan.plan_sha256
+        or value.get("source_commit") != plan.source_commit
+        or value.get("product_outcomes_reported_or_compared") is not False
+        or value.get("arm_selection_performed") is not False
+        or value.get("ppo_pilot_iteration_completed") is not False
+        or value.get("scenario_selection")
+        != "first_physical_training_row_per_map_outcome_blind"
+        or value.get("training_manifest_sha256") != expected_manifest_sha
+        or _sha256_file(manifest) != expected_manifest_sha
+        or value.get("bc_checkpoint_sha256") != expected_bc_sha
+        or expected_bc_sha != CANONICAL_BC_SHA256
+        or value.get("sidecar_bundle_sha256") != expected_sidecar_sha
+        or expected_sidecar_sha != CANONICAL_SIDECAR_SHA256
+        or value.get("d2_episode_metadata_sha256") != expected_metadata_sha
+        or expected_metadata_sha != D2_METADATA_SHA256
+        or not selected_types_valid
+        or selected != expected_selection
+        or len(expected_selection) != 4
+        or not isinstance(arms, dict)
+        or set(arms) != set(ARMS)
+    ):
+        raise RunnerError("B2 plumbing smoke marker/envelope mismatch")
+    for report in arms.values():
+        if not isinstance(report, dict):
+            raise RunnerError("B2 plumbing smoke arm report is not an object")
+        expected_arm_keys = {
+            "episode_count",
+            "intervention_branch_present",
+            "joint_brake_branch_present",
+            "steer_only_branch_present",
+            "optimizer_update_executed",
+            "preupdate_replay_tolerance",
+            "preupdate_replay_max_abs_log_prob_delta",
+            "preupdate_replay_max_abs_entropy_delta",
+            "preupdate_replay_max_abs_ratio_minus_one",
+            "finite_update_metrics",
+        }
+        if set(report) != expected_arm_keys:
+            raise RunnerError("B2 plumbing smoke arm schema mismatch")
+        if (
+            type(report.get("episode_count")) is not int
+            or report.get("episode_count") != 4
+            or report.get("intervention_branch_present") is not True
+            or report.get("joint_brake_branch_present") is not True
+            or report.get("steer_only_branch_present") is not True
+            or report.get("optimizer_update_executed") is not True
+            or report.get("finite_update_metrics") is not True
+        ):
+            raise RunnerError("B2 plumbing smoke arm integrity mismatch")
+        tolerance = report.get("preupdate_replay_tolerance")
+        values = [
+            report.get("preupdate_replay_max_abs_log_prob_delta"),
+            report.get("preupdate_replay_max_abs_entropy_delta"),
+            report.get("preupdate_replay_max_abs_ratio_minus_one"),
+        ]
+        if (
+            tolerance != plan.config.get("replay_float32_atol")
+            or any(type(item) not in (int, float) for item in values)
+            or any(not float("-inf") < float(item) < float("inf") for item in values)
+            or any(float(item) < 0.0 for item in values)
+            or float(values[0]) > float(tolerance)
+            or float(values[1]) > float(tolerance)
+            or float(values[2]) > 2.0 * float(tolerance)
+        ):
+            raise RunnerError("B2 plumbing smoke replay contract mismatch")
+    return value
+
+
+def _validate_ready_marker(
+    plan: RunPlan, root: Path, marker_path: Path | None = None
+) -> dict[str, Any]:
+    path = marker_path or root / "control/READY.json"
+    if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
+        raise RunnerError("B2 READY marker is missing or unsafe")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    expected_keys = {
+        "schema",
+        "passed",
+        "run_plan_sha256",
+        "source_commit",
+        "source_archive_sha256",
+        "inputs_archive_sha256",
+        "baseline_marker_sha256",
+        "plumbing_marker_sha256",
+    }
+    baseline = root / "control/bc_baseline_preflight.json"
+    plumbing = root / "control/plumbing_smoke.json"
+    _validate_baseline_marker(plan, root, baseline)
+    _validate_plumbing_marker(plan, root, plumbing)
+    if (
+        not isinstance(value, dict)
+        or set(value) != expected_keys
+        or value.get("schema") != "end2race-b2-ready-1"
+        or value.get("passed") is not True
+        or value.get("run_plan_sha256") != plan.plan_sha256
+        or value.get("source_commit") != plan.source_commit
+        or value.get("source_archive_sha256") != plan.source_archive_sha256
+        or value.get("inputs_archive_sha256") != plan.inputs_archive_sha256
+        or value.get("baseline_marker_sha256") != _sha256_file(baseline)
+        or value.get("plumbing_marker_sha256") != _sha256_file(plumbing)
+    ):
+        raise RunnerError("B2 READY marker contract mismatch")
+    return value
+
+
+def ready_host(plan_path: Path, host_id: str) -> int:
+    if host_id != "local":
+        raise RunnerError("B2 READY marker is authored once on the local host")
+    plan = load_plan(plan_path)
+    if plan.kind != "b2_train":
+        raise RunnerError("B2 READY marker requires a training plan")
+    host = _host(plan, host_id)
+    root = Path(host.stage_root)
+    check_preflight_host(plan_path, host_id)
+    baseline = root / "control/bc_baseline_preflight.json"
+    plumbing = root / "control/plumbing_smoke.json"
+    _validate_baseline_marker(plan, root, baseline)
+    _validate_plumbing_marker(plan, root, plumbing)
+    path = root / "control/READY.json"
+    if _lexists(path):
+        _validate_ready_marker(plan, root, path)
+        return 0
+    partial = path.with_suffix(path.suffix + ".partial")
+    _quarantine_uncommitted_marker(path)
+    value = {
+        "schema": "end2race-b2-ready-1",
+        "passed": True,
+        "run_plan_sha256": plan.plan_sha256,
+        "source_commit": plan.source_commit,
+        "source_archive_sha256": plan.source_archive_sha256,
+        "inputs_archive_sha256": plan.inputs_archive_sha256,
+        "baseline_marker_sha256": _sha256_file(baseline),
+        "plumbing_marker_sha256": _sha256_file(plumbing),
+    }
+    with partial.open("x", encoding="utf-8") as handle:
+        json.dump(value, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.chmod(partial, 0o444)
+    os.replace(partial, path)
+    _validate_ready_marker(plan, root, path)
+    return 0
+
+
+def plumbing_host(plan_path: Path, host_id: str) -> int:
+    if host_id != "local":
+        raise RunnerError("B2 plumbing smoke runs once on the local host")
+    plan = load_plan(plan_path)
+    host = _host(plan, host_id)
+    root = Path(host.stage_root)
+    check_preflight_host(plan_path, host_id)
+    _validate_baseline_marker(plan, root)
+    _probe_gpu(host)
+    smoke_job = JobSpec(
+        "plumbing-smoke",
+        "preflight",
+        host.host_id,
+        "preflight",
+        tuple(),
+        "outputs/preflight",
+        "cache/numba/plumbing-smoke",
+        gpu_exclusive=True,
+    )
+    cache = root / smoke_job.numba_cache_relpath
+    cache.mkdir(parents=True, exist_ok=True)
+    env = {**os.environ, **_job_environment(plan, host, smoke_job)}
+    output = root / "control/plumbing_smoke.json"
+    subprocess.run(
+        [
+            host.python,
+            "-m",
+            "bplus_v22.cli",
+            "ppo-plumbing-smoke",
+            "--run-plan",
+            str(plan_path),
+            "--output",
+            str(output),
+        ],
+        check=True,
+        cwd=root / "repo",
+        env=env,
+    )
+    _validate_plumbing_marker(plan, root)
+    os.chmod(output, 0o444)
+    return 0
+
+
+def install_marker_host(
+    plan_path: Path, host_id: str, kind: str, source: Path
+) -> int:
+    """Validate and atomically install one immutable cross-host gate marker."""
+
+    plan = load_plan(plan_path)
+    host = _host(plan, host_id)
+    root = Path(host.stage_root)
+    check_stage_host(plan_path, host_id)
+    control = (root / "control").resolve()
+    if source.is_symlink() or not source.is_file():
+        raise RunnerError("incoming marker is not one regular file")
+    source = source.resolve()
+    if source.stat().st_nlink != 1:
+        raise RunnerError("incoming marker has an external hardlink")
+    try:
+        source.relative_to(control)
+    except ValueError as error:
+        raise RunnerError("incoming marker escaped staged control directory") from error
+    contracts = {
+        "baseline": (
+            root / "control/bc_baseline_preflight.json",
+            _validate_baseline_marker,
+        ),
+        "plumbing": (
+            root / "control/plumbing_smoke.json",
+            _validate_plumbing_marker,
+        ),
+        "ready": (
+            root / "control/READY.json",
+            _validate_ready_marker,
+        ),
+    }
+    if kind not in contracts:
+        raise RunnerError(f"unsupported marker install kind: {kind}")
+    destination, validator = contracts[kind]
+    if source == destination.resolve():
+        raise RunnerError("incoming marker aliases its immutable destination")
+    validator(plan, root, source)
+    if _lexists(destination):
+        validator(plan, root, destination)
+        if destination.stat().st_nlink != 1 or os.path.samefile(source, destination):
+            raise RunnerError(f"published {kind} marker has an unsafe hardlink")
+        if _sha256_file(destination) != _sha256_file(source):
+            raise RunnerError(f"published {kind} marker differs from incoming evidence")
+        source.unlink()
+        return 0
+    private = control / f".{kind}.{os.getpid()}.validated.partial"
+    if _lexists(private):
+        raise RunnerError("private marker install path already exists")
+    try:
+        with source.open("rb") as read_handle, private.open("xb") as write_handle:
+            shutil.copyfileobj(read_handle, write_handle)
+            write_handle.flush()
+            os.fsync(write_handle.fileno())
+        validator(plan, root, private)
+        os.chmod(private, 0o444)
+        os.replace(private, destination)
+        source.unlink()
+    finally:
+        if _lexists(private):
+            private.unlink()
+    if destination.stat().st_nlink != 1:
+        raise RunnerError(f"installed {kind} marker has an external hardlink")
+    validator(plan, root, destination)
     return 0
 
 
@@ -1307,26 +1981,87 @@ def _validate_cli_plan(plan: RunPlan, host: HostSpec) -> None:
     )
 
 
-def preflight_host(plan_path: Path, host_id: str) -> int:
+def check_stage_host(plan_path: Path, host_id: str) -> int:
     plan = load_plan(plan_path)
     host = _host(plan, host_id)
     _verify_staged_files(plan, host)
+    _verify_extracted_source_tree(Path(host.stage_root))
+    marker = Path(host.stage_root) / "control/STAGED"
+    if (
+        not marker.is_file()
+        or marker.is_symlink()
+        or marker.read_text(encoding="utf-8") != plan.plan_sha256 + "\n"
+    ):
+        raise RunnerError(f"host is not atomically staged for this plan: {host_id}")
+    return 0
+
+
+def _validate_preflight_marker(
+    plan: RunPlan, host: HostSpec, root: Path
+) -> dict[str, Any]:
+    path = root / "control/preflight.json"
+    if not path.is_file() or path.is_symlink():
+        raise RunnerError(f"host preflight marker is missing: {host.host_id}")
+    marker = json.loads(path.read_text(encoding="utf-8"))
+    gpu = marker.get("gpu")
+    module_paths = marker.get("module_paths")
+    capabilities = marker.get("capabilities")
+    if (
+        marker.get("schema") != "end2race-host-preflight-1"
+        or marker.get("plan_sha256") != plan.plan_sha256
+        or marker.get("host") != host.host_id
+        or marker.get("display") != host.display
+        or marker.get("environment") != host.expected_environment
+        or not isinstance(gpu, dict)
+        or gpu.get("uuid") != host.gpu_uuid
+        or gpu.get("name") != host.gpu_name
+        or not isinstance(module_paths, dict)
+        or set(module_paths) != set(plan.module_path_contract)
+        or not isinstance(capabilities, dict)
+        or capabilities.get("schema") != CAPABILITIES_SCHEMA
+        or not set(plan.required_cli).issubset(capabilities.get("commands", ()))
+    ):
+        raise RunnerError(f"host preflight marker contract mismatch: {host.host_id}")
+    repo = (root / "repo").resolve()
+    for value in module_paths.values():
+        try:
+            Path(str(value)).resolve().relative_to(repo)
+        except ValueError as error:
+            raise RunnerError("preflight module path escaped staged source") from error
+    return marker
+
+
+def check_preflight_host(plan_path: Path, host_id: str) -> int:
+    plan = load_plan(plan_path)
+    host = _host(plan, host_id)
+    check_stage_host(plan_path, host_id)
     if plan.kind == "b2_train":
         _validate_baseline_marker(plan, Path(host.stage_root))
+    _validate_preflight_marker(plan, host, Path(host.stage_root))
+    return 0
+
+
+def preflight_host(plan_path: Path, host_id: str) -> int:
+    plan = load_plan(plan_path)
+    host = _host(plan, host_id)
+    check_stage_host(plan_path, host_id)
+    if plan.kind == "b2_train":
+        _validate_baseline_marker(plan, Path(host.stage_root))
+    root = Path(host.stage_root)
+    existing_marker = root / "control/preflight.json"
+    if _lexists(existing_marker):
+        _validate_preflight_marker(plan, host, root)
+        return 0
+    _quarantine_uncommitted_marker(existing_marker)
     for command in ("rsync", "tar", "flock", "nvidia-smi", "xdpyinfo"):
         if shutil.which(command) is None:
             raise RunnerError(f"required executable missing: {command}")
     subprocess.run(["xdpyinfo", "-display", host.display], check=True, capture_output=True)
     gpu = _probe_gpu(host)
-    actual_environment = _critical_environment(host.python)
-    if actual_environment != host.expected_environment:
-        raise RunnerError(
-            f"critical environment mismatch: {actual_environment} != {host.expected_environment}"
-        )
+    actual_environment = _assert_live_environment(host)
     paths = _probe_module_paths(plan, host)
     capabilities = _probe_capabilities(plan, host)
     _validate_cli_plan(plan, host)
-    root = Path(host.stage_root)
     usage = shutil.disk_usage(root)
     if usage.free < 20 * 1024**3:
         raise RunnerError("less than 20 GiB free in isolated run root")
@@ -1342,9 +2077,14 @@ def preflight_host(plan_path: Path, host_id: str) -> int:
         "display": host.display,
     }
     path = root / "control/preflight.json"
-    with path.open("x", encoding="utf-8") as handle:
+    partial = path.with_suffix(path.suffix + ".partial")
+    with partial.open("x", encoding="utf-8") as handle:
         json.dump(marker, handle, indent=2, sort_keys=True)
         handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(partial, path)
+    _validate_preflight_marker(plan, host, root)
     return 0
 
 
@@ -1447,12 +2187,12 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
     plan = load_plan(plan_path)
     host = _host(plan, host_id)
     root = Path(host.stage_root)
-    marker_path = root / "control/preflight.json"
-    if not marker_path.is_file():
-        raise RunnerError("host preflight has not passed")
-    marker = json.loads(marker_path.read_text(encoding="utf-8"))
-    if marker.get("plan_sha256") != plan.plan_sha256 or marker.get("host") != host_id:
-        raise RunnerError("preflight marker does not authorize this plan/host")
+    check_preflight_host(plan_path, host_id)
+    if plan.kind == "b2_train":
+        _validate_baseline_marker(plan, root)
+        _validate_plumbing_marker(plan, root)
+        _validate_ready_marker(plan, root)
+    _assert_live_environment(host)
     # This runs while the outer `flock` is held, closing the race between the
     # earlier preflight and learner launch.
     _probe_gpu(host)
@@ -1600,7 +2340,71 @@ def status(plan: RunPlan, host_ids: Sequence[str], dry_run: bool) -> int:
     return result
 
 
-def _collect_commands(plan: RunPlan, collection: Path | None = None) -> list[list[str]]:
+def _collect_status_commands(
+    plan: RunPlan, collection: Path | None = None
+) -> list[list[str]]:
+    collection = collection or Path(plan.collection_root)
+    local = _host(plan, "local")
+    remote = _host(plan, "remote")
+    return [
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "control/status.json"),
+            str(collection / "hosts/local/status.json"),
+        ],
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "control/status.jsonl"),
+            str(collection / "hosts/local/status.jsonl"),
+        ],
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "control/preflight.json"),
+            str(collection / "hosts/local/preflight.json"),
+        ],
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "control/STAGED"),
+            str(collection / "hosts/local/STAGED"),
+        ],
+        [
+            "rsync",
+            "-a",
+            "--protect-args",
+            f"{remote.ssh_host}:{remote.stage_root}/control/status.json",
+            str(collection / "hosts/remote/status.json"),
+        ],
+        [
+            "rsync",
+            "-a",
+            "--protect-args",
+            f"{remote.ssh_host}:{remote.stage_root}/control/status.jsonl",
+            str(collection / "hosts/remote/status.jsonl"),
+        ],
+        [
+            "rsync",
+            "-a",
+            "--protect-args",
+            f"{remote.ssh_host}:{remote.stage_root}/control/preflight.json",
+            str(collection / "hosts/remote/preflight.json"),
+        ],
+        [
+            "rsync",
+            "-a",
+            "--protect-args",
+            f"{remote.ssh_host}:{remote.stage_root}/control/STAGED",
+            str(collection / "hosts/remote/STAGED"),
+        ],
+    ]
+
+
+def _collect_payload_commands(
+    plan: RunPlan, collection: Path | None = None
+) -> list[list[str]]:
     collection = collection or Path(plan.collection_root)
     local = _host(plan, "local")
     remote = _host(plan, "remote")
@@ -1612,57 +2416,79 @@ def _collect_commands(plan: RunPlan, collection: Path | None = None) -> list[lis
             str(collection / "hosts/local/outputs"),
         ],
         [
-            "cp",
-            "-a",
-            str(Path(local.stage_root) / "control/status.json"),
-            str(collection / "hosts/local/status.json"),
-        ],
-        [
             "rsync",
             "-a",
             "--protect-args",
             f"{remote.ssh_host}:{remote.stage_root}/outputs/",
             str(collection / "hosts/remote/outputs/"),
         ],
-        [
-            "rsync",
-            "-a",
-            "--protect-args",
-            f"{remote.ssh_host}:{remote.stage_root}/control/status.json",
-            str(collection / "hosts/remote/status.json"),
-        ],
     ]
     if plan.kind == "b2_train":
-        commands.append(
-            [
+        commands.extend(
+            (
+                [
                 "cp",
                 "-a",
                 str(Path(local.stage_root) / "control/bc_baseline_preflight.json"),
                 str(collection / "control/bc_baseline_preflight.json"),
-            ]
+                ],
+                [
+                "cp",
+                "-a",
+                str(Path(local.stage_root) / "control/plumbing_smoke.json"),
+                str(collection / "control/plumbing_smoke.json"),
+                ],
+                [
+                    "cp",
+                    "-a",
+                    str(Path(local.stage_root) / "control/READY.json"),
+                    str(collection / "control/READY.json"),
+                ],
+                [
+                    "rsync",
+                    "-a",
+                    "--protect-args",
+                    f"{remote.ssh_host}:{remote.stage_root}/control/"
+                    "bc_baseline_preflight.json",
+                    str(collection / "control/remote_bc_baseline_preflight.json"),
+                ],
+                [
+                    "rsync",
+                    "-a",
+                    "--protect-args",
+                    f"{remote.ssh_host}:{remote.stage_root}/control/plumbing_smoke.json",
+                    str(collection / "control/remote_plumbing_smoke.json"),
+                ],
+                [
+                    "rsync",
+                    "-a",
+                    "--protect-args",
+                    f"{remote.ssh_host}:{remote.stage_root}/control/READY.json",
+                    str(collection / "control/remote_READY.json"),
+                ],
+                [
+                    "cp",
+                    "-a",
+                    str(Path(local.stage_root) / "inputs/task8/development_scenarios.tsv"),
+                    str(collection / "control/input_contract/development_scenarios.tsv"),
+                ],
+                [
+                    "cp",
+                    "-a",
+                    str(Path(local.stage_root) / "inputs/task8/training_scenarios.tsv"),
+                    str(collection / "control/input_contract/training_scenarios.tsv"),
+                ],
+            )
         )
     return commands
 
 
-def collect(plan: RunPlan, dry_run: bool) -> int:
-    collection = Path(plan.collection_root)
-    partial = collection.with_name(collection.name + ".partial")
-    if collection.exists() or partial.exists():
-        raise FileExistsError(collection)
-    commands = _collect_commands(plan, partial)
-    for command in commands:
-        print(_display_command(command))
-    if dry_run:
-        return 0
-    (partial / "hosts/local").mkdir(parents=True)
-    (partial / "hosts/remote").mkdir(parents=True)
-    (partial / "control").mkdir(parents=True)
-    for command in commands:
-        code = subprocess.run(command, check=False).returncode
-        if code:
-            return code
+def _validate_collected_statuses(plan: RunPlan, partial: Path) -> None:
     for host_id in ("local", "remote"):
         status_path = partial / f"hosts/{host_id}/status.json"
+        events_path = partial / f"hosts/{host_id}/status.jsonl"
+        if not status_path.is_file() or not events_path.is_file():
+            raise RunnerError(f"collected host status evidence is missing: {host_id}")
         status_value = json.loads(status_path.read_text(encoding="utf-8"))
         if (
             status_value.get("plan_sha256") != plan.plan_sha256
@@ -1670,18 +2496,167 @@ def collect(plan: RunPlan, dry_run: bool) -> int:
             or status_value.get("state") != "COMPLETE"
         ):
             raise RunnerError(f"cannot collect incomplete/mismatched host: {host_id}")
-        host_root = partial / f"hosts/{host_id}"
         expected_jobs = _host_jobs(plan, host_id)
-        if set(status_value.get("jobs", {})) != {
-            job.job_id for job in expected_jobs
-        }:
+        if set(status_value.get("jobs", {})) != {job.job_id for job in expected_jobs}:
             raise RunnerError(f"collected host job inventory mismatch: {host_id}")
-        for job in expected_jobs:
-            if status_value["jobs"][job.job_id].get("state") != "COMPLETE":
-                raise RunnerError(f"collected job is not complete: {job.job_id}")
-            _validate_job_output(plan, host_root, job)
-    if plan.kind == "b2_train":
-        _validate_baseline_marker(plan, partial)
+        if any(
+            status_value["jobs"][job.job_id].get("state") != "COMPLETE"
+            for job in expected_jobs
+        ):
+            raise RunnerError(f"collected host has incomplete jobs: {host_id}")
+        events = [
+            json.loads(line)
+            for line in events_path.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        if not events or events[-1].get("event") != "host_complete":
+            raise RunnerError(f"collected host event ledger is incomplete: {host_id}")
+        staged = partial / f"hosts/{host_id}/STAGED"
+        if not staged.is_file() or staged.read_text(encoding="utf-8") != plan.plan_sha256 + "\n":
+            raise RunnerError(f"collected host staging identity mismatch: {host_id}")
+        copied_preflight = partial / f"hosts/{host_id}/preflight.json"
+        if not copied_preflight.is_file() or copied_preflight.is_symlink():
+            raise RunnerError(f"collected host preflight is missing: {host_id}")
+        preflight_value = json.loads(copied_preflight.read_text(encoding="utf-8"))
+        if (
+            preflight_value.get("schema") != "end2race-host-preflight-1"
+            or preflight_value.get("plan_sha256") != plan.plan_sha256
+            or preflight_value.get("host") != host_id
+        ):
+            raise RunnerError(f"collected host preflight identity mismatch: {host_id}")
+
+
+def _quarantine_collection_partial(collection: Path, partial: Path) -> Path:
+    if partial.is_symlink() or not partial.is_dir():
+        raise RunnerError(f"unsafe collection partial: {partial}")
+    base = collection.with_name(collection.name + ".attempt_failures")
+    base.mkdir(parents=True, exist_ok=True)
+    attempt = 1
+    while (base / f"attempt_{attempt:03d}").exists():
+        attempt += 1
+    target = base / f"attempt_{attempt:03d}"
+    target.mkdir()
+    os.replace(partial, target / partial.name)
+    (target / "retry.json").write_text(
+        json.dumps(
+            {
+                "schema": "end2race-collection-retry-1",
+                "quarantined_at": _now(),
+                "reason": "previous_uncommitted_collection_attempt",
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return target
+
+
+def _record_collection_failure(
+    partial: Path,
+    plan: RunPlan,
+    *,
+    phase: str,
+    error: object,
+    command_index: int | None = None,
+    exit_code: int | None = None,
+) -> None:
+    if not partial.is_dir():
+        return
+    value = {
+        "schema": "end2race-collection-failure-1",
+        "plan_sha256": plan.plan_sha256,
+        "failed_at": _now(),
+        "phase": phase,
+        "error_type": type(error).__name__,
+        "error": str(error),
+        "command_index": command_index,
+        "exit_code": exit_code,
+    }
+    (partial / "failure.json").write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def collect(plan: RunPlan, dry_run: bool) -> int:
+    collection = Path(plan.collection_root)
+    partial = collection.with_name(collection.name + ".partial")
+    if _lexists(collection):
+        raise FileExistsError(collection)
+    if _lexists(partial) and not dry_run:
+        _quarantine_collection_partial(collection, partial)
+    status_commands = _collect_status_commands(plan, partial)
+    payload_commands = _collect_payload_commands(plan, partial)
+    commands = [*status_commands, *payload_commands]
+    for command in commands:
+        print(_display_command(command))
+    if dry_run:
+        return 0
+    (partial / "hosts/local").mkdir(parents=True)
+    (partial / "hosts/remote").mkdir(parents=True)
+    (partial / "control").mkdir(parents=True)
+    (partial / "control/input_contract").mkdir(parents=True)
+    for index, command in enumerate(status_commands):
+        code = subprocess.run(command, check=False).returncode
+        if code:
+            _record_collection_failure(
+                partial,
+                plan,
+                phase="status_copy",
+                error=f"command exited {code}",
+                command_index=index,
+                exit_code=code,
+            )
+            return code
+    try:
+        _validate_collected_statuses(plan, partial)
+    except Exception as error:
+        _record_collection_failure(
+            partial, plan, phase="status_validation", error=error
+        )
+        raise
+    for index, command in enumerate(payload_commands):
+        code = subprocess.run(command, check=False).returncode
+        if code:
+            _record_collection_failure(
+                partial,
+                plan,
+                phase="payload_copy",
+                error=f"command exited {code}",
+                command_index=index,
+                exit_code=code,
+            )
+            return code
+    try:
+        for host_id in ("local", "remote"):
+            host_root = partial / f"hosts/{host_id}"
+            for job in _host_jobs(plan, host_id):
+                _validate_job_output(plan, host_root, job)
+        if plan.kind == "b2_train":
+            _validate_baseline_marker(plan, partial)
+            _validate_plumbing_marker(plan, partial)
+            _validate_ready_marker(plan, partial)
+            remote_baseline = partial / "control/remote_bc_baseline_preflight.json"
+            remote_plumbing = partial / "control/remote_plumbing_smoke.json"
+            remote_ready = partial / "control/remote_READY.json"
+            _validate_baseline_marker(plan, partial, remote_baseline)
+            _validate_plumbing_marker(plan, partial, remote_plumbing)
+            _validate_ready_marker(plan, partial, remote_ready)
+            if (
+                _sha256_file(remote_baseline)
+                != _sha256_file(partial / "control/bc_baseline_preflight.json")
+                or _sha256_file(remote_plumbing)
+                != _sha256_file(partial / "control/plumbing_smoke.json")
+                or _sha256_file(remote_ready)
+                != _sha256_file(partial / "control/READY.json")
+            ):
+                raise RunnerError("local/remote pre-PPO gate markers differ")
+    except Exception as error:
+        _record_collection_failure(
+            partial, plan, phase="payload_validation", error=error
+        )
+        raise
     (partial / "run_plan.json").write_text(
         json.dumps(_plan_to_dict(plan), indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
@@ -1805,20 +2780,26 @@ def _add_host_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--dry-run", action="store_true")
 
 
-def _show(plan: RunPlan) -> None:
+def _show(plan_path: Path, plan: RunPlan) -> None:
     print(json.dumps(_plan_to_dict(plan), indent=2, sort_keys=True))
-    print("\n# host commands")
+    wrapper = str(REPO_ROOT / "run.sh")
+    path = str(plan_path)
+    print("\n# canonical phase order")
+    print(_display_command([wrapper, "stage", path, "--all-hosts"]))
     if plan.kind == "b2_train":
-        print("# one BC-only 288-row baseline preflight (local, then marker copied remote)")
-        print(_display_command(_baseline_command(plan)))
-    for host in plan.hosts:
-        print(f"# preflight {host.host_id}")
-        print(_display_command(_preflight_command(plan, host)))
-        print(f"# execute {host.host_id}")
-        print(_display_command(_execute_command(plan, host)))
-        if plan.kind == "b2_train":
-            print(f"# explicit resume {host.host_id}")
-            print(_display_command(_execute_command(plan, host, resume=True)))
+        print(_display_command([wrapper, "baseline-preflight", path]))
+    print(_display_command([wrapper, "preflight", path, "--all-hosts"]))
+    if plan.kind == "b2_train":
+        print(_display_command([wrapper, "plumbing-smoke", path]))
+    print(_display_command([wrapper, "execute", path, "--all-hosts"]))
+    if plan.kind == "b2_train":
+        print("# explicit resume only after a recorded interruption/failure")
+        for host in plan.hosts:
+            print(_display_command([wrapper, "resume", path, "--host", host.host_id]))
+    print(_display_command([wrapper, "status", path, "--all-hosts"]))
+    print(_display_command([wrapper, "collect", path]))
+    if plan.kind == "b2_eval":
+        print(_display_command([wrapper, "merge-eval", path]))
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1846,6 +2827,9 @@ def _parser() -> argparse.ArgumentParser:
     baseline = sub.add_parser("baseline-preflight")
     _add_plan_argument(baseline)
     baseline.add_argument("--dry-run", action="store_true")
+    plumbing = sub.add_parser("plumbing-smoke")
+    _add_plan_argument(plumbing)
+    plumbing.add_argument("--dry-run", action="store_true")
     for action in ("stage", "preflight", "execute", "resume", "status"):
         command = sub.add_parser(action)
         _add_plan_argument(command)
@@ -1860,12 +2844,37 @@ def _parser() -> argparse.ArgumentParser:
     internal_verify = sub.add_parser("_verify-stage", help=argparse.SUPPRESS)
     _add_plan_argument(internal_verify)
     internal_verify.add_argument("--host", choices=("local", "remote"), required=True)
+    internal_check_stage = sub.add_parser("_check-stage-host", help=argparse.SUPPRESS)
+    _add_plan_argument(internal_check_stage)
+    internal_check_stage.add_argument(
+        "--host", choices=("local", "remote"), required=True
+    )
+    internal_check_preflight = sub.add_parser(
+        "_check-preflight-host", help=argparse.SUPPRESS
+    )
+    _add_plan_argument(internal_check_preflight)
+    internal_check_preflight.add_argument(
+        "--host", choices=("local", "remote"), required=True
+    )
     internal_preflight = sub.add_parser("_preflight-host", help=argparse.SUPPRESS)
     _add_plan_argument(internal_preflight)
     internal_preflight.add_argument("--host", choices=("local", "remote"), required=True)
     internal_baseline = sub.add_parser("_baseline-host", help=argparse.SUPPRESS)
     _add_plan_argument(internal_baseline)
     internal_baseline.add_argument("--host", choices=("local",), required=True)
+    internal_plumbing = sub.add_parser("_plumbing-host", help=argparse.SUPPRESS)
+    _add_plan_argument(internal_plumbing)
+    internal_plumbing.add_argument("--host", choices=("local",), required=True)
+    internal_ready = sub.add_parser("_ready-host", help=argparse.SUPPRESS)
+    _add_plan_argument(internal_ready)
+    internal_ready.add_argument("--host", choices=("local",), required=True)
+    internal_install = sub.add_parser("_install-marker", help=argparse.SUPPRESS)
+    _add_plan_argument(internal_install)
+    internal_install.add_argument("--host", choices=("remote",), required=True)
+    internal_install.add_argument(
+        "--kind", choices=("baseline", "plumbing", "ready"), required=True
+    )
+    internal_install.add_argument("--source", type=Path, required=True)
     internal_execute = sub.add_parser("_execute-host", help=argparse.SUPPRESS)
     _add_plan_argument(internal_execute)
     internal_execute.add_argument("--host", choices=("local", "remote"), required=True)
@@ -1880,7 +2889,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.action == "list":
             print(
-                "B2: plan -> show -> stage -> baseline-preflight -> preflight -> execute "
+                "B2: plan -> show -> stage -> baseline-preflight -> preflight "
+                "-> plumbing-smoke -> execute "
                 "[-> explicit resume] -> status -> collect"
             )
             print("B2 eval: plan-eval -> stage -> preflight -> execute -> collect -> merge-eval")
@@ -1916,10 +2926,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         plan_path = args.plan.resolve()
         loaded = load_plan(plan_path)
         if args.action == "show":
-            _show(loaded)
+            _show(plan_path, loaded)
             return 0
         if args.action == "baseline-preflight":
             return baseline_preflight(loaded, args.dry_run)
+        if args.action == "plumbing-smoke":
+            return plumbing_smoke(loaded, args.dry_run)
         if args.action == "stage":
             return stage(plan_path, loaded, _host_ids(args), args.dry_run)
         if args.action == "preflight":
@@ -1941,10 +2953,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             _make_inputs_read_only(root)
             (root / "control/STAGED").write_text(loaded.plan_sha256 + "\n", encoding="utf-8")
             return 0
+        if args.action == "_check-stage-host":
+            return check_stage_host(plan_path, args.host)
+        if args.action == "_check-preflight-host":
+            return check_preflight_host(plan_path, args.host)
         if args.action == "_preflight-host":
             return preflight_host(plan_path, args.host)
         if args.action == "_baseline-host":
             return baseline_host(plan_path, args.host)
+        if args.action == "_plumbing-host":
+            return plumbing_host(plan_path, args.host)
+        if args.action == "_ready-host":
+            return ready_host(plan_path, args.host)
+        if args.action == "_install-marker":
+            return install_marker_host(plan_path, args.host, args.kind, args.source)
         if args.action == "_execute-host":
             return execute_host(plan_path, args.host)
         if args.action == "_resume-host":

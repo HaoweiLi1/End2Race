@@ -622,10 +622,22 @@ preflight 都必须验证它。任何偏差先阻断 learner，避免训练完�
 
 只运行 4 个 training scenarios、每臂一个很短的 rollout/update：
 
-- 目的仅是验证环境接线、checkpoint、resume、finite metrics；
-- full exploration multiplier 下 sampler 的 top/conditional/joint exposure
-  与解析概率相符；
-- 不读取或比较产品结果；
+- 目的仅是验证 live simulator/environment 接线、production-shaped
+  collect→replay→一次有限 update，以及 intervention、steer-only、joint-brake
+  三条真实动作分支均被走通；
+- live P3 不重复 checkpoint/resume 数值实验。严格 interrupted-vs-uninterrupted
+  continuation 由 production-shaped runner regression 锁定：checkpoint reload 后
+  比较下一 keyed action/log-prob、update diagnostics 及最终 policy/critic/
+  collision-scale state；该测试仍是正式运行前的 blocking test；
+- full exploration multiplier 的 top/conditional/joint 解析频率由冻结 sampler
+  test 验证。4 个 live scenarios 只检查 branch presence，不用小样本频率判断；
+- 一次 PPO update 内部必然消费 terminal collision/overtake 信号，但 P3 不把
+  product outcome 写入 marker，不比较、不排名、不选 arm，也不据其改 reward、
+  exploration 或任何配置；
+- P3 通过后生成一份两端字节相同的 `READY.json`，绑定 RunPlan、source/input
+  archive、BC baseline marker 与 P3 marker SHA；learner 在 GPU lock 内重新验证
+  完整 extracted source/runtime-input 哈希、pinned Python/package environment、
+  GPU identity 和 READY 后才可启动；
 - 不选 arm、不调 reward、不调 exploration；
 - 通过后直接进入正式 pilot。
 
@@ -636,7 +648,8 @@ preflight 都必须验证它。任何偏差先阻断 learner，避免训练完�
 ### Stage A — 固定 schedule 正确性确认
 
 - 只运行 §5.3 的 sampler test 与 §10 P3 plumbing smoke；
-- 不形成 policy candidate、不读取 outcome、不选择 offset；
+- 不形成 policy candidate；不得序列化、查看或比较 outcome 以做选择，也不得
+  选择 offset；P3 update 对冻结 terminal signals 的内部消费不构成产品测量；
 - 通过后直接使用冻结 schedule 运行六个 learners。
 
 ### Stage B — 20-iteration 两 seed 三臂 pilot
@@ -925,6 +938,8 @@ CLI 只新增：
 
 ```text
 capabilities
+ppo-baseline-preflight
+ppo-plumbing-smoke
 ppo-pilot
 ppo-evaluate
 ppo-merge-eval
@@ -933,7 +948,8 @@ ppo-merge-eval
 runner control plane 固定为：
 
 ```text
-./run.sh plan / show / stage / preflight / execute / status / collect
+./run.sh plan / show / stage / baseline-preflight / preflight / plumbing-smoke
+./run.sh execute / resume / status / collect
 ./run.sh plan-eval / merge-eval
 ```
 

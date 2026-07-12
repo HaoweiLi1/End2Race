@@ -129,6 +129,45 @@ def _staged_paths(plan_path: Path, plan: Mapping[str, Any]) -> dict[str, Path]:
     return paths
 
 
+def _validate_control_plane_ready(
+    plan: Mapping[str, Any], paths: Mapping[str, Path]
+) -> dict[str, Any]:
+    """Make direct learner CLI invocation fail closed without runner authorization."""
+
+    control = paths["root"] / "control"
+    ready_path = control / "READY.json"
+    baseline_path = control / "bc_baseline_preflight.json"
+    plumbing_path = control / "plumbing_smoke.json"
+    for path in (ready_path, baseline_path, plumbing_path):
+        if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
+            raise ValueError(f"B2 learner lacks one safe control-plane marker: {path.name}")
+    ready = json.loads(ready_path.read_text(encoding="utf-8"))
+    expected_keys = {
+        "schema",
+        "passed",
+        "run_plan_sha256",
+        "source_commit",
+        "source_archive_sha256",
+        "inputs_archive_sha256",
+        "baseline_marker_sha256",
+        "plumbing_marker_sha256",
+    }
+    if (
+        not isinstance(ready, dict)
+        or set(ready) != expected_keys
+        or ready.get("schema") != "end2race-b2-ready-1"
+        or ready.get("passed") is not True
+        or ready.get("run_plan_sha256") != plan.get("plan_sha256")
+        or ready.get("source_commit") != plan.get("source_commit")
+        or ready.get("source_archive_sha256") != plan.get("source_archive_sha256")
+        or ready.get("inputs_archive_sha256") != plan.get("inputs_archive_sha256")
+        or ready.get("baseline_marker_sha256") != _file_sha256(baseline_path)
+        or ready.get("plumbing_marker_sha256") != _file_sha256(plumbing_path)
+    ):
+        raise ValueError("B2 learner READY authorization mismatch")
+    return ready
+
+
 def _validate_config(config: Mapping[str, Any]) -> None:
     expected = {
         "iterations": ITERATIONS,
@@ -828,6 +867,23 @@ def _write_replay_ledger(
     return _file_sha256(path), diagnostics
 
 
+def _latent_branch_presence(latent_values) -> dict[str, bool]:
+    """Return outcome-blind branch coverage for one production-shaped batch."""
+
+    latent = np.asarray(latent_values)
+    if latent.ndim != 2 or latent.shape[1] != 4 or len(latent) == 0:
+        raise ValueError("B2 branch-presence latent must have shape [N,4]")
+    intervention = latent[:, 0] > 0.5
+    brake = latent[:, 2] > 0.5
+    if np.any(brake & ~intervention):
+        raise AssertionError("B2 branch presence found brake outside intervention")
+    return {
+        "intervention_branch_present": bool(np.any(intervention)),
+        "joint_brake_branch_present": bool(np.any(intervention & brake)),
+        "steer_only_branch_present": bool(np.any(intervention & ~brake)),
+    }
+
+
 def _curriculum_record(curriculum_plan) -> dict[str, Any]:
     return {
         "rows": [
@@ -962,6 +1018,135 @@ def _validate_resume_prefix(
     return committed, _file_sha256(checkpoint), optimizer_updates
 
 
+def run_plumbing_smoke(
+    plan_path: str | Path, *, device_name: str = "cuda:0"
+) -> dict[str, Any]:
+    """Run the frozen four-map/all-arm single-update integrity smoke."""
+
+    validated = validate_pilot_plan(plan_path)
+    plan = validated["plan"]
+    paths = validated["paths"]
+    device = torch.device(device_name)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        raise ValueError("B2 plumbing smoke requested unavailable CUDA")
+    scenarios = load_b2_scenario_sets(paths["task8"], paths["metadata"])
+    selected_by_map: dict[str, Any] = {}
+    for scenario in scenarios.training:
+        selected_by_map.setdefault(scenario.map_name, scenario)
+    expected_maps = ("Austin", "Hockenheim", "MoscowRaceway", "Nuerburgring")
+    if tuple(sorted(selected_by_map)) != tuple(sorted(expected_maps)):
+        raise ValueError("B2 plumbing smoke map inventory drift")
+    selected = tuple(selected_by_map[name] for name in expected_maps)
+    training_manifest = paths["task8"] / TRAINING_MANIFEST_NAME
+    bc_checkpoint = paths["bc"]
+    sidecar_bundle = paths["sidecar"] / "sidecar_bundle.pt"
+    d2_metadata = paths["metadata"]
+    behavior = exploration_for_iteration(1)
+    arm_reports: dict[str, Any] = {}
+    for arm in ARMS:
+        torch.manual_seed(SEED)
+        np.random.seed(SEED)
+        random.seed(SEED)
+        policy = load_fresh_policy(arm, 0, paths["bc"], paths["sidecar"], device)
+        with torch.random.fork_rng(devices=[]):
+            torch.manual_seed(SEED + 1000)
+            critics = B2Critics().to(device)
+        optimizers = build_b2_optimizers(
+            policy, critics, critic_learning_rate=CRITIC_LR
+        )
+        policy._b2_frozen_snapshot = policy.frozen_snapshot()
+        buffer = EpisodeCompleteMacroBuffer(target_episodes=len(selected))
+        for scenario in selected:
+            result = run_b2_episode(
+                policy,
+                critics,
+                device,
+                scenario,
+                behavior,
+                0,
+                0,
+            )
+            buffer.add_episode(
+                [
+                    _macro_record(result, row, arm=arm, seed=0, iteration=1)
+                    for row in result.transitions
+                ]
+            )
+        batch = buffer.collate()
+        branch_presence = _latent_branch_presence(batch.latent)
+        if not all(branch_presence.values()):
+            raise AssertionError("B2 plumbing smoke did not cover all action branches")
+        update = update_policy(
+            policy,
+            critics,
+            optimizers,
+            RunningCollisionScale(decay=COLLISION_SCALE_DECAY),
+            batch.tensors(device),
+            dual_value=1.0,
+            seed=0,
+            iteration=1,
+        )
+        arm_reports[arm] = {
+            "episode_count": buffer.episode_count,
+            **branch_presence,
+            "optimizer_update_executed": int(update["updates"]) > 0,
+            "preupdate_replay_tolerance": update["preupdate_replay_tolerance"],
+            "preupdate_replay_max_abs_log_prob_delta": update[
+                "preupdate_replay_max_abs_log_prob_delta"
+            ],
+            "preupdate_replay_max_abs_entropy_delta": update[
+                "preupdate_replay_max_abs_entropy_delta"
+            ],
+            "preupdate_replay_max_abs_ratio_minus_one": update[
+                "preupdate_replay_max_abs_ratio_minus_one"
+            ],
+            "finite_update_metrics": all(
+                np.isfinite(float(value))
+                for row in update["minibatches"]
+                for key, value in row.items()
+                if key not in {"epoch", "batch_start", "batch_size"}
+            ),
+        }
+    if any(
+        report["episode_count"] != 4
+        or not report["optimizer_update_executed"]
+        or not report["intervention_branch_present"]
+        or not report["joint_brake_branch_present"]
+        or not report["steer_only_branch_present"]
+        or not report["finite_update_metrics"]
+        for report in arm_reports.values()
+    ):
+        raise AssertionError("B2 plumbing smoke integrity failed")
+    return {
+        "schema": "bplus-v2.2-b2-plumbing-smoke-1",
+        "passed": True,
+        "run_plan_sha256": plan["plan_sha256"],
+        "source_commit": plan["source_commit"],
+        "training_manifest_sha256": _file_sha256(training_manifest),
+        "bc_checkpoint_sha256": _file_sha256(bc_checkpoint),
+        "sidecar_bundle_sha256": _file_sha256(sidecar_bundle),
+        "d2_episode_metadata_sha256": _file_sha256(d2_metadata),
+        "scenario_selection": "first_physical_training_row_per_map_outcome_blind",
+        "selected_scenarios": [
+            {
+                "training_order": int(scenario.training_order),
+                "map_name": scenario.map_name,
+                "l2_id": scenario.l2_id,
+                "l4_id": scenario.l4_id,
+                "skill": scenario.skill,
+                "opponent_raceline": scenario.opponent_raceline,
+                "speedscale_hex": float(scenario.speedscale).hex(),
+                "resolved_ego_idx": int(scenario.resolved_ego_idx),
+            }
+            for scenario in selected
+        ],
+        "arms": arm_reports,
+        "product_outcomes_reported_or_compared": False,
+        "arm_selection_performed": False,
+        "ppo_pilot_iteration_completed": False,
+    }
+
+
 def run_pilot_job(
     plan_path: str | Path,
     job_id: str,
@@ -975,6 +1160,7 @@ def run_pilot_job(
     plan = validated["plan"]
     paths = validated["paths"]
     job = validated["job"]
+    _validate_control_plane_ready(plan, paths)
     arm = str(job["arm"])
     seed = int(job["seed"])
     output = paths["root"] / str(job["output_relpath"])

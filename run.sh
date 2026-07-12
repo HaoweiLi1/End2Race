@@ -7,6 +7,7 @@
 #   ./run.sh stage PLAN --all-hosts --dry-run
 #   ./run.sh baseline-preflight PLAN --dry-run
 #   ./run.sh preflight PLAN --all-hosts --dry-run
+#   ./run.sh plumbing-smoke PLAN --dry-run
 #   ./run.sh execute PLAN --all-hosts --dry-run
 #   ./run.sh resume PLAN --host remote --dry-run
 #

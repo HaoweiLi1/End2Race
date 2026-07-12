@@ -2,6 +2,8 @@
 """B2 schedule, checkpoint, resume, and replay-runner contracts."""
 
 from pathlib import Path
+import hashlib
+import json
 import random
 import tempfile
 
@@ -15,6 +17,8 @@ from bplus_v22.ppo import B2Critics, RunningCollisionScale, build_b2_optimizers
 from bplus_v22.ppo_runner import (
     COLLISION_SCALE_DECAY,
     ITERATIONS,
+    _latent_branch_presence,
+    _validate_control_plane_ready,
     exploration_for_iteration,
     _read_iteration_ledger,
     _repair_torn_iteration_ledger,
@@ -26,6 +30,70 @@ from bplus_v22.remediated_model import RemediatedV22Policy
 
 
 def main() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        control = root / "control"
+        control.mkdir()
+        baseline = control / "bc_baseline_preflight.json"
+        plumbing = control / "plumbing_smoke.json"
+        baseline.write_text("baseline\n", encoding="utf-8")
+        plumbing.write_text("plumbing\n", encoding="utf-8")
+        ready_plan = {
+            "plan_sha256": "a" * 64,
+            "source_commit": "b" * 40,
+            "source_archive_sha256": "c" * 64,
+            "inputs_archive_sha256": "d" * 64,
+        }
+        ready = {
+            "schema": "end2race-b2-ready-1",
+            "passed": True,
+            "run_plan_sha256": ready_plan["plan_sha256"],
+            "source_commit": ready_plan["source_commit"],
+            "source_archive_sha256": ready_plan["source_archive_sha256"],
+            "inputs_archive_sha256": ready_plan["inputs_archive_sha256"],
+            "baseline_marker_sha256": hashlib.sha256(baseline.read_bytes()).hexdigest(),
+            "plumbing_marker_sha256": hashlib.sha256(plumbing.read_bytes()).hexdigest(),
+        }
+        ready_path = control / "READY.json"
+        ready_path.write_text(json.dumps(ready), encoding="utf-8")
+        assert _validate_control_plane_ready(ready_plan, {"root": root}) == ready
+        ready_path.unlink()
+        try:
+            _validate_control_plane_ready(ready_plan, {"root": root})
+            raise RuntimeError("learner CLI accepted missing READY")
+        except ValueError as error:
+            assert "lacks one safe" in str(error)
+
+    presence = _latent_branch_presence(
+        np.asarray(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [1.0, 0.2, 0.0, 0.0],
+                [1.0, -0.1, 1.0, 0.4],
+            ],
+            dtype=np.float32,
+        )
+    )
+    assert presence == {
+        "intervention_branch_present": True,
+        "joint_brake_branch_present": True,
+        "steer_only_branch_present": True,
+    }
+    assert not _latent_branch_presence(np.asarray([[0, 0, 0, 0]], dtype=np.float32))[
+        "intervention_branch_present"
+    ]
+    caught = None
+    try:
+        _latent_branch_presence(np.asarray([[0, 0, 1, 0]], dtype=np.float32))
+    except AssertionError as error:
+        caught = str(error)
+    assert caught == "B2 branch presence found brake outside intervention"
+    try:
+        _latent_branch_presence(np.empty((0, 4), dtype=np.float32))
+        raise RuntimeError("empty branch-presence input was accepted")
+    except ValueError as error:
+        assert "shape [N,4]" in str(error)
+
     first = exploration_for_iteration(1)
     assert first.intervention_logit_offset == 3.8027754227
     assert first.conditional_brake_logit_offset == 6.0
@@ -210,6 +278,7 @@ def main() -> None:
     }
     wrong_context = dict(synthetic)
     wrong_context["intervention_offset"] = synthetic["intervention_offset"] + 0.5
+    replay_error = None
     try:
         update_policy(
             update_policy_model,
@@ -221,9 +290,10 @@ def main() -> None:
             seed=0,
             iteration=1,
         )
-        raise AssertionError("wrong serialized behavior context was accepted")
     except AssertionError as error:
-        assert "serialized replay log-prob mismatch" in str(error)
+        replay_error = str(error)
+    assert replay_error is not None
+    assert "serialized replay log-prob mismatch" in replay_error
     update_scale = RunningCollisionScale(decay=COLLISION_SCALE_DECAY)
     update_result = update_policy(
         update_policy_model,

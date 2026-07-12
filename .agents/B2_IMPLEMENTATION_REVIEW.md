@@ -144,3 +144,62 @@ Before numerical learners:
    tune anything;
 7. only then execute all six 20-iteration learners and the exact 288x7 paired
    evaluation.
+
+## 7. P3/control-plane pre-run audit closure
+
+Before the first immutable RunPlan, the four-map/all-arm P3 gate and its
+control evidence were audited in three read-only `claude-opus-4-8` / max
+passes plus two independent Codex collaboration audits.
+
+The first Opus pass returned `NO_GO` because a new branch-invariant regression
+caught its own `AssertionError` sentinel and therefore could not turn red. The
+guard itself was correct; the test was rewritten to capture the exact expected
+message and assert outside the `try`. The same pattern was removed from the
+older wrong-replay-context test.
+
+The parallel adversarial audits then reproduced and fixed authorization gaps
+before any GPU run:
+
+- baseline/P3 markers now bind exact frozen manifest/checkpoint identities,
+  exact key sets and strict nested scalar types; numeric SHA, `False == 0` and
+  `4.0 == 4` attacks are negative tests;
+- baseline rows enforce the four-state truth table and recompute 24/138;
+- P3 reports only scenario identity plus boolean branch/replay/update
+  integrity, never product outcomes, trajectory length, minibatch count or
+  arm scores;
+- valid markers are retryable, but dangling symlinks, external hardlinks,
+  different published finals and nonfinite replay values fail closed;
+- a private copied inode is validated before atomic remote install;
+- one identical cross-host `READY.json` binds RunPlan, source/input archives
+  and exact baseline/P3 marker hashes;
+- preflight and execute/resume revalidate `STAGED`, every extracted tracked
+  source byte and the exact runtime-input inventory; the learner CLI also
+  requires READY;
+- collection is status-first, saves both status/event ledgers and gate copies,
+  records validation failures, preserves failed partial attempts and supports
+  a clean retry without path nesting.
+
+The second Opus pass found one remaining live race: the package environment was
+recorded at preflight but not re-probed at execute. The final implementation
+now checks the pinned Python/torch/numpy/numba/gym/scipy environment alongside
+the GPU identity inside the outer per-GPU `flock`, on both fresh and resume
+paths. It also made remote fresh-root creation fail closed with `set -eu`.
+
+The final targeted Opus verdict was **`GO_FOR_COMMIT`**, with no remaining
+blocker. It explicitly traced the local and SSH lock placement, live
+environment/GPU re-probes, READY enforcement on direct `ppo-pilot`, and both
+non-vacuous sentinel regressions. The two Codex follow-up audits independently
+returned **GO** after reproducing the earlier malformed-marker attacks as
+rejected.
+
+Local execution evidence after the final changes:
+
+- `tests/test_experiment_runner.py`: PASS;
+- `tests/test_bplus_v22_ppo_runner.py`: PASS;
+- complete standalone matrix: 39/40 PASS;
+- the sole failure remains the known migrated immutable-path
+  `test_bplus_v22_hierarchical_warmstart.py`, not a B2 regression;
+- `py_compile` and `git diff --check`: PASS.
+
+This closure authorizes a clean commit and isolated staging only. It is not a
+P3, learner, KPI, D2-test or fresh-pool result.
