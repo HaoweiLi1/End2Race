@@ -358,12 +358,15 @@ def compute_shaped_reward(obs, reward_state, ref, rw, dt):
 # ---------------------------------------------------------------------------
 # PPO scenario curriculum
 # ---------------------------------------------------------------------------
-def sample_opp_speedscale(stage, rng, speedscale_range=None):
+def sample_opp_speedscale(stage, rng, speedscale_range=None, speedscale_choices=None):
     """Sample the opponent speed scale for the given curriculum stage.
 
     speedscale_range=(lo, hi) overrides the stage schedule (D4-A eval-aligned
-    sampling); None keeps the original stage behavior bit-for-bit.
+    sampling); speedscale_choices samples a discrete set; None keeps the
+    original stage behavior bit-for-bit.
     """
+    if speedscale_choices is not None:
+        return float(rng.choice(tuple(speedscale_choices)))
     if speedscale_range is not None:
         return float(rng.uniform(speedscale_range[0], speedscale_range[1]))
     if stage <= 1:
@@ -372,8 +375,58 @@ def sample_opp_speedscale(stage, rng, speedscale_range=None):
         return float(rng.uniform(0.50, 0.90))
     return float(rng.uniform(0.40, 1.00))
 
+CANONICAL_OL1_SPEEDS = (0.5, 0.6, 0.7, 0.8)
+
+def _raceline_num_waypoints(map_name, ego_raceline="raceline1"):
+    """Waypoint count matching evaluate_ol1.sh's max_waypoints=$(tail -n +3 | wc -l)."""
+    raceline_path = os.path.join("f1tenth_racetracks", map_name, f"{ego_raceline}.csv")
+    with open(raceline_path, "r", encoding="utf-8") as f:
+        return len(f.readlines()[2:])
+
+def canonical_ol1_start_indices(map_name, ego_raceline="raceline1", num_startpoints=50):
+    """Return the exact canonical OL1 start grid used by evaluate_ol1.sh."""
+    max_waypoints = _raceline_num_waypoints(map_name, ego_raceline)
+    if num_startpoints <= 1:
+        return [0]
+    return [int(i * max_waypoints // (num_startpoints - 1)) for i in range(num_startpoints)]
+
+def sample_canonical_ol1_scenario(rng, map_name, jitter=0, interval_range=None):
+    """Sample from the canonical OL1 evaluation scenario family.
+
+    jitter=0 and interval_range=None reproduce the EXACT canonical family
+    (bit-identical to the D4-C canon winner). Branch B ('canonical-like') adds
+    mild diversity: startpoint jitter of +/- jitter waypoints (contiguous
+    raceline coverage at jitter ~= half the canonical start spacing, ~21 for
+    Austin, so all OL1 start offsets become in-distribution) and interval_idx
+    drawn from interval_range instead of fixed 15. Opponent speedscale stays the
+    discrete eval set {0.5,0.6,0.7,0.8}."""
+    starts = canonical_ol1_start_indices(map_name, "raceline1", 50)
+    ego_idx = int(rng.choice(starts))
+    if jitter and jitter > 0:
+        max_wp = _raceline_num_waypoints(map_name, "raceline1")
+        ego_idx = int((ego_idx + int(rng.integers(-jitter, jitter + 1))) % max_wp)
+    interval_idx = int(rng.integers(interval_range[0], interval_range[1])) if interval_range is not None else 15
+    opp_speedscale = float(rng.choice(CANONICAL_OL1_SPEEDS))
+    ego_idx, opp_idx = resolve_two_agent_indices(
+        map_name,
+        "raceline1",
+        "raceline1",
+        ego_idx,
+        interval_idx,
+    )
+    return {
+        "map_name": map_name,
+        "ego_raceline": "raceline1",
+        "opp_raceline": "raceline1",
+        "ego_idx": ego_idx,
+        "interval_idx": interval_idx,
+        "opp_idx": opp_idx,
+        "opp_speedscale": opp_speedscale,
+    }
+
 def sample_scenario(stage, rng, map_name, ego_raceline_choices, opp_raceline_choices,
-                    interval_range=None, speedscale_range=None):
+                    interval_range=None, speedscale_range=None, speedscale_choices=None,
+                    hard_start_indices=None, hard_start_prob=0.0, hard_start_jitter=0):
     """Sample a training segment with opponent initialized ahead of ego.
 
     interval_range/speedscale_range override the stage schedule (D4-A); None
@@ -383,7 +436,18 @@ def sample_scenario(stage, rng, map_name, ego_raceline_choices, opp_raceline_cho
     opp_raceline = str(rng.choice(tuple(opp_raceline_choices)))
     _, _, ego_wp = load_raceline_with_speed(map_name, f"{ego_raceline}.csv", 0)
 
-    ego_idx = int(rng.integers(0, len(ego_wp)))
+    if (
+        hard_start_indices is not None
+        and len(hard_start_indices) > 0
+        and float(hard_start_prob) > 0.0
+        and rng.random() < float(hard_start_prob)
+    ):
+        ego_idx = int(rng.choice(hard_start_indices))
+        if int(hard_start_jitter) > 0:
+            jitter = int(rng.integers(-int(hard_start_jitter), int(hard_start_jitter) + 1))
+            ego_idx = int((ego_idx + jitter) % len(ego_wp))
+    else:
+        ego_idx = int(rng.integers(0, len(ego_wp)))
     if interval_range is not None:
         interval_idx = int(rng.integers(interval_range[0], interval_range[1]))
     elif stage <= 1:
@@ -403,7 +467,7 @@ def sample_scenario(stage, rng, map_name, ego_raceline_choices, opp_raceline_cho
         'ego_idx': ego_idx,
         'interval_idx': interval_idx,
         'opp_idx': opp_idx,
-        'opp_speedscale': sample_opp_speedscale(stage, rng, speedscale_range),
+        'opp_speedscale': sample_opp_speedscale(stage, rng, speedscale_range, speedscale_choices),
     }
 
 # ---------------------------------------------------------------------------

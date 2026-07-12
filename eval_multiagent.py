@@ -169,6 +169,10 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     # Simulation metrics
     lap_time = 0.0
     collision_occurred = False
+    ego_collision = False
+    opp_collision = False
+    final_ego_progress = float(initial_ego_progress)
+    final_opp_progress = float(initial_opp_progress)
     final_state = initial_state
     ego_trajectory = []
     speeds = []
@@ -298,14 +302,26 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             opp_progress += centerline_total_length
         
         final_state = "overtaking" if ego_progress > opp_progress else "following"
-        
-        # Check collision
+        final_ego_progress = float(ego_progress)
+        final_opp_progress = float(opp_progress)
+
+        # Check collision. Primary outcome stays any-agent collision for
+        # comparability with all historical results; per-agent flags are
+        # recorded separately so ego-only rates can also be reported.
         if np.any(obs['collisions']):
             collision_occurred = True
+            ego_collision = bool(obs['collisions'][0])
+            opp_collision = bool(np.any(obs['collisions'][1:]))
             done = True
         
         tracker_count = (tracker_count + 1) % tracker_steps
-    
+
+    # Post-step terminal frame. The per-step arrays above record pre-step
+    # state, so on a colliding step the impact pose only exists here.
+    final_ego_pose = [float(obs['poses_x'][0]), float(obs['poses_y'][0]), float(obs['poses_theta'][0])]
+    final_opp_pose = [float(obs['poses_x'][1]), float(obs['poses_y'][1]), float(obs['poses_theta'][1])]
+    final_time = float(lap_time)
+
     if collision_occurred:
         state_prefix = "c"  # 'c' for collision
         state_dir = "collision"
@@ -353,6 +369,13 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         opp_pose=opp_pose,
         opp_progress=opp_progress,
         collision=np.array(collision_occurred, dtype=bool),
+        ego_collision=np.array(ego_collision, dtype=bool),
+        opp_collision=np.array(opp_collision, dtype=bool),
+        final_time=np.float32(final_time),
+        final_ego_pose=np.array(final_ego_pose, dtype=np.float32),
+        final_opp_pose=np.array(final_opp_pose, dtype=np.float32),
+        final_ego_progress=np.float32(final_ego_progress),
+        final_opp_progress=np.float32(final_opp_progress),
         state_label=np.array(state_label)
     )
     print(f"Episode data saved to {episode_path}")
@@ -391,6 +414,19 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         'episode_key': episode_key,
         'state': final_state_num,
         'state_label': state_label,
+        'outcome': state_label,
+        'ego_collision': bool(ego_collision),
+        'opp_collision': bool(opp_collision),
+        'map_name': map_name,
+        'ego_raceline': ego_raceline,
+        'opp_raceline': opp_raceline,
+        'ego_idx': int(ego_idx),
+        'opp_idx': int(opp_idx),
+        'interval_idx': int(interval_idx),
+        'opp_speedscale': float(opp_speed_scale),
+        'sim_duration': float(sim_duration),
+        'noise': float(noise_level),
+        'npz_path': episode_path,
         'avg_speed': float(avg_speed) if not collision_occurred else 0.0,
         'speed_variance': float(speed_variance) if not collision_occurred else 0.0,
         'total_distance': float(total_distance),
@@ -431,5 +467,8 @@ if __name__ == "__main__":
     else:
         print(json.dumps(result, indent=2))
 
-    # Exit with state code
-    sys.exit(result['state'])
+    # Exit 0 on success; the outcome must be read from the metrics JSON.
+    # Exit codes 1/2/3 previously encoded the outcome, which collided with
+    # Python's uncaught-exception exit code 1 and let crashed workers be
+    # counted as valid "following" episodes.
+    sys.exit(0)

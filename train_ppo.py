@@ -28,6 +28,7 @@ from utils import (STEER_LIMIT, LIDAR_DIM, ACTION_DIM, downsample_lidar_for_mode
                    resolve_two_agent_indices, wrap_rel_s)
 from ppo_utils import (BOOL_INFO_KEYS, MEAN_INFO_KEYS, RewardWeights, RewardState,
                        apply_reward_overrides, compute_shaped_reward,
+                       canonical_ol1_start_indices, sample_canonical_ol1_scenario,
                        forward_frozen_bc_sequence, forward_policy_sequence,
                        load_actor_critic, load_frozen_bc, make_fixed_scenario,
                        obs_to_tensors, relative_geometry, reward_weight_names,
@@ -37,6 +38,30 @@ from ppo_utils import (BOOL_INFO_KEYS, MEAN_INFO_KEYS, RewardWeights, RewardStat
 
 # Speed normalization for the privileged critic input: raceline vx max (m/s).
 PRIV_SPEED_NORM = 7.5
+
+def _parse_csv_strings(value):
+    if not value:
+        return None
+    return tuple(part.strip() for part in value.split(",") if part.strip())
+
+def _parse_csv_floats(value):
+    if not value:
+        return None
+    return tuple(float(part.strip()) for part in value.split(",") if part.strip())
+
+def _load_index_file(path):
+    if not path:
+        return None
+    values = []
+    with open(path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            for part in line.replace(",", " ").split():
+                values.append(int(part))
+    # Stable de-duplication preserves useful order for dry-run readability.
+    return tuple(dict.fromkeys(values))
 
 def parse_arguments():
     """Parse command line arguments"""
@@ -59,7 +84,21 @@ def parse_arguments():
     parser.add_argument("--interval_idx", type=int, default=15)
     parser.add_argument("--ego_raceline", type=str, default="raceline1")
     parser.add_argument("--opp_raceline", type=str, default="raceline1")
+    parser.add_argument("--ego_raceline_choices", type=str, default="",
+                        help="Comma-separated training ego racelines for stage sampling. "
+                             "Empty preserves the legacy single --ego_raceline choice.")
+    parser.add_argument("--opp_raceline_choices", type=str, default="",
+                        help="Comma-separated training opponent racelines for stage sampling. "
+                             "Use raceline0,raceline1,raceline2 for Austin full-distribution sweeps.")
     parser.add_argument("--opp_speedscale", type=float, default=0.5)
+    parser.add_argument("--canonical_jitter", type=int, default=0,
+                        help="Branch B canonical-like diversity: +/- waypoint jitter on the "
+                             "canonical start indices (0 = exact canonical family). ~21 gives "
+                             "contiguous Austin raceline1 coverage. Only used with "
+                             "--scenario_mode canonical_ol1.")
+    parser.add_argument("--scenario_mode", type=str, default="stage", choices=("stage", "canonical_ol1"),
+                        help="Scenario sampler: 'stage' keeps the PPO curriculum; "
+                             "'canonical_ol1' samples the exact OL1 canonical eval family.")
 
     # PPO configuration
     parser.add_argument("--rollout_steps", type=int, default=1024)
@@ -106,10 +145,21 @@ def parse_arguments():
                         help="D4-A eval-aligned sampling: override opponent speedscale range "
                              "(with --opp_speedscale_max). None keeps the stage schedule.")
     parser.add_argument("--opp_speedscale_max", type=float, default=None)
+    parser.add_argument("--opp_speedscale_choices", type=str, default="",
+                        help="Comma-separated discrete opponent speed scales for stage sampling. "
+                             "Mutually exclusive with --opp_speedscale_min/max.")
     parser.add_argument("--interval_min", type=int, default=None,
                         help="D4-A: override the ego-opponent gap (interval_idx) sampling range "
                              "(with --interval_max). None keeps the stage schedule.")
     parser.add_argument("--interval_max", type=int, default=None)
+    parser.add_argument("--hard_start_file", type=str, default="",
+                        help="Optional newline/comma-separated ego_idx list for on-raceline hard-case "
+                             "start replay. Only affects stage sampling.")
+    parser.add_argument("--hard_start_prob", type=float, default=0.0,
+                        help="Probability of drawing ego_idx from --hard_start_file instead of "
+                             "uniform on-raceline sampling.")
+    parser.add_argument("--hard_start_jitter", type=int, default=0,
+                        help="+/- waypoint jitter applied to sampled hard-case ego_idx.")
     parser.add_argument("--bound_coef", type=float, default=0.01)
     parser.add_argument("--target_kl", type=float, default=0.03)
     parser.add_argument("--max_grad_norm", type=float, default=0.5)
@@ -124,6 +174,8 @@ def parse_arguments():
                         help="Additionally save non-overwriting actor snapshots every N iterations "
                              "(<save_actor_path>_iterNNNN.pth); 0 disables. Enables the "
                              "pre-registered 'last good checkpoint' rule for stop-loss runs.")
+    parser.add_argument("--dry_run_scenarios", type=int, default=0,
+                        help="Print N sampled training scenarios and exit before env/model setup.")
 
     # Model configuration
     parser.add_argument("--hidden_scale", type=int, default=4)
@@ -159,7 +211,9 @@ class End2RacePPOEnv:
     def __init__(self, map_name, max_speed=20.0, sim_duration=8.0, seed=0,
                  reward_weights=None, ego_raceline_choices=None, opp_raceline_choices=None,
                  lateral_offset_prob=0.0, lateral_offset_min=0.3, lateral_offset_max=0.8,
-                 speedscale_range=None, interval_range=None):
+                 speedscale_range=None, speedscale_choices=None, interval_range=None,
+                 scenario_mode="stage", canonical_jitter=0, hard_start_indices=None,
+                 hard_start_prob=0.0, hard_start_jitter=0):
         self.map_name = map_name
         self.max_speed = float(max_speed)
         self.sim_duration = float(sim_duration)
@@ -171,10 +225,17 @@ class End2RacePPOEnv:
         self.lateral_offset_max = float(lateral_offset_max)
         # D4-A eval-aligned sampling overrides (None keeps the stage schedule).
         self.speedscale_range = speedscale_range
+        self.speedscale_choices = tuple(speedscale_choices) if speedscale_choices is not None else None
         self.interval_range = interval_range
+        self.scenario_mode = str(scenario_mode)
+        # Branch B canonical-like mild diversity (0 = exact canonical family).
+        self.canonical_jitter = int(canonical_jitter)
         self._ego_lat_offset = 0.0
         self.ego_raceline_choices = tuple(ego_raceline_choices or ('raceline1',))
         self.opp_raceline_choices = tuple(opp_raceline_choices or ('raceline1',))
+        self.hard_start_indices = tuple(int(x) for x in hard_start_indices) if hard_start_indices else None
+        self.hard_start_prob = float(hard_start_prob)
+        self.hard_start_jitter = int(hard_start_jitter)
 
         # Setup environment
         self.env = gym.make(
@@ -206,15 +267,7 @@ class End2RacePPOEnv:
 
     def reset(self, scenario=None):
         self._scenario = self._complete_scenario(
-            sample_scenario(
-                self.stage,
-                self.rng,
-                self.map_name,
-                self.ego_raceline_choices,
-                self.opp_raceline_choices,
-                interval_range=self.interval_range,
-                speedscale_range=self.speedscale_range,
-            )
+            self._sample_training_scenario()
             if scenario is None
             else dict(scenario)
         )
@@ -229,6 +282,26 @@ class End2RacePPOEnv:
         self._step_count = 0
         self._t = 0.0
         return self._policy_obs(obs)
+
+    def _sample_training_scenario(self):
+        if self.scenario_mode == "canonical_ol1":
+            return sample_canonical_ol1_scenario(
+                self.rng, self.map_name,
+                jitter=self.canonical_jitter, interval_range=self.interval_range,
+            )
+        return sample_scenario(
+            self.stage,
+            self.rng,
+            self.map_name,
+            self.ego_raceline_choices,
+            self.opp_raceline_choices,
+            interval_range=self.interval_range,
+            speedscale_range=self.speedscale_range,
+            speedscale_choices=self.speedscale_choices,
+            hard_start_indices=self.hard_start_indices,
+            hard_start_prob=self.hard_start_prob,
+            hard_start_jitter=self.hard_start_jitter,
+        )
 
     def step(self, raw_ego_action):
         raw_ego_action = np.asarray(raw_ego_action, dtype=np.float32).reshape(2)
@@ -310,7 +383,10 @@ class End2RacePPOEnv:
         scenario.setdefault('opp_raceline', self.opp_raceline_choices[0])
         scenario.setdefault('ego_idx', 0)
         scenario.setdefault('interval_idx', 15)
-        scenario.setdefault('opp_speedscale', sample_opp_speedscale(self.stage, self.rng, self.speedscale_range))
+        scenario.setdefault(
+            'opp_speedscale',
+            sample_opp_speedscale(self.stage, self.rng, self.speedscale_range, self.speedscale_choices),
+        )
         ego_idx, opp_idx = resolve_two_agent_indices(
             self.map_name,
             scenario['ego_raceline'],
@@ -824,8 +900,11 @@ def main():
 
     # D4-A eval-aligned sampling overrides (both bounds required, or neither).
     speedscale_range = None
+    speedscale_choices = _parse_csv_floats(args.opp_speedscale_choices)
     if (args.opp_speedscale_min is None) != (args.opp_speedscale_max is None):
         raise ValueError("--opp_speedscale_min and --opp_speedscale_max must be set together.")
+    if speedscale_choices is not None and args.opp_speedscale_min is not None:
+        raise ValueError("--opp_speedscale_choices is mutually exclusive with --opp_speedscale_min/max.")
     if args.opp_speedscale_min is not None:
         speedscale_range = (float(args.opp_speedscale_min), float(args.opp_speedscale_max))
     interval_range = None
@@ -833,6 +912,63 @@ def main():
         raise ValueError("--interval_min and --interval_max must be set together.")
     if args.interval_min is not None:
         interval_range = (int(args.interval_min), int(args.interval_max))
+        if interval_range[0] >= interval_range[1]:
+            raise ValueError("--interval_min must be < --interval_max because the upper bound is exclusive.")
+
+    ego_raceline_choices = _parse_csv_strings(args.ego_raceline_choices) or (args.ego_raceline,)
+    opp_raceline_choices = _parse_csv_strings(args.opp_raceline_choices) or (args.opp_raceline,)
+    hard_start_indices = _load_index_file(args.hard_start_file)
+    if args.hard_start_prob < 0.0 or args.hard_start_prob > 1.0:
+        raise ValueError("--hard_start_prob must be in [0, 1].")
+    if args.hard_start_prob > 0.0 and not hard_start_indices:
+        raise ValueError("--hard_start_prob > 0 requires a non-empty --hard_start_file.")
+
+    if args.scenario_mode == "canonical_ol1":
+        if args.fixed_scenario:
+            raise ValueError("--fixed_scenario cannot be combined with --scenario_mode canonical_ol1.")
+        if speedscale_range is not None or speedscale_choices is not None:
+            raise ValueError("--opp_speedscale_min/max/choices cannot be combined with --scenario_mode canonical_ol1 "
+                             "(speedscale stays the discrete eval set {0.5,0.6,0.7,0.8}).")
+        # interval_range and --canonical_jitter ARE allowed here: they are the
+        # Branch B canonical-like mild-diversity knobs (interval around 15,
+        # startpoint jitter). Defaults (no interval, jitter 0) = exact canonical.
+        if args.ego_raceline != "raceline1" or args.opp_raceline != "raceline1":
+            raise ValueError("--scenario_mode canonical_ol1 requires ego/opp raceline1.")
+        if float(args.lateral_offset_prob) != 0.0:
+            raise ValueError("--scenario_mode canonical_ol1 requires --lateral_offset_prob 0.0.")
+        if args.hard_start_prob != 0.0:
+            raise ValueError("--scenario_mode canonical_ol1 cannot combine with hard-start replay.")
+        if args.stage != 1:
+            print("[warning] --scenario_mode canonical_ol1 ignores --stage.", flush=True)
+
+    if args.dry_run_scenarios > 0:
+        rng = np.random.default_rng(args.train_seed)
+        if args.scenario_mode == "canonical_ol1":
+            starts = canonical_ol1_start_indices(args.map_name, "raceline1", 50)
+            print("scenario_mode=canonical_ol1", flush=True)
+            print(f"canonical_start_indices={starts}", flush=True)
+            print(f"num_unique_start_indices={len(set(starts))}", flush=True)
+            print(f"first_idx={starts[0]} last_idx={starts[-1]}", flush=True)
+            print("speedscale_choices=(0.5, 0.6, 0.7, 0.8)", flush=True)
+            print(f"canonical_jitter={args.canonical_jitter} interval_range={interval_range}", flush=True)
+            for i in range(args.dry_run_scenarios):
+                print(f"sample[{i}]={sample_canonical_ol1_scenario(rng, args.map_name, jitter=args.canonical_jitter, interval_range=interval_range)}", flush=True)
+        else:
+            print("scenario_mode=stage", flush=True)
+            print(f"ego_raceline_choices={ego_raceline_choices}", flush=True)
+            print(f"opp_raceline_choices={opp_raceline_choices}", flush=True)
+            print(f"speedscale_range={speedscale_range}", flush=True)
+            print(f"speedscale_choices={speedscale_choices}", flush=True)
+            print(f"interval_range={interval_range}", flush=True)
+            print(f"hard_start_count={0 if hard_start_indices is None else len(hard_start_indices)}", flush=True)
+            print(f"hard_start_prob={args.hard_start_prob} hard_start_jitter={args.hard_start_jitter}", flush=True)
+            for i in range(args.dry_run_scenarios):
+                print(
+                    f"sample[{i}]="
+                    f"{sample_scenario(args.stage, rng, args.map_name, ego_raceline_choices, opp_raceline_choices, interval_range, speedscale_range, speedscale_choices, hard_start_indices, args.hard_start_prob, args.hard_start_jitter)}",
+                    flush=True,
+                )
+        return
 
     # Setup environment
     env = End2RacePPOEnv(
@@ -844,7 +980,15 @@ def main():
         lateral_offset_min=args.lateral_offset_min,
         lateral_offset_max=args.lateral_offset_max,
         speedscale_range=speedscale_range,
+        speedscale_choices=speedscale_choices,
         interval_range=interval_range,
+        scenario_mode=args.scenario_mode,
+        canonical_jitter=args.canonical_jitter,
+        ego_raceline_choices=ego_raceline_choices,
+        opp_raceline_choices=opp_raceline_choices,
+        hard_start_indices=hard_start_indices,
+        hard_start_prob=args.hard_start_prob,
+        hard_start_jitter=args.hard_start_jitter,
     )
     env.stage = args.stage
     apply_reward_overrides(env.reward_weights, args)

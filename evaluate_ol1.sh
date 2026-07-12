@@ -28,10 +28,13 @@ raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
 max_waypoints=$(tail -n +3 "$raceline_path" | wc -l)
 ego_idx_range=()
 for ((i=0; i<NUM_STARTPOINTS; i++)); do
-    idx=$(( i * max_waypoints / (NUM_STARTPOINTS - 1) ))
-    # Keep the canonical grid bit-identical when offset is 0; wrap only when shifted.
+    # Keep the canonical grid bit-identical when offset is 0. Offset grids use
+    # open-interval spacing: the historical closed-loop formula made i=0 and
+    # i=N-1 coincide after the offset wrap, silently duplicating episode keys.
     if [ "$START_OFFSET" != "0" ]; then
-        idx=$(( (idx + START_OFFSET) % max_waypoints ))
+        idx=$(( (i * max_waypoints / NUM_STARTPOINTS + START_OFFSET) % max_waypoints ))
+    else
+        idx=$(( i * max_waypoints / (NUM_STARTPOINTS - 1) ))
     fi
     ego_idx_range+=($idx)
 done
@@ -123,37 +126,23 @@ elapsed=$((end_time - start_time))
 echo ""
 echo "Evaluation complete in ${elapsed} seconds"
 
-# Count states from worker exit codes (1=following, 2=overtaking, 3=collision)
-following_count=0
-overtaking_count=0
-collision_count=0
-error_count=0
-
-for result_file in "$temp_dir"/*.exit; do
-    [ -e "$result_file" ] || continue
-    exit_code=$(cat "$result_file")
-    case $exit_code in
-        1) ((following_count++)) ;;
-        2) ((overtaking_count++)) ;;
-        3) ((collision_count++)) ;;
-        *) ((error_count++)) ;;
-    esac
-done
-
-success_count=$((following_count + overtaking_count))
-
-if ! result_path=$(python -c 'from utils import write_multiagent_results_cli; write_multiagent_results_cli()' \
-    "$MODEL_PATH" "$MAP_NAME" "$NOISE" "$temp_dir" "$total_segments" \
-    "$following_count" "$overtaking_count" "$collision_count" "$error_count" "$RESULT_TAG"); then
-    echo "ERROR: failed to aggregate metrics" >&2
+# Aggregate from metrics JSONs with strict completeness validation.
+# Worker exit code 0 = success; outcomes are read from the JSON files only.
+agg_cmd=(
+    python aggregate_eval.py
+    --tmp_dir "$temp_dir"
+    --expected_total "$total_segments"
+    --model_path "$MODEL_PATH"
+    --map_name "$MAP_NAME"
+    --noise "$NOISE"
+    --offset "$START_OFFSET"
+    --require_npz
+)
+if [ -n "$RESULT_TAG" ]; then
+    agg_cmd+=(--result_tag "$RESULT_TAG")
+fi
+if ! result_line=$("${agg_cmd[@]}"); then
+    echo "ERROR: evaluation incomplete; aggregation rejected" >&2
     exit 1
 fi
-echo "Metrics saved to $result_path"
-
-echo ""
-echo "Results by category:"
-echo "  following: $following_count ($(pct "$following_count")%)"
-echo "  overtaking: $overtaking_count ($(pct "$overtaking_count")%)"
-echo "  success: $success_count ($(pct "$success_count")%)"
-echo "  collision: $collision_count ($(pct "$collision_count")%)"
-echo "  error: $error_count ($(pct "$error_count")%)"
+echo "$result_line"
