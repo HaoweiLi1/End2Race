@@ -35,8 +35,26 @@
 
 废弃的 PPO 调参期（D1 / 旧 D2 / D4a / D4c / anchor，07-04 至 07-08）。结论已固化在 `_archive/legacy_reports/`，原始产物按字节保留、未删除。
 
-- `_archive/models/` — 187 个废弃轨道 checkpoint
+- `_archive/eval_results/` — **73 个评估输出目录，33 GB**
+- `_archive/models/` — 187 个废弃轨道 checkpoint，约 9 GB
 - `_archive/legacy_runs/`、`legacy_reports/`、`reviews/`、`superseded_artifacts/`
+
+⚠️ `_archive/eval_results/` 和 `_archive/models/` 是**本地唯一副本**——远端没有备份，因为它们产生于
+2026-07-08「实验只在远端跑」政策之前（全部是 `*_local_*` 命名的本机运行）。虽然都属废弃轨道、
+不被任何活证据引用，**未经项目所有者批准不要删除**。
+
+---
+
+## 仓库其余目录
+
+| 目录 | 性质 |
+|---|---|
+| `bplus_v22/` `d0/` `d2/` `d25/` `d2r/` | 证据模块源码 |
+| `f1tenth_gym/` `f1tenth_racetracks/` `latticeplanner/` | 模拟器与规划器（运行时依赖） |
+| `pretrained/` | **只放原始 BC 模型** `end2race.pth` |
+| `eval_results/` | 评估输出**暂存区**（活代码硬编码写入）。跑完把输出移进所属实验目录 |
+| `logs/` | 仅保留兼容符号链接——若干冻结 spec 按 `logs/…` 旧路径引用报告 |
+| `scripts/` `tests/` `docs/` | 分析工具 / 测试 / 文档 |
 
 ---
 

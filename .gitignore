@@ -10,7 +10,9 @@ install/
 !.agents/
 !.agents/**
 Dataset_*/
-eval_results/
+eval_results/*
+# The scratch-area README explains where evaluation output must be filed.
+!eval_results/README.md
 logs/
 # Experiment artifacts (models, npz, releases) are large and live on the
 # remote host. Only the index, migration record and job runner are tracked.
