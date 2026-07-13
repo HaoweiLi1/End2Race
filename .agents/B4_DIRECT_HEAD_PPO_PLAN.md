@@ -410,8 +410,8 @@ fixed_collision > new_collision
 5. actor weights、weighted normalization/KL 与 unweighted critic 是否实现一致；
 6. actor early stop 是否不影响三个 critic epochs；
 7. resume 和 actor-only snapshot 是否 fail closed；
-8. paired evaluator 是否强制同-iteration两 seed selection、per-seed 132 门和 zero
-   deterministic speed projection；
+8. product evaluator 是否强制 3x4x50 Cartesian grid、RunPlan/source provenance、
+   本地1/5远端4/5、动态 95% overtake floor 和 zero deterministic speed projection；
 9. B2/B3 tests/evidence 是否未被改写；
 10. 是否存在会使 KPI 无效的 blocker。不得用新增 TTC/warm-start/sidecar proxy gate
     代替产品结果。
@@ -422,23 +422,25 @@ fixed_collision > new_collision
 
 ### 12.1 Source boundary and status
 
-实现基线是 local commit `4b06b7a`；B4 external-review boundary 是紧随其后的、
-包含本计划、B4 modules、B4 tests 和 control-plane wiring 的本地 commit。该 commit
-只是为了冻结外审证据，不代表 implementation review GO。B3 commits `19e83ae`、
+实现基线是 commit `4b06b7af0d6c84d45e688bd54478705ef021927f`。初始 B4
+external-review boundary 是
+`ac99f5f406561664bb9c400735efd9e1f27591e3`，stochastic plumbing remediation 是
+`bc0d81ece46c77a96c001d565e1de3bd8ffa030c`，实际 learner 的冻结 source 是
+`9e5afdc9584343a163c4704597dad87487bd750a`。B3 commits `19e83ae`、
 `21085bc` 及其历史文件没有被删除或重写。
 
 截至本记录：
 
 ```text
-B4 code                       IMPLEMENTED LOCALLY
+B4 code                       IMPLEMENTED AND REMEDIATED
 CPU blocking contracts       PASS
 four-map simulator identity  PASS
-stochastic collector/update smoke PASS (CPU; staged CUDA rerun required)
+stochastic collector/update smoke PASS (CPU + staged CUDA)
 owner execution authorization GRANTED 2026-07-14
-B4 RunPlan / staging         NOT CREATED
-GPU learner                  NOT STARTED
-3x4x50 product evaluation    NOT STARTED
-B4 numerical/KPI result      NONE
+B4 RunPlan / staging         COMPLETE (seed1, plan 08f0fe42...e381)
+GPU learner                  COMPLETE (30/30, integrity PASS)
+3x4x50 product evaluation    COMPLETE (2400/2400 rows)
+B4 numerical/KPI result      B4_SUBSTANTIVE_NEGATIVE; selected none
 fresh/final pool             SEALED
 ```
 
@@ -563,18 +565,39 @@ deprecation warning 和 RK4 warning 也不构成 test failure。
 
 ### 12.6 Known limits and review boundary
 
-- 当前 CPU fixtures 不是 staged/GPU marker；immutable stage 后必须以本机 CUDA 重跑
-  identity + stochastic plumbing 并把 marker 绑定到 RunPlan/source/input hashes。
+- CPU fixtures 后续已在 staged CUDA 上重跑；identity + stochastic plumbing marker
+  已绑定到实际 RunPlan/source/input hashes，并在 learner 启动前通过。
 - 已测试 full-checkpoint CPU roundtrip、RNG payload contract 和 resume fail-closed
   invariants；尚未做真实 GPU interruption/resume，因为这会越过当前 authority。
 - `b4_env.py` 调用 legacy `compute_shaped_reward()` 的返回值会被丢弃；该调用只更新已
   批准的 12D privileged critic feature 中三个 past-only phase fields。buffer actor reward
   仍只有 terminal `-2C+O`。reviewer 应从 replay/ledger 证实没有 dense term 进入 reward。
-- stochastic smoke 只证明 plumbing correctness，不是性能证据；尚无 B4
-  overtake/collision result。projection 是否造成探索浪费只能从 pilot ledger 报告。
+- stochastic smoke 只证明 plumbing correctness，不是性能证据。最终性能证据现已由
+  §13 的 2,400-row product evaluation 给出；训练 ledger 的 speed projection 为 0。
 - B4 仍是 frozen-feature control；任何 positive/negative result 都不能证明 GRU
   representation 充分或不足。
 
 2026-07-14 owner 已在阅读外审 NO-GO 后明确授权：修复上述 stochastic integration
 blocker、通过回归后创建唯一 immutable seed1 RunPlan。该授权不等于数值成功，也不允许
 seed0、额外 arm、参数修改或 fresh/final pool。
+
+## 13. Closed execution result (2026-07-14)
+
+唯一 RunPlan `b4_seed1_20260714_003027`（plan SHA256
+`08f0fe4275ae60928a6d5a6ce9704679bc91a624258bf5aef7f7a268b2c5e381`）在远端
+RTX 4080 SUPER 完成 seed1 的 30/30 iterations。随后以本地 shard0、远端
+shards1–4 完成 BC 与 iter10/20/30 的 `3*4*50` evaluation，共 2,400 rows；所有
+deterministic speed projection 为 0。
+
+| variant | collision | overtake | follow | fixed/new collision | gate |
+|---|---:|---:|---:|---:|---|
+| BC | 24 | 342 | 234 | — | baseline |
+| iter10 | 24 | 332 | 244 | 11/11 | no collision improvement |
+| iter20 | 36 | 294 | 270 | 14/26 | collision + overtake fail |
+| iter30 | 39 | 296 | 265 | 14/29 | collision + overtake fail |
+
+`ceil(0.95*342)=325`。没有 snapshot 同时满足 overtake floor、collision strict
+improvement 和 `fixed>new`，因此最终 verdict 是 **B4_SUBSTANTIVE_NEGATIVE**，不选择
+candidate。§10 的 stop discipline 已触发；任何后续实验都需要新的前瞻性 owner
+decision。完整 identities、运行问题、修复、checksums 和证据路径见
+`.agents/B4_DIRECT_HEAD_PPO_RESULT.md`。

@@ -9,9 +9,10 @@
 - B3 统一训练/部署策略计划（`IMPLEMENTED, REVIEWED GO, PAUSED UNRUN`）→
   `.agents/B3_PPO_PLAN.md`
 - B3 实现与待审清单 → `.agents/B3_IMPLEMENTATION_RECORD.md`
-- **B4 当前唯一生效计划**（D1-B/D2-B/D3；stochastic plumbing 已修复，owner
-  已授权唯一 seed1 远端执行与 3x4x50 product-grid evaluation）→
+- **B4 已关闭计划**（唯一 seed1 与 3x4x50 product-grid 已完成，结果为
+  `B4_SUBSTANTIVE_NEGATIVE`，未选择 candidate）→
   `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`
+- **B4 数值结果与外审证据** → `.agents/B4_DIRECT_HEAD_PPO_RESULT.md`
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
 - 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`
@@ -31,6 +32,11 @@
 该 5% 变更只向前适用于 B4。B2 仍按其运行时冻结的 strict/1pp 门保持 FAILED；
 B3 不追溯改写，状态为已实现、已审阅 GO、暂停未运行。详见
 `.agents/B4_DIRECT_HEAD_PPO_PLAN.md` §1。
+
+2026-07-14 B4 已执行结束：BC 为 `24 collision / 342 overtake`；iter10 为
+`24/332`，iter20 为 `36/294`，iter30 为 `39/296`。没有 snapshot 同时满足
+collision strict improvement、`fixed>new` 和 overtake `>=325`，因此 selected
+candidate 为 none。当前没有自动 B3/B5 或追加 seed 的 authority；详见 result record。
 
 **每设一道门，都要能回答一句话：「这道门挡住了，交付物会因此变好吗？」答不上来的门，不要设。**
 
@@ -121,14 +127,14 @@ ssh haowei@192.168.2.127
 
 **本地验证无误后，PPO 训练和 PPO 评估在本地与远端同时跑，加速实验。**
 
-- B4 只有一个 architecture 和一个 seed：seed1 learner 整体分配远端 RTX 4080；
-  不启动 seed0，不存在 A/B/C arm queue。
+- 已关闭的 B4 只有一个 architecture 和一个 seed：seed1 learner 已在远端 RTX 4080
+  完成；未启动 seed0，不存在 A/B/C arm queue。
 - 下述 A/B/C 描述只适用于已冻结的 B2/B3 历史 topology，不得套到 B4。
 
 - learner 以完整 seed queue 分配：seed1 的 A/B/C 本地串行，seed0 的 A/B/C
   远端串行；两台 host 并行，但每张 GPU 同时只允许一个 learner。
-- B4 最终 product evaluation 固定为 5 个等量 startpoint shards：**本地 1/5、远端
-  4/5**。远端可在独占 GPU 任务内并发 simulator workers，但不得并发不同 seed/arm。
+- B4 product evaluation 已按 5 个等量 startpoint shards 完成：**本地 1/5、远端
+  4/5**。该分配是已关闭实验的 provenance，不是下一轮执行授权。
 - 下述本地 1/4、远端 3/4 只适用于 B2/B3 历史 288-panel evaluation。
 - 只有冻结 checkpoint 的 B2/B3 scenario evaluation 才按**本地 1/4、远端 3/4**分片；
   远端 shards 1–3 在同一 GPU lock 内串行。

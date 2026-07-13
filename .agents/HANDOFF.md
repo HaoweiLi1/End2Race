@@ -1,25 +1,26 @@
 # End2Race Session Handoff — B+ v2.2 Objective-Aligned Policy Phase
 
-Generated: 2026-07-10; current checkpoint updated 2026-07-13 (B4 direct-head implementation §24).
+Generated: 2026-07-10; current checkpoint updated 2026-07-14 (closed B4 result §26).
 Repository: `/home/haowei/Documents/End2Race` (local) ↔ `haowei@192.168.2.127:~/Documents/End2Race` (active remote, host `haowei-MSI`). The historical `100.95.251.103` address is retired unless the user changes it again.
 Audience: a new chat/agent continuing this work with zero conversational context.
 
 Authority: this file is the current new-chat entry point. Newer numbered
 sections supersede older state/authorization text. Current execution authority
-is §24; current technical handoff and next action are §24, with §§17–23 and the
+is §26; current technical handoff and next action are §26, with §§17–25 and the
 B+ v2.2/B2/B3 documents retained as provenance.
 `docs/archive/handoffs/HANDOFF.md`, old remote-goal text, first D0 artifacts, unqualified
 P1/final-report bodies, and older Claude memories are historical evidence only.
 
 Agent navigation is `.agents/README.md` and `.agents/REPO_GUIDE.md`. The full
-historical ledger below is intentionally retained; use newest §24 for B4, §23 for B3,
+historical ledger below is intentionally retained; use newest §26 for B4, §23 for B3,
 §22 for B2, §21 for the prior Codex-chat handoff, §20 for Claude's restructure/run policy, and
 `docs/EXPERIMENT_RECORD.md` for the evidence ledger, and
 `.agents/PPO_DEVELOPMENT_REPORT.md` for the BC-to-B3 project report.
 
 ## 0. Opening instruction for a new chat
 
-> Read `.agents/README.md`, §24, `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`, then
+> Read `.agents/README.md`, §26, `.agents/B4_DIRECT_HEAD_PPO_RESULT.md`, and
+> `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`, then
 > §23 and `.agents/B3_PPO_PLAN.md` only as paused provenance; use §22 and
 > §20.4–20.7 as needed, plus
 > `Experiments/INDEX.md`, then
@@ -28,8 +29,9 @@ historical ledger below is intentionally retained; use newest §24 for B4, §23 
 > historical technical provenance. Verify live local/remote state before acting. The
 > remote Codex goal is revoked and must not be resumed. D2/D2R retain their
 > original failed gates; TTC is prospectively diagnostic-only for the policy
-> phase. D1-B prospectively changes only B4 to a per-seed corrected-overtake floor
-> of 132/288. B2 training RunPlan `b2_direct_20260713_081422` and frozen evaluation
+> phase. D1-B prospectively changed only B4 to a 5% relative overtake guardrail;
+> the final owner override applied it dynamically to the 600-case BC grid
+> (`ceil(.95*342)=325`). B2 training RunPlan `b2_direct_20260713_081422` and frozen evaluation
 > EvalPlan `b2_eval_20260713_165800` are complete. Six integrity-valid candidates
 > all failed the direction gate because corrected overtake fell below BC; no arm
 > was selected and the fresh pool remains sealed. Do not continue these candidates
@@ -43,7 +45,11 @@ historical ledger below is intentionally retained; use newest §24 for B4, §23 
 > terminal-only reward, GAE, actor KL stop, all critic epochs and checkpoint recovery.
 > The owner explicitly authorized execution after this remediation, selected only
 > seed1 on the remote GPU, and replaced the final 288x7 panel with the original BC
-> 3-raceline x 4-speed x 50-startpoint grid. No numerical result exists yet.
+> 3-raceline x 4-speed x 50-startpoint grid. That run and all 2,400 product rows are
+> complete. BC/iter10/iter20/iter30 collision-overtake counts are respectively
+> `24/342`, `24/332`, `36/294`, and `39/296`. No snapshot is feasible; B4 is
+> `B4_SUBSTANTIVE_NEGATIVE`, selected candidate is none, and fresh/final pools remain
+> sealed. Do not automatically run B3/B5, add seed0, modify B4, or extend training.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -2462,3 +2468,81 @@ The failed isolated roots/config archives are preserved. The runner bootstrap no
 sets `PYTHONDONTWRITEBYTECODE=1`, with a regression assertion in
 `test_experiment_runner.py`. A new source commit and unique RunPlan are required;
 never repair or reuse the failed staged root.
+
+## 26. B4 completed execution and substantive negative (2026-07-14)
+
+This section supersedes §25.3–25.4 as the current execution state. The complete
+external record is `.agents/B4_DIRECT_HEAD_PPO_RESULT.md`.
+
+### 26.1 What was done
+
+1. Closed the external-review stochastic blocker with a real collision/horizon
+   collector-to-update smoke, terminal reward ledger, optimizer isolation,
+   strict actor snapshot and full-resume checks. CPU regressions, the staged
+   CUDA smoke, and nine B2/B3 compatibility programs passed.
+2. Created immutable RunPlan `b4_seed1_20260714_003027`, source
+   `9e5afdc9584343a163c4704597dad87487bd750a`, plan SHA256
+   `08f0fe4275ae60928a6d5a6ce9704679bc91a624258bf5aef7f7a268b2c5e381`.
+3. Ran the sole authorized seed1 learner on the remote RTX 4080 SUPER with
+   `DISPLAY=:1`. It completed 30/30 iterations, all critic loops completed three
+   epochs, no stochastic speed projection occurred, and all iter0/10/20/30
+   snapshots strict-load as canonical 12-key plain End2Race.
+4. Evaluated BC and all three snapshots on the literal Austin BC grid:
+   3 opponent racelines x 4 speeds x 50 startpoints = 600 episodes/variant.
+   Local shard0 executed 480/2400 total rows; remote shards1–4 executed 1920.
+   All 2,400 metrics and NPZ hashes passed.
+5. Atomically collected the 4.7 GiB training release under
+   `Experiments/B4_direct_head_ppo/runs/b4_seed1_20260714_003027` and product
+   evidence under
+   `Experiments/B4_direct_head_ppo/product_evaluations/b4_product_seed1_20260714_003027`.
+
+Final result:
+
+| variant | collision | overtake | follow | fixed/new C | verdict |
+|---|---:|---:|---:|---:|---|
+| BC | 24 | 342 | 234 | — | baseline |
+| iter10 | 24 | 332 | 244 | 11/11 | no collision improvement |
+| iter20 | 36 | 294 | 270 | 14/26 | collision and overtake fail |
+| iter30 | 39 | 296 | 265 | 14/29 | collision and overtake fail |
+
+The 5% floor was 325 overtakes. No candidate passed all feasibility rules, so
+the final verdict is `B4_SUBSTANTIVE_NEGATIVE`; selected candidate is none.
+
+### 26.2 Problems encountered
+
+1. The first immutable stage attempt created pyc during verification and was
+   rejected before rollout.
+2. A stopped local product attempt used a manually mistyped source SHA.
+3. The first remote product launch inherited the legacy evaluator's relative
+   cwd assumption and stopped before producing an episode.
+4. The first collection attempt assumed both staged hosts owned learner jobs,
+   although the approved B4 topology had only one remote job.
+
+### 26.3 How they were solved
+
+1. Stage verification now exports `PYTHONDONTWRITEBYTECODE=1`; failed stage
+   evidence remains preserved and a new RunPlan was used.
+2. Product evaluation now validates and derives training identity from the
+   signed RunPlan rather than accepting a hand-entered source SHA (`cd5d467`).
+3. Valid remote evaluation used a private writable work directory linked to
+   the read-only stage. Future workers construct that cwd automatically, and
+   merge enforces host/provenance topology (`292ffec`). Four failed-cwd logs
+   are preserved.
+4. Collection requires status/output only from hosts that own jobs while still
+   requiring STAGED/preflight on both hosts (`241a207`). The failed 28 KiB
+   partial was quarantined; retry completed atomically.
+
+### 26.4 What the next chat must do
+
+1. Treat B4 as a real product-objective negative, not an integrity failure and
+   not a residual/representation theorem.
+2. Do not run B3 automatically, add seed0, unfreeze GRU, add an anchor/dual,
+   alter reward/std/LR, extend iterations, or open fresh/final pools.
+3. If the owner asks for a next experiment, first audit existing paired rows,
+   replay and snapshot action changes to explain iter10's 11 fixed/11 new
+   collision swap and later joint regression. Then request a new prospective
+   one-hypothesis authority; never silently rescue or continue B4.
+4. Preserve the current commits, failed attempts, immutable RunPlan, collected
+   release, product rows and final report. The local branch is intentionally
+   not pushed in this execution because the owner said to ignore the GitHub
+   publication blocker.

@@ -3,7 +3,7 @@
 > 本文件是**全部实验轨道的历史记录**，含已废弃轨道。
 > 当前工作状态与下一步请看 `.agents/HANDOFF.md`（唯一权威入口）。
 > 仓库文件/代码结构说明请看 `.agents/REPO_GUIDE.md`。
-> 生成时间：2026-07-12；B2 结果与 B3 执行计划更新于 2026-07-13。
+> 生成时间：2026-07-12；B4 执行结果更新于 2026-07-14。
 
 ---
 
@@ -22,6 +22,9 @@
 也没有打开 fresh/final pool。历史 PPO 跑曾同时记录碰撞与超车，但这次是
 D2/B1 之后第一次用当前 B+ 目标直接裁决学习后的候选。
 
+2026-07-14 owner 对 B4 作了前瞻性目标变更：安全优先，corrected overtake 最多
+相对 BC 降低 5%。这不追溯改写 B2/B3。B4 已按该规则执行并关闭，结果见 §6。
+
 ---
 
 ## 1. 轨道总览
@@ -39,7 +42,7 @@ D2/B1 之后第一次用当前 B+ 目标直接裁决学习后的候选。
 | **D2 表示探针** | 07-11 | 4 个家族**全部未过** TTC 门 | ✅ 是（数据集仍在用） |
 | **D2.5 反事实** | 07-11 | 67/91 可恢复，Route-R2 动作空间可行 | ✅ 是 |
 | **D2R 几何探针** | 07-11 | **未过** TTC + 2s 误报门 | ✅ 是 |
-| **B+ v2.2 / B2→B3 PPO** | 07-11~13 | B1 warm-start 失败；B2 六候选因超车下降失败；B3 已实现和审阅、待运行 | ✅ 是（当前工作） |
+| **B+ v2.2 / B2→B4 PPO** | 07-11~14 | B2 六候选失败；B3 暂停未运行；B4 direct-head 无合格 snapshot，substantive negative | ✅ 是（当前证据） |
 
 ---
 
@@ -227,6 +230,8 @@ D2/B1 之后第一次用当前 B+ 目标直接裁决学习后的候选。
 | **10** | **warm-start checkpoint 闭环评估** | **FAILED**（见 5.4） |
 | 6（层级重写后） | 新自然采样计划 | **FAILED**（见 5.5） |
 | B2 | BC-direct PPO pilot，三臂×双 seed×20 iterations | **训练与冻结开发评估完成；六候选方向门全部 FAILED** |
+| B3 | unified train/deploy residual policy | **IMPLEMENTED, REVIEWED GO, PAUSED UNRUN** |
+| B4 | plain End2Race output-head-only PPO，seed1×30 | **训练与 3×4×50 评估完成；SUBSTANTIVE NEGATIVE** |
 
 ### 5.3 Task 6 第一次失败：gate bias 初始化错配（已修复）
 
@@ -340,10 +345,28 @@ centered mode 与外部 gate offsets 被拒绝。A/B/C×双 seed 固定为40 ite
 边界回归提交 `21085bc`，CPU 合同测试通过并经独立审阅 GO；尚未创建 RunPlan
 或使用 GPU。
 
-下一步是唯一 B3 RunPlan：staging → 24/138 BC baseline → 双端 preflight →
-plumbing smoke → 六 learner → 288×7 paired evaluation。预计 7.5–8.5 小时，
-含恢复余量 9–11 小时。详情见 `.agents/B3_PPO_PLAN.md` 和
-`.agents/PPO_DEVELOPMENT_REPORT.md`。
+B3 没有创建 RunPlan。owner 随后因 plain-checkpoint 产品要求前瞻性暂停 B3，转而
+执行 B4；B4 negative 后也没有自动恢复 B3 的 authority。
+
+### B4 plain-End2Race direct-head PPO
+
+B4 严格加载 canonical BC，冻结 GRU 和输入编码，只更新已有 `output_layer.*`；
+deployment snapshot 仍是 12-key plain `End2Race.state_dict()`。唯一 seed1 在远端
+RTX 4080 SUPER 完成 30 iterations。最终评估严格使用原 BC Austin grid：3 条
+opponent raceline × 4 个 speed scale × 50 个 startpoint，共 600 episodes/variant。
+
+| variant | collision | overtake | follow | fixed/new collision | 判定 |
+|---|---:|---:|---:|---:|---|
+| BC | 24 | 342 | 234 | — | baseline |
+| iter10 | 24 | 332 | 244 | 11/11 | 无净安全改善 |
+| iter20 | 36 | 294 | 270 | 14/26 | 碰撞、超车均失败 |
+| iter30 | 39 | 296 | 265 | 14/29 | 碰撞、超车均失败 |
+
+5% overtake floor 为 325。iter10 通过 floor 但 collision 未下降且 `fixed=new`；
+iter20/30 两门均失败。最终 `selected_candidate=null`，B4 为
+`B4_SUBSTANTIVE_NEGATIVE`。这否定的是本次 frozen-feature、head-only PPO 配置，
+不证明 residual、GRU unfreeze 或其他未运行设计会成功。fresh/final pool 未打开。
+完整记录见 `.agents/B4_DIRECT_HEAD_PPO_RESULT.md`。
 
 ---
 

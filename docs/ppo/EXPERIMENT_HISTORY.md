@@ -153,6 +153,31 @@ Not established:
 - no current result demonstrates `RR <= 0.70` with overtake noninferiority;
 - no Task-6/Task-10 result is policy-generalization evidence;
 - no A/B/C arm has been selected;
-- no v2.2 PPO iteration has run;
 - the sealed D2 test and fresh/final pool have not been opened.
 
+## 9. B2/B3 redirect and B4 direct-head PPO
+
+B2 subsequently ran six PPO learners and showed that several policies could
+reduce collision while losing too many overtakes; all failed their frozen
+direction gate. B3 fixed the B2 train/deploy policy-identity seam and remains
+`IMPLEMENTED, REVIEWED GO, PAUSED UNRUN`.
+
+The owner then authorized one simpler B4 experiment: strict plain End2Race,
+frozen GRU/features, only the existing output head trainable, one remote seed1,
+and terminal `-2*C+O`. RunPlan `b4_seed1_20260714_003027` completed 30/30
+iterations. Final selection used the original Austin BC grid, not the 288-row
+compatibility panel: 3 opponent racelines x 4 speeds x 50 startpoints = 600
+episodes for BC and each of iter10/20/30.
+
+| variant | collision | overtake | follow | fixed/new collision | result |
+|---|---:|---:|---:|---:|---|
+| BC | 24 | 342 | 234 | — | baseline |
+| iter10 | 24 | 332 | 244 | 11/11 | no net safety gain |
+| iter20 | 36 | 294 | 270 | 14/26 | worse collision and overtake |
+| iter30 | 39 | 296 | 265 | 14/29 | worse collision and overtake |
+
+The 5% overtake floor was 325. No snapshot also achieved strict collision
+improvement and `fixed>new`, so B4 closed as `B4_SUBSTANTIVE_NEGATIVE` with no
+selected candidate. Fresh/final pools remain sealed. This rejects the tested
+frozen-feature direct-head configuration; it does not prove residual policies,
+GRU unfreezing, or any other unrun alternative would succeed.

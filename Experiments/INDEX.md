@@ -22,13 +22,14 @@
 
 `A3` 里的 `artifacts/split_lock/test_seal.json`（SHA256 `cee71d81…a87e`）是**从未打开的分组测试集**的封条。不要动它。
 
-## B 轮 — Route-R2 策略（进行中）
+## B 轮 — Route-R2 策略（已完成至 B4；下一轮未授权）
 
 | 编号 | 原路径 | 内容 | 状态 |
 |---|---|---|---|
 | `B1_route_r2_scaffold` | `logs/bplus_v22_d3r2_20260711` | v2.2 支架：层级动作、identity 门、warm-start、闭环评估（Task 1–10） | Task 10 **FAILED**；warm-start 两次失败 |
 | `B2_ppo_pilot` | — | B+ v2.2 PPO 接线 + 三臂 BC-direct pilot | **首轮训练与评估完成，产品方向门 FAILED**；六个候选均净损失超车，未选臂，fresh pool 未打开。训练 `b2_direct_20260713_081422`，评估 `b2_eval_20260713_165800` |
 | `B3_ppo_unified` | — | 统一 stochastic rollout / PPO log-prob / deterministic deployment 的三臂 PPO | **实现、边界回归和独立审阅 GO，尚未创建 RunPlan 或运行 GPU**；固定 40 iterations，B2 结果不续训 |
+| `B4_direct_head_ppo` | — | plain End2Race frozen-feature output-head-only PPO，唯一 seed1 | **30/30 训练与 2400-row 产品评估完成，B4_SUBSTANTIVE_NEGATIVE**；BC/iter10/20/30 collision-overtake=`24/342`,`24/332`,`36/294`,`39/296`，未选择 candidate，fresh/final pool 未打开 |
 
 ## C 轮 — 预留
 
@@ -79,7 +80,7 @@
 
 ## 怎么跑实验
 
-不要手敲 ssh 命令。B2 由 `Experiments/runner.py` 生成不可变 RunPlan，再用
+不要手敲 ssh 命令。B2/B3/B4 由 `Experiments/runner.py` 生成不可变 RunPlan，再用
 仓库根的 `run.sh` 分阶段执行：
 
 ```bash
@@ -101,3 +102,8 @@ BC/P3 marker 后才会启动 learner。不要手工创建或修改 READY。
 
 旧 `run <job>` / `split <job>` 与 B2 占位 job 已删除。learner 按完整 seed queue
 运行；只有冻结 checkpoint 的 evaluation 才能按 scenario shard。
+
+B4 的唯一已授权执行现已关闭。训练 release 是
+`B4_direct_head_ppo/runs/b4_seed1_20260714_003027`，最终 3x4x50 证据是
+`B4_direct_head_ppo/product_evaluations/b4_product_seed1_20260714_003027/final`。
+不要用上述命令自动创建 B3/B5 或续跑 B4；需新的前瞻性 owner decision。

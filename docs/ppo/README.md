@@ -1,6 +1,6 @@
 # End2Race PPO — Current Entry Point
 
-Updated: 2026-07-12 (Asia/Singapore)
+Updated: 2026-07-14 (Asia/Singapore)
 
 This directory is the concise entry point for the collision-reduction PPO
 project. It replaces the need to reconstruct current state from many dated
@@ -8,10 +8,11 @@ run directories.
 
 ## Product objective
 
-The objective is lexicographic:
+The original objective was lexicographic. For B4 only, the owner prospectively
+approved a safety-first 5% corrected-overtake tolerance:
 
-1. corrected overtake rate must not be lower than BC;
-2. subject to that constraint, reduce any-agent collision rate, with product
+1. corrected overtake must remain at least 95% of BC;
+2. subject to that guardrail, reduce any-agent collision rate, with product
    target `RR <= 0.70` versus BC;
 3. overtake improvement is optional after the first two requirements hold.
 
@@ -31,11 +32,15 @@ product success.
 - The first supervised warm-start passed a step-level gate but failed its
   288-scenario closed-loop mechanism evaluation: every arm created more
   collisions than it fixed and lost more overtakes than it gained.
-- A hierarchical action remediation fixed always-on steering and unsafe
-  composition structurally, but its replacement Task 6 failed: all arms had
-  zero positive calibration recall. No replacement Task 9/10 or PPO run was
-  started.
-- No v2.2 PPO optimization result exists.
+- B2 ran six direct PPO candidates. Several reduced collision, but every one
+  lost too many overtakes under B2's frozen gate; no arm was selected.
+- B3 unified stochastic training and deterministic deployment and passed
+  implementation review, but remains `PAUSED UNRUN` with no RunPlan.
+- B4 ran one seed1 plain-End2Race output-head-only PPO for 30 iterations and
+  completed 2,400 product-grid episodes. BC/iter10/iter20/iter30
+  collision-overtake counts were `24/342`, `24/332`, `36/294`, `39/296`.
+  No snapshot was feasible; B4 is `B4_SUBSTANTIVE_NEGATIVE` and selected none.
+- Fresh/final pools remain sealed. No B3/B5 or B4 continuation is authorized.
 
 ## Interpretation
 
@@ -46,22 +51,24 @@ The diagnostic work established three useful facts:
 - naive supervised witness imitation is not currently a reliable PPO
   admission gate.
 
-The latest discussion therefore proposes retiring warm-start as a mandatory
-gate and testing a minimal BC-direct PPO pilot. That redirect is a proposed
-next design, not a completed or approved experiment. Fresh identity remains
-BC-exact; exploration must be introduced only in the training behavior
-distribution and must be included in the recorded PPO log-probability.
+B4 showed that the tested frozen-feature direct head can change which cases
+collide at iter10 without net safety gain, then regress both collision and
+overtake at later snapshots. This is a configuration-level negative, not a
+proof about residual policies, PPO in general, or GRU representation quality.
+Any next experiment requires a new prospective owner decision.
 
 ## Read order
 
 1. [EXPERIMENT_HISTORY.md](EXPERIMENT_HISTORY.md) — result ledger and claim
    boundaries.
    The longer Chinese record is `docs/EXPERIMENT_RECORD.md`.
-2. [NEXT_PPO_DIRECTION.md](NEXT_PPO_DIRECTION.md) — simplified proposed PPO
-   experiment.
-3. [ARTIFACT_RETENTION.md](ARTIFACT_RETENTION.md) — what local evidence is
+2. `.agents/B4_DIRECT_HEAD_PPO_RESULT.md` — exact B4 identities, numerical
+   result, failures/fixes, evidence paths and stop decision.
+3. [NEXT_PPO_DIRECTION.md](NEXT_PPO_DIRECTION.md) — historical proposal that
+   preceded the now-closed B4 run; it is not current execution authority.
+4. [ARTIFACT_RETENTION.md](ARTIFACT_RETENTION.md) — what local evidence is
    retained and how historical material was archived.
-4. `.agents/HANDOFF.md` — full historical authority ledger; newest numbered
+5. `.agents/HANDOFF.md` — full historical authority ledger; newest numbered
    section wins when older sections conflict.
 
 For exhaustive lookup, use `AUTHORITY_INDEX.md`,
@@ -71,8 +78,8 @@ For exhaustive lookup, use `AUTHORITY_INDEX.md`,
 ## Execution boundary
 
 - Remote unattended Codex authority is revoked.
-- This cleanup is local only; no remote file, process, checkpoint, registry,
-  or artifact is changed.
+- The authorized B4 remote run is complete; do not resume or launch another
+  remote job without new authority.
 - Do not open the D2 test or a fresh/final pool during development.
 - Do not claim generalization from Task 6, Task 9, Task 10, or the 288-scenario
   development population.
