@@ -1,12 +1,14 @@
-"""Resumable two-seed B4 direct-head learner and blocking smoke contracts."""
+"""Resumable seed-1 B4 direct-head learner and blocking smoke contracts."""
 
 from __future__ import annotations
 
+from dataclasses import replace
 import hashlib
 import json
 import os
 from pathlib import Path
 import random
+import tempfile
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -41,11 +43,22 @@ B4_RUN_PLAN_SCHEMA = "end2race-b2-run-plan-1"
 B4_TRAIN_KIND = "b4_train"
 B4_JOB_KIND = "b4_training"
 B4_PILOT_SCHEMA = "end2race-b4-direct-head-pilot-1"
-B4_PLUMBING_SCHEMA = "end2race-b4-plumbing-smoke-1"
+B4_PLUMBING_SCHEMA = "end2race-b4-plumbing-smoke-2"
 B4_READY_SCHEMA = "end2race-b4-ready-1"
 B4_SEED_BASE = 407130
 B4_REPLAY_RATIO_ATOL = 1e-4
 TRAINING_MANIFEST_NAME = "training_scenarios.tsv"
+STOCHASTIC_COLLISION_L2 = (
+    "L2:732874565dde6d56c098e63f6fb2a11469910c4959ea51c1919480176319fcc5"
+)
+STOCHASTIC_FOLLOW_L2 = (
+    "L2:4356171e491b2bc2ccd43b7d8eec7cd94031e2c419dd63332e3f0ed7ddbe98b7"
+)
+STOCHASTIC_OVERTAKE_L2 = (
+    "L2:734ba8722f2c24e8697ada7326b63dc04c449837dbf6ed8dc5a3f97d8c10d9ad"
+)
+STOCHASTIC_SMOKE_SEED = 20260714
+SHAPED_REWARD_SENTINEL = 1_000_000.0
 
 
 def _canonical_json(value: Mapping[str, Any]) -> bytes:
@@ -70,7 +83,7 @@ def expected_b4_plan_config(
     task8_release: str | Path,
     d2_episode_metadata: str | Path,
 ) -> dict[str, Any]:
-    """Build the immutable numerical config and both frozen curriculum digests."""
+    """Build the immutable numerical config and frozen seed-1 curriculum digest."""
 
     task8 = Path(task8_release)
     metadata = Path(d2_episode_metadata)
@@ -157,8 +170,8 @@ def validate_b4_pilot_plan(
     path, plan = load_b4_run_plan(plan_path)
     paths = _staged_paths(path, plan)
     jobs = plan.get("jobs")
-    if not isinstance(jobs, list) or len(jobs) != 2:
-        raise ValueError("B4 RunPlan must contain exactly two seed jobs")
+    if not isinstance(jobs, list) or len(jobs) != 1:
+        raise ValueError("B4 RunPlan must contain exactly one seed-1 job")
     identities = set()
     selected = None
     for job in jobs:
@@ -402,12 +415,258 @@ def _outcome_record(result: B4EpisodeResult) -> dict[str, Any]:
     }
 
 
+def _scenario_by_l2(rows: Sequence[Any], l2_id: str, expected_outcome: str) -> Any:
+    matches = [row for row in rows if row.l2_id == l2_id]
+    if len(matches) != 1 or matches[0].archived_bc_outcome != expected_outcome:
+        raise AssertionError(f"B4 stochastic smoke scenario drift: {l2_id}")
+    return matches[0]
+
+
+def run_b4_stochastic_plumbing_smoke(
+    bc_state: Mapping[str, torch.Tensor],
+    device: torch.device,
+    scenarios: B4ScenarioSets,
+    *,
+    run_plan_sha256: str = "a" * 64,
+    curriculum_sha256: str = "b" * 64,
+) -> dict[str, Any]:
+    """Exercise the real stochastic collector-to-update-to-checkpoint seam.
+
+    The smoke deliberately uses three production simulator episodes but a
+    smoke-only aggressive LR/KL threshold so actor early-stop is guaranteed to
+    execute.  It never reports product KPIs or influences the frozen pilot
+    configuration.
+    """
+
+    from d25.oracle import classify_trajectory
+    import ppo_utils
+
+    smoke_config = replace(
+        FROZEN_B4_CONFIG,
+        actor_lr=1e-2,
+        target_weighted_kl=1e-12,
+        episodes_per_iteration=3,
+        collision_episodes=1,
+        overtake_episodes=1,
+        follow_episodes=1,
+    )
+    selected = (
+        _scenario_by_l2(scenarios.collision, STOCHASTIC_COLLISION_L2, "collision"),
+        _scenario_by_l2(scenarios.follow, STOCHASTIC_FOLLOW_L2, "follow"),
+        _scenario_by_l2(scenarios.overtake, STOCHASTIC_OVERTAKE_L2, "overtake"),
+    )
+
+    torch.manual_seed(STOCHASTIC_SMOKE_SEED)
+    if device.type == "cuda":
+        torch.cuda.manual_seed_all(STOCHASTIC_SMOKE_SEED)
+    np.random.seed(STOCHASTIC_SMOKE_SEED)
+    random.seed(STOCHASTIC_SMOKE_SEED)
+    collector = B4DirectHeadPolicy(bc_state, smoke_config).to(device)
+    sample_ledger: list[tuple[np.ndarray, float]] = []
+    transitions = []
+    episode_reports = []
+
+    original_shaped_reward = ppo_utils.compute_shaped_reward
+
+    def _sentinel_shaped_reward(*args, **kwargs):
+        _discarded, terms = original_shaped_reward(*args, **kwargs)
+        return SHAPED_REWARD_SENTINEL, terms
+
+    ppo_utils.compute_shaped_reward = _sentinel_shaped_reward
+    try:
+        for episode_id, scenario in enumerate(selected):
+            episode_seed = STOCHASTIC_SMOKE_SEED + episode_id
+            torch.manual_seed(episode_seed)
+            if device.type == "cuda":
+                torch.cuda.manual_seed_all(episode_seed)
+            np.random.seed(episode_seed)
+            random.seed(episode_seed)
+            result = run_b4_episode(
+                collector,
+                device,
+                scenario,
+                episode_id=episode_id,
+                deterministic=False,
+                sample_ledger=sample_ledger,
+            )
+            independently_classified = classify_trajectory(
+                result.arrays, scenario.map_name
+            )
+            classifier_parity = (
+                independently_classified.four_state == result.outcome.four_state
+                and bool(independently_classified.collision_any)
+                == bool(result.outcome.collision_any)
+                and independently_classified.corrected_outcome3
+                == result.outcome.corrected_outcome3
+            )
+            if not classifier_parity:
+                raise AssertionError("B4 stochastic smoke classifier parity failed")
+            transitions.extend(result.transitions)
+            episode_reports.append(
+                {
+                    "l2_id": scenario.l2_id,
+                    "archived_bc_outcome": scenario.archived_bc_outcome,
+                    "map_name": scenario.map_name,
+                    "step_count": result.step_count,
+                    "terminal_reason": result.terminal_reason,
+                    "collision_any": bool(result.outcome.collision_any),
+                    "corrected_outcome3": result.outcome.corrected_outcome3,
+                    "terminal_reward": float(result.transitions[-1].reward),
+                    "classifier_parity": classifier_parity,
+                    "zero_bootstrap_terminal": bool(result.transitions[-1].terminated),
+                    "projection_transition_count": result.projection_transition_count,
+                }
+            )
+    finally:
+        ppo_utils.compute_shaped_reward = original_shaped_reward
+
+    if episode_reports[0]["terminal_reason"] != "any_agent_collision":
+        raise AssertionError("B4 stochastic smoke did not cover an early collision")
+    if any(
+        report["terminal_reason"] != "product_horizon"
+        for report in episode_reports[1:]
+    ):
+        raise AssertionError("B4 stochastic smoke did not cover product horizon")
+    if len(sample_ledger) != len(transitions):
+        raise AssertionError("B4 raw sampler/stored transition ledger length drift")
+    for (sampled_raw, sampled_log_prob), transition in zip(
+        sample_ledger, transitions, strict=True
+    ):
+        if not np.array_equal(sampled_raw, transition.raw_action):
+            raise AssertionError("B4 raw sampler/stored latent mismatch")
+        if float(sampled_log_prob) != float(transition.old_log_prob):
+            raise AssertionError("B4 sampled/stored old log-probability mismatch")
+
+    batch = build_batch(transitions, smoke_config)
+    if torch.any(batch.reward[~batch.terminated] != 0.0):
+        raise AssertionError("B4 stochastic smoke found a nonterminal reward")
+    if float(torch.max(torch.abs(batch.reward)).item()) > 2.0:
+        raise AssertionError("B4 shaped reward leaked into replay reward")
+    if (
+        float(torch.max(torch.abs(batch.advantage)).item()) >= SHAPED_REWARD_SENTINEL / 10
+        or float(torch.max(torch.abs(batch.returns)).item()) >= SHAPED_REWARD_SENTINEL / 10
+    ):
+        raise AssertionError("B4 shaped reward leaked into advantage/return")
+
+    # Replay/update happens on a fresh copy with exactly the collector weights.
+    learner = B4DirectHeadPolicy(bc_state, smoke_config).to(device)
+    learner.actor.load_state_dict(collector.actor.state_dict(), strict=True)
+    learner.critic.load_state_dict(collector.critic.state_dict(), strict=True)
+    actor_optimizer, critic_optimizer = build_optimizers(learner)
+    preupdate = replay_metrics(learner, batch.to(device))
+    if preupdate["max_abs_ratio_minus_one"] > B4_REPLAY_RATIO_ATOL:
+        raise AssertionError("B4 stochastic pre-update replay ratio drift")
+
+    actor_before = {
+        name: value.detach().cpu().clone()
+        for name, value in learner.actor.state_dict().items()
+    }
+    critic_before = {
+        name: value.detach().cpu().clone()
+        for name, value in learner.critic.state_dict().items()
+    }
+    action_std_before = learner.action_std.detach().cpu().clone()
+    update = update_policy(
+        learner,
+        batch,
+        actor_optimizer,
+        critic_optimizer,
+        seed=1,
+        iteration=1,
+    )
+    if update["actor_stopped_early"] is not True:
+        raise AssertionError("B4 stochastic smoke did not exercise actor KL early-stop")
+    if update["critic_epochs_completed"] != smoke_config.critic_epochs:
+        raise AssertionError("B4 actor early-stop suppressed critic epochs")
+    actor_after = learner.actor.state_dict()
+    output_changed = any(
+        not torch.equal(actor_before[name], value.detach().cpu())
+        for name, value in actor_after.items()
+        if name.startswith("output_layer.")
+    )
+    frozen_exact = all(
+        torch.equal(actor_before[name], value.detach().cpu())
+        for name, value in actor_after.items()
+        if not name.startswith("output_layer.")
+    )
+    critic_changed = any(
+        not torch.equal(critic_before[name], value.detach().cpu())
+        for name, value in learner.critic.state_dict().items()
+    )
+    if not output_changed or not critic_changed or not frozen_exact:
+        raise AssertionError("B4 stochastic smoke optimizer isolation failed")
+    if not torch.equal(action_std_before, learner.action_std.detach().cpu()):
+        raise AssertionError("B4 fixed action std changed during smoke update")
+
+    with tempfile.TemporaryDirectory(prefix="b4-stochastic-smoke-") as directory:
+        root = Path(directory)
+        actor_path = root / "actor.pth"
+        actor_record = save_actor_snapshot(learner, actor_path)
+        strict_actor = load_strict_plain_actor(actor_path, "cpu")
+        if tuple(strict_actor.state_dict()) != tuple(learner.actor_state()):
+            raise AssertionError("B4 stochastic actor-only snapshot schema drift")
+        full_path = root / "full.pt"
+        save_full_checkpoint(
+            learner,
+            actor_optimizer,
+            critic_optimizer,
+            full_path,
+            completed_iteration=1,
+            seed=1,
+            run_plan_sha256=run_plan_sha256,
+            curriculum_sha256=curriculum_sha256,
+        )
+        restored = B4DirectHeadPolicy(bc_state, smoke_config).to(device)
+        restored_actor_optimizer, restored_critic_optimizer = build_optimizers(restored)
+        completed = load_full_checkpoint(
+            full_path,
+            restored,
+            restored_actor_optimizer,
+            restored_critic_optimizer,
+            expected_seed=1,
+            expected_run_plan_sha256=run_plan_sha256,
+            expected_curriculum_sha256=curriculum_sha256,
+            restore_rng=False,
+        )
+        if completed != 1 or any(
+            not torch.equal(restored.actor_state()[name], value)
+            for name, value in learner.actor_state().items()
+        ):
+            raise AssertionError("B4 stochastic full-checkpoint recovery failed")
+
+    collector.assert_frozen_exact()
+    learner.assert_frozen_exact()
+    return {
+        "fixed_rng_seed": STOCHASTIC_SMOKE_SEED,
+        "episode_reports": episode_reports,
+        "sampled_transition_count": len(sample_ledger),
+        "raw_stored_latent_exact": True,
+        "raw_old_log_prob_exact": True,
+        "projection_ledger_valid": True,
+        "terminal_reward_ledger_valid": True,
+        "dense_reward_sentinel": SHAPED_REWARD_SENTINEL,
+        "dense_reward_excluded_from_reward_advantage_return": True,
+        "preupdate_max_abs_ratio_minus_one": preupdate["max_abs_ratio_minus_one"],
+        "actor_early_stop_exercised": True,
+        "actor_epochs_completed": update["actor_epochs_completed"],
+        "critic_epochs_completed": update["critic_epochs_completed"],
+        "output_layer_changed": output_changed,
+        "critic_changed": critic_changed,
+        "frozen_actor_exact": frozen_exact,
+        "fixed_action_std_exact": True,
+        "actor_snapshot_key_count": actor_record["key_count"],
+        "plain_actor_strict_load": True,
+        "full_checkpoint_recovery": True,
+        "product_metrics_compared": False,
+    }
+
+
 def run_b4_plumbing_smoke(
     plan_path: str | Path,
     *,
     device_name: str = "cuda:0",
 ) -> dict[str, Any]:
-    """Run one deterministic identity episode on each product map."""
+    """Run deterministic identity plus stochastic PPO plumbing contracts."""
 
     validated = validate_b4_pilot_plan(plan_path)
     from d25.oracle import simulate_episode
@@ -490,6 +749,13 @@ def run_b4_plumbing_smoke(
             }
         )
     policy.assert_frozen_exact()
+    stochastic = run_b4_stochastic_plumbing_smoke(
+        bc_state,
+        device,
+        scenarios,
+        run_plan_sha256=plan["plan_sha256"],
+        curriculum_sha256=plan["config"]["curriculum_sha256_by_seed"]["1"],
+    )
     return {
         "schema": B4_PLUMBING_SCHEMA,
         "passed": True,
@@ -506,6 +772,7 @@ def run_b4_plumbing_smoke(
         "trainable_actor_parameter_count": sum(
             parameter.numel() for parameter in policy.trainable_actor_parameters
         ),
+        "stochastic_plumbing": stochastic,
         "product_outcomes_reported_or_compared": False,
         "candidate_selection_performed": False,
         "ppo_pilot_iteration_completed": False,

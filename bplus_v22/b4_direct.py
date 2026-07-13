@@ -98,7 +98,7 @@ class B4Config:
     overtake_episodes: int = OVERTAKE_EPISODES
     follow_episodes: int = FOLLOW_EPISODES
     iterations: int = 30
-    seeds: tuple[int, int] = (0, 1)
+    seeds: tuple[int, ...] = (1,)
     snapshots: tuple[int, int, int, int] = (0, 10, 20, 30)
 
     def __post_init__(self) -> None:
@@ -137,7 +137,7 @@ class B4Config:
             (self.collision_episodes, self.overtake_episodes, self.follow_episodes)
         ):
             raise ValueError("B4 curriculum counts do not sum to one iteration")
-        if tuple(self.seeds) != (0, 1) or tuple(self.snapshots) != (0, 10, 20, 30):
+        if tuple(self.seeds) != (1,) or tuple(self.snapshots) != (0, 10, 20, 30):
             raise ValueError("B4 seed/snapshot contract drift")
 
     def as_dict(self) -> dict[str, Any]:
@@ -471,6 +471,13 @@ def _episode_groups(transitions: Sequence[B4Transition]) -> list[list[B4Transiti
     groups.append(current)
     if any(any(row.terminated for row in episode[:-1]) for episode in groups):
         raise ValueError("B4 episode has an early terminal marker")
+    if any(
+        any(float(row.reward) != 0.0 for row in episode[:-1])
+        for episode in groups
+    ):
+        raise ValueError("B4 dense/nonterminal reward leaked into replay")
+    if any(float(episode[-1].reward) not in (-2.0, 0.0, 1.0) for episode in groups):
+        raise ValueError("B4 terminal replay reward is outside -2*C+O support")
     return groups
 
 
@@ -777,7 +784,7 @@ class B4ScenarioSets:
 class B4Curriculum:
     def __init__(self, scenarios: B4ScenarioSets, seed: int):
         if int(seed) not in FROZEN_B4_CONFIG.seeds:
-            raise ValueError("B4 curriculum seed must be 0 or 1")
+            raise ValueError("B4 curriculum seed must be the owner-selected seed 1")
         self.scenarios = scenarios
         self.seed = int(seed)
 

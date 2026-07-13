@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import gc
 import math
-from typing import Mapping
+from typing import Mapping, MutableSequence
 
 import numpy as np
 import torch
@@ -22,6 +22,29 @@ from ppo_utils import RewardState
 
 class B4InvalidEpisode(RuntimeError):
     """Infrastructure/simulator termination that must not enter an update."""
+
+
+def terminal_task_reward(collision_any: bool, terminal_overtake: bool) -> float:
+    """Return the only reward that may enter a B4 rollout."""
+
+    return float(-2 * int(bool(collision_any)) + int(bool(terminal_overtake)))
+
+
+def assert_terminal_reward_ledger(
+    transitions: tuple[B4Transition, ...] | list[B4Transition],
+    *,
+    collision_any: bool,
+    terminal_overtake: bool,
+) -> None:
+    """Fail closed if dense diagnostics leak into the actor/critic replay."""
+
+    if not transitions:
+        raise AssertionError("B4 terminal reward ledger is empty")
+    if any(float(row.reward) != 0.0 for row in transitions[:-1]):
+        raise AssertionError("B4 nonterminal replay reward is not exactly zero")
+    expected = terminal_task_reward(collision_any, terminal_overtake)
+    if float(transitions[-1].reward) != expected:
+        raise AssertionError("B4 final replay reward is not -2*C+O")
 
 
 @dataclass(frozen=True)
@@ -48,6 +71,11 @@ class B4EpisodeResult:
             row.terminated for row in self.transitions[:-1]
         ):
             raise ValueError("B4 episode terminal boundary drift")
+        assert_terminal_reward_ledger(
+            self.transitions,
+            collision_any=bool(self.outcome.collision_any),
+            terminal_overtake=self.outcome.corrected_outcome3 == "overtake",
+        )
         for row in self.transitions:
             row.validate()
 
@@ -79,6 +107,7 @@ def run_b4_episode(
     episode_id: int,
     deterministic: bool = False,
     sim_duration: float = 8.0,
+    sample_ledger: MutableSequence[tuple[np.ndarray, float]] | None = None,
 ) -> B4EpisodeResult:
     """Collect exactly one valid complete episode or raise ``B4InvalidEpisode``.
 
@@ -224,20 +253,30 @@ def run_b4_episode(
             command = executed_action[0]
             ego_steer = float(command[0].item())
             ego_speed = float(command[1].item())
-            transitions.append(
-                B4Transition(
-                    l2_id=scenario.l2_id,
-                    episode_id=int(episode_id),
-                    step_index=step_index,
-                    feature=feature[0].cpu().numpy().astype(np.float32),
-                    privileged_feature=privileged.astype(np.float32),
-                    raw_action=raw_action[0].cpu().numpy().astype(np.float32),
-                    executed_action=executed_action[0].cpu().numpy().astype(np.float32),
-                    projection_delta=projection_delta[0].cpu().numpy().astype(np.float32),
-                    old_log_prob=float(old_log_prob.item()),
-                    old_value=float(old_value.item()),
-                )
+            transition = B4Transition(
+                l2_id=scenario.l2_id,
+                episode_id=int(episode_id),
+                step_index=step_index,
+                feature=feature[0].cpu().numpy().astype(np.float32),
+                privileged_feature=privileged.astype(np.float32),
+                raw_action=raw_action[0].cpu().numpy().astype(np.float32),
+                executed_action=executed_action[0].cpu().numpy().astype(np.float32),
+                projection_delta=projection_delta[0].cpu().numpy().astype(np.float32),
+                old_log_prob=float(old_log_prob.item()),
+                old_value=float(old_value.item()),
             )
+            # This assertion sits directly on the production collector seam:
+            # the replay action must be the sampler output, never the projected
+            # physical command.  The optional smoke ledger keeps an independent
+            # copy for end-to-end verification.
+            sampled_raw = raw_action[0].detach().cpu().numpy().astype(np.float32)
+            if not np.array_equal(transition.raw_action, sampled_raw):
+                raise B4InvalidEpisode("collector did not store the sampled raw latent")
+            if float(transition.old_log_prob) != float(old_log_prob.item()):
+                raise B4InvalidEpisode("collector old log-probability ledger drift")
+            if sample_ledger is not None:
+                sample_ledger.append((sampled_raw.copy(), float(old_log_prob.item())))
+            transitions.append(transition)
 
             if tracker_count == 0:
                 opp_traj = opponent.plan(
@@ -291,7 +330,12 @@ def run_b4_episode(
             if not math.isfinite(timestep) or timestep <= 0.0:
                 raise B4InvalidEpisode("simulator returned an invalid timestep")
             lap_time += timestep
-            compute_shaped_reward(obs, reward_state, reference, reward_weights, timestep)
+            # This legacy shaped reward is retained only because it advances
+            # RewardState for the privileged critic features.  Its returned
+            # scalar/terms are deliberately discarded and never touch replay.
+            _diagnostic_shaped_reward = compute_shaped_reward(
+                obs, reward_state, reference, reward_weights, timestep
+            )
             ego_progress, _ = project_point_to_centerline(
                 np.asarray([obs["poses_x"][0], obs["poses_y"][0]]), centerline
             )
@@ -343,9 +387,14 @@ def run_b4_episode(
         if bool(outcome.collision_any) != collision:
             raise B4InvalidEpisode("simulator/classifier collision disagreement")
         transitions[-1].terminated = True
-        transitions[-1].reward = float(
-            -2 * int(bool(outcome.collision_any))
-            + int(outcome.corrected_outcome3 == "overtake")
+        transitions[-1].reward = terminal_task_reward(
+            bool(outcome.collision_any),
+            outcome.corrected_outcome3 == "overtake",
+        )
+        assert_terminal_reward_ledger(
+            transitions,
+            collision_any=bool(outcome.collision_any),
+            terminal_overtake=outcome.corrected_outcome3 == "overtake",
         )
         for row in transitions:
             row.validate()

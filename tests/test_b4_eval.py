@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact 288x7 Cartesian merge and same-iteration B4 selection regression."""
+"""Exact 288x4 Cartesian merge and seed-1 snapshot selection regression."""
 
 from dataclasses import dataclass
 import hashlib
@@ -64,7 +64,7 @@ def main() -> None:
             training_manifest_sha256=training_sha,
             training_run_plan_sha256=parent_sha,
         )
-        for seed in (0, 1)
+        for seed in (1,)
         for iteration in (10, 20, 30)
     )
     spec_by_variant = {spec.variant: spec for spec in specs}
@@ -74,11 +74,8 @@ def main() -> None:
     baseline_collision = set(range(24))
     baseline_overtake = set(range(24, 162))
     contracts = {
-        (0, 10): (20, 134, 6, 2),
         (1, 10): (21, 135, 5, 2),
-        (0, 20): (16, 132, 9, 1),
         (1, 20): (16, 133, 9, 1),
-        (0, 30): (15, 134, 10, 1),
         (1, 30): (15, 131, 10, 1),
     }
     rows_by_shard: list[list[dict[str, object]]] = [[] for _ in range(4)]
@@ -150,20 +147,20 @@ def main() -> None:
         bc_checkpoint_sha256=bc_sha,
         checkpoints=specs,
     )
-    assert len(merged) == 2016
+    assert len(merged) == 1152
     assert summary["scenario_count"] == 288
-    assert summary["variant_count"] == 7
+    assert summary["variant_count"] == 4
     assert summary["selected_iteration"] == 20
-    assert summary["same_iteration_pairs"]["iter20"]["terminal_overtake"] == 265
-    assert summary["same_iteration_pairs"]["iter20"]["collision"] == 32
-    assert summary["same_iteration_pairs"]["iter20"]["checks"] == {
-        "both_seed_overtake_ge_132": True,
-        "both_seed_collision_le_24": True,
-        "both_seed_collision_strict_improve": True,
-        "pooled_fixed_gt_new": True,
+    assert summary["same_iteration_snapshots"]["iter20"]["terminal_overtake"] == 133
+    assert summary["same_iteration_snapshots"]["iter20"]["collision"] == 16
+    assert summary["same_iteration_snapshots"]["iter20"]["checks"] == {
+        "seed1_overtake_ge_132": True,
+        "seed1_collision_le_24": True,
+        "seed1_collision_strict_improve": True,
+        "fixed_gt_new": True,
         "zero_deterministic_speed_projection": True,
     }
-    assert summary["same_iteration_pairs"]["iter30"]["feasible"] is False
+    assert summary["same_iteration_snapshots"]["iter30"]["feasible"] is False
 
     broken_rows = [list(shard.rows) for shard in shards]
     broken_rows[0][0] = dict(broken_rows[0][0])
@@ -230,7 +227,7 @@ def main() -> None:
     except ValueError as error:
         assert "diagnostic" in str(error)
 
-    print("B4 288x7 paired evaluation contracts passed")
+    print("B4 seed-1 288x4 paired evaluation contracts passed")
 
 
 if __name__ == "__main__":

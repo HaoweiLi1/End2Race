@@ -306,8 +306,8 @@ def _verify_plan(plan: RunPlan) -> None:
                 for job in plan.jobs
                 if job.kind == "b4_training"
             }
-            if identities != {("b4-seed0", 0), ("b4-seed1", 1)} or len(plan.jobs) != 2:
-                raise RunnerError("B4 train plan must contain exactly two seed learners")
+            if identities != {("b4-seed1", 1)} or len(plan.jobs) != 1:
+                raise RunnerError("B4 train plan must contain exactly one seed-1 learner")
             if tuple(plan.required_cli) != B4_REQUIRED_TRAIN_CLI:
                 raise RunnerError("B4 train CLI contract drift")
             from bplus_v22.b4_direct import B4_POLICY_SCHEMA, validate_frozen_config
@@ -338,7 +338,7 @@ def _verify_plan(plan: RunPlan) -> None:
                 set(plan.config) != expected_config_keys
                 or plan.config.get("policy_contract") != B4_POLICY_SCHEMA
                 or not isinstance(curriculum, dict)
-                or set(curriculum) != {"0", "1"}
+                or set(curriculum) != {"1"}
                 or any(not SHA256_RE.fullmatch(str(value)) for value in curriculum.values())
                 or not SHA256_RE.fullmatch(str(plan.config.get("training_manifest_sha256", "")))
                 or plan.config.get("overtake_gate_per_seed") != 132
@@ -781,7 +781,7 @@ def _training_jobs() -> tuple[tuple[JobSpec, ...], dict[str, tuple[str, ...]]]:
 def _b4_training_jobs() -> tuple[tuple[JobSpec, ...], dict[str, tuple[str, ...]]]:
     jobs: list[JobSpec] = []
     queues: dict[str, tuple[str, ...]] = {}
-    for seed, host in ((0, "remote"), (1, "local")):
+    for seed, host in ((1, "remote"),):
         job_id = f"b4-seed{seed}"
         queue_id = f"b4-seed{seed}-{host}"
         jobs.append(
@@ -964,7 +964,7 @@ def build_b4_training_plan(
     remote_gpu_uuid: str,
     environment: dict[str, str] | None = None,
 ) -> RunPlan:
-    """Create, but never execute, the one approved two-seed B4 RunPlan."""
+    """Create the owner-approved immutable seed-1 B4 RunPlan."""
 
     _validate_run_id(run_id)
     commit, tree = _require_clean_commit(repo, commit)
@@ -1324,7 +1324,7 @@ def _parse_b4_checkpoint(value: str) -> tuple[int, int, Path]:
     seed = int(parts[0])
     iteration = int(parts[1])
     path = Path(parts[2]).resolve()
-    if seed not in SEEDS or iteration not in {10, 20, 30}:
+    if seed != 1 or iteration not in {10, 20, 30}:
         raise RunnerError("B4 checkpoint seed/iteration is outside the frozen set")
     if not path.is_file() or path.is_symlink():
         raise RunnerError(f"B4 checkpoint is not one regular file: {path}")
@@ -1404,7 +1404,7 @@ def build_b4_evaluation_plan(
     output: Path,
     source_commit: str = "HEAD",
 ) -> RunPlan:
-    """Freeze the one allowed 288x7 B4 opened-development evaluation."""
+    """Freeze the seed-1 288x4 B4 opened-development evaluation."""
 
     _validate_run_id(run_id)
     parent = load_plan(training_plan_path)
@@ -1416,10 +1416,10 @@ def build_b4_evaluation_plan(
         repo, parent.source_commit, source_commit
     )
     parsed = [_parse_b4_checkpoint(value) for value in checkpoints]
-    expected = {(seed, iteration) for seed in SEEDS for iteration in (10, 20, 30)}
+    expected = {(1, iteration) for iteration in (10, 20, 30)}
     identities = {(seed, iteration) for seed, iteration, _ in parsed}
-    if len(parsed) != 6 or identities != expected:
-        raise RunnerError("B4 evaluation requires all six seed0/1 x iter10/20/30 snapshots")
+    if len(parsed) != 3 or identities != expected:
+        raise RunnerError("B4 evaluation requires seed1 iter10/20/30 snapshots")
     for seed, iteration, path in parsed:
         _validate_b4_actor_snapshot_source(parent, seed, iteration, path)
     parent_inputs = Path(parent.inputs_archive_path)
@@ -1483,7 +1483,7 @@ def build_b4_evaluation_plan(
             ]
             variants = ["BC"] + [
                 f"seed{seed}_iter{iteration}"
-                for seed in SEEDS
+                for seed in (1,)
                 for iteration in (10, 20, 30)
             ]
             checkpoint_set_sha = _sha256_bytes(_canonical_json(checkpoint_meta))
@@ -1538,8 +1538,8 @@ def build_b4_evaluation_plan(
                         "scenarios": scenarios,
                         "variants": variants,
                         "expected_scenario_count": 288,
-                        "expected_variant_count": 7,
-                        "expected_episode_rows": 2016,
+                        "expected_variant_count": 4,
+                        "expected_episode_rows": 1152,
                     },
                 )
             )
@@ -2448,6 +2448,7 @@ def _validate_plumbing_marker(
             "map_reports",
             "plain_actor_key_count",
             "trainable_actor_parameter_count",
+            "stochastic_plumbing",
             "product_outcomes_reported_or_compared",
             "candidate_selection_performed",
             "ppo_pilot_iteration_completed",
@@ -2464,6 +2465,102 @@ def _validate_plumbing_marker(
             "steer_projection_count",
             "max_abs_replayed_log_prob_delta",
         }
+        stochastic = value.get("stochastic_plumbing") if isinstance(value, dict) else None
+        stochastic_keys = {
+            "fixed_rng_seed",
+            "episode_reports",
+            "sampled_transition_count",
+            "raw_stored_latent_exact",
+            "raw_old_log_prob_exact",
+            "projection_ledger_valid",
+            "terminal_reward_ledger_valid",
+            "dense_reward_sentinel",
+            "dense_reward_excluded_from_reward_advantage_return",
+            "preupdate_max_abs_ratio_minus_one",
+            "actor_early_stop_exercised",
+            "actor_epochs_completed",
+            "critic_epochs_completed",
+            "output_layer_changed",
+            "critic_changed",
+            "frozen_actor_exact",
+            "fixed_action_std_exact",
+            "actor_snapshot_key_count",
+            "plain_actor_strict_load",
+            "full_checkpoint_recovery",
+            "product_metrics_compared",
+        }
+        stochastic_episode_keys = {
+            "l2_id",
+            "archived_bc_outcome",
+            "map_name",
+            "step_count",
+            "terminal_reason",
+            "collision_any",
+            "corrected_outcome3",
+            "terminal_reward",
+            "classifier_parity",
+            "zero_bootstrap_terminal",
+            "projection_transition_count",
+        }
+        stochastic_episodes = (
+            stochastic.get("episode_reports") if isinstance(stochastic, dict) else None
+        )
+        stochastic_valid = (
+            isinstance(stochastic, dict)
+            and set(stochastic) == stochastic_keys
+            and stochastic.get("fixed_rng_seed") == 20260714
+            and isinstance(stochastic_episodes, list)
+            and len(stochastic_episodes) == 3
+            and all(
+                isinstance(report, dict)
+                and set(report) == stochastic_episode_keys
+                and isinstance(report.get("l2_id"), str)
+                and report["l2_id"].startswith("L2:")
+                and isinstance(report.get("map_name"), str)
+                and type(report.get("step_count")) is int
+                and report["step_count"] > 0
+                and type(report.get("collision_any")) is bool
+                and isinstance(report.get("corrected_outcome3"), str)
+                and type(report.get("terminal_reward")) in (int, float)
+                and report.get("classifier_parity") is True
+                and report.get("zero_bootstrap_terminal") is True
+                and type(report.get("projection_transition_count")) is int
+                and report["projection_transition_count"] >= 0
+                for report in stochastic_episodes
+            )
+            and [report["archived_bc_outcome"] for report in stochastic_episodes]
+            == ["collision", "follow", "overtake"]
+            and [report["terminal_reason"] for report in stochastic_episodes]
+            == ["any_agent_collision", "product_horizon", "product_horizon"]
+            and [report["terminal_reward"] for report in stochastic_episodes]
+            == [-2.0, 0.0, 1.0]
+            and stochastic.get("sampled_transition_count")
+            == sum(report["step_count"] for report in stochastic_episodes)
+            and stochastic.get("raw_stored_latent_exact") is True
+            and stochastic.get("raw_old_log_prob_exact") is True
+            and stochastic.get("projection_ledger_valid") is True
+            and stochastic.get("terminal_reward_ledger_valid") is True
+            and stochastic.get("dense_reward_sentinel") == 1_000_000.0
+            and stochastic.get("dense_reward_excluded_from_reward_advantage_return")
+            is True
+            and type(stochastic.get("preupdate_max_abs_ratio_minus_one"))
+            in (int, float)
+            and 0.0
+            <= float(stochastic["preupdate_max_abs_ratio_minus_one"])
+            <= 1e-4
+            and stochastic.get("actor_early_stop_exercised") is True
+            and type(stochastic.get("actor_epochs_completed")) is int
+            and 1 <= stochastic["actor_epochs_completed"] < 3
+            and stochastic.get("critic_epochs_completed") == 3
+            and stochastic.get("output_layer_changed") is True
+            and stochastic.get("critic_changed") is True
+            and stochastic.get("frozen_actor_exact") is True
+            and stochastic.get("fixed_action_std_exact") is True
+            and stochastic.get("actor_snapshot_key_count") == 12
+            and stochastic.get("plain_actor_strict_load") is True
+            and stochastic.get("full_checkpoint_recovery") is True
+            and stochastic.get("product_metrics_compared") is False
+        )
         expected_manifest_sha = _frozen_entry_sha256(
             plan, "task8/training_scenarios.tsv"
         )
@@ -2520,7 +2617,7 @@ def _validate_plumbing_marker(
         if (
             not isinstance(value, dict)
             or set(value) != expected_keys
-            or value.get("schema") != "end2race-b4-plumbing-smoke-1"
+            or value.get("schema") != "end2race-b4-plumbing-smoke-2"
             or value.get("passed") is not True
             or value.get("run_plan_sha256") != plan.plan_sha256
             or value.get("source_commit") != plan.source_commit
@@ -2537,6 +2634,7 @@ def _validate_plumbing_marker(
             or value.get("candidate_selection_performed") is not False
             or value.get("ppo_pilot_iteration_completed") is not False
             or not reports_valid
+            or not stochastic_valid
         ):
             raise RunnerError("B4 plumbing smoke marker/envelope mismatch")
         return value
@@ -4288,7 +4386,7 @@ def _parser() -> argparse.ArgumentParser:
     plan_b3.add_argument("--remote-gpu-uuid", required=True)
 
     plan_b4 = sub.add_parser(
-        "plan-b4", help="create the approved immutable two-seed B4 plan"
+        "plan-b4", help="create the approved immutable seed-1 B4 plan"
     )
     plan_b4.add_argument("--run-id", required=True)
     plan_b4.add_argument("--source-commit", default="HEAD")
@@ -4304,7 +4402,7 @@ def _parser() -> argparse.ArgumentParser:
     plan_eval.add_argument("--output", required=True, type=Path)
 
     plan_b4_eval = sub.add_parser(
-        "plan-b4-eval", help="freeze six B4 snapshots into the one 288x7 EvalPlan"
+        "plan-b4-eval", help="freeze three seed-1 snapshots into a 288x4 EvalPlan"
     )
     plan_b4_eval.add_argument("--run-id", required=True)
     plan_b4_eval.add_argument("--training-plan", required=True, type=Path)
@@ -4404,7 +4502,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print("B3 eval: plan-eval -> stage -> preflight -> execute -> collect -> merge-eval")
             print(
-                "B4 (PAUSED UNTIL IMPLEMENTATION REVIEW GO): plan-b4 -> show -> stage "
+                "B4 (OWNER-AUTHORIZED SEED1): plan-b4 -> show -> stage "
                 "-> baseline-preflight -> preflight -> plumbing-smoke -> execute "
                 "[-> explicit resume] -> status -> collect"
             )

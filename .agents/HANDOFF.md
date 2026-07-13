@@ -37,11 +37,13 @@ historical ledger below is intentionally retained; use newest §24 for B4, §23 
 > at commits `19e83ae` and `21085bc`; do not create `plan-b3` and do not call it
 > FAILED. B4 plain-End2Race frozen-feature direct-head PPO is implemented locally
 > above base commit `4b06b7a`; its four focused B4 tests, four-map CPU identity smoke
-> and nine B2/B3 compatibility programs pass. It is committed locally as a frozen
-> external-review boundary, but still awaits implementation review GO. No B4 RunPlan, GPU learner, 288x7
-> EvalPlan or KPI result exists. The next legal action is actual-diff implementation
-> review under B4 plan §11. The local commit does not authorize execution; only a
-> review GO may authorize creating the single immutable `plan-b4`.
+> and nine B2/B3 compatibility programs pass. The 2026-07-14 external review withheld
+> GO because the smoke did not traverse stochastic collector-to-update plumbing. That
+> blocker is now remediated locally: fixed collision/horizon cases exercise raw latent,
+> terminal-only reward, GAE, actor KL stop, all critic epochs and checkpoint recovery.
+> The owner explicitly authorized execution after this remediation, selected only
+> seed1 on the remote GPU, and replaced the final 288x7 panel with the original BC
+> 3-raceline x 4-speed x 50-startpoint grid. No numerical result exists yet.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -2396,3 +2398,54 @@ The next chat must:
    same-iteration pair passes the owner gates, record B4 substantive negative
    and stop—do not run B3, unfreeze GRU, change parameters, extend iterations or
    open the fresh pool without a new prospective owner decision.
+
+## 25. B4 stochastic remediation and owner execution override (2026-07-14)
+
+This section supersedes §24.6 for current B4 execution authority; §24 remains
+preserved as the pre-remediation external-review record.
+
+### 25.1 What was done
+
+- Added production collector assertions that the stored policy action is the
+  exact raw Normal sampler output, old log-probability is attached to that raw
+  latent, and executed command is the declared fixed projection.
+- Added fail-closed terminal reward ledgers in both episode results and batch
+  construction: every nonterminal reward is exactly zero and the final reward
+  is exactly `-2*C+O`.
+- Extended the production-shaped smoke with fixed real training cases: one
+  reproducible early any-agent collision and two product-horizon episodes. It
+  injects a `1e6` return from `compute_shaped_reward()` while verifying that the
+  sentinel enters neither replay reward nor GAE/return.
+- The same smoke performs pre-update ratio replay, one real actor update with a
+  forced KL early-stop, all three critic epochs, optimizer/frozen-state checks,
+  strict 12-key actor snapshot load and full-checkpoint recovery.
+- Prospectively changed B4 execution to the owner-selected seed1 only, assigned
+  to the remote RTX 4080. No seed0 or additional architecture/hyperparameter arm
+  is authorized.
+- Added `scripts/b4_product_eval.py` and its regression. Final statistics use the
+  original BC grid on Austin: 3 opponent racelines x 4 speeds x 50 startpoints =
+  600 rows per variant. Five equal startpoint shards allocate 120 rows locally
+  and 480 remotely.
+
+### 25.2 Problems and fixes
+
+- The prior four-map smoke proved only deterministic iteration-0 identity and
+  could not catch collector/update integration faults. The new stochastic smoke
+  closes that seam without adding reward shaping or a scientific arm.
+- The old B4 topology encoded two seeds and a 288x7 selector, conflicting with
+  the owner's explicit cost-saving instruction. B4 training is now one remote
+  seed1 job; the 288 code remains only a seed1 compatibility surface, while the
+  decision report is generated from the 600-case BC-compatible grid.
+- Transferred evaluation metrics originally carried absolute NPZ paths. The
+  product evaluator also records a shard-relative NPZ path and validates its
+  hash after local/remote collection, so merge remains host-independent.
+
+### 25.3 Current authority and next actions
+
+The owner explicitly authorized creating the immutable B4 RunPlan, staging both
+hosts, setting `DISPLAY=:1` on the remote runtime, running the single seed1
+learner on CUDA, and monitoring to completion. After snapshots 10/20/30 exist,
+run BC plus all three candidates on the frozen 600-case grid: shard0 local,
+shards1-4 remote. Merge only after all 2400 paired rows and NPZ hashes validate.
+Do not add seed0, residual/gate/dual/anchor, change PPO values, extend iterations
+or open fresh/final pools.

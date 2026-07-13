@@ -133,7 +133,7 @@ def evaluation_plan(parent: RunPlan) -> RunPlan:
             "sha256": f"{seed + iteration // 10:x}" * 64,
             "size": 1,
         }
-        for seed in (0, 1)
+        for seed in (1,)
         for iteration in (10, 20, 30)
     ]
     scenarios = [
@@ -142,7 +142,7 @@ def evaluation_plan(parent: RunPlan) -> RunPlan:
     ]
     variants = ["BC"] + [
         f"seed{seed}_iter{iteration}"
-        for seed in (0, 1)
+        for seed in (1,)
         for iteration in (10, 20, 30)
     ]
     value = RunPlan(
@@ -181,8 +181,8 @@ def evaluation_plan(parent: RunPlan) -> RunPlan:
             "scenarios": scenarios,
             "variants": variants,
             "expected_scenario_count": 288,
-            "expected_variant_count": 7,
-            "expected_episode_rows": 2016,
+            "expected_variant_count": 4,
+            "expected_episode_rows": 1152,
         },
     )
     return _seal_plan(value)
@@ -192,8 +192,7 @@ def main() -> None:
     train = training_plan()
     _verify_plan(train)
     assert [(job.job_id, job.seed, job.host_id) for job in train.jobs] == [
-        ("b4-seed0", 0, "remote"),
-        ("b4-seed1", 1, "local"),
+        ("b4-seed1", 1, "remote"),
     ]
     assert all(job.kind == "b4_training" for job in train.jobs)
     assert all("b4-pilot" in job.argv for job in train.jobs)
@@ -217,12 +216,9 @@ def main() -> None:
     _verify_plan(evaluation)
     assert len(evaluation.jobs) == 4
     assert all(job.kind == "b4_evaluation_shard" for job in evaluation.jobs)
-    assert evaluation.evaluation_contract["expected_episode_rows"] == 2016
+    assert evaluation.evaluation_contract["expected_episode_rows"] == 1152
     assert evaluation.evaluation_contract["variants"] == [
         "BC",
-        "seed0_iter10",
-        "seed0_iter20",
-        "seed0_iter30",
         "seed1_iter10",
         "seed1_iter20",
         "seed1_iter30",
@@ -244,7 +240,7 @@ def main() -> None:
             "terminal_overtake": 138,
         }
         plumbing = {
-            "schema": "end2race-b4-plumbing-smoke-1",
+            "schema": "end2race-b4-plumbing-smoke-2",
             "passed": True,
             "run_plan_sha256": train.plan_sha256,
             "product_outcomes_reported_or_compared": False,

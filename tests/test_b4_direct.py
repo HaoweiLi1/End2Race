@@ -112,11 +112,8 @@ def synthetic_eval_rows() -> list[dict[str, object]]:
     # iter10 is feasible but weaker; iter20 hits the product target; iter30 has
     # fewer collisions but seed1 deliberately violates the overtake gate.
     contracts = {
-        (0, 10): (20, 134, 6, 2),
         (1, 10): (21, 135, 5, 2),
-        (0, 20): (16, 132, 9, 1),
         (1, 20): (16, 133, 9, 1),
-        (0, 30): (15, 134, 10, 1),
         (1, 30): (15, 131, 10, 1),
     }
     for (seed, iteration), (collision_count, overtake_count, fixed, new) in contracts.items():
@@ -225,7 +222,7 @@ def main() -> None:
 
     # A reward change in episode 0 must not leak into episode 1.
     changed = synthetic_rollout(policy)
-    changed[0].reward += 100.0
+    changed[0].reward = 1.0
     changed_batch = build_batch(changed)
     episode1 = batch.episode_id == 1
     assert torch.equal(batch.advantage[episode1], changed_batch.advantage[episode1])
@@ -253,7 +250,7 @@ def main() -> None:
         update_batch,
         actor_optimizer,
         critic_optimizer,
-        seed=0,
+        seed=1,
         iteration=1,
     )
     assert update["critic_epochs_completed"] == 3
@@ -301,7 +298,7 @@ def main() -> None:
             critic_optimizer,
             full,
             completed_iteration=1,
-            seed=0,
+            seed=1,
             run_plan_sha256=plan_sha,
             curriculum_sha256=curriculum_sha,
         )
@@ -312,7 +309,7 @@ def main() -> None:
             restored,
             restored_actor_opt,
             restored_critic_opt,
-            expected_seed=0,
+            expected_seed=1,
             expected_run_plan_sha256=plan_sha,
             expected_curriculum_sha256=curriculum_sha,
             restore_rng=False,
@@ -364,7 +361,7 @@ def main() -> None:
         558,
     )
     digests = []
-    for seed in (0, 1):
+    for seed in (1,):
         curriculum = B4Curriculum(scenario_sets, seed)
         plan = curriculum.plan()
         assert len(plan) == 30 and all(len(rows) == 16 for rows in plan)
@@ -375,24 +372,23 @@ def main() -> None:
             assert outcomes.count("follow") == 4
         digests.append(curriculum.digest())
     assert digests == [
-        "416816b86e8b4becc7ccf81fcd9d56ae25aca5c747b5433dfe98196555be2e68",
         "40275f3d928b753fdc683ca20df83ad4097d9e8ac3c92f4a150fba3a50a5afa1",
     ]
     plan_config = expected_b4_plan_config(TASK8, METADATA)
     validate_frozen_config(plan_config["ppo"])
-    assert plan_config["curriculum_sha256_by_seed"] == {"0": digests[0], "1": digests[1]}
+    assert plan_config["curriculum_sha256_by_seed"] == {"1": digests[0]}
     assert "sidecar" not in plan_config["inputs"]
     assert "sidecar" in plan_config["forbidden_inputs"]
 
     summary = summarize(synthetic_eval_rows())
     assert summary["selected_iteration"] == 20
     assert summary["selected_pair_verdict"] == "OPENED_DEVELOPMENT_PRODUCT_TARGET_HIT"
-    assert summary["same_iteration_pairs"]["iter10"]["feasible"] is True
-    assert summary["same_iteration_pairs"]["iter20"]["terminal_overtake"] == 265
-    assert summary["same_iteration_pairs"]["iter20"]["collision"] == 32
-    assert summary["same_iteration_pairs"]["iter30"]["feasible"] is False
+    assert summary["same_iteration_snapshots"]["iter10"]["feasible"] is True
+    assert summary["same_iteration_snapshots"]["iter20"]["terminal_overtake"] == 133
+    assert summary["same_iteration_snapshots"]["iter20"]["collision"] == 16
+    assert summary["same_iteration_snapshots"]["iter30"]["feasible"] is False
     assert summary["automatic_b3_fallback_authorized"] is False
-    assert summary["snapshot_pair_selection_performed"] is True
+    assert summary["snapshot_selection_performed"] is True
     assert summary["architecture_arm_selection_performed"] is False
 
     class ConstantActor(torch.nn.Module):

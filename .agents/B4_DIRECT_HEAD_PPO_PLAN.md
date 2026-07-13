@@ -1,15 +1,15 @@
 # B4 Plain-End2Race Frozen-Feature Direct-Head PPO
 
-状态：**IMPLEMENTED LOCALLY, BLOCKING TESTS PASS, AWAITING EXTERNAL IMPLEMENTATION REVIEW GO — NO RUNPLAN / NO GPU / NO NUMERICAL RESULT**
+状态：**STOCHASTIC PLUMBING REMEDIATED; OWNER AUTHORIZED SEED-1 EXECUTION — RUNPLAN / NUMERICAL RESULT PENDING**
 
-日期：2026-07-13（Asia/Singapore）
+日期：2026-07-14（Asia/Singapore）
 
 上游审计草案：`.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`（已被本文件取代）
 
-本文件是 B4 唯一生效的前瞻性实验 authority。它批准实现、CPU 合同测试、
-production-shaped 四地图 smoke 的实现准备和实现审阅；只有实现审阅返回 GO 后，
-才允许创建一个不可变 B4 RunPlan。本文本身不授权 GPU 训练、288 开发面板评估或
-fresh/final pool 访问。
+本文件是 B4 唯一生效的前瞻性实验 authority。2026-07-14 owner 指令已覆盖此前
+“等待外部 implementation review GO 才能运行”的暂停条件：完成 stochastic
+collector-to-update remediation 和阻断回归后，允许创建一个不可变 seed-1 B4
+RunPlan 并使用本地/远端 GPU。fresh/final pool 仍未授权。
 
 ---
 
@@ -47,13 +47,30 @@ B3 = IMPLEMENTED, REVIEWED GO, PAUSED UNRUN
 保留 B3 commits `19e83ae`、`21085bc`、计划、实现和测试证据；不创建 `plan-b3`，
 不把 B3 写成 FAILED。B4 negative 后也不得自动运行 B3，必须另作前瞻性 owner 决定。
 
+### D3：2026-07-14 执行与评估覆盖决定
+
+owner 明确授权在修复 stochastic plumbing smoke 后直接布置数值任务，不再等待另一轮
+外部 GO；GitHub push 缺失不作为执行 blocker。为避免多 seed 消耗，本轮只运行
+`seed=1`，唯一 learner 固定到远端 RTX 4080 SUPER。最终统计不用 288 development
+面板，而使用原 BC evaluation grid：
+
+```text
+Austin
+3 opponent racelines x 4 opponent speeds x 50 startpoints = 600 episodes/variant
+```
+
+五个等量 startpoint shards 中，本机执行 shard0（120/600），远端执行 shards1-4
+（480/600）；评估 BC 与 seed1 iteration 10/20/30。5% overtake 门前瞻性定义为
+`candidate_overtake >= ceil(0.95 * BC_overtake_600)`。此前两 seed、288x7 的条款由本
+决定对当前 B4 run 取代，但作为历史计划证据保留在 Git 历史中。
+
 ---
 
 ## 2. 单一可证伪问题
 
 > 从 canonical BC 严格初始化、冻结原始 GRU feature provider、只微调原始
-> `End2Race.output_layer` 的 plain PPO，能否在每 seed corrected overtake 至少
-> 132/288 的条件下显著减少 any-agent collision？
+> `End2Race.output_layer` 的 plain PPO，能否在 BC-compatible 600-case grid 上、
+> terminal overtake 相对 BC 最多下降 5% 的条件下显著减少 any-agent collision？
 
 准确实验名：
 
@@ -246,7 +263,7 @@ zero bootstrap，严禁跨 episode 传播。
 | mean bound coefficient | `0.01` |
 | BC anchor / dual | `0 / none` |
 | actor / critic grad norm | 分别 `0.5` |
-| iterations / seeds | `30 / (0,1)` |
+| iterations / seeds | `30 / (1,)` |
 | snapshots | `0,10,20,30` |
 | architecture arms | `1` |
 
@@ -309,66 +326,52 @@ mean bound penalty 只作用于 actor mean（steer outside `[-.52,.52]`、speed 
 - 每个完整 iteration 后原子保存 full resume checkpoint；
 - resume 恢复 actor、critic、两个 optimizer、iteration、curriculum order/cursor、RNG；
 - 不从半 episode 或半 PPO epoch 恢复；
-- seed0 的中间结果不得改变 seed1 或后续训练；
-- 实现 review GO 后只创建一个 immutable B4 RunPlan，运行两个 30-iteration seeds；
-- implementation review GO 前不得创建 RunPlan 或启动 GPU。
+- 只创建一个 immutable B4 RunPlan，运行远端 seed1 30 iterations；
+- 不启动 seed0，不以并行名义增加 architecture/hyperparameter arm；
+- 本轮 owner authorization 只开放 B4 training 与 600-case product-grid evaluation。
 
 ---
 
-## 9. Frozen 288x7 evaluation
+## 9. Frozen 3x4x50 product-grid evaluation
 
-唯一 EvalPlan variants：
+唯一 variants：
 
 ```text
 BC
-seed0_iter10
-seed0_iter20
-seed0_iter30
 seed1_iter10
 seed1_iter20
 seed1_iter30
 ```
 
-共 `288 * 7 = 2016` paired rows。candidate selection 只能比较同一 iteration 的两
-seed pair：iter10、iter20、iter30；禁止 seed0/seed1 选择不同 iteration。
+每个 variant 必须恰有 `3 * 4 * 50 = 600` unique rows，共 2400 rows。五个 shard
+按 `startpoint_ordinal mod 5` 分配，每 shard 恰好 120 rows；本地只运行 shard0。
 
 完整性要求还包括所有 candidate 的 deterministic mean speed projection count 为 0。
 
-每个 seed feasibility：
+feasibility：
 
 ```text
-corrected overtake >= 132
-any-agent collision <= 24
-```
-
-pooled feasibility：
-
-```text
+candidate overtake >= ceil(0.95 * BC overtake)
+candidate any-agent collision < BC collision
 fixed_collision > new_collision
-两个 seed 的 collision 都相对 BC 同方向改善
 ```
 
-产品 collision 目标：
-
-```text
-each seed <= 16
-pooled    <= 33
-```
+产品 collision 目标继续报告 `RR <= 0.70`，但若仅通过 feasibility 而未达到该目标，
+只能称为 directional survivor。
 
 选择顺序：
 
 1. 丢弃完整性失败；
-2. 丢弃任一 seed overtake `<132`；
-3. 丢弃任一 seed collision `>24`；
-4. 丢弃 pooled `fixed_collision <= new_collision`；
-5. 丢弃任一 seed collision 未改善；
-6. 选择 pooled collision 最低的同-iteration pair；
-7. 并列时选 pooled overtake 更高；再并列选更早 iteration。
+2. 丢弃 overtake 低于 600-case BC 的 95% floor；
+3. 丢弃 collision 未严格低于 BC；
+4. 丢弃 `fixed_collision <= new_collision`；
+5. 选择 collision 最低 snapshot；
+6. 并列时选 overtake 更高；再并列选更早 iteration。
 
 达到 feasibility 但未达到 collision product target 的结果只能称为
-`opened-development directional survivor`，不能称为产品成功。
+`product-grid directional survivor`，不能称为产品成功。
 
-若没有合格 pair，B4 为 substantive negative 并停止。不得自动：
+若没有合格 snapshot，B4 为 substantive negative 并停止。不得自动：
 
 ```text
 运行 B3 fallback
@@ -429,11 +432,12 @@ pooled    <= 33
 ```text
 B4 code                       IMPLEMENTED LOCALLY
 CPU blocking contracts       PASS
-four-map simulator identity  PASS (CPU, no RunPlan)
-external implementation review  PENDING
+four-map simulator identity  PASS
+stochastic collector/update smoke PASS (CPU; staged CUDA rerun required)
+owner execution authorization GRANTED 2026-07-14
 B4 RunPlan / staging         NOT CREATED
 GPU learner                  NOT STARTED
-288x7 EvalPlan               NOT CREATED
+3x4x50 product evaluation    NOT STARTED
 B4 numerical/KPI result      NONE
 fresh/final pool             SEALED
 ```
@@ -445,20 +449,22 @@ fresh/final pool             SEALED
   actor/critic update、curriculum、actor-only/full-resume checkpoint；
 - `bplus_v22/b4_env.py`：100 Hz complete-episode simulator collector、any-agent/horizon
   true terminal、terminal-only `-2C+O`、raw/executed/projection ledger；
-- `bplus_v22/b4_eval.py`：plain deterministic actor adapter、288x7 paired rows、同
-  iteration 两-seed feasibility/selection、projection guardrail；
-- `bplus_v22/b4_runner.py`：RunPlan validation、四地图 smoke、30-iteration learner、
+- `bplus_v22/b4_eval.py`：plain deterministic actor adapter、seed1-only 288x4 compatibility
+  rows 与 projection guardrail；最终产品统计不使用该 288 panel；
+- `bplus_v22/b4_runner.py`：RunPlan validation、四地图 identity + stochastic
+  collector/update smoke、30-iteration learner、
   iteration-atomic replay/checkpoint/ledger 与 fail-closed resume；
 - `bplus_v22/b4_cli.py`、`bplus_v22/cli.py`：B4 baseline/smoke/learner/eval/merge CLI；
-- `Experiments/runner.py`：两 seed train topology、四 eval shards、immutable
-  `plan-b4`/`plan-b4-eval` builders 和 strict collection envelopes；builder 已实现但
-  本轮没有调用；
+- `Experiments/runner.py`：远端 seed1 train topology、immutable `plan-b4` builder 和
+  strict collection envelopes；
+- `scripts/b4_product_eval.py`：原 BC evaluator 的 3x4x50 grid、五等分 startpoint
+  shards、strict plain actor、resume/completeness 与 paired merge；
 - `tests/test_b4_direct.py`：actor/action/GAE/weight/update/checkpoint/resume/curriculum；
 - `tests/test_b4_control_plane.py`：frozen plan、marker、host/job topology；
-- `tests/test_b4_eval.py`：完整 2016-row Cartesian product、paired diagnostic 和
-  same-iteration selection；
-- `tests/test_b4_simulator_smoke.py`：可复现的四地图 iteration-0 production-shaped
-  trajectory/outcome identity。
+- `tests/test_b4_eval.py`：seed1-only 288x4 compatibility merge；
+- `tests/test_b4_product_eval.py`：600-row/variant grid、五 shard 与 paired selection；
+- `tests/test_b4_simulator_smoke.py`：四地图 iteration-0 identity，加固定 RNG 的真实
+  collision/horizon collector→GAE→update→checkpoint smoke。
 
 `model.py` 的 `End2Race` 类未修改。B4 deployment snapshot 由
 `save_actor_snapshot()` 只保存 `policy.actor.state_dict()`；strict fixture 拒绝 full
@@ -486,9 +492,8 @@ NUMBA_CACHE_DIR=/tmp/end2race_b4_cpu_smoke_20260713_repro \
 5. aggressive-LR synthetic update 触发 actor KL early stop，而 critic 仍完成 3 epochs；
 6. 只有 output head/critic 分别变化，frozen actor exact equal；
 7. actor-only strict roundtrip、full checkpoint restore、非-BC iteration-0 resume 拒绝；
-8. pool `81/1001/558`、每轮 `6/6/4`、两 seed 30-iteration curriculum digest 固定；
-9. 288x7 必须为 2016 unique paired rows；损坏 L2 或 paired transition diagnostic 会
-   fail closed；只选择同 iteration seed pair，per-seed 132 门生效；
+8. pool `81/1001/558`、每轮 `6/6/4`、seed1 30-iteration curriculum digest 固定；
+9. compatibility 288x4 与最终 3x4x50/五-shard Cartesian completeness 均 fail closed；
 10. 四地图 production-shaped identity 如下，未比较 candidate KPI：
 
 | map | steps | terminal | trajectory diff | outcome identity | speed projection | steer projection | replay log-prob delta |
@@ -497,6 +502,14 @@ NUMBA_CACHE_DIR=/tmp/end2race_b4_cpu_smoke_20260713_repro \
 | Hockenheim | 801 | product horizon | 0 | true | 0 | 0 | 0 |
 | MoscowRaceway | 801 | product horizon | 0 | true | 0 | 0 | 0 |
 | Nuerburgring | 801 | product horizon | 0 | true | 0 | 0 | 0 |
+
+额外 stochastic smoke 固定三个真实 training cases：BC-collision case 首次 collision
+立即 terminal、follow/overtake cases 到 product horizon；raw/stored latent 和 old
+log-prob exact，pre-update `max |ratio-1| <=1e-4`。它把 legacy shaped reward 返回值替换
+为 `1e6` sentinel，确认所有 nonterminal replay reward 仍为 0、terminal reward 恰为
+`-2*C+O`，且 sentinel 未进入 reward/advantage/return。一次真实 actor update 强制触发
+KL early-stop，critic 仍完成 3 epochs；仅 output head 与 critic 改变，frozen actor/std
+exact，actor-only strict load 与 full-checkpoint restore 均通过。
 
 `py_compile` 对五个 B4 modules、两个修改入口也通过；`run.sh list`、
 `plan-b4 --help`、`plan-b4-eval --help`、CLI capabilities 与 B4 pilot/eval help 均可加载。
@@ -546,19 +559,18 @@ deprecation warning 和 RK4 warning 也不构成 test failure。
 
 ### 12.6 Known limits and review boundary
 
-- 四地图 smoke 是当前 working tree 上直接运行的 CPU production-shaped fixture；由于
-  RunPlan 尚未获准创建，它不是 staged/GPU marker。review GO 后必须在 immutable staged
-  source 上重新运行同一 smoke，不能把本次 CPU 结果当成 staging authorization。
+- 当前 CPU fixtures 不是 staged/GPU marker；immutable stage 后必须以本机 CUDA 重跑
+  identity + stochastic plumbing 并把 marker 绑定到 RunPlan/source/input hashes。
 - 已测试 full-checkpoint CPU roundtrip、RNG payload contract 和 resume fail-closed
   invariants；尚未做真实 GPU interruption/resume，因为这会越过当前 authority。
 - `b4_env.py` 调用 legacy `compute_shaped_reward()` 的返回值会被丢弃；该调用只更新已
   批准的 12D privileged critic feature 中三个 past-only phase fields。buffer actor reward
   仍只有 terminal `-2C+O`。reviewer 应从 replay/ledger 证实没有 dense term 进入 reward。
-- 尚无 stochastic simulator rollout 的性能证据，也无 overtake/collision result。projection
-  是否造成探索浪费只能在获准 pilot 后报告，不能从 deterministic smoke 推断。
+- stochastic smoke 只证明 plumbing correctness，不是性能证据；尚无 B4
+  overtake/collision result。projection 是否造成探索浪费只能从 pilot ledger 报告。
 - B4 仍是 frozen-feature control；任何 positive/negative result 都不能证明 GRU
   representation 充分或不足。
 
-外部 reviewer 应按 §11 从 actual diff 回答 correctness 问题。GO 只授权下一步创建唯一
-immutable B4 RunPlan；GO 本身不等于数值成功。若有 blocker，应保持当前无 RunPlan 状态
-并在本节追加审计结论，而不是静默改参数。
+2026-07-14 owner 已在阅读外审 NO-GO 后明确授权：修复上述 stochastic integration
+blocker、通过回归后创建唯一 immutable seed1 RunPlan。该授权不等于数值成功，也不允许
+seed0、额外 arm、参数修改或 fresh/final pool。

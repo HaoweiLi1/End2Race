@@ -9,8 +9,8 @@
 - B3 统一训练/部署策略计划（`IMPLEMENTED, REVIEWED GO, PAUSED UNRUN`）→
   `.agents/B3_PPO_PLAN.md`
 - B3 实现与待审清单 → `.agents/B3_IMPLEMENTATION_RECORD.md`
-- **B4 当前唯一生效计划**（D1-B/D2-B；本地实现与阻断测试完成，等待外部
-  implementation review GO；仍无 RunPlan/GPU/数值结果）→
+- **B4 当前唯一生效计划**（D1-B/D2-B/D3；stochastic plumbing 已修复，owner
+  已授权唯一 seed1 远端执行与 3x4x50 product-grid evaluation）→
   `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
@@ -24,8 +24,8 @@
 ## 1. 当前产品目标（B4 前瞻性 authority）
 
 1. **安全优先**：降低任意方碰撞率（产品目标 `RR ≤ 0.70` vs BC）；
-2. **B4 硬约束**：每 seed corrected overtake 至少 `132/288`，即相对 BC
-   `138/288` 最多下降 5%；
+2. **B4 硬约束**：最终 600-case BC-compatible grid 上，candidate terminal
+   overtake 至少 `ceil(0.95 * BC_overtake)`；
 3. 在满足上述条件后优先 collision 更低，再优先 overtake 更高。
 
 该 5% 变更只向前适用于 B4。B2 仍按其运行时冻结的 strict/1pp 门保持 FAILED；
@@ -121,13 +121,16 @@ ssh haowei@192.168.2.127
 
 **本地验证无误后，PPO 训练和 PPO 评估在本地与远端同时跑，加速实验。**
 
-- B4 只有一个 architecture：seed0 整体分配远端，seed1 整体分配本地，两 seed
-  并行；不存在 A/B/C arm queue。
+- B4 只有一个 architecture 和一个 seed：seed1 learner 整体分配远端 RTX 4080；
+  不启动 seed0，不存在 A/B/C arm queue。
 - 下述 A/B/C 描述只适用于已冻结的 B2/B3 历史 topology，不得套到 B4。
 
 - learner 以完整 seed queue 分配：seed1 的 A/B/C 本地串行，seed0 的 A/B/C
   远端串行；两台 host 并行，但每张 GPU 同时只允许一个 learner。
-- 只有冻结 checkpoint 的 scenario evaluation 才按**本地 1/4、远端 3/4**分片；
+- B4 最终 product evaluation 固定为 5 个等量 startpoint shards：**本地 1/5、远端
+  4/5**。远端可在独占 GPU 任务内并发 simulator workers，但不得并发不同 seed/arm。
+- 下述本地 1/4、远端 3/4 只适用于 B2/B3 历史 288-panel evaluation。
+- 只有冻结 checkpoint 的 B2/B3 scenario evaluation 才按**本地 1/4、远端 3/4**分片；
   远端 shards 1–3 在同一 GPU lock 内串行。
 - 分流的目的是**并行加速**，不是交叉验证。
 - **不要**为了"验证两台设备结果一致"而在两边跑同一个任务——那是浪费算力。

@@ -1,4 +1,4 @@
-"""Frozen 288x7 paired evaluator and same-iteration B4 selection contract."""
+"""Frozen 288x4 paired evaluator for the owner-selected B4 seed 1."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ B4_EVAL_SHARD_SCHEMA = "end2race-b4-eval-shard-1"
 B4_EVAL_ROW_SCHEMA = "end2race-b4-eval-row-1"
 B4_EVAL_MERGE_SCHEMA = "end2race-b4-eval-merge-1"
 B4_VARIANT_BC = "BC"
-B4_SEEDS = (0, 1)
+B4_SEEDS = (1,)
 B4_ITERATIONS = (10, 20, 30)
 B4_CANDIDATE_COUNT = len(B4_SEEDS) * len(B4_ITERATIONS)
 B4_VARIANT_COUNT = 1 + B4_CANDIDATE_COUNT
@@ -90,7 +90,7 @@ def validate_checkpoint_specs(
     expected = {(seed, iteration) for seed in B4_SEEDS for iteration in B4_ITERATIONS}
     observed = {(int(spec.seed), int(spec.iteration)) for spec in specs}
     if len(specs) != B4_CANDIDATE_COUNT or observed != expected:
-        raise ValueError("B4 evaluation requires exactly six seed/iteration snapshots")
+        raise ValueError("B4 evaluation requires the three seed-1 snapshots")
     if len({spec.variant for spec in specs}) != B4_CANDIDATE_COUNT:
         raise ValueError("B4 evaluation variant identity is duplicated")
     if len({spec.training_manifest_sha256 for spec in specs}) != 1:
@@ -411,16 +411,16 @@ def summarize(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
         pooled = _counts(selected)
         per_seed = [variants[name] for name in names]
         checks = {
-            "both_seed_overtake_ge_132": all(
+            "seed1_overtake_ge_132": all(
                 bool(value["overtake_gate_pass"]) for value in per_seed
             ),
-            "both_seed_collision_le_24": all(
+            "seed1_collision_le_24": all(
                 bool(value["collision_feasibility_pass"]) for value in per_seed
             ),
-            "both_seed_collision_strict_improve": all(
+            "seed1_collision_strict_improve": all(
                 bool(value["collision_strict_improve"]) for value in per_seed
             ),
-            "pooled_fixed_gt_new": pooled["fixed_collision"] > pooled["new_collision"],
+            "fixed_gt_new": pooled["fixed_collision"] > pooled["new_collision"],
             "zero_deterministic_speed_projection": pooled[
                 "deterministic_speed_projection_count"
             ]
@@ -429,12 +429,12 @@ def summarize(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
         is_feasible = all(checks.values())
         product_hit = is_feasible and all(
             bool(value["product_collision_target_pass"]) for value in per_seed
-        ) and pooled["collision"] <= B4_COLLISION_PRODUCT_POOLED
+        )
         pair = {
             "iteration": iteration,
             "seed_variants": names,
             **pooled,
-            "reported_pooled_overtake_floor": 264,
+            "reported_single_seed_overtake_floor": 132,
             "checks": checks,
             "feasible": is_feasible,
             "product_collision_target_pass": product_hit,
@@ -468,7 +468,7 @@ def summarize(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
         "fresh_pool_opened": False,
         "bc_baseline": bc,
         "variants": variants,
-        "same_iteration_pairs": pairs,
+        "same_iteration_snapshots": pairs,
         "selected_iteration": (
             None if selected_pair is None else int(selected_pair["iteration"])
         ),
@@ -478,7 +478,7 @@ def summarize(rows: Sequence[Mapping[str, object]]) -> dict[str, object]:
             else str(selected_pair["verdict_label"])
         ),
         "automatic_b3_fallback_authorized": False,
-        "snapshot_pair_selection_performed": selected_pair is not None,
+        "snapshot_selection_performed": selected_pair is not None,
         "architecture_arm_selection_performed": False,
     }
 
@@ -528,7 +528,7 @@ def merge_shards(
         for variant in expected_variants
     }
     if len(rows) != B4_EXPECTED_RESULTS or observed != expected:
-        raise ValueError("B4 288x7 Cartesian product is incomplete or duplicated")
+        raise ValueError("B4 288x4 Cartesian product is incomplete or duplicated")
     by_key = {(int(row["task8_row_index"]), str(row["variant"])): row for row in rows}
     spec_by_variant = {spec.variant: spec for spec in specs}
     for index, case in enumerate(task8_rows):

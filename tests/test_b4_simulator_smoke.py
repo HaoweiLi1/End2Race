@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Four-map production-shaped iteration-0 identity smoke for B4."""
+"""Production-shaped deterministic identity and stochastic PPO smoke for B4."""
 
 from pathlib import Path
 
@@ -8,7 +8,10 @@ import torch
 
 from bplus_v22.b4_direct import B4DirectHeadPolicy, B4ScenarioSets
 from bplus_v22.b4_env import run_b4_episode
-from bplus_v22.b4_runner import B4_REPLAY_RATIO_ATOL
+from bplus_v22.b4_runner import (
+    B4_REPLAY_RATIO_ATOL,
+    run_b4_stochastic_plumbing_smoke,
+)
 from bplus_v22.ppo_env import load_b2_scenario_sets
 from d25.oracle import simulate_episode
 
@@ -94,7 +97,24 @@ def main() -> None:
     assert reports == [
         (map_name, 801, "product_horizon", 0, 0, 0.0) for map_name in MAPS
     ]
-    print("B4 four-map CPU production-shaped identity smoke passed")
+    stochastic = run_b4_stochastic_plumbing_smoke(bc_state, device, scenarios)
+    assert [row["terminal_reason"] for row in stochastic["episode_reports"]] == [
+        "any_agent_collision",
+        "product_horizon",
+        "product_horizon",
+    ]
+    assert [row["terminal_reward"] for row in stochastic["episode_reports"]] == [
+        -2.0,
+        0.0,
+        1.0,
+    ]
+    assert stochastic["raw_stored_latent_exact"] is True
+    assert stochastic["dense_reward_excluded_from_reward_advantage_return"] is True
+    assert stochastic["actor_early_stop_exercised"] is True
+    assert stochastic["critic_epochs_completed"] == 3
+    assert stochastic["plain_actor_strict_load"] is True
+    assert stochastic["full_checkpoint_recovery"] is True
+    print("B4 production-shaped deterministic + stochastic plumbing smoke passed")
 
 
 if __name__ == "__main__":

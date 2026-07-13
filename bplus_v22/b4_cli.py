@@ -40,7 +40,7 @@ B4_EVAL_KIND = "b4_eval"
 B4_EVAL_CONFIG = {
     "policy_contract": B4_POLICY_SCHEMA,
     "checkpoint_iterations": [10, 20, 30],
-    "seeds": [0, 1],
+    "seeds": [1],
     "expected_scenario_count": 288,
     "expected_variant_count": B4_VARIANT_COUNT,
     "expected_episode_rows": B4_EXPECTED_RESULTS,
@@ -49,7 +49,7 @@ B4_EVAL_CONFIG = {
     "per_seed_collision_product_target": 16,
     "pooled_collision_product_target": 33,
     "deterministic_speed_projection_required": 0,
-    "same_iteration_seed_pair_required": True,
+    "same_iteration_seed_pair_required": False,
 }
 
 
