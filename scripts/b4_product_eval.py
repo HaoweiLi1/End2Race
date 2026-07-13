@@ -60,6 +60,31 @@ def _write_json(path: Path, value: Mapping[str, Any]) -> None:
     os.replace(temporary, path)
 
 
+def _load_training_plan(path: str | Path) -> dict[str, Any]:
+    value = json.loads(Path(path).resolve().read_text(encoding="utf-8"))
+    if (
+        not isinstance(value, dict)
+        or value.get("schema") != "end2race-b2-run-plan-1"
+        or value.get("kind") != "b4_train"
+    ):
+        raise ValueError("B4 product evaluation requires a b4_train RunPlan")
+    observed = value.get("plan_sha256")
+    unsigned = dict(value)
+    unsigned.pop("plan_sha256", None)
+    expected = hashlib.sha256(
+        (json.dumps(unsigned, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    ).hexdigest()
+    source_commit = value.get("source_commit")
+    if (
+        observed != expected
+        or not isinstance(source_commit, str)
+        or len(source_commit) != 40
+        or any(character not in "0123456789abcdef" for character in source_commit)
+    ):
+        raise ValueError("B4 product evaluation RunPlan identity drift")
+    return value
+
+
 def _startpoints(repo: Path) -> tuple[int, ...]:
     path = repo / f"f1tenth_racetracks/{MAP_NAME}/{EGO_RACELINE}.csv"
     # Literal evaluate.sh contract: ``tail -n +3 | wc -l``.
@@ -276,6 +301,7 @@ def run_shard(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     output = Path(args.output).resolve()
     model = Path(args.model_path).resolve()
+    training_plan = _load_training_plan(args.training_plan)
     if not model.is_file() or model.is_symlink():
         raise ValueError("B4 product evaluation model is not one regular file")
     if not 0 <= args.shard_index < SHARD_COUNT:
@@ -293,7 +319,8 @@ def run_shard(args: argparse.Namespace) -> int:
         "variant": args.variant,
         "model_path": str(model),
         "model_sha256": model_sha,
-        "source_commit": args.source_commit,
+        "training_run_plan_sha256": training_plan["plan_sha256"],
+        "training_source_commit": training_plan["source_commit"],
         "producer_host_id": args.producer_host_id,
         "producer_hostname": socket.gethostname(),
         "producer_gpu_uuid": args.gpu_uuid,
@@ -586,7 +613,7 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--shard-index", type=int, required=True)
     run.add_argument("--workers", type=int, default=2)
     run.add_argument("--device", default="cuda:0")
-    run.add_argument("--source-commit", required=True)
+    run.add_argument("--training-plan", required=True)
     run.add_argument("--producer-host-id", required=True)
     run.add_argument("--gpu-uuid", required=True)
     merge_parser = sub.add_parser("merge")

@@ -13,6 +13,7 @@ from scripts.b4_product_eval import (
     SHARD_COUNT,
     TOTAL_CASES,
     _sha256,
+    _load_training_plan,
     _write_json,
     enumerate_cases,
     merge,
@@ -99,6 +100,29 @@ def main() -> None:
     assert len({case["startpoint_ordinal"] for case in cases}) == 50
     assert len({case["opp_raceline"] for case in cases}) == 3
     assert len({case["opp_speedscale"] for case in cases}) == 4
+
+    with tempfile.TemporaryDirectory() as plan_directory:
+        plan_path = Path(plan_directory) / "run_plan.json"
+        unsigned = {
+            "schema": "end2race-b2-run-plan-1",
+            "kind": "b4_train",
+            "source_commit": "1" * 40,
+        }
+        signed = {
+            **unsigned,
+            "plan_sha256": hashlib.sha256(
+                (json.dumps(unsigned, sort_keys=True, separators=(",", ":")) + "\n").encode()
+            ).hexdigest(),
+        }
+        plan_path.write_text(json.dumps(signed), encoding="utf-8")
+        assert _load_training_plan(plan_path) == signed
+        signed["source_commit"] = "2" * 40
+        plan_path.write_text(json.dumps(signed), encoding="utf-8")
+        try:
+            _load_training_plan(plan_path)
+            raise RuntimeError("B4 product evaluator accepted a drifted RunPlan")
+        except ValueError as error:
+            assert "identity" in str(error)
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
