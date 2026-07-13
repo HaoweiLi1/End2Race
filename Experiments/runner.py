@@ -75,6 +75,12 @@ SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 ARMS = ("BC_FROZEN", "SIDECAR_FROZEN", "SIDECAR_FINETUNE")
 SEEDS = (0, 1)
 SHARD_COUNT = 4
+EVAL_CONTROL_ONLY_PATHS = frozenset(
+    {
+        "Experiments/runner.py",
+        "tests/test_experiment_runner.py",
+    }
+)
 BASELINE_SHARD_EXPECTATIONS = {
     0: {"host_id": "local", "collision": 12, "terminal_overtake": 32},
     1: {"host_id": "remote", "collision": 2, "terminal_overtake": 37},
@@ -433,6 +439,39 @@ def _create_source_archive(repo: Path, commit: str, output: Path) -> None:
         cwd=repo,
         check=True,
     )
+
+
+def _validate_eval_control_only_source_delta(
+    repo: Path, parent_commit: str, eval_commit: str
+) -> tuple[str, ...]:
+    """Allow a new EvalPlan source only when numerical code is unchanged."""
+
+    records = [
+        line.split("\t", 1)
+        for line in str(
+            _git(
+                repo,
+                "diff",
+                "--name-status",
+                "--no-renames",
+                f"{parent_commit}..{eval_commit}",
+            )
+        ).splitlines()
+        if line
+    ]
+    malformed = [record for record in records if len(record) != 2]
+    changed = tuple(record[1] for record in records if len(record) == 2)
+    disallowed = sorted(
+        path
+        for status, path in records
+        if status != "M" or path not in EVAL_CONTROL_ONLY_PATHS
+    )
+    if malformed or disallowed:
+        raise RunnerError(
+            "evaluation source changes numerical/non-control files: "
+            f"{disallowed or malformed}"
+        )
+    return changed
 
 
 def _tar_entry(archive: tarfile.TarFile, source: Path, arcname: str) -> InputEntry:
@@ -827,11 +866,17 @@ def build_evaluation_plan(
     training_plan_path: Path,
     checkpoints: Sequence[str],
     output: Path,
+    source_commit: str = "HEAD",
 ) -> RunPlan:
     _validate_run_id(run_id)
     parent = load_plan(training_plan_path)
     if parent.kind != "b2_train":
         raise RunnerError("evaluation parent must be a B2 training plan")
+    source_commit, source_tree = _require_clean_commit(repo, source_commit)
+    _source_has_cli_contract(repo, source_commit, ("ppo-evaluate", "ppo-merge-eval"))
+    source_delta = _validate_eval_control_only_source_delta(
+        repo, parent.source_commit, source_commit
+    )
     if output.exists():
         raise FileExistsError(output)
     parsed = [_parse_checkpoint(value) for value in checkpoints]
@@ -848,92 +893,110 @@ def build_evaluation_plan(
     if _sha256_file(source_archive) != parent.source_archive_sha256:
         raise RunnerError("parent source archive drift")
     output.parent.mkdir(parents=True, exist_ok=True)
+    source_path = output.with_suffix(".source.tar")
     inputs_path = output.with_suffix(".inputs.tar")
-    if inputs_path.exists():
-        raise FileExistsError(inputs_path)
-    with tempfile.TemporaryDirectory() as temporary_name:
-        temporary = Path(temporary_name)
-        _safe_extract(parent_inputs, temporary)
-        files: list[tuple[str, str, Path]] = []
-        task8 = temporary / "task8"
-        for path in _release_files(task8):
-            files.append(("task8_release", f"task8/{path.relative_to(task8).as_posix()}", path))
-        checkpoint_meta: list[dict[str, Any]] = []
-        for arm, seed, path in sorted(parsed):
-            arcname = f"checkpoints/{arm}_seed{seed}_iter20.pt"
-            sha = _sha256_file(path)
-            files.append(("checkpoint", arcname, path))
-            checkpoint_meta.append(
-                {"arm": arm, "seed": seed, "relpath": f"inputs/{arcname}",
-                 "sha256": sha, "size": path.stat().st_size}
+    source_partial = source_path.with_name(f".{source_path.name}.partial")
+    inputs_partial = inputs_path.with_name(f".{inputs_path.name}.partial")
+    if any(path.exists() for path in (source_path, inputs_path, source_partial, inputs_partial)):
+        raise FileExistsError("evaluation control archive already exists")
+    try:
+        _create_source_archive(repo, source_commit, source_partial)
+        source_bc = _read_source_member(source_partial, "pretrained/end2race.pth")
+        if source_bc.sha256 != CANONICAL_BC_SHA256:
+            raise RunnerError("committed BC checkpoint hash mismatch")
+        temporary = Path(tempfile.mkdtemp(prefix=f".{run_id}.eval.", dir=output.parent))
+        try:
+            _safe_extract(parent_inputs, temporary)
+            files: list[tuple[str, str, Path]] = []
+            task8 = temporary / "task8"
+            for path in _release_files(task8):
+                files.append(("task8_release", f"task8/{path.relative_to(task8).as_posix()}", path))
+            checkpoint_meta: list[dict[str, Any]] = []
+            for arm, seed, path in sorted(parsed):
+                arcname = f"checkpoints/{arm}_seed{seed}_iter20.pt"
+                sha = _sha256_file(path)
+                files.append(("checkpoint", arcname, path))
+                checkpoint_meta.append(
+                    {"arm": arm, "seed": seed, "relpath": f"inputs/{arcname}",
+                     "sha256": sha, "size": path.stat().st_size}
+                )
+            entries = _deterministic_input_archive(inputs_partial, files)
+            input_sha = _sha256_file(inputs_partial)
+            input_size = inputs_partial.stat().st_size
+            task8_manifest = task8 / "development_scenarios.tsv"
+            manifest_sha = _sha256_file(task8_manifest)
+            with task8_manifest.open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle, delimiter="\t"))
+            if len(rows) != 288 or any(not row.get("l2_id") for row in rows):
+                raise RunnerError("canonical development manifest must contain 288 L2 rows")
+            scenarios = [
+                {"row_index": index, "l2_id": row["l2_id"], "shard_index": index % SHARD_COUNT}
+                for index, row in enumerate(rows)
+            ]
+            variants = ["BC"] + [f"{arm}::seed{seed}" for arm in ARMS for seed in SEEDS]
+            training_manifest_sha = _sha256_file(task8 / "training_scenarios.tsv")
+            checkpoint_set_sha = _sha256_bytes(_canonical_json(checkpoint_meta))
+            jobs, queues = _eval_jobs()
+            plan = _seal_plan(
+                RunPlan(
+                    schema=PLAN_SCHEMA,
+                    run_id=run_id,
+                    kind="b2_eval",
+                    created_at=_now(),
+                    source_commit=source_commit,
+                    source_tree=source_tree,
+                    source_archive_path=str(source_path.resolve()),
+                    source_archive_sha256=_sha256_file(source_partial),
+                    source_archive_size=source_partial.stat().st_size,
+                    inputs_archive_path=str(inputs_path.resolve()),
+                    inputs_archive_sha256=input_sha,
+                    inputs_archive_size=input_size,
+                    source_inputs=(source_bc,),
+                    inputs=entries,
+                    hosts=tuple(replace(host, stage_root=str(ISOLATED_BASE / run_id)) for host in parent.hosts),
+                    jobs=jobs,
+                    queues=queues,
+                    required_cli=("ppo-evaluate", "ppo-merge-eval"),
+                    module_path_contract=parent.module_path_contract,
+                    config={
+                        "evaluation_offsets": [0.0, 0.0],
+                        "checkpoint_iteration": 20,
+                        "parent_training_source_commit": parent.source_commit,
+                        "control_only_source_delta": list(source_delta),
+                    },
+                    collection_root=str((repo / "Experiments/B2_ppo_pilot/evaluations" / run_id).resolve()),
+                    parent_plan_sha256=parent.plan_sha256,
+                    evaluation_contract={
+                        "manifest_relpath": "inputs/task8/development_scenarios.tsv",
+                        "manifest_sha256": manifest_sha,
+                        "checkpoint_set": checkpoint_meta,
+                        "checkpoint_set_sha256": checkpoint_set_sha,
+                        "training_manifest_sha256": training_manifest_sha,
+                        "shard_count": SHARD_COUNT,
+                        "assignment": "physical_row_index_mod_shard_count",
+                        "scenarios": scenarios,
+                        "variants": variants,
+                        "expected_scenario_count": 288,
+                        "expected_episode_rows": 288 * len(variants),
+                    },
+                )
             )
-        partial = inputs_path.with_name(f".{inputs_path.name}.partial")
-        if partial.exists():
-            raise FileExistsError(partial)
-        entries = _deterministic_input_archive(partial, files)
-        input_sha = _sha256_file(partial)
-        input_size = partial.stat().st_size
-        task8_manifest = task8 / "development_scenarios.tsv"
-        manifest_sha = _sha256_file(task8_manifest)
-        with task8_manifest.open(newline="", encoding="utf-8") as handle:
-            rows = list(csv.DictReader(handle, delimiter="\t"))
-        if len(rows) != 288 or any(not row.get("l2_id") for row in rows):
-            raise RunnerError("canonical development manifest must contain 288 L2 rows")
-        scenarios = [
-            {"row_index": index, "l2_id": row["l2_id"], "shard_index": index % SHARD_COUNT}
-            for index, row in enumerate(rows)
-        ]
-        variants = ["BC"] + [f"{arm}::seed{seed}" for arm in ARMS for seed in SEEDS]
-        training_manifest_sha = _sha256_file(task8 / "training_scenarios.tsv")
-        checkpoint_set_sha = _sha256_bytes(_canonical_json(checkpoint_meta))
-        jobs, queues = _eval_jobs()
-        plan = _seal_plan(
-            RunPlan(
-                schema=PLAN_SCHEMA,
-                run_id=run_id,
-                kind="b2_eval",
-                created_at=_now(),
-                source_commit=parent.source_commit,
-                source_tree=parent.source_tree,
-                source_archive_path=parent.source_archive_path,
-                source_archive_sha256=parent.source_archive_sha256,
-                source_archive_size=parent.source_archive_size,
-                inputs_archive_path=str(inputs_path.resolve()),
-                inputs_archive_sha256=input_sha,
-                inputs_archive_size=input_size,
-                source_inputs=parent.source_inputs,
-                inputs=entries,
-                hosts=tuple(replace(host, stage_root=str(ISOLATED_BASE / run_id)) for host in parent.hosts),
-                jobs=jobs,
-                queues=queues,
-                required_cli=("ppo-evaluate", "ppo-merge-eval"),
-                module_path_contract=parent.module_path_contract,
-                config={"evaluation_offsets": [0.0, 0.0], "checkpoint_iteration": 20},
-                collection_root=str((repo / "Experiments/B2_ppo_pilot/evaluations" / run_id).resolve()),
-                parent_plan_sha256=parent.plan_sha256,
-                evaluation_contract={
-                    "manifest_relpath": "inputs/task8/development_scenarios.tsv",
-                    "manifest_sha256": manifest_sha,
-                    "checkpoint_set": checkpoint_meta,
-                    "checkpoint_set_sha256": checkpoint_set_sha,
-                    "training_manifest_sha256": training_manifest_sha,
-                    "shard_count": SHARD_COUNT,
-                    "assignment": "physical_row_index_mod_shard_count",
-                    "scenarios": scenarios,
-                    "variants": variants,
-                    "expected_scenario_count": 288,
-                    "expected_episode_rows": 288 * len(variants),
-                },
-            )
-        )
-        _verify_plan(plan)
-        os.replace(partial, inputs_path)
+            _verify_plan(plan)
+        finally:
+            shutil.rmtree(temporary, ignore_errors=True)
+        os.replace(source_partial, source_path)
+        os.replace(inputs_partial, inputs_path)
         try:
             write_plan(output, plan)
         except Exception:
+            source_path.unlink(missing_ok=True)
             inputs_path.unlink(missing_ok=True)
             raise
         return plan
+    except Exception:
+        source_partial.unlink(missing_ok=True)
+        inputs_partial.unlink(missing_ok=True)
+        raise
 
 
 def _host(plan: RunPlan, host_id: str) -> HostSpec:
@@ -956,7 +1019,17 @@ def _display_command(argv: Sequence[str]) -> str:
 def _ssh_argv(host: HostSpec, remote_argv: Sequence[str]) -> list[str]:
     if host.kind != "remote" or not host.ssh_host:
         raise RunnerError("ssh requested for a non-remote host")
-    return ["ssh", host.ssh_host, _display_command(remote_argv)]
+    return [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ServerAliveInterval=30",
+        "-o",
+        "ServerAliveCountMax=6",
+        host.ssh_host,
+        _display_command(remote_argv),
+    ]
 
 
 def _run_command(argv: Sequence[str], *, dry_run: bool) -> int:
@@ -2403,8 +2476,8 @@ def execute(plan: RunPlan, host_ids: Sequence[str], dry_run: bool) -> int:
 
 
 def resume(plan: RunPlan, host_ids: Sequence[str], dry_run: bool) -> int:
-    if plan.kind != "b2_train":
-        raise RunnerError("explicit resume is available only for B2 training")
+    if plan.kind not in {"b2_train", "b2_eval"}:
+        raise RunnerError("explicit resume is unavailable for this plan kind")
     commands = [
         _execute_command(plan, _host(plan, host_id), resume=True)
         for host_id in host_ids
@@ -2451,18 +2524,109 @@ def _validate_job_output(plan: RunPlan, root: Path, job: JobSpec) -> None:
         ):
             raise RunnerError(f"learner COMPLETE envelope mismatch: {job.job_id}")
     elif job.kind == "evaluation_shard":
-        shard_path = output / "shard.json"
-        if not shard_path.is_file():
-            raise RunnerError(f"evaluation shard summary is missing: {job.job_id}")
-        shard = json.loads(shard_path.read_text(encoding="utf-8"))
-        if (
-            shard.get("schema") != "bplus-v2.2-ppo-eval-shard-1"
-            or shard.get("shard_index") != job.shard_index
-            or shard.get("shard_count") != job.shard_count
-        ):
-            raise RunnerError(f"evaluation shard COMPLETE envelope mismatch: {job.job_id}")
+        _validate_eval_shard_output(plan, output, job)
     else:
         raise RunnerError(f"unsupported executable job kind: {job.kind}")
+
+
+def _tsv_scalar(value: Any) -> str:
+    return "" if value is None else str(value)
+
+
+def _validate_eval_shard_output(plan: RunPlan, output: Path, job: JobSpec) -> None:
+    """Strictly bind an atomic eval shard to its immutable EvalPlan."""
+
+    if plan.kind != "b2_eval" or not plan.evaluation_contract:
+        raise RunnerError("evaluation shard requires one B2 EvalPlan")
+    children = list(output.iterdir())
+    if any(path.is_symlink() or not path.is_file() for path in children):
+        raise RunnerError(f"evaluation shard has non-regular content: {job.job_id}")
+    if {path.name for path in children} != {"COMPLETE", "shard.json", "episodes.tsv"}:
+        raise RunnerError(f"evaluation shard file inventory mismatch: {job.job_id}")
+
+    contract = plan.evaluation_contract
+    shard = json.loads((output / "shard.json").read_text(encoding="utf-8"))
+    expected_scenarios = [
+        item
+        for item in contract["scenarios"]
+        if int(item["shard_index"]) == int(job.shard_index)
+    ]
+    variants = [str(value) for value in contract["variants"]]
+    checkpoint_by_variant = {"BC": CANONICAL_BC_SHA256}
+    checkpoint_by_variant.update(
+        {
+            f"{item['arm']}::seed{int(item['seed'])}": str(item["sha256"])
+            for item in contract["checkpoint_set"]
+        }
+    )
+    if (
+        shard.get("schema") != "bplus-v2.2-ppo-eval-shard-1"
+        or shard.get("shard_index") != job.shard_index
+        or shard.get("shard_count") != job.shard_count
+        or shard.get("scenario_manifest_sha256") != contract["manifest_sha256"]
+        or shard.get("checkpoint_manifest_sha256")
+        != contract["training_manifest_sha256"]
+        or shard.get("bc_checkpoint_sha256") != CANONICAL_BC_SHA256
+        or shard.get("checkpoint_sha256_by_variant") != checkpoint_by_variant
+        or not isinstance(shard.get("rows"), list)
+    ):
+        raise RunnerError(f"evaluation shard COMPLETE envelope mismatch: {job.job_id}")
+
+    expected_keys = {
+        (int(item["row_index"]), str(item["l2_id"]), variant)
+        for item in expected_scenarios
+        for variant in variants
+    }
+    observed_keys: set[tuple[int, str, str]] = set()
+    rows = shard["rows"]
+    if len(rows) != len(expected_keys):
+        raise RunnerError(f"evaluation shard row count mismatch: {job.job_id}")
+    for row in rows:
+        if not isinstance(row, dict):
+            raise RunnerError(f"evaluation shard row is not an object: {job.job_id}")
+        key = (
+            int(row.get("task8_row_index", -1)),
+            str(row.get("l2_id", "")),
+            str(row.get("variant", "")),
+        )
+        if (
+            key not in expected_keys
+            or key in observed_keys
+            or row.get("scenario_manifest_sha256") != contract["manifest_sha256"]
+            or row.get("checkpoint_manifest_sha256")
+            != contract["training_manifest_sha256"]
+            or row.get("checkpoint_sha256") != checkpoint_by_variant.get(key[2])
+            or type(row.get("external_clip_micro_steps")) is not int
+            or row.get("external_clip_micro_steps") != 0
+            or not SHA256_RE.fullmatch(str(row.get("trajectory_sha256", "")))
+        ):
+            raise RunnerError(f"evaluation shard row mismatch: {job.job_id}, {key}")
+        observed_keys.add(key)
+    if observed_keys != expected_keys:
+        raise RunnerError(f"evaluation shard Cartesian mismatch: {job.job_id}")
+
+    control_rows = [
+        {
+            **row,
+            "row_index": row["task8_row_index"],
+            "variant_id": row["variant"],
+            "shard_index": job.shard_index,
+            "manifest_sha256": contract["manifest_sha256"],
+            "checkpoint_set_sha256": contract["checkpoint_set_sha256"],
+        }
+        for row in rows
+    ]
+    expected_fields = sorted({name for row in control_rows for name in row})
+    with (output / "episodes.tsv").open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        observed_tsv = list(reader)
+        observed_fields = reader.fieldnames
+    if observed_fields != expected_fields or len(observed_tsv) != len(control_rows):
+        raise RunnerError(f"evaluation shard TSV schema/count mismatch: {job.job_id}")
+    for expected_row, observed_row in zip(control_rows, observed_tsv):
+        expected_tsv = {name: _tsv_scalar(expected_row.get(name)) for name in expected_fields}
+        if observed_row != expected_tsv:
+            raise RunnerError(f"evaluation shard TSV/JSON mismatch: {job.job_id}")
 
 
 def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
@@ -2484,8 +2648,8 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
     if not jobs:
         raise RunnerError(f"no jobs assigned to {host_id}")
     if resume:
-        if plan.kind != "b2_train":
-            raise RunnerError("only B2 learner queues support explicit resume")
+        if plan.kind not in {"b2_train", "b2_eval"}:
+            raise RunnerError("this plan kind does not support explicit resume")
         if not status_path.is_file() or not events_path.is_file():
             raise RunnerError("resume requires an existing host status/event ledger")
         status = json.loads(status_path.read_text(encoding="utf-8"))
@@ -2541,13 +2705,23 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
         if resume and previous and previous.get("state") in {"FAILED", "RUNNING"} and output.is_dir():
             _validate_job_output(plan, root, job)
             recovered_at = _now()
-            status["jobs"][job.job_id] = {
+            recovered = {
                 "state": "COMPLETE",
                 "exit_code": 0,
                 "started_at": previous.get("started_at"),
                 "finished_at": recovered_at,
                 "status_recovered_from_complete_release": True,
+                "prior_state": previous.get("state"),
+                "prior_exit_code": previous.get("exit_code"),
             }
+            if job.kind == "evaluation_shard":
+                recovered.update(
+                    {
+                        "shard_json_sha256": _sha256_file(output / "shard.json"),
+                        "episodes_tsv_sha256": _sha256_file(output / "episodes.tsv"),
+                    }
+                )
+            status["jobs"][job.job_id] = recovered
             persist(
                 {
                     "event": "job_status_recovered",
@@ -2561,6 +2735,11 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
             and previous
             and previous.get("state") in {"FAILED", "RUNNING"}
         )
+        if resume_job and plan.kind == "b2_eval":
+            raise RunnerError(
+                "evaluation resume only recovers a validated atomic COMPLETE shard; "
+                f"incomplete shard must use a new EvalPlan: {job.job_id}"
+            )
         if resume_job:
             if output.exists() or not partial.is_dir() or not cache.is_dir():
                 raise RunnerError(f"job resume boundary is invalid: {job.job_id}")
@@ -3217,7 +3396,7 @@ def _show(plan_path: Path, plan: RunPlan) -> None:
     if plan.kind == "b2_train":
         print(_display_command([wrapper, "plumbing-smoke", path]))
     print(_display_command([wrapper, "execute", path, "--all-hosts"]))
-    if plan.kind == "b2_train":
+    if plan.kind in {"b2_train", "b2_eval"}:
         print("# explicit resume only after a recorded interruption/failure")
         for host in plan.hosts:
             print(_display_command([wrapper, "resume", path, "--host", host.host_id]))
@@ -3244,6 +3423,7 @@ def _parser() -> argparse.ArgumentParser:
     plan_eval = sub.add_parser("plan-eval", help="freeze six checkpoints into an eval plan")
     plan_eval.add_argument("--run-id", required=True)
     plan_eval.add_argument("--training-plan", required=True, type=Path)
+    plan_eval.add_argument("--source-commit", default="HEAD")
     plan_eval.add_argument("--checkpoint", action="append", required=True)
     plan_eval.add_argument("--output", required=True, type=Path)
 
@@ -3358,6 +3538,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 training_plan_path=args.training_plan.resolve(),
                 checkpoints=args.checkpoint,
                 output=args.output.resolve(),
+                source_commit=args.source_commit,
             )
             print(args.output.resolve())
             print(built.plan_sha256)

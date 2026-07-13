@@ -130,12 +130,21 @@ def evaluation_plan(run_id: str, collection_root: Path) -> runner.RunPlan:
         {"row_index": index, "l2_id": f"L2:{index}", "shard_index": index}
         for index in range(4)
     ]
-    variants = ["BC", "BC_FROZEN_seed0"]
+    variants = ["BC", "BC_FROZEN::seed0"]
     contract = {
         "manifest_relpath": "inputs/task8/development_scenarios.tsv",
         "manifest_sha256": "5" * 64,
-        "checkpoint_set": [],
+        "checkpoint_set": [
+            {
+                "arm": "BC_FROZEN",
+                "seed": 0,
+                "relpath": "inputs/checkpoints/BC_FROZEN_seed0_iter20.pt",
+                "sha256": "8" * 64,
+                "size": 123,
+            }
+        ],
         "checkpoint_set_sha256": "6" * 64,
+        "training_manifest_sha256": "9" * 64,
         "shard_count": 4,
         "assignment": "physical_row_index_mod_shard_count",
         "scenarios": scenarios,
@@ -249,6 +258,55 @@ def test_remote_stage_is_explicit_allowlist() -> None:
         assert "git pull" not in rendered and "git checkout" not in rendered
         assert "~/Documents/End2Race" not in rendered
         assert "set -eu; umask 077; test ! -e" in rendered
+
+
+def test_remote_commands_have_ssh_keepalive() -> None:
+    plan = training_plan("b2_keepalive", Path("/tmp/b2_keepalive_collection"))
+    command = runner._execute_command(plan, runner._host(plan, "remote"))
+    assert command[:7] == [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ServerAliveInterval=30",
+        "-o",
+        "ServerAliveCountMax=6",
+    ]
+
+
+def test_eval_source_delta_is_control_only() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        repo = Path(temporary) / "repo"
+        (repo / "Experiments").mkdir(parents=True)
+        (repo / "tests").mkdir()
+        (repo / "bplus_v22").mkdir()
+        (repo / "Experiments/runner.py").write_text("parent\n", encoding="utf-8")
+        (repo / "tests/test_experiment_runner.py").write_text("parent\n", encoding="utf-8")
+        (repo / "bplus_v22/cli.py").write_text("numeric\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        subprocess.run(["git", "config", "user.name", "Runner Test"], cwd=repo, check=True)
+        subprocess.run(["git", "config", "user.email", "runner@example.invalid"], cwd=repo, check=True)
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "parent"], cwd=repo, check=True)
+        parent = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+        (repo / "Experiments/runner.py").write_text("control fix\n", encoding="utf-8")
+        (repo / "tests/test_experiment_runner.py").write_text("control test\n", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "control"], cwd=repo, check=True)
+        control = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+        assert runner._validate_eval_control_only_source_delta(repo, parent, control) == (
+            "Experiments/runner.py",
+            "tests/test_experiment_runner.py",
+        )
+        (repo / "bplus_v22/cli.py").write_text("changed numeric\n", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "numeric"], cwd=repo, check=True)
+        numeric = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+        try:
+            runner._validate_eval_control_only_source_delta(repo, parent, numeric)
+            raise AssertionError("numerical eval-source drift was accepted")
+        except runner.RunnerError as error:
+            assert "numerical/non-control" in str(error)
 
 
 def test_deterministic_input_archive_and_safe_extract() -> None:
@@ -400,6 +458,160 @@ def write_eval_shards(plan: runner.RunPlan, collection: Path) -> None:
                         "checkpoint_set_sha256": contract["checkpoint_set_sha256"],
                     }
                 )
+
+
+def write_atomic_eval_release(plan: runner.RunPlan, root: Path, shard: int) -> Path:
+    assert plan.evaluation_contract is not None
+    contract = plan.evaluation_contract
+    output = root / f"outputs/eval/shard{shard}"
+    output.mkdir(parents=True)
+    checkpoint_by_variant = {"BC": runner.CANONICAL_BC_SHA256}
+    checkpoint_by_variant.update(
+        {
+            f"{item['arm']}::seed{item['seed']}": item["sha256"]
+            for item in contract["checkpoint_set"]
+        }
+    )
+    rows = []
+    scenario = next(item for item in contract["scenarios"] if item["shard_index"] == shard)
+    for variant in contract["variants"]:
+        rows.append(
+            {
+                "schema": "bplus-v2.2-ppo-eval-row-1",
+                "task8_row_index": scenario["row_index"],
+                "l2_id": scenario["l2_id"],
+                "variant": variant,
+                "scenario_manifest_sha256": contract["manifest_sha256"],
+                "checkpoint_manifest_sha256": contract["training_manifest_sha256"],
+                "checkpoint_sha256": checkpoint_by_variant[variant],
+                "external_clip_micro_steps": 0,
+                "trajectory_sha256": f"{shard + 1:x}" * 64,
+                "collision_any": False,
+                "terminal_overtake": True,
+            }
+        )
+    payload = {
+        "schema": "bplus-v2.2-ppo-eval-shard-1",
+        "shard_index": shard,
+        "shard_count": 4,
+        "scenario_manifest_sha256": contract["manifest_sha256"],
+        "checkpoint_manifest_sha256": contract["training_manifest_sha256"],
+        "bc_checkpoint_sha256": runner.CANONICAL_BC_SHA256,
+        "checkpoint_sha256_by_variant": checkpoint_by_variant,
+        "rows": rows,
+    }
+    (output / "shard.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    control_rows = [
+        {
+            **row,
+            "row_index": row["task8_row_index"],
+            "variant_id": row["variant"],
+            "shard_index": shard,
+            "manifest_sha256": contract["manifest_sha256"],
+            "checkpoint_set_sha256": contract["checkpoint_set_sha256"],
+        }
+        for row in rows
+    ]
+    fields = sorted({name for row in control_rows for name in row})
+    with (output / "episodes.tsv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(control_rows)
+    (output / "COMPLETE").write_text("COMPLETE\n", encoding="utf-8")
+    return output
+
+
+def test_eval_resume_recovers_atomic_release_and_continues_fresh() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        original = evaluation_plan("b2_eval_resume", root / "collection")
+        local = replace(runner._host(original, "local"), stage_root=str(root))
+        remote = replace(runner._host(original, "remote"), stage_root=str(root))
+        plan = replace(original, hosts=(local, remote))
+        control = root / "control"
+        control.mkdir()
+        plan_path = control / "run_plan.json"
+        plan_path.write_text("{}\n", encoding="utf-8")
+        status = {
+            "schema": "end2race-host-status-1",
+            "plan_sha256": plan.plan_sha256,
+            "host": "remote",
+            "state": "FAILED",
+            "jobs": {
+                "eval-shard1": {"state": "COMPLETE", "exit_code": 0},
+                "eval-shard2": {"state": "FAILED", "exit_code": 120},
+            },
+            "resume_attempts": 0,
+        }
+        (control / "status.json").write_text(json.dumps(status), encoding="utf-8")
+        (control / "status.jsonl").write_text("{}\n", encoding="utf-8")
+        write_atomic_eval_release(plan, root, 1)
+        write_atomic_eval_release(plan, root, 2)
+
+        calls = []
+
+        def run_shard3(argv, **_kwargs):
+            calls.append(argv)
+            write_atomic_eval_release(plan, root, 3)
+            return mock.Mock(returncode=0)
+
+        with mock.patch.object(runner, "load_plan", return_value=plan), mock.patch.object(
+            runner, "check_preflight_host"
+        ), mock.patch.object(runner, "_assert_live_environment"), mock.patch.object(
+            runner, "_probe_gpu"
+        ), mock.patch.object(runner.subprocess, "run", side_effect=run_shard3):
+            assert runner.execute_host(plan_path, "remote", resume=True) == 0
+        assert len(calls) == 1 and "--resume" not in calls[0]
+        final = json.loads((control / "status.json").read_text(encoding="utf-8"))
+        assert final["state"] == "COMPLETE"
+        assert final["jobs"]["eval-shard2"]["status_recovered_from_complete_release"] is True
+        assert final["jobs"]["eval-shard2"]["prior_exit_code"] == 120
+        assert final["jobs"]["eval-shard3"]["state"] == "COMPLETE"
+
+
+def test_eval_resume_rejects_incomplete_shard_without_cli_resume() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        original = evaluation_plan("b2_eval_incomplete", root / "collection")
+        local = replace(runner._host(original, "local"), stage_root=str(root))
+        remote = replace(runner._host(original, "remote"), stage_root=str(root))
+        plan = replace(original, hosts=(local, remote))
+        control = root / "control"
+        control.mkdir()
+        plan_path = control / "run_plan.json"
+        plan_path.write_text("{}\n", encoding="utf-8")
+        status = {
+            "schema": "end2race-host-status-1",
+            "plan_sha256": plan.plan_sha256,
+            "host": "remote",
+            "state": "FAILED",
+            "jobs": {
+                "eval-shard1": {"state": "COMPLETE", "exit_code": 0},
+                "eval-shard2": {"state": "FAILED", "exit_code": 120},
+            },
+            "resume_attempts": 0,
+        }
+        (control / "status.json").write_text(json.dumps(status), encoding="utf-8")
+        (control / "status.jsonl").write_text("{}\n", encoding="utf-8")
+        write_atomic_eval_release(plan, root, 1)
+        partial = root / "outputs/eval/shard2.partial"
+        partial.mkdir(parents=True)
+        with mock.patch.object(runner, "load_plan", return_value=plan), mock.patch.object(
+            runner, "check_preflight_host"
+        ), mock.patch.object(runner, "_assert_live_environment"), mock.patch.object(
+            runner, "_probe_gpu"
+        ), mock.patch.object(
+            runner.subprocess,
+            "run",
+            side_effect=AssertionError("incomplete eval invoked CLI resume"),
+        ):
+            try:
+                runner.execute_host(plan_path, "remote", resume=True)
+                raise AssertionError("incomplete eval shard was resumed")
+            except runner.RunnerError as error:
+                assert "only recovers" in str(error)
 
 
 def test_eval_cartesian_merge_contract() -> None:
@@ -890,8 +1102,9 @@ def test_show_phase_order_and_partial_quarantine() -> None:
         with redirect_stdout(eval_stdout):
             runner._show(root / "eval_plan.json", eval_plan)
         eval_value = eval_stdout.getvalue()
-        assert " resume " not in eval_value
-        assert eval_value.index(" execute ") < eval_value.index(" collect ")
+        assert " resume " in eval_value
+        assert eval_value.index(" execute ") < eval_value.index(" resume ")
+        assert eval_value.index(" resume ") < eval_value.index(" collect ")
         assert eval_value.index(" collect ") < eval_value.index(" merge-eval ")
 
         collection = root / "collected"
@@ -1299,9 +1512,13 @@ def main() -> None:
     test_learner_queues_are_complete_and_nonshardable()
     test_dry_run_never_accesses_remote_or_old_worktree()
     test_remote_stage_is_explicit_allowlist()
+    test_remote_commands_have_ssh_keepalive()
+    test_eval_source_delta_is_control_only()
     test_deterministic_input_archive_and_safe_extract()
     test_plan_uses_clean_commit_and_explicit_input_bundles()
     test_eval_cartesian_merge_contract()
+    test_eval_resume_recovers_atomic_release_and_continues_fresh()
+    test_eval_resume_rejects_incomplete_shard_without_cli_resume()
     test_fail_closed_names_and_pinned_wrapper()
     test_complete_requires_atomic_release_envelope()
     test_eval_checkpoint_requires_complete_parent_learner()
