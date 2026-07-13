@@ -159,11 +159,23 @@ def _init_worker(
     model_path: str,
     device_name: str,
     cache_root: str,
+    repo_root: str,
     variant: str,
     model_sha256: str,
 ) -> None:
     cache = Path(cache_root) / f"worker-{os.getpid()}"
     cache.mkdir(parents=True, exist_ok=False)
+    repo = Path(repo_root).resolve()
+    for relative in ("f1tenth_racetracks", "latticeplanner"):
+        source = repo / relative
+        if not source.is_dir() or source.is_symlink():
+            raise RuntimeError(f"B4 product evaluator source directory failed: {relative}")
+        (cache / relative).symlink_to(source, target_is_directory=True)
+    (cache / "eval_results").mkdir()
+    # The production evaluator still resolves racetracks, lattice configuration,
+    # and eval_results relative to cwd.  Give every spawned worker a private,
+    # writable cwd while the archived source tree remains read-only.
+    os.chdir(cache)
     os.environ["NUMBA_CACHE_DIR"] = str(cache.resolve())
     os.environ.setdefault("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
     import torch
@@ -369,6 +381,7 @@ def run_shard(args: argparse.Namespace) -> int:
                 str(model),
                 args.device,
                 str(cache_root),
+                str(repo),
                 args.variant,
                 model_sha,
             ),
@@ -424,24 +437,32 @@ def run_shard(args: argparse.Namespace) -> int:
     return 0
 
 
-def _load_variant(root: Path, variant: str) -> dict[str, dict[str, Any]]:
+def _load_variant(
+    root: Path, variant: str
+) -> tuple[dict[str, dict[str, Any]], tuple[str, str]]:
     rows: dict[str, dict[str, Any]] = {}
     model_shas: set[str] = set()
+    training_plan_shas: set[str] = set()
+    training_source_commits: set[str] = set()
     for shard_index in range(SHARD_COUNT):
         shard = root / variant / f"shard{shard_index}"
         manifest = json.loads((shard / "manifest.json").read_text(encoding="utf-8"))
         summary = json.loads((shard / "summary.json").read_text(encoding="utf-8"))
+        expected_host = "local" if shard_index == 0 else "remote"
         if (
             not (shard / "COMPLETE").is_file()
             or manifest.get("schema") != SCHEMA
             or manifest.get("variant") != variant
             or manifest.get("shard_index") != shard_index
             or manifest.get("case_count") != CASES_PER_SHARD
+            or manifest.get("producer_host_id") != expected_host
             or summary.get("passed") is not True
             or summary.get("case_count") != CASES_PER_SHARD
         ):
             raise ValueError(f"B4 product shard envelope failed: {variant}/shard{shard_index}")
         model_shas.add(str(manifest["model_sha256"]))
+        training_plan_shas.add(str(manifest.get("training_run_plan_sha256")))
+        training_source_commits.add(str(manifest.get("training_source_commit")))
         for case in manifest["cases"]:
             metric_path = shard / "metrics" / f"{case['case_id']}.json"
             metric = json.loads(metric_path.read_text(encoding="utf-8"))
@@ -455,9 +476,21 @@ def _load_variant(root: Path, variant: str) -> dict[str, dict[str, Any]]:
             if case["case_id"] in rows:
                 raise ValueError("B4 product evaluation duplicate case")
             rows[case["case_id"]] = metric
-    if len(model_shas) != 1 or len(rows) != TOTAL_CASES:
+    expected_case_ids = {
+        f"sp{ordinal:02d}_ol{opponent_index}_s{speed:.1f}"
+        for ordinal in range(STARTPOINT_COUNT)
+        for opponent_index in range(len(OPP_RACELINES))
+        for speed in OPP_SPEED_SCALES
+    }
+    if (
+        len(model_shas) != 1
+        or len(training_plan_shas) != 1
+        or len(training_source_commits) != 1
+        or set(rows) != expected_case_ids
+    ):
         raise ValueError(f"B4 product variant inventory failed: {variant}")
-    return rows
+    provenance = (next(iter(training_plan_shas)), next(iter(training_source_commits)))
+    return rows, provenance
 
 
 def merge(args: argparse.Namespace) -> int:
@@ -465,7 +498,12 @@ def merge(args: argparse.Namespace) -> int:
     variants = tuple(args.variant)
     if not variants or variants[0] != "BC" or len(set(variants)) != len(variants):
         raise ValueError("B4 product merge variants must be unique and start with BC")
-    by_variant = {variant: _load_variant(root, variant) for variant in variants}
+    loaded = {variant: _load_variant(root, variant) for variant in variants}
+    by_variant = {variant: value[0] for variant, value in loaded.items()}
+    provenances = {value[1] for value in loaded.values()}
+    if len(provenances) != 1:
+        raise ValueError("B4 product evaluation training provenance drift")
+    training_plan_sha256, training_source_commit = next(iter(provenances))
     keys = set(by_variant["BC"])
     if any(set(rows) != keys for rows in by_variant.values()):
         raise ValueError("B4 product paired case inventory drift")
@@ -551,6 +589,8 @@ def merge(args: argparse.Namespace) -> int:
             "episode_count_per_variant": TOTAL_CASES,
         },
         "outcome_contract": "original eval_multiagent terminal state_label",
+        "training_run_plan_sha256": training_plan_sha256,
+        "training_source_commit": training_source_commit,
         "bc": baseline,
         "overtake_floor_95pct": overtake_floor,
         "candidates": candidates,

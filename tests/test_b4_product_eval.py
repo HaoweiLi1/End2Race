@@ -48,6 +48,9 @@ def write_variant(root: Path, variant: str, cases) -> None:
             "schema": SCHEMA,
             "variant": variant,
             "model_sha256": model_sha,
+            "training_run_plan_sha256": "a" * 64,
+            "training_source_commit": "1" * 40,
+            "producer_host_id": "local" if shard_index == 0 else "remote",
             "shard_index": shard_index,
             "case_count": len(selected),
             "cases": selected,
@@ -151,6 +154,8 @@ def main() -> None:
             "speed_projection": 0,
         }
         assert summary["overtake_floor_95pct"] == 285
+        assert summary["training_run_plan_sha256"] == "a" * 64
+        assert summary["training_source_commit"] == "1" * 40
         assert summary["selected_variant"] == "seed1_iter10"
         assert summary["candidates"]["seed1_iter10"]["collision"] == 40
         assert summary["candidates"]["seed1_iter10"]["overtake"] == 290
