@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Immutable control plane for End2Race experiments.
 
-New B2/B3 work never executes from either host's mutable checkout.  A clean,
+New B2/B3/B4 work never executes from either host's mutable checkout.  A clean,
 committed source tree is archived once, explicit runtime inputs are bundled,
 and both hosts execute from an isolated run root:
 
@@ -76,8 +76,8 @@ SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 ARMS = ("BC_FROZEN", "SIDECAR_FROZEN", "SIDECAR_FINETUNE")
 SEEDS = (0, 1)
 SHARD_COUNT = 4
-TRAIN_KINDS = frozenset({"b2_train", "b3_train"})
-EVAL_KINDS = frozenset({"b2_eval", "b3_eval"})
+TRAIN_KINDS = frozenset({"b2_train", "b3_train", "b4_train"})
+EVAL_KINDS = frozenset({"b2_eval", "b3_eval", "b4_eval"})
 EVAL_CONTROL_ONLY_PATHS = frozenset(
     {
         "Experiments/runner.py",
@@ -114,6 +114,14 @@ REQUIRED_TRAIN_CLI = (
     "ppo-merge-eval",
     "ppo-plumbing-smoke",
 )
+B4_REQUIRED_TRAIN_CLI = (
+    "b4-baseline-preflight",
+    "b4-pilot",
+    "b4-evaluate",
+    "b4-merge-eval",
+    "b4-plumbing-smoke",
+)
+B4_REQUIRED_EVAL_CLI = ("b4-evaluate", "b4-merge-eval")
 MODULE_PATH_CONTRACT = (
     "bplus_v22",
     "model",
@@ -275,7 +283,9 @@ def _verify_plan(plan: RunPlan) -> None:
     for job in plan.jobs:
         if job.host_id not in host_ids:
             raise RunnerError(f"unknown host for job {job.job_id}")
-        if job.kind == "learner" and (job.shardable or not job.gpu_exclusive):
+        if job.kind in {"learner", "b4_training"} and (
+            job.shardable or not job.gpu_exclusive
+        ):
             raise RunnerError("PPO learners must be non-shardable and GPU-exclusive")
         _safe_relative(job.output_relpath)
         _safe_relative(job.numba_cache_relpath)
@@ -284,43 +294,104 @@ def _verify_plan(plan: RunPlan) -> None:
         if not host.expected_environment:
             raise RunnerError(f"critical environment contract is empty: {host.host_id}")
     if plan.kind in TRAIN_KINDS:
-        identities = {(job.arm, job.seed) for job in plan.jobs if job.kind == "learner"}
-        expected_identities = {(arm, seed) for arm in ARMS for seed in SEEDS}
-        if identities != expected_identities or len(plan.jobs) != 6:
-            raise RunnerError("PPO train plan must contain exactly six arm-by-seed learners")
-        if tuple(plan.required_cli) != REQUIRED_TRAIN_CLI:
-            raise RunnerError("PPO train CLI contract drift")
         expected_topology = {
             str(index): dict(expectation)
             for index, expectation in BASELINE_SHARD_EXPECTATIONS.items()
         }
         if plan.config.get("bc_baseline_topology") != expected_topology:
             raise RunnerError("PPO baseline topology contract drift")
-        expected_contract = (
-            "unified_standard_mode_v1"
-            if plan.kind == "b3_train"
-            else "centered_fresh_prior"
-        )
-        if plan.config.get("policy_contract", "centered_fresh_prior") != expected_contract:
-            raise RunnerError("PPO plan kind/policy contract mismatch")
+        if plan.kind == "b4_train":
+            identities = {
+                (job.job_id, job.seed)
+                for job in plan.jobs
+                if job.kind == "b4_training"
+            }
+            if identities != {("b4-seed0", 0), ("b4-seed1", 1)} or len(plan.jobs) != 2:
+                raise RunnerError("B4 train plan must contain exactly two seed learners")
+            if tuple(plan.required_cli) != B4_REQUIRED_TRAIN_CLI:
+                raise RunnerError("B4 train CLI contract drift")
+            from bplus_v22.b4_direct import B4_POLICY_SCHEMA, validate_frozen_config
+
+            try:
+                validate_frozen_config(plan.config.get("ppo", {}))
+            except ValueError as error:
+                raise RunnerError(str(error)) from error
+            curriculum = plan.config.get("curriculum_sha256_by_seed")
+            expected_config_keys = {
+                "policy_contract",
+                "ppo",
+                "curriculum_schema",
+                "curriculum_sha256_by_seed",
+                "training_manifest_sha256",
+                "bc_baseline_expected_collision",
+                "bc_baseline_expected_overtake",
+                "bc_baseline_topology",
+                "overtake_gate_per_seed",
+                "collision_feasibility_per_seed",
+                "collision_product_target_per_seed",
+                "collision_product_target_pooled",
+                "deterministic_speed_projection_required",
+                "inputs",
+                "forbidden_inputs",
+            }
+            if (
+                set(plan.config) != expected_config_keys
+                or plan.config.get("policy_contract") != B4_POLICY_SCHEMA
+                or not isinstance(curriculum, dict)
+                or set(curriculum) != {"0", "1"}
+                or any(not SHA256_RE.fullmatch(str(value)) for value in curriculum.values())
+                or not SHA256_RE.fullmatch(str(plan.config.get("training_manifest_sha256", "")))
+                or plan.config.get("overtake_gate_per_seed") != 132
+                or plan.config.get("collision_feasibility_per_seed") != 24
+                or plan.config.get("collision_product_target_per_seed") != 16
+                or plan.config.get("collision_product_target_pooled") != 33
+                or plan.config.get("deterministic_speed_projection_required") != 0
+            ):
+                raise RunnerError("B4 frozen numerical/curriculum config drift")
+        else:
+            identities = {
+                (job.arm, job.seed) for job in plan.jobs if job.kind == "learner"
+            }
+            expected_identities = {(arm, seed) for arm in ARMS for seed in SEEDS}
+            if identities != expected_identities or len(plan.jobs) != 6:
+                raise RunnerError(
+                    "PPO train plan must contain exactly six arm-by-seed learners"
+                )
+            if tuple(plan.required_cli) != REQUIRED_TRAIN_CLI:
+                raise RunnerError("PPO train CLI contract drift")
+            expected_contract = (
+                "unified_standard_mode_v1"
+                if plan.kind == "b3_train"
+                else "centered_fresh_prior"
+            )
+            if plan.config.get("policy_contract", "centered_fresh_prior") != expected_contract:
+                raise RunnerError("PPO plan kind/policy contract mismatch")
     elif plan.kind in EVAL_KINDS:
         if not plan.parent_plan_sha256 or not SHA256_RE.fullmatch(plan.parent_plan_sha256):
             raise RunnerError("PPO eval plan lacks parent plan identity")
         if not plan.evaluation_contract:
             raise RunnerError("PPO eval plan lacks evaluation contract")
-        expected_contract = (
-            "unified_standard_mode_v1"
-            if plan.kind == "b3_eval"
-            else "centered_fresh_prior"
-        )
-        expected_iteration = 40 if plan.kind == "b3_eval" else 20
-        if (
-            plan.config.get("policy_contract", "centered_fresh_prior")
-            != expected_contract
-            or int(plan.config.get("checkpoint_iteration", expected_iteration))
-            != expected_iteration
-        ):
-            raise RunnerError("PPO eval kind/policy checkpoint contract mismatch")
+        if plan.kind == "b4_eval":
+            from bplus_v22.b4_cli import B4_EVAL_CONFIG
+
+            if plan.config != B4_EVAL_CONFIG:
+                raise RunnerError("B4 EvalPlan frozen config drift")
+            if tuple(plan.required_cli) != B4_REQUIRED_EVAL_CLI:
+                raise RunnerError("B4 eval CLI contract drift")
+        else:
+            expected_contract = (
+                "unified_standard_mode_v1"
+                if plan.kind == "b3_eval"
+                else "centered_fresh_prior"
+            )
+            expected_iteration = 40 if plan.kind == "b3_eval" else 20
+            if (
+                plan.config.get("policy_contract", "centered_fresh_prior")
+                != expected_contract
+                or int(plan.config.get("checkpoint_iteration", expected_iteration))
+                != expected_iteration
+            ):
+                raise RunnerError("PPO eval kind/policy checkpoint contract mismatch")
         contract = plan.evaluation_contract
         scenarios = contract.get("scenarios", [])
         variants = contract.get("variants", [])
@@ -337,7 +408,12 @@ def _verify_plan(plan: RunPlan) -> None:
             raise RunnerError("PPO eval scenarios must be ordered unique physical rows/L2")
         if any(int(item["shard_index"]) != int(item["row_index"]) % SHARD_COUNT for item in scenarios):
             raise RunnerError("PPO eval scenario assignment drift")
-        shard_jobs = {job.shard_index for job in plan.jobs if job.kind == "evaluation_shard"}
+        expected_job_kind = (
+            "b4_evaluation_shard" if plan.kind == "b4_eval" else "evaluation_shard"
+        )
+        shard_jobs = {
+            job.shard_index for job in plan.jobs if job.kind == expected_job_kind
+        }
         if shard_jobs != set(range(SHARD_COUNT)) or len(plan.jobs) != SHARD_COUNT:
             raise RunnerError("PPO eval plan must contain exactly four shards")
     else:
@@ -586,6 +662,29 @@ def _create_training_inputs_archive(repo: Path, output: Path) -> tuple[InputEntr
     return tuple(entries)
 
 
+def _create_b4_inputs_archive(repo: Path, output: Path) -> tuple[InputEntry, ...]:
+    """Bundle only B4's opened Task-8 and D2 metadata inputs; no sidecar."""
+
+    task8 = repo / TASK8_RELEASE
+    for required in ("training_scenarios.tsv", "development_scenarios.tsv", "config.json"):
+        if not (task8 / required).is_file():
+            raise RunnerError(f"canonical Task-8 release lacks {required}")
+    _verify_existing_output_manifest(task8)
+    metadata = repo / D2_METADATA
+    if not metadata.is_file() or _sha256_file(metadata) != D2_METADATA_SHA256:
+        raise RunnerError("canonical D2 episode metadata hash mismatch")
+    entries: list[InputEntry] = []
+    with tarfile.open(output, "w", format=tarfile.PAX_FORMAT) as archive:
+        for path in _release_files(task8):
+            entry = _tar_entry(
+                archive, path, f"task8/{path.relative_to(task8).as_posix()}"
+            )
+            entries.append(replace(entry, role="task8_release"))
+        entry = _tar_entry(archive, metadata, "d2/episode_metadata.tsv")
+        entries.append(replace(entry, role="d2_opened_episode_metadata"))
+    return tuple(entries)
+
+
 def _read_source_member(archive_path: Path, relpath: str) -> InputEntry:
     with tarfile.open(archive_path, "r") as archive:
         try:
@@ -676,6 +775,30 @@ def _training_jobs() -> tuple[tuple[JobSpec, ...], dict[str, tuple[str, ...]]]:
                 )
             )
         queues[queue_id] = tuple(ids)
+    return tuple(jobs), queues
+
+
+def _b4_training_jobs() -> tuple[tuple[JobSpec, ...], dict[str, tuple[str, ...]]]:
+    jobs: list[JobSpec] = []
+    queues: dict[str, tuple[str, ...]] = {}
+    for seed, host in ((0, "remote"), (1, "local")):
+        job_id = f"b4-seed{seed}"
+        queue_id = f"b4-seed{seed}-{host}"
+        jobs.append(
+            JobSpec(
+                job_id=job_id,
+                kind="b4_training",
+                host_id=host,
+                queue_id=queue_id,
+                argv=("-m", "bplus_v22.cli", "b4-pilot"),
+                output_relpath=f"outputs/train/seed{seed}",
+                numba_cache_relpath=f"cache/numba/{job_id}",
+                seed=seed,
+                gpu_exclusive=True,
+                shardable=False,
+            )
+        )
+        queues[queue_id] = (job_id,)
     return tuple(jobs), queues
 
 
@@ -831,6 +954,87 @@ def build_training_plan(
         shutil.rmtree(temporary, ignore_errors=True)
 
 
+def build_b4_training_plan(
+    *,
+    repo: Path,
+    run_id: str,
+    commit: str,
+    output: Path,
+    local_gpu_uuid: str,
+    remote_gpu_uuid: str,
+    environment: dict[str, str] | None = None,
+) -> RunPlan:
+    """Create, but never execute, the one approved two-seed B4 RunPlan."""
+
+    _validate_run_id(run_id)
+    commit, tree = _require_clean_commit(repo, commit)
+    _source_has_cli_contract(repo, commit, B4_REQUIRED_TRAIN_CLI)
+    if output.exists():
+        raise FileExistsError(output)
+    source_path = output.with_suffix(".source.tar")
+    inputs_path = output.with_suffix(".inputs.tar")
+    if source_path.exists() or inputs_path.exists():
+        raise FileExistsError("B4 control archive already exists")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    token = f".{run_id}.{random.randrange(1 << 32):08x}.partial"
+    temporary = output.parent / token
+    temporary.mkdir()
+    try:
+        source_partial = temporary / "source.tar"
+        inputs_partial = temporary / "inputs.tar"
+        _create_source_archive(repo, commit, source_partial)
+        source_bc = _read_source_member(source_partial, "pretrained/end2race.pth")
+        if source_bc.sha256 != CANONICAL_BC_SHA256:
+            raise RunnerError("committed BC checkpoint hash mismatch")
+        input_entries = _create_b4_inputs_archive(repo, inputs_partial)
+        from bplus_v22.b4_runner import expected_b4_plan_config
+
+        config = expected_b4_plan_config(repo / TASK8_RELEASE, repo / D2_METADATA)
+        environment = environment or _critical_environment(PINNED_PYTHON)
+        jobs, queues = _b4_training_jobs()
+        plan = _seal_plan(
+            RunPlan(
+                schema=PLAN_SCHEMA,
+                run_id=run_id,
+                kind="b4_train",
+                created_at=_now(),
+                source_commit=commit,
+                source_tree=tree,
+                source_archive_path=str(source_path.resolve()),
+                source_archive_sha256=_sha256_file(source_partial),
+                source_archive_size=source_partial.stat().st_size,
+                inputs_archive_path=str(inputs_path.resolve()),
+                inputs_archive_sha256=_sha256_file(inputs_partial),
+                inputs_archive_size=inputs_partial.stat().st_size,
+                source_inputs=(source_bc,),
+                inputs=input_entries,
+                hosts=_default_hosts(
+                    run_id, local_gpu_uuid, remote_gpu_uuid, environment
+                ),
+                jobs=jobs,
+                queues=queues,
+                required_cli=B4_REQUIRED_TRAIN_CLI,
+                module_path_contract=MODULE_PATH_CONTRACT,
+                config=config,
+                collection_root=str(
+                    (repo / "Experiments/B4_direct_head_ppo/runs" / run_id).resolve()
+                ),
+            )
+        )
+        _verify_plan(plan)
+        os.replace(source_partial, source_path)
+        os.replace(inputs_partial, inputs_path)
+        try:
+            write_plan(output, plan)
+        except Exception:
+            source_path.unlink(missing_ok=True)
+            inputs_path.unlink(missing_ok=True)
+            raise
+        return plan
+    finally:
+        shutil.rmtree(temporary, ignore_errors=True)
+
+
 def _deterministic_input_archive(
     output: Path, files: Sequence[tuple[str, str, Path]]
 ) -> tuple[InputEntry, ...]:
@@ -925,6 +1129,40 @@ def _eval_jobs() -> tuple[tuple[JobSpec, ...], dict[str, tuple[str, ...]]]:
     return tuple(jobs), queues
 
 
+def _b4_eval_jobs() -> tuple[tuple[JobSpec, ...], dict[str, tuple[str, ...]]]:
+    jobs: list[JobSpec] = []
+    queues: dict[str, tuple[str, ...]] = {
+        "b4-eval-local": ("eval-shard0",),
+        "b4-eval-remote-sequential": (
+            "eval-shard1",
+            "eval-shard2",
+            "eval-shard3",
+        ),
+    }
+    for shard in range(SHARD_COUNT):
+        host = "local" if shard == 0 else "remote"
+        queue = (
+            "b4-eval-local" if shard == 0 else "b4-eval-remote-sequential"
+        )
+        job_id = f"eval-shard{shard}"
+        jobs.append(
+            JobSpec(
+                job_id=job_id,
+                kind="b4_evaluation_shard",
+                host_id=host,
+                queue_id=queue,
+                argv=("-m", "bplus_v22.cli", "b4-evaluate"),
+                output_relpath=f"outputs/eval/shard{shard}",
+                numba_cache_relpath=f"cache/numba/{job_id}",
+                shard_index=shard,
+                shard_count=SHARD_COUNT,
+                gpu_exclusive=True,
+                shardable=True,
+            )
+        )
+    return tuple(jobs), queues
+
+
 def build_evaluation_plan(
     *,
     repo: Path,
@@ -936,8 +1174,8 @@ def build_evaluation_plan(
 ) -> RunPlan:
     _validate_run_id(run_id)
     parent = load_plan(training_plan_path)
-    if parent.kind not in TRAIN_KINDS:
-        raise RunnerError("evaluation parent must be a supported training plan")
+    if parent.kind not in {"b2_train", "b3_train"}:
+        raise RunnerError("plan-eval supports only B2/B3; use plan-b4-eval for B4")
     source_commit, source_tree = _require_clean_commit(repo, source_commit)
     _source_has_cli_contract(repo, source_commit, ("ppo-evaluate", "ppo-merge-eval"))
     source_delta = _validate_eval_control_only_source_delta(
@@ -1058,6 +1296,250 @@ def build_evaluation_plan(
                         "variants": variants,
                         "expected_scenario_count": 288,
                         "expected_episode_rows": 288 * len(variants),
+                    },
+                )
+            )
+            _verify_plan(plan)
+        finally:
+            shutil.rmtree(temporary, ignore_errors=True)
+        os.replace(source_partial, source_path)
+        os.replace(inputs_partial, inputs_path)
+        try:
+            write_plan(output, plan)
+        except Exception:
+            source_path.unlink(missing_ok=True)
+            inputs_path.unlink(missing_ok=True)
+            raise
+        return plan
+    except Exception:
+        source_partial.unlink(missing_ok=True)
+        inputs_partial.unlink(missing_ok=True)
+        raise
+
+
+def _parse_b4_checkpoint(value: str) -> tuple[int, int, Path]:
+    parts = value.split(",", 2)
+    if len(parts) != 3:
+        raise RunnerError("B4 checkpoint must be SEED,ITERATION,PATH")
+    seed = int(parts[0])
+    iteration = int(parts[1])
+    path = Path(parts[2]).resolve()
+    if seed not in SEEDS or iteration not in {10, 20, 30}:
+        raise RunnerError("B4 checkpoint seed/iteration is outside the frozen set")
+    if not path.is_file() or path.is_symlink():
+        raise RunnerError(f"B4 checkpoint is not one regular file: {path}")
+    return seed, iteration, path
+
+
+def _validate_b4_actor_snapshot_source(
+    parent: RunPlan, seed: int, iteration: int, path: Path
+) -> None:
+    expected_name = f"iter_{iteration:04d}.pth"
+    if path.name != expected_name or path.parent.name != "actors":
+        raise RunnerError("B4 evaluation input is not a frozen actor snapshot")
+    release = path.parent.parent
+    summary_path = release / "summary.json"
+    if (
+        not (release / "COMPLETE").is_file()
+        or release.with_name(release.name + ".partial").exists()
+        or not summary_path.is_file()
+    ):
+        raise RunnerError("B4 actor snapshot does not come from a COMPLETE learner")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    snapshot_sha = summary.get("actor_snapshot_file_sha256_by_iteration", {}).get(
+        str(iteration)
+    )
+    snapshot_tensor_sha = summary.get(
+        "actor_snapshot_tensor_sha256_by_iteration", {}
+    ).get(str(iteration))
+    actor0_path = release / "actors/iter_0000.pth"
+    actor0_file_sha = summary.get(
+        "actor_snapshot_file_sha256_by_iteration", {}
+    ).get("0")
+    actor0_tensor_sha = summary.get(
+        "actor_snapshot_tensor_sha256_by_iteration", {}
+    ).get("0")
+    if (
+        summary.get("schema") != "end2race-b4-direct-head-pilot-1"
+        or summary.get("integrity_passed") is not True
+        or summary.get("passed") is not True
+        or summary.get("seed") != seed
+        or summary.get("iterations") != 30
+        or summary.get("run_plan_sha256") != parent.plan_sha256
+        or summary.get("source_commit") != parent.source_commit
+        or summary.get("bc_checkpoint_sha256") != CANONICAL_BC_SHA256
+        or summary.get("training_manifest_sha256")
+        != parent.config["training_manifest_sha256"]
+        or summary.get("curriculum_sha256")
+        != parent.config["curriculum_sha256_by_seed"][str(seed)]
+        or not actor0_path.is_file()
+        or actor0_path.is_symlink()
+        or actor0_file_sha != _sha256_file(actor0_path)
+        or summary.get("bc_actor_tensor_sha256") != actor0_tensor_sha
+        or snapshot_sha != _sha256_file(path)
+    ):
+        raise RunnerError("B4 actor snapshot learner envelope mismatch")
+    from bplus_v22.b4_direct import actor_snapshot_sha256, load_strict_plain_actor
+
+    actor0_state = load_strict_plain_actor(actor0_path, "cpu").state_dict()
+    actor_state = load_strict_plain_actor(path, "cpu").state_dict()
+    if (
+        actor_snapshot_sha256(actor0_state) != actor0_tensor_sha
+        or actor_snapshot_sha256(actor_state) != snapshot_tensor_sha
+        or any(
+            not actor_state[name].equal(actor0_state[name])
+            for name in actor_state
+            if not name.startswith("output_layer.")
+        )
+    ):
+        raise RunnerError("B4 actor snapshot tensor envelope mismatch")
+
+
+def build_b4_evaluation_plan(
+    *,
+    repo: Path,
+    run_id: str,
+    training_plan_path: Path,
+    checkpoints: Sequence[str],
+    output: Path,
+    source_commit: str = "HEAD",
+) -> RunPlan:
+    """Freeze the one allowed 288x7 B4 opened-development evaluation."""
+
+    _validate_run_id(run_id)
+    parent = load_plan(training_plan_path)
+    if parent.kind != "b4_train":
+        raise RunnerError("B4 evaluation parent must be one b4_train RunPlan")
+    source_commit, source_tree = _require_clean_commit(repo, source_commit)
+    _source_has_cli_contract(repo, source_commit, B4_REQUIRED_EVAL_CLI)
+    source_delta = _validate_eval_control_only_source_delta(
+        repo, parent.source_commit, source_commit
+    )
+    parsed = [_parse_b4_checkpoint(value) for value in checkpoints]
+    expected = {(seed, iteration) for seed in SEEDS for iteration in (10, 20, 30)}
+    identities = {(seed, iteration) for seed, iteration, _ in parsed}
+    if len(parsed) != 6 or identities != expected:
+        raise RunnerError("B4 evaluation requires all six seed0/1 x iter10/20/30 snapshots")
+    for seed, iteration, path in parsed:
+        _validate_b4_actor_snapshot_source(parent, seed, iteration, path)
+    parent_inputs = Path(parent.inputs_archive_path)
+    if _sha256_file(parent_inputs) != parent.inputs_archive_sha256:
+        raise RunnerError("B4 parent input archive drift")
+    if output.exists():
+        raise FileExistsError(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    source_path = output.with_suffix(".source.tar")
+    inputs_path = output.with_suffix(".inputs.tar")
+    source_partial = source_path.with_name(f".{source_path.name}.partial")
+    inputs_partial = inputs_path.with_name(f".{inputs_path.name}.partial")
+    if any(path.exists() for path in (source_path, inputs_path, source_partial, inputs_partial)):
+        raise FileExistsError("B4 evaluation control archive already exists")
+    try:
+        _create_source_archive(repo, source_commit, source_partial)
+        source_bc = _read_source_member(source_partial, "pretrained/end2race.pth")
+        if source_bc.sha256 != CANONICAL_BC_SHA256:
+            raise RunnerError("committed BC checkpoint hash mismatch")
+        temporary = Path(tempfile.mkdtemp(prefix=f".{run_id}.b4eval.", dir=output.parent))
+        try:
+            _safe_extract(parent_inputs, temporary)
+            files: list[tuple[str, str, Path]] = []
+            task8 = temporary / "task8"
+            for path in _release_files(task8):
+                files.append(
+                    (
+                        "task8_release",
+                        f"task8/{path.relative_to(task8).as_posix()}",
+                        path,
+                    )
+                )
+            checkpoint_meta: list[dict[str, Any]] = []
+            for seed, iteration, path in sorted(parsed):
+                arcname = f"checkpoints/seed{seed}_iter{iteration}.pth"
+                sha = _sha256_file(path)
+                files.append(("plain_end2race_checkpoint", arcname, path))
+                checkpoint_meta.append(
+                    {
+                        "seed": seed,
+                        "iteration": iteration,
+                        "relpath": f"inputs/{arcname}",
+                        "sha256": sha,
+                        "size": path.stat().st_size,
+                    }
+                )
+            entries = _deterministic_input_archive(inputs_partial, files)
+            task8_manifest = task8 / "development_scenarios.tsv"
+            manifest_sha = _sha256_file(task8_manifest)
+            with task8_manifest.open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle, delimiter="\t"))
+            if len(rows) != 288 or any(not row.get("l2_id") for row in rows):
+                raise RunnerError("canonical B4 development manifest must contain 288 L2 rows")
+            scenarios = [
+                {
+                    "row_index": index,
+                    "l2_id": row["l2_id"],
+                    "shard_index": index % SHARD_COUNT,
+                }
+                for index, row in enumerate(rows)
+            ]
+            variants = ["BC"] + [
+                f"seed{seed}_iter{iteration}"
+                for seed in SEEDS
+                for iteration in (10, 20, 30)
+            ]
+            checkpoint_set_sha = _sha256_bytes(_canonical_json(checkpoint_meta))
+            jobs, queues = _b4_eval_jobs()
+            from bplus_v22.b4_cli import B4_EVAL_CONFIG
+
+            plan = _seal_plan(
+                RunPlan(
+                    schema=PLAN_SCHEMA,
+                    run_id=run_id,
+                    kind="b4_eval",
+                    created_at=_now(),
+                    source_commit=source_commit,
+                    source_tree=source_tree,
+                    source_archive_path=str(source_path.resolve()),
+                    source_archive_sha256=_sha256_file(source_partial),
+                    source_archive_size=source_partial.stat().st_size,
+                    inputs_archive_path=str(inputs_path.resolve()),
+                    inputs_archive_sha256=_sha256_file(inputs_partial),
+                    inputs_archive_size=inputs_partial.stat().st_size,
+                    source_inputs=(source_bc,),
+                    inputs=entries,
+                    hosts=tuple(
+                        replace(host, stage_root=str(ISOLATED_BASE / run_id))
+                        for host in parent.hosts
+                    ),
+                    jobs=jobs,
+                    queues=queues,
+                    required_cli=B4_REQUIRED_EVAL_CLI,
+                    module_path_contract=parent.module_path_contract,
+                    config=dict(B4_EVAL_CONFIG),
+                    collection_root=str(
+                        (
+                            repo
+                            / "Experiments/B4_direct_head_ppo/evaluations"
+                            / run_id
+                        ).resolve()
+                    ),
+                    parent_plan_sha256=parent.plan_sha256,
+                    evaluation_contract={
+                        "manifest_relpath": "inputs/task8/development_scenarios.tsv",
+                        "manifest_sha256": manifest_sha,
+                        "checkpoint_set": checkpoint_meta,
+                        "checkpoint_set_sha256": checkpoint_set_sha,
+                        "training_manifest_sha256": _sha256_file(
+                            task8 / "training_scenarios.tsv"
+                        ),
+                        "parent_training_source_commit": parent.source_commit,
+                        "control_only_source_delta": list(source_delta),
+                        "shard_count": SHARD_COUNT,
+                        "assignment": "physical_row_index_mod_shard_count",
+                        "scenarios": scenarios,
+                        "variants": variants,
+                        "expected_scenario_count": 288,
+                        "expected_variant_count": 7,
+                        "expected_episode_rows": 2016,
                     },
                 )
             )
@@ -1768,7 +2250,11 @@ def baseline_host(plan_path: Path, host_id: str) -> int:
                 host.python,
                 "-m",
                 "bplus_v22.cli",
-                "ppo-baseline-preflight",
+                (
+                    "b4-baseline-preflight"
+                    if plan.kind == "b4_train"
+                    else "ppo-baseline-preflight"
+                ),
                 "--run-plan",
                 str(plan_path),
                 "--output",
@@ -1949,6 +2435,111 @@ def _validate_plumbing_marker(
     if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
         raise RunnerError("B2 plumbing smoke marker is missing")
     value = json.loads(path.read_text(encoding="utf-8"))
+    if plan.kind == "b4_train":
+        expected_keys = {
+            "schema",
+            "passed",
+            "run_plan_sha256",
+            "source_commit",
+            "training_manifest_sha256",
+            "bc_checkpoint_sha256",
+            "d2_episode_metadata_sha256",
+            "scenario_selection",
+            "map_reports",
+            "plain_actor_key_count",
+            "trainable_actor_parameter_count",
+            "product_outcomes_reported_or_compared",
+            "candidate_selection_performed",
+            "ppo_pilot_iteration_completed",
+        }
+        reports = value.get("map_reports") if isinstance(value, dict) else None
+        report_keys = {
+            "map_name",
+            "l2_id",
+            "step_count",
+            "terminal_reason",
+            "trajectory_identity",
+            "outcome_identity",
+            "speed_projection_count",
+            "steer_projection_count",
+            "max_abs_replayed_log_prob_delta",
+        }
+        expected_manifest_sha = _frozen_entry_sha256(
+            plan, "task8/training_scenarios.tsv"
+        )
+        expected_bc_sha = _frozen_entry_sha256(
+            plan, "pretrained/end2race.pth", source=True
+        )
+        expected_metadata_sha = _frozen_entry_sha256(
+            plan, "d2/episode_metadata.tsv"
+        )
+        expected_maps = (
+            "Austin",
+            "Hockenheim",
+            "MoscowRaceway",
+            "Nuerburgring",
+        )
+        training_rows = _read_tsv_rows(
+            _marker_manifest_path(root, "training_scenarios.tsv")
+        )
+        first_l2_by_map: dict[str, str] = {}
+        for physical_index, row in enumerate(training_rows):
+            if int(row.get("training_order", -1)) != physical_index:
+                raise RunnerError("B4 plumbing training manifest order drift")
+            first_l2_by_map.setdefault(str(row.get("map_name", "")), str(row.get("l2_id", "")))
+        reports_valid = (
+            isinstance(reports, list)
+            and len(reports) == 4
+            and tuple(report.get("map_name") for report in reports) == expected_maps
+            and all(
+                report.get("l2_id") == first_l2_by_map.get(str(report.get("map_name")))
+                for report in reports
+            )
+            and all(
+                isinstance(report, dict)
+                and set(report) == report_keys
+                and isinstance(report.get("l2_id"), str)
+                and report["l2_id"].startswith("L2:")
+                and type(report.get("step_count")) is int
+                and report["step_count"] > 0
+                and report.get("terminal_reason")
+                in {"any_agent_collision", "product_horizon"}
+                and report.get("trajectory_identity") is True
+                and report.get("outcome_identity") is True
+                and report.get("speed_projection_count") == 0
+                and type(report.get("steer_projection_count")) is int
+                and report["steer_projection_count"] >= 0
+                and type(report.get("max_abs_replayed_log_prob_delta"))
+                in (int, float)
+                and 0.0
+                <= float(report["max_abs_replayed_log_prob_delta"])
+                <= 1e-4
+                for report in reports
+            )
+        )
+        if (
+            not isinstance(value, dict)
+            or set(value) != expected_keys
+            or value.get("schema") != "end2race-b4-plumbing-smoke-1"
+            or value.get("passed") is not True
+            or value.get("run_plan_sha256") != plan.plan_sha256
+            or value.get("source_commit") != plan.source_commit
+            or value.get("training_manifest_sha256") != expected_manifest_sha
+            or value.get("bc_checkpoint_sha256") != expected_bc_sha
+            or expected_bc_sha != CANONICAL_BC_SHA256
+            or value.get("d2_episode_metadata_sha256") != expected_metadata_sha
+            or expected_metadata_sha != D2_METADATA_SHA256
+            or value.get("scenario_selection")
+            != "first_physical_training_row_per_map_outcome_blind"
+            or value.get("plain_actor_key_count") != 12
+            or value.get("trainable_actor_parameter_count") != 706862
+            or value.get("product_outcomes_reported_or_compared") is not False
+            or value.get("candidate_selection_performed") is not False
+            or value.get("ppo_pilot_iteration_completed") is not False
+            or not reports_valid
+        ):
+            raise RunnerError("B4 plumbing smoke marker/envelope mismatch")
+        return value
     expected_keys = {
         "schema",
         "passed",
@@ -2127,7 +2718,8 @@ def _validate_ready_marker(
     if (
         not isinstance(value, dict)
         or set(value) != expected_keys
-        or value.get("schema") != "end2race-b2-ready-1"
+        or value.get("schema")
+        != ("end2race-b4-ready-1" if plan.kind == "b4_train" else "end2race-b2-ready-1")
         or value.get("passed") is not True
         or value.get("run_plan_sha256") != plan.plan_sha256
         or value.get("source_commit") != plan.source_commit
@@ -2160,7 +2752,9 @@ def ready_host(plan_path: Path, host_id: str) -> int:
     partial = path.with_suffix(path.suffix + ".partial")
     _quarantine_uncommitted_marker(path)
     value = {
-        "schema": "end2race-b2-ready-1",
+        "schema": (
+            "end2race-b4-ready-1" if plan.kind == "b4_train" else "end2race-b2-ready-1"
+        ),
         "passed": True,
         "run_plan_sha256": plan.plan_sha256,
         "source_commit": plan.source_commit,
@@ -2208,7 +2802,7 @@ def plumbing_host(plan_path: Path, host_id: str) -> int:
             host.python,
             "-m",
             "bplus_v22.cli",
-            "ppo-plumbing-smoke",
+            "b4-plumbing-smoke" if plan.kind == "b4_train" else "ppo-plumbing-smoke",
             "--run-plan",
             str(plan_path),
             "--output",
@@ -2394,7 +2988,12 @@ def _validate_cli_plan(plan: RunPlan, host: HostSpec) -> None:
     """Let the staged B2 implementation validate its full typed plan contract."""
 
     root = Path(host.stage_root)
-    command = "ppo-pilot" if plan.kind in TRAIN_KINDS else "ppo-evaluate"
+    if plan.kind == "b4_train":
+        command = "b4-pilot"
+    elif plan.kind == "b4_eval":
+        command = "b4-evaluate"
+    else:
+        command = "ppo-pilot" if plan.kind in TRAIN_KINDS else "ppo-evaluate"
     probe_job = JobSpec(
         "preflight", "preflight", host.host_id, "preflight", tuple(),
         "outputs/preflight", "cache/numba/preflight", gpu_exclusive=False,
@@ -2588,28 +3187,120 @@ def _validate_job_output(plan: RunPlan, root: Path, job: JobSpec) -> None:
     partial = output.with_name(output.name + ".partial")
     if not output.is_dir() or partial.exists() or not (output / "COMPLETE").is_file():
         raise RunnerError(f"job did not publish one atomic COMPLETE release: {job.job_id}")
-    if job.kind == "learner":
+    if job.kind in {"learner", "b4_training"}:
         summary_path = output / "summary.json"
         if not summary_path.is_file():
             raise RunnerError(f"learner summary is missing: {job.job_id}")
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
-        expected_schema = (
-            "bplus-v2.2-b3-ppo-pilot-1"
-            if plan.kind == "b3_train"
-            else "bplus-v2.2-b2-ppo-pilot-1"
-        )
-        expected_iterations = int(plan.config["iterations"])
-        if (
-            summary.get("schema") != expected_schema
-            or summary.get("integrity_passed") is not True
-            or summary.get("passed") is not True
-            or summary.get("arm") != job.arm
-            or summary.get("seed") != job.seed
-            or summary.get("iterations") != expected_iterations
-            or summary.get("run_plan_sha256") != plan.plan_sha256
-        ):
-            raise RunnerError(f"learner COMPLETE envelope mismatch: {job.job_id}")
-    elif job.kind == "evaluation_shard":
+        if job.kind == "b4_training":
+            config_path = output / "config.json"
+            if not config_path.is_file() or config_path.is_symlink():
+                raise RunnerError(f"B4 learner config is missing: {job.job_id}")
+            config_record = json.loads(config_path.read_text(encoding="utf-8"))
+            snapshot_files = summary.get(
+                "actor_snapshot_file_sha256_by_iteration"
+            )
+            snapshot_tensors = summary.get(
+                "actor_snapshot_tensor_sha256_by_iteration"
+            )
+            if (
+                summary.get("schema") != "end2race-b4-direct-head-pilot-1"
+                or summary.get("integrity_passed") is not True
+                or summary.get("passed") is not True
+                or summary.get("seed") != job.seed
+                or summary.get("iterations") != 30
+                or summary.get("run_plan_sha256") != plan.plan_sha256
+                or summary.get("source_commit") != plan.source_commit
+                or summary.get("bc_checkpoint_sha256") != CANONICAL_BC_SHA256
+                or summary.get("training_manifest_sha256")
+                != plan.config["training_manifest_sha256"]
+                or summary.get("curriculum_sha256")
+                != plan.config["curriculum_sha256_by_seed"][str(job.seed)]
+                or summary.get("product_kpi_evaluated") is not False
+                or summary.get("fresh_pool_opened") is not False
+                or not isinstance(snapshot_files, dict)
+                or set(snapshot_files) != {"0", "10", "20", "30"}
+                or not isinstance(snapshot_tensors, dict)
+                or set(snapshot_tensors) != {"0", "10", "20", "30"}
+                or any(
+                    not SHA256_RE.fullmatch(str(value))
+                    for value in (*snapshot_files.values(), *snapshot_tensors.values())
+                )
+                or summary.get("bc_actor_tensor_sha256")
+                != snapshot_tensors.get("0")
+                or config_record.get("schema")
+                != "end2race-b4-direct-head-pilot-1"
+                or config_record.get("seed") != job.seed
+                or config_record.get("run_plan_sha256") != plan.plan_sha256
+                or config_record.get("source_commit") != plan.source_commit
+                or config_record.get("bc_checkpoint_sha256")
+                != CANONICAL_BC_SHA256
+                or config_record.get("bc_actor_tensor_sha256")
+                != snapshot_tensors.get("0")
+                or config_record.get("training_manifest_sha256")
+                != plan.config["training_manifest_sha256"]
+                or config_record.get("curriculum_sha256")
+                != plan.config["curriculum_sha256_by_seed"][str(job.seed)]
+                or config_record.get("config") != plan.config["ppo"]
+            ):
+                raise RunnerError(f"B4 learner COMPLETE envelope mismatch: {job.job_id}")
+            from bplus_v22.b4_direct import (
+                actor_snapshot_sha256,
+                load_strict_plain_actor,
+            )
+
+            actor_states = {}
+            for iteration in (0, 10, 20, 30):
+                path = output / f"actors/iter_{iteration:04d}.pth"
+                if (
+                    not path.is_file()
+                    or path.is_symlink()
+                    or _sha256_file(path) != snapshot_files[str(iteration)]
+                ):
+                    raise RunnerError(
+                        f"B4 actor snapshot file mismatch: {job.job_id}/iter{iteration}"
+                    )
+                actor_state = load_strict_plain_actor(path, "cpu").state_dict()
+                actor_states[iteration] = actor_state
+                if actor_snapshot_sha256(actor_state) != snapshot_tensors[str(iteration)]:
+                    raise RunnerError(
+                        f"B4 actor snapshot tensor mismatch: {job.job_id}/iter{iteration}"
+                    )
+            if any(
+                not actor_states[iteration][name].equal(actor_states[0][name])
+                for iteration in (10, 20, 30)
+                for name in actor_states[0]
+                if not name.startswith("output_layer.")
+            ):
+                raise RunnerError(f"B4 frozen actor tensor drift: {job.job_id}")
+            final_full = output / "checkpoints/iter_0030.pt"
+            ledger_path = output / "iterations.jsonl"
+            if (
+                not final_full.is_file()
+                or _sha256_file(final_full)
+                != summary.get("final_full_checkpoint_sha256")
+                or not ledger_path.is_file()
+                or len(ledger_path.read_text(encoding="utf-8").splitlines()) != 30
+            ):
+                raise RunnerError(f"B4 final checkpoint/ledger mismatch: {job.job_id}")
+        else:
+            expected_schema = (
+                "bplus-v2.2-b3-ppo-pilot-1"
+                if plan.kind == "b3_train"
+                else "bplus-v2.2-b2-ppo-pilot-1"
+            )
+            expected_iterations = int(plan.config["iterations"])
+            if (
+                summary.get("schema") != expected_schema
+                or summary.get("integrity_passed") is not True
+                or summary.get("passed") is not True
+                or summary.get("arm") != job.arm
+                or summary.get("seed") != job.seed
+                or summary.get("iterations") != expected_iterations
+                or summary.get("run_plan_sha256") != plan.plan_sha256
+            ):
+                raise RunnerError(f"learner COMPLETE envelope mismatch: {job.job_id}")
+    elif job.kind in {"evaluation_shard", "b4_evaluation_shard"}:
         _validate_eval_shard_output(plan, output, job)
     else:
         raise RunnerError(f"unsupported executable job kind: {job.kind}")
@@ -2638,6 +3329,86 @@ def _validate_eval_shard_output(plan: RunPlan, output: Path, job: JobSpec) -> No
         if int(item["shard_index"]) == int(job.shard_index)
     ]
     variants = [str(value) for value in contract["variants"]]
+    if plan.kind == "b4_eval":
+        checkpoint_by_variant = {"BC": CANONICAL_BC_SHA256}
+        checkpoint_by_variant.update(
+            {
+                f"seed{int(item['seed'])}_iter{int(item['iteration'])}": str(
+                    item["sha256"]
+                )
+                for item in contract["checkpoint_set"]
+            }
+        )
+        if (
+            shard.get("schema") != "end2race-b4-eval-shard-1"
+            or shard.get("shard_index") != job.shard_index
+            or shard.get("shard_count") != job.shard_count
+            or shard.get("scenario_manifest_sha256") != contract["manifest_sha256"]
+            or shard.get("checkpoint_manifest_sha256")
+            != contract["checkpoint_set_sha256"]
+            or shard.get("bc_checkpoint_sha256") != CANONICAL_BC_SHA256
+            or shard.get("checkpoint_sha256_by_variant") != checkpoint_by_variant
+            or not isinstance(shard.get("rows"), list)
+        ):
+            raise RunnerError(f"B4 eval shard COMPLETE envelope mismatch: {job.job_id}")
+        expected_keys = {
+            (int(item["row_index"]), str(item["l2_id"]), variant)
+            for item in expected_scenarios
+            for variant in variants
+        }
+        observed_keys: set[tuple[int, str, str]] = set()
+        rows = shard["rows"]
+        if len(rows) != len(expected_keys):
+            raise RunnerError(f"B4 eval shard row count mismatch: {job.job_id}")
+        for row in rows:
+            if not isinstance(row, dict):
+                raise RunnerError(f"B4 eval shard row is not an object: {job.job_id}")
+            key = (
+                int(row.get("task8_row_index", -1)),
+                str(row.get("l2_id", "")),
+                str(row.get("variant", "")),
+            )
+            if (
+                key not in expected_keys
+                or key in observed_keys
+                or row.get("schema") != "end2race-b4-eval-row-1"
+                or row.get("scenario_manifest_sha256") != contract["manifest_sha256"]
+                or row.get("checkpoint_manifest_sha256")
+                != contract["checkpoint_set_sha256"]
+                or row.get("checkpoint_sha256") != checkpoint_by_variant.get(key[2])
+                or type(row.get("deterministic_speed_projection_count")) is not int
+                or int(row["deterministic_speed_projection_count"]) < 0
+                or not SHA256_RE.fullmatch(str(row.get("trajectory_sha256", "")))
+            ):
+                raise RunnerError(f"B4 eval shard row mismatch: {job.job_id}, {key}")
+            observed_keys.add(key)
+        if observed_keys != expected_keys:
+            raise RunnerError(f"B4 eval shard Cartesian mismatch: {job.job_id}")
+        control_rows = [
+            {
+                **row,
+                "row_index": row["task8_row_index"],
+                "variant_id": row["variant"],
+                "shard_index": job.shard_index,
+                "manifest_sha256": contract["manifest_sha256"],
+                "checkpoint_set_sha256": contract["checkpoint_set_sha256"],
+            }
+            for row in rows
+        ]
+        expected_fields = sorted({name for row in control_rows for name in row})
+        with (output / "episodes.tsv").open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle, delimiter="\t")
+            observed_tsv = list(reader)
+            observed_fields = reader.fieldnames
+        if observed_fields != expected_fields or len(observed_tsv) != len(control_rows):
+            raise RunnerError(f"B4 eval shard TSV schema/count mismatch: {job.job_id}")
+        for expected_row, observed_row in zip(control_rows, observed_tsv):
+            expected_tsv = {
+                name: _tsv_scalar(expected_row.get(name)) for name in expected_fields
+            }
+            if observed_row != expected_tsv:
+                raise RunnerError(f"B4 eval shard TSV/JSON mismatch: {job.job_id}")
+        return
     checkpoint_by_variant = {"BC": CANONICAL_BC_SHA256}
     checkpoint_by_variant.update(
         {
@@ -2800,7 +3571,7 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
                 "prior_state": previous.get("state"),
                 "prior_exit_code": previous.get("exit_code"),
             }
-            if job.kind == "evaluation_shard":
+            if job.kind in {"evaluation_shard", "b4_evaluation_shard"}:
                 recovered.update(
                     {
                         "shard_json_sha256": _sha256_file(output / "shard.json"),
@@ -3407,6 +4178,7 @@ def validate_eval_collection(plan: RunPlan, collection: Path) -> dict[str, Any]:
 
 def merge_eval(plan_path: Path, plan: RunPlan, dry_run: bool) -> int:
     collection = Path(plan.collection_root)
+    merge_command = "b4-merge-eval" if plan.kind == "b4_eval" else "ppo-merge-eval"
     if dry_run:
         print(
             _display_command(
@@ -3414,7 +4186,7 @@ def merge_eval(plan_path: Path, plan: RunPlan, dry_run: bool) -> int:
                     PINNED_PYTHON,
                     "-m",
                     "bplus_v22.cli",
-                    "ppo-merge-eval",
+                    merge_command,
                     "--run-plan",
                     str(plan_path),
                     "--input-root",
@@ -3435,7 +4207,7 @@ def merge_eval(plan_path: Path, plan: RunPlan, dry_run: bool) -> int:
         local.python,
         "-m",
         "bplus_v22.cli",
-        "ppo-merge-eval",
+        merge_command,
         "--run-plan",
         str(root / "control/run_plan.json"),
         "--input-root",
@@ -3495,7 +4267,7 @@ def _show(plan_path: Path, plan: RunPlan) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="run.sh", description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    sub.add_parser("list", help="show immutable B2/B3 workflows and legacy entries")
+    sub.add_parser("list", help="show immutable B2/B3/B4 workflows and legacy entries")
     legacy = sub.add_parser("legacy-show", help="show one non-executable B1 legacy template")
     legacy.add_argument("name", choices=sorted(LEGACY_SHOW_ONLY))
 
@@ -3515,12 +4287,30 @@ def _parser() -> argparse.ArgumentParser:
     plan_b3.add_argument("--local-gpu-uuid", required=True)
     plan_b3.add_argument("--remote-gpu-uuid", required=True)
 
+    plan_b4 = sub.add_parser(
+        "plan-b4", help="create the approved immutable two-seed B4 plan"
+    )
+    plan_b4.add_argument("--run-id", required=True)
+    plan_b4.add_argument("--source-commit", default="HEAD")
+    plan_b4.add_argument("--output", required=True, type=Path)
+    plan_b4.add_argument("--local-gpu-uuid", required=True)
+    plan_b4.add_argument("--remote-gpu-uuid", required=True)
+
     plan_eval = sub.add_parser("plan-eval", help="freeze six checkpoints into an eval plan")
     plan_eval.add_argument("--run-id", required=True)
     plan_eval.add_argument("--training-plan", required=True, type=Path)
     plan_eval.add_argument("--source-commit", default="HEAD")
     plan_eval.add_argument("--checkpoint", action="append", required=True)
     plan_eval.add_argument("--output", required=True, type=Path)
+
+    plan_b4_eval = sub.add_parser(
+        "plan-b4-eval", help="freeze six B4 snapshots into the one 288x7 EvalPlan"
+    )
+    plan_b4_eval.add_argument("--run-id", required=True)
+    plan_b4_eval.add_argument("--training-plan", required=True, type=Path)
+    plan_b4_eval.add_argument("--source-commit", default="HEAD")
+    plan_b4_eval.add_argument("--checkpoint", action="append", required=True)
+    plan_b4_eval.add_argument("--output", required=True, type=Path)
 
     show = sub.add_parser("show", help="verify and print one immutable plan")
     _add_plan_argument(show)
@@ -3613,6 +4403,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "-> plumbing-smoke -> execute [-> explicit resume] -> status -> collect"
             )
             print("B3 eval: plan-eval -> stage -> preflight -> execute -> collect -> merge-eval")
+            print(
+                "B4 (PAUSED UNTIL IMPLEMENTATION REVIEW GO): plan-b4 -> show -> stage "
+                "-> baseline-preflight -> preflight -> plumbing-smoke -> execute "
+                "[-> explicit resume] -> status -> collect"
+            )
+            print(
+                "B4 eval: plan-b4-eval -> stage -> preflight -> execute -> collect -> merge-eval"
+            )
             for name in sorted(LEGACY_SHOW_ONLY):
                 print(f"{name} [legacy show-only]")
             return 0
@@ -3632,8 +4430,32 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(args.output.resolve())
             print(built.plan_sha256)
             return 0
+        if args.action == "plan-b4":
+            built = build_b4_training_plan(
+                repo=REPO_ROOT,
+                run_id=args.run_id,
+                commit=args.source_commit,
+                output=args.output.resolve(),
+                local_gpu_uuid=args.local_gpu_uuid,
+                remote_gpu_uuid=args.remote_gpu_uuid,
+            )
+            print(args.output.resolve())
+            print(built.plan_sha256)
+            return 0
         if args.action == "plan-eval":
             built = build_evaluation_plan(
+                repo=REPO_ROOT,
+                run_id=args.run_id,
+                training_plan_path=args.training_plan.resolve(),
+                checkpoints=args.checkpoint,
+                output=args.output.resolve(),
+                source_commit=args.source_commit,
+            )
+            print(args.output.resolve())
+            print(built.plan_sha256)
+            return 0
+        if args.action == "plan-b4-eval":
+            built = build_b4_evaluation_plan(
                 repo=REPO_ROOT,
                 run_id=args.run_id,
                 training_plan_path=args.training_plan.resolve(),

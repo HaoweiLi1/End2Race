@@ -1,42 +1,47 @@
 # End2Race Session Handoff — B+ v2.2 Objective-Aligned Policy Phase
 
-Generated: 2026-07-10; current checkpoint updated 2026-07-13 (B3 unified-policy implementation §23).
+Generated: 2026-07-10; current checkpoint updated 2026-07-13 (B4 direct-head implementation §24).
 Repository: `/home/haowei/Documents/End2Race` (local) ↔ `haowei@192.168.2.127:~/Documents/End2Race` (active remote, host `haowei-MSI`). The historical `100.95.251.103` address is retired unless the user changes it again.
 Audience: a new chat/agent continuing this work with zero conversational context.
 
 Authority: this file is the current new-chat entry point. Newer numbered
 sections supersede older state/authorization text. Current execution authority
-is §13 as amended by §§20.4, 22 and 23; current technical handoff and next action
-are §23, with §§17–22 and the B+ v2.2 spec/plan retained as provenance.
+is §24; current technical handoff and next action are §24, with §§17–23 and the
+B+ v2.2/B2/B3 documents retained as provenance.
 `docs/archive/handoffs/HANDOFF.md`, old remote-goal text, first D0 artifacts, unqualified
 P1/final-report bodies, and older Claude memories are historical evidence only.
 
 Agent navigation is `.agents/README.md` and `.agents/REPO_GUIDE.md`. The full
-historical ledger below is intentionally retained; use newest §23 for B3, §22 for B2,
-§21 for the prior Codex-chat handoff, §20 for Claude's restructure/run policy, and
+historical ledger below is intentionally retained; use newest §24 for B4, §23 for B3,
+§22 for B2, §21 for the prior Codex-chat handoff, §20 for Claude's restructure/run policy, and
 `docs/EXPERIMENT_RECORD.md` for the evidence ledger, and
 `.agents/PPO_DEVELOPMENT_REPORT.md` for the BC-to-B3 project report.
 
 ## 0. Opening instruction for a new chat
 
-> Read `.agents/README.md`, §23, `.agents/B3_PPO_PLAN.md`,
-> `.agents/B3_IMPLEMENTATION_RECORD.md`, §22, §20.4–20.7,
+> Read `.agents/README.md`, §24, `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`, then
+> §23 and `.agents/B3_PPO_PLAN.md` only as paused provenance; use §22 and
+> §20.4–20.7 as needed, plus
 > `Experiments/INDEX.md`, then
 > §§13 and 17–18 as needed. Consult
 > `docs/superpowers/specs/2026-07-11-ppo-safety-first-bplus-v2.2.md` only as
 > historical technical provenance. Verify live local/remote state before acting. The
 > remote Codex goal is revoked and must not be resumed. D2/D2R retain their
 > original failed gates; TTC is prospectively diagnostic-only for the policy
-> phase. B2 training RunPlan `b2_direct_20260713_081422` and frozen evaluation
+> phase. D1-B prospectively changes only B4 to a per-seed corrected-overtake floor
+> of 132/288. B2 training RunPlan `b2_direct_20260713_081422` and frozen evaluation
 > EvalPlan `b2_eval_20260713_165800` are complete. Six integrity-valid candidates
 > all failed the direction gate because corrected overtake fell below BC; no arm
 > was selected and the fresh pool remains sealed. Do not continue these candidates
-> into medium/final evaluation. B3 prospectively fixes the training/deployment
-> policy mismatch and is implemented at commit `19e83ae`; the final brake-boundary
-> regression is commit `21085bc` and the owner-relayed independent review is GO.
-> B3 still has no RunPlan or numerical result. The next legal action is one unique
-> immutable `plan-b3`, followed by show/staging/24-138 baseline/preflight/smoke
-> before any learner.
+> into medium/final evaluation. B3 remains `IMPLEMENTED, REVIEWED GO, PAUSED UNRUN`
+> at commits `19e83ae` and `21085bc`; do not create `plan-b3` and do not call it
+> FAILED. B4 plain-End2Race frozen-feature direct-head PPO is implemented locally
+> above base commit `4b06b7a`; its four focused B4 tests, four-map CPU identity smoke
+> and nine B2/B3 compatibility programs pass. It is committed locally as a frozen
+> external-review boundary, but still awaits implementation review GO. No B4 RunPlan, GPU learner, 288x7
+> EvalPlan or KPI result exists. The next legal action is actual-diff implementation
+> review under B4 plan §11. The local commit does not authorize execution; only a
+> review GO may authorize creating the single immutable `plan-b4`.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -2258,3 +2263,136 @@ load-bearing: D2/TTC and warm-start were proxy tracks, while B2 failed the
 owner's actual corrected-overtake constraint. B3 may fix policy identity, but
 has no result yet and must not be described as an improvement before the frozen
 evaluation completes.
+
+## 24. B4 owner redirect and direct-head implementation checkpoint (2026-07-13)
+
+This section supersedes §23's next-action authority. It does not rewrite any B2
+or B3 result.
+
+### 24.1 Owner decisions now in force
+
+- D1-B applies prospectively to B4 only: safety is primary and corrected
+  overtake may fall at most 5% relative to the 138/288 BC baseline. The hard
+  development gate is `>=132/288` independently for each seed. Pooled `>=264`
+  is redundant and report-only.
+- D2-B pauses B3 numerical execution because plain `End2Race.state_dict()`
+  strict compatibility is now a hard delivery requirement. Preserve commits
+  `19e83ae` and `21085bc`; B3 is `IMPLEMENTED, REVIEWED GO, PAUSED UNRUN`, not
+  FAILED. There is no `plan-b3` and no automatic B3 fallback after B4.
+- The sole B4 hypothesis is the plain-End2Race frozen-feature direct-head PPO
+  control experiment in `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`. The earlier
+  `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md` is superseded evidence,
+  not active authority.
+
+### 24.2 Work completed
+
+1. Added a B4-only implementation without changing `model.py`: canonical BC
+   strict load, frozen `k`/speed MLP/dummy/GRU, and only the existing
+   `output_layer.*` trainable. The actor has 11,301,482 parameters and the
+   trainable head has 706,862.
+2. Added a separate training-only `12 -> 128 -> SiLU -> 128 -> SiLU -> 1`
+   privileged critic. Actor-only snapshots contain the canonical 12 End2Race
+   keys; critic/std/optimizer/RNG stay in private full-resume artifacts.
+3. Implemented the owner-approved raw factorized Normal (`0.03`, `0.20`) and
+   fixed actuator projection. Every replay stores raw latent, old raw
+   log-prob, executed command, projection delta, frozen 1680D feature, 12D
+   critic feature and episode boundary. PPO ratio is defined only on raw.
+4. Implemented 100 Hz complete episodes with first any-agent collision or the
+   literal product horizon as zero-bootstrap terminal. The only actor reward is
+   terminal `-2 * collision_any + terminal_overtake`; paired BC deltas are
+   ledger diagnostics only.
+5. Implemented the frozen `6 collision / 6 overtake / 4 follow` two-seed order,
+   `gamma=.999`, `lambda=.997`, episode-equivalent actor weights, weighted
+   advantage/KL, unweighted critic MSE, and independent actor/critic loops.
+6. Implemented fail-closed iteration-atomic checkpoint/resume, immutable B4
+   train/eval plan builders, two learner jobs, four evaluation shards and a
+   strict 288x7 same-iteration pair selector. These builders are code surfaces
+   only; no RunPlan was created.
+7. Updated `.agents/README.md` and the active B4 plan prospectively while
+   preserving all historical B2/B3 documents and artifacts.
+
+Primary implementation files are `bplus_v22/b4_direct.py`, `b4_env.py`,
+`b4_eval.py`, `b4_runner.py`, `b4_cli.py`, the B4 additions in
+`bplus_v22/cli.py` and `Experiments/runner.py`, plus four `tests/test_b4_*`
+programs. The full file map and reviewer checklist are in B4 plan §§11–12.
+
+### 24.3 Problems encountered
+
+1. A tolerant `lap_time` comparison initially stopped a nominal 8 s episode at
+   800 steps, while the original product evaluator's literal loop executes 801
+   because 0.01 is accumulated in binary floating point. This caused an actual
+   trajectory identity failure.
+2. Per-step rollout inference and batched frozen-feature replay can differ by a
+   few float32 ulps, so requiring bitwise `ratio == 1` is not a portable numeric
+   contract.
+3. PyTorch 2.6's state-dict-only default rejects private full checkpoints that
+   include Python/NumPy RNG tuples; mapping the entire payload to CUDA would
+   also put the CPU RNG byte tensor on the wrong device.
+4. The first resume-prefix check covered committed iterations but did not
+   independently bind `iter_0000.pth` to canonical BC or compare the loaded
+   checkpoint iteration with ledger length.
+5. Paired shard fixed/new/gained/lost fields were initially generated correctly
+   but trusted during merge instead of being recomputed.
+
+### 24.4 How they were fixed
+
+1. The collector now matches the evaluator's literal horizon boundary. A
+   reproducible four-map CPU smoke proves exact array and outcome identity on
+   Austin, Hockenheim, MoscowRaceway and Nuerburgring: every case is 801 steps,
+   with zero trajectory differences and zero deterministic projections.
+2. Replay uses a declared `max |ratio-1| <= 1e-4` blocker; raw latent identity
+   and probability formula remain unchanged. The observed four-map CPU replay
+   log-prob delta was zero.
+3. Only hash-bound private full checkpoints use `weights_only=False`, loaded on
+   CPU before module/optimizer state restoration. Deployment snapshots retain
+   `weights_only=True` plain strict loading.
+4. Resume strict-loads and tensor-hashes iteration 0, validates every committed
+   replay/checkpoint hash, and requires checkpoint iteration to equal ledger
+   length.
+5. Merge recomputes all paired transition diagnostics from the frozen BC row
+   and rejects any mismatch before selection.
+
+### 24.5 Validation evidence
+
+Four B4 programs pass:
+
+```text
+tests/test_b4_direct.py
+tests/test_b4_control_plane.py
+tests/test_b4_eval.py
+tests/test_b4_simulator_smoke.py
+```
+
+The four-map command uses CPU and a unique `/tmp` Numba cache; it created no
+experiment release. Nine existing B2/B3 programs also pass: exploration,
+objective, PPO, buffer, environment, remediated model, runner, evaluator and
+experiment runner. `py_compile`, B4 CLI capabilities, `run.sh list`, and both
+plan help surfaces load. The emitted Gym deprecation/RK4 warnings are existing
+upstream warnings, not failures.
+
+### 24.6 Current boundary and next-chat instructions
+
+Current external-review source boundary is the local B4 commit immediately after
+base commit `4b06b7a`. It freezes the reviewed files but does not confer review GO.
+No push, local or remote GPU process, B4 RunPlan, staging root, learner output,
+EvalPlan, development KPI result or fresh-pool access occurred.
+
+The next chat must:
+
+1. review `.agents/B4_DIRECT_HEAD_PPO_PLAN.md` §§1–12 and the actual diff, not
+   this narrative alone;
+2. verify the 10 questions in plan §11, especially raw/stored action identity,
+   terminal/GAE semantics, actor weights, optimizer isolation, resume, plain
+   checkpoint and same-iteration selection;
+3. treat the legacy shaped-reward helper in `b4_env.py` accurately: its returned
+   reward is discarded and it only advances three state fields used by the 12D
+   critic; confirm no dense value enters replay reward;
+4. return GO only if no correctness blocker remains. Do not invent TTC,
+   warm-start, sidecar or stochastic-zero-projection gates;
+5. after GO, freeze/commit the reviewed source, then create exactly one
+   immutable `plan-b4`, show/dry-run/stage it, rerun the 24/138 baseline and
+   staged four-map smoke, then launch the two seeds only if every marker passes;
+6. after both seeds complete, create exactly one frozen 288x7 EvalPlan. If no
+   same-iteration pair passes the owner gates, record B4 substantive negative
+   and stop—do not run B3, unfreeze GRU, change parameters, extend iterations or
+   open the fresh pool without a new prospective owner decision.
