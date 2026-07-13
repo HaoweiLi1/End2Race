@@ -14,7 +14,8 @@ P1/final-report bodies, and older Claude memories are historical evidence only.
 Agent navigation is `.agents/README.md` and `.agents/REPO_GUIDE.md`. The full
 historical ledger below is intentionally retained; use newest §23 for B3, §22 for B2,
 §21 for the prior Codex-chat handoff, §20 for Claude's restructure/run policy, and
-`docs/EXPERIMENT_RECORD.md` for the readable result summary.
+`docs/EXPERIMENT_RECORD.md` for the evidence ledger, and
+`.agents/PPO_DEVELOPMENT_REPORT.md` for the BC-to-B3 project report.
 
 ## 0. Opening instruction for a new chat
 
@@ -31,9 +32,11 @@ historical ledger below is intentionally retained; use newest §23 for B3, §22 
 > all failed the direction gate because corrected overtake fell below BC; no arm
 > was selected and the fresh pool remains sealed. Do not continue these candidates
 > into medium/final evaluation. B3 prospectively fixes the training/deployment
-> policy mismatch and is implemented at commit `19e83ae`, but has no RunPlan or
-> numerical result yet. Review that exact source before creating one unique
-> immutable plan.
+> policy mismatch and is implemented at commit `19e83ae`; the final brake-boundary
+> regression is commit `21085bc` and the owner-relayed independent review is GO.
+> B3 still has no RunPlan or numerical result. The next legal action is one unique
+> immutable `plan-b3`, followed by show/staging/24-138 baseline/preflight/smoke
+> before any learner.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -2233,3 +2236,25 @@ this implementation step. The exact implementation was committed locally as
    rerun the existing topology-matched BC baseline plus host/P3 preflights.
 5. Do not start six numerical learners unless the staged committed source and
    shared READY marker all match. Do not create a second plan to tune outcomes.
+
+### 23.6 Review closure, reporting and expected execution time
+
+The missing conditional-brake boundary regression was committed as `21085bc`.
+With top intervention forced active, the test proves effective brake logit
+equality at zero selects no-brake and `+1e-4` selects brake, then restores the
+fresh bias. The owner-relayed independent audit verified the construction and
+the §3 gradient explanation and returned GO. No local/remote GPU, RunPlan,
+staging directory or numerical result was created by this closure.
+
+The complete next sequence and timing are now frozen in
+`.agents/B3_PPO_PLAN.md` §8. In the no-failure case, expect 7.5–8.5 h from
+RunPlan creation through the 288x7 opened-development report; use 9–11 h as the
+network/recovery budget. The local seed1 queue is the expected bottleneck.
+This estimate excludes any fresh/final confirmation.
+
+The project-level explanation of all PPO attempts, results and excluded
+reasoning is `.agents/PPO_DEVELOPMENT_REPORT.md`. Its key distinction is
+load-bearing: D2/TTC and warm-start were proxy tracks, while B2 failed the
+owner's actual corrected-overtake constraint. B3 may fix policy identity, but
+has no result yet and must not be described as an improvement before the frozen
+evaluation completes.

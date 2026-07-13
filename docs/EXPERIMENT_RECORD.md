@@ -3,7 +3,7 @@
 > 本文件是**全部实验轨道的历史记录**，含已废弃轨道。
 > 当前工作状态与下一步请看 `.agents/HANDOFF.md`（唯一权威入口）。
 > 仓库文件/代码结构说明请看 `.agents/REPO_GUIDE.md`。
-> 生成时间：2026-07-12；B2 首轮产品 KPI 结果更新于 2026-07-13。
+> 生成时间：2026-07-12；B2 结果与 B3 执行计划更新于 2026-07-13。
 
 ---
 
@@ -39,7 +39,7 @@ D2/B1 之后第一次用当前 B+ 目标直接裁决学习后的候选。
 | **D2 表示探针** | 07-11 | 4 个家族**全部未过** TTC 门 | ✅ 是（数据集仍在用） |
 | **D2.5 反事实** | 07-11 | 67/91 可恢复，Route-R2 动作空间可行 | ✅ 是 |
 | **D2R 几何探针** | 07-11 | **未过** TTC + 2s 误报门 | ✅ 是 |
-| **B+ v2.2 / B2 PPO** | 07-11~13 | B1 warm-start 失败；B2 六个 PPO 候选均因超车下降未过方向门 | ✅ 是（当前工作） |
+| **B+ v2.2 / B2→B3 PPO** | 07-11~13 | B1 warm-start 失败；B2 六候选因超车下降失败；B3 已实现和审阅、待运行 | ✅ 是（当前工作） |
 
 ---
 
@@ -325,25 +325,41 @@ BC 为 24 次碰撞、138 次超车。逐 seed 结果：
 `any_opened_dev_point_target_hit=false`、`arm_selection_performed=false`、
 `fresh_pool_opened=false`。因此不需要对这些候选继续 medium/final 实验。
 
-### 当前核心未决问题
+### B3 当前修订与未决问题
 
-下一问题已从“warm-start 是否必需”收敛为：**为什么 PPO 的超车约束没有
-阻止策略通过减少交互来降低碰撞？** 后续只应检查实际 rollout 中的 dual、
-两目标 advantage、更新尺度与课程信号，再前瞻性制定一次最小修订；不得返回
-TTC 或 warm-start 代理门，也不得在当前候选上继续选模。
+B2 的 read-only 审计发现，PPO rollout/log-prob 使用 raw-logit Bernoulli，
+而产品评估使用独立 centered threshold。三臂 pooled 的 standard deterministic
+intervention 全为 0，centered primary rule 却分别产生 27,851 / 29,388 /
+24,379 次介入。训练期 dual 看到的是近 BC 的 stochastic rollout，不是部署时
+大量介入并损失超车的 centered policy。
+
+B3 已前瞻性统一 sampling、stored/replayed log-prob 和 deterministic mode：
+fresh `P(intervene)=0.10`、`P(brake|intervene)=0.50`，严格 mode 仍为 NO_OP；
+centered mode 与外部 gate offsets 被拒绝。A/B/C×双 seed 固定为40 iterations，
+不续训 B2 checkpoint、不改 reward/dual/product gate。实现提交 `19e83ae`，
+边界回归提交 `21085bc`，CPU 合同测试通过并经独立审阅 GO；尚未创建 RunPlan
+或使用 GPU。
+
+下一步是唯一 B3 RunPlan：staging → 24/138 BC baseline → 双端 preflight →
+plumbing smoke → 六 learner → 288×7 paired evaluation。预计 7.5–8.5 小时，
+含恢复余量 9–11 小时。详情见 `.agents/B3_PPO_PLAN.md` 和
+`.agents/PPO_DEVELOPMENT_REPORT.md`。
 
 ---
 
-## 7. 反复出现的失败模式（供未来参考）
+## 7. 代理弯路与真实 KPI 失败（供未来参考）
 
-三次弯路形状相同，值得记录：
+两个代理轨道具有相似失败模式；B2 必须单独分类，因为它直接使用用户的
+碰撞/超车目标，而不是又一道代理考试：
 
 | 弯路 | 中间产物 | 自设及格线 | 代价 |
 |---|---|---|---|
 | 1 | TTC 回归探针 | TTC MAE ≤ 0.30s | 5 个家族全败 |
 | 2 | warm-start 蒸馏 | gate recall / loss 门 | 2 次失败，约 4,600 行 |
-| 3 | 首轮 B2 PPO | 真实词典序方向门 | 碰撞可下降，但六候选均以超车下降换安全，全部 FAIL |
+| — | 首轮 B2 PPO | **用户真实词典序方向门** | 碰撞可下降，但六候选均以超车下降换安全，属于真实目标失败 |
 
-**共同特征**：每个都是一个**中间产物**，带一套**自己的及格线**，而那些及格线**没有一条出现在用户的目标里**。每次失败都触发"换个架构再试一次"，而不是回头问"这道门是否服务于交付物"。
+前两项的共同特征是：中间产物带着不直接属于产品目标的及格线，失败后容易
+继续换架构而忘记交付物。B2 不属于这种情况；它的超车非劣门正是产品硬约束，
+不能因为碰撞降低就 override。
 
 **教训**：中间门的存在意义是**防止把错误的东西推进生产**，不是**证明中间产物本身科学上完美**。当一道门连续挡住多个架构、而它测的东西又不是交付物需要的，应该质疑门，而不是继续换架构。质疑的合法方式是**项目所有者前瞻性 override**（说明部署为什么不需要它），而不是"没考过所以改考卷"。

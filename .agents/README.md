@@ -8,6 +8,7 @@
 - B2 pre-GPU 实现复核（GO_FOR_STAGING）→ `.agents/B2_IMPLEMENTATION_REVIEW.md`
 - B3 统一训练/部署策略计划 → `.agents/B3_PPO_PLAN.md`
 - B3 实现与待审清单 → `.agents/B3_IMPLEMENTATION_RECORD.md`
+- 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`
 - 仓库结构 → `.agents/REPO_GUIDE.md`
 - 实验编号与索引 → `Experiments/INDEX.md`
 - 完整实验史 → `docs/EXPERIMENT_RECORD.md`
@@ -166,10 +167,10 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 > 不得继续运行同一候选、medium/final confirmation 或旧占位 job。下一次数值
 > PPO 必须来自新的、前瞻性批准的目标/约束修订和唯一 RunPlan。
 
-> **B3 当前只完成实现，尚未运行：** B3 已把采样、PPO log-prob 与确定性
-> 部署统一为一个 effective-logit policy，并冻结 40-iteration 控制合同。
-> 九组核心 CPU 合同测试通过，源码提交为 `19e83ae`，但尚未创建 RunPlan、
-> stage 或启动 GPU。
+> **B3 当前完成实现与独立边界审阅，尚未运行：** B3 已把采样、PPO
+> log-prob 与确定性部署统一为一个 effective-logit policy，并冻结
+> 40-iteration 控制合同。九组核心 CPU 合同测试通过，边界补丁提交为
+> `21085bc`，独立审阅结论为 GO；尚未创建 RunPlan、stage 或启动 GPU。
 > 先读 `.agents/B3_PPO_PLAN.md` 与 `.agents/B3_IMPLEMENTATION_RECORD.md`。
 
 ---

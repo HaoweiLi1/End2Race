@@ -1,6 +1,6 @@
 # B3 Unified-Policy PPO Plan
 
-Status: **prospective design implemented; no numerical RunPlan yet**  
+Status: **implementation and independent boundary review complete; no numerical RunPlan yet**
 Date: 2026-07-13  
 Parent evidence: B2 training `b2_direct_20260713_081422`, evaluation
 `b2_eval_20260713_165800`
@@ -133,3 +133,47 @@ staging and no-learning preflight are authorized by the owner's instruction to
 rewrite and implement. Creating the first two-host numerical B3 RunPlan and
 burning GPU requires the implementation record to show every §6 invariant
 passing and must use a clean committed source. No push is implied.
+
+## 8. Frozen execution plan and expected wall time
+
+The implementation is frozen by the following local commits:
+
+- `19e83aed96126a61d9a848135fe860adc17ec48f` — unified B3 policy,
+  runner, evaluator and control-plane implementation;
+- `c320e83` — implementation checkpoint documentation;
+- `21085bc` — explicit conditional-brake `0 / +epsilon` boundary regression
+  and the matching §3 learning explanation.
+
+The owner-relayed independent review verified the boundary test and the
+policy-gradient argument and returned **GO**. No additional TTC, warm-start or
+representation admission gate is authorized.
+
+The next execution must use one immutable RunPlan and this order:
+
+1. `./run.sh plan-b3` from a clean committed worktree;
+2. inspect the complete plan with `show` before any staging;
+3. stage the isolated source/input bundles on local and remote hosts;
+4. reproduce the topology-matched BC baseline (`24` collision / `138`
+   corrected terminal overtake), pass both host preflights, then run the
+   existing four-map plumbing smoke and publish the shared `READY.json`;
+5. run all six learners: A/B/C x seeds 0/1, exactly 40 iterations each, with
+   seed1 queued locally and seed0 queued remotely; do not filter using an
+   early seed or iteration-20 diagnostic;
+6. collect and validate all six iteration-40 checkpoints;
+7. freeze one B3 EvalPlan and evaluate BC plus six candidates on the existing
+   288 opened-development scenarios (2,016 paired rows), using local shard 0
+   and remote shards 1–3;
+8. merge once and report corrected-overtake feasibility first, then collision
+   RR and paired transitions. No arm is selected unless all frozen gates pass.
+
+Measured B2 timings provide the planning estimate. Three local 20-iteration
+learners took 2 h 47 min; doubling to 40 iterations makes the local queue the
+expected 5.5–6 h bottleneck. The unchanged 288x7 evaluation previously took
+about 1 h 20 min. Plan review, staging, baseline/preflight/smoke, collection
+and reporting add about 0.75–1.25 h. Therefore the expected end-to-end wall
+time is **7.5–8.5 h**, or **9–11 h** with network/recovery contingency.
+
+This estimate ends at the opened-development KPI report. It does not include
+fresh/final-pool confirmation. If no arm passes, B3 stops. If an arm passes,
+the fresh/final pool remains sealed until a separate prospective confirmation
+plan is reviewed and authorized.
