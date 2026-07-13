@@ -3764,62 +3764,26 @@ def _collect_status_commands(
     plan: RunPlan, collection: Path | None = None
 ) -> list[list[str]]:
     collection = collection or Path(plan.collection_root)
-    local = _host(plan, "local")
-    remote = _host(plan, "remote")
-    return [
-        [
-            "cp",
-            "-a",
-            str(Path(local.stage_root) / "control/status.json"),
-            str(collection / "hosts/local/status.json"),
-        ],
-        [
-            "cp",
-            "-a",
-            str(Path(local.stage_root) / "control/status.jsonl"),
-            str(collection / "hosts/local/status.jsonl"),
-        ],
-        [
-            "cp",
-            "-a",
-            str(Path(local.stage_root) / "control/preflight.json"),
-            str(collection / "hosts/local/preflight.json"),
-        ],
-        [
-            "cp",
-            "-a",
-            str(Path(local.stage_root) / "control/STAGED"),
-            str(collection / "hosts/local/STAGED"),
-        ],
-        [
-            "rsync",
-            "-a",
-            "--protect-args",
-            f"{remote.ssh_host}:{remote.stage_root}/control/status.json",
-            str(collection / "hosts/remote/status.json"),
-        ],
-        [
-            "rsync",
-            "-a",
-            "--protect-args",
-            f"{remote.ssh_host}:{remote.stage_root}/control/status.jsonl",
-            str(collection / "hosts/remote/status.jsonl"),
-        ],
-        [
-            "rsync",
-            "-a",
-            "--protect-args",
-            f"{remote.ssh_host}:{remote.stage_root}/control/preflight.json",
-            str(collection / "hosts/remote/preflight.json"),
-        ],
-        [
-            "rsync",
-            "-a",
-            "--protect-args",
-            f"{remote.ssh_host}:{remote.stage_root}/control/STAGED",
-            str(collection / "hosts/remote/STAGED"),
-        ],
-    ]
+    commands: list[list[str]] = []
+    for host_id in ("local", "remote"):
+        host = _host(plan, host_id)
+        names = ["status.json", "status.jsonl"] if _host_jobs(plan, host_id) else []
+        names.extend(("preflight.json", "STAGED"))
+        for name in names:
+            source = str(PurePosixPath(host.stage_root) / "control" / name)
+            destination = str(collection / f"hosts/{host_id}/{name}")
+            commands.append(
+                ["cp", "-a", source, destination]
+                if host.kind == "local"
+                else [
+                    "rsync",
+                    "-a",
+                    "--protect-args",
+                    f"{host.ssh_host}:{source}",
+                    destination,
+                ]
+            )
+    return commands
 
 
 def _collect_payload_commands(
@@ -3828,21 +3792,26 @@ def _collect_payload_commands(
     collection = collection or Path(plan.collection_root)
     local = _host(plan, "local")
     remote = _host(plan, "remote")
-    commands: list[list[str]] = [
-        [
-            "cp",
-            "-a",
-            str(Path(local.stage_root) / "outputs"),
-            str(collection / "hosts/local/outputs"),
-        ],
-        [
-            "rsync",
-            "-a",
-            "--protect-args",
-            f"{remote.ssh_host}:{remote.stage_root}/outputs/",
-            str(collection / "hosts/remote/outputs/"),
-        ],
-    ]
+    commands: list[list[str]] = []
+    if _host_jobs(plan, "local"):
+        commands.append(
+            [
+                "cp",
+                "-a",
+                str(Path(local.stage_root) / "outputs"),
+                str(collection / "hosts/local/outputs"),
+            ]
+        )
+    if _host_jobs(plan, "remote"):
+        commands.append(
+            [
+                "rsync",
+                "-a",
+                "--protect-args",
+                f"{remote.ssh_host}:{remote.stage_root}/outputs/",
+                str(collection / "hosts/remote/outputs/"),
+            ]
+        )
     if plan.kind in TRAIN_KINDS:
         commands.extend(
             (
@@ -3913,30 +3882,33 @@ def _validate_collected_statuses(plan: RunPlan, partial: Path) -> None:
     for host_id in ("local", "remote"):
         status_path = partial / f"hosts/{host_id}/status.json"
         events_path = partial / f"hosts/{host_id}/status.jsonl"
-        if not status_path.is_file() or not events_path.is_file():
-            raise RunnerError(f"collected host status evidence is missing: {host_id}")
-        status_value = json.loads(status_path.read_text(encoding="utf-8"))
-        if (
-            status_value.get("plan_sha256") != plan.plan_sha256
-            or status_value.get("host") != host_id
-            or status_value.get("state") != "COMPLETE"
-        ):
-            raise RunnerError(f"cannot collect incomplete/mismatched host: {host_id}")
         expected_jobs = _host_jobs(plan, host_id)
-        if set(status_value.get("jobs", {})) != {job.job_id for job in expected_jobs}:
-            raise RunnerError(f"collected host job inventory mismatch: {host_id}")
-        if any(
-            status_value["jobs"][job.job_id].get("state") != "COMPLETE"
-            for job in expected_jobs
-        ):
-            raise RunnerError(f"collected host has incomplete jobs: {host_id}")
-        events = [
-            json.loads(line)
-            for line in events_path.read_text(encoding="utf-8").splitlines()
-            if line
-        ]
-        if not events or events[-1].get("event") != "host_complete":
-            raise RunnerError(f"collected host event ledger is incomplete: {host_id}")
+        if expected_jobs:
+            if not status_path.is_file() or not events_path.is_file():
+                raise RunnerError(f"collected host status evidence is missing: {host_id}")
+            status_value = json.loads(status_path.read_text(encoding="utf-8"))
+            if (
+                status_value.get("plan_sha256") != plan.plan_sha256
+                or status_value.get("host") != host_id
+                or status_value.get("state") != "COMPLETE"
+            ):
+                raise RunnerError(f"cannot collect incomplete/mismatched host: {host_id}")
+            if set(status_value.get("jobs", {})) != {
+                job.job_id for job in expected_jobs
+            }:
+                raise RunnerError(f"collected host job inventory mismatch: {host_id}")
+            if any(
+                status_value["jobs"][job.job_id].get("state") != "COMPLETE"
+                for job in expected_jobs
+            ):
+                raise RunnerError(f"collected host has incomplete jobs: {host_id}")
+            events = [
+                json.loads(line)
+                for line in events_path.read_text(encoding="utf-8").splitlines()
+                if line
+            ]
+            if not events or events[-1].get("event") != "host_complete":
+                raise RunnerError(f"collected host event ledger is incomplete: {host_id}")
         staged = partial / f"hosts/{host_id}/STAGED"
         if not staged.is_file() or staged.read_text(encoding="utf-8") != plan.plan_sha256 + "\n":
             raise RunnerError(f"collected host staging identity mismatch: {host_id}")

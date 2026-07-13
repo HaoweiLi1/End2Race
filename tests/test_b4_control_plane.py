@@ -25,6 +25,8 @@ from Experiments.runner import (
     RunnerError,
     _b4_eval_jobs,
     _b4_training_jobs,
+    _collect_payload_commands,
+    _collect_status_commands,
     _seal_plan,
     _verify_plan,
 )
@@ -197,6 +199,21 @@ def main() -> None:
     assert all(job.kind == "b4_training" for job in train.jobs)
     assert all("b4-pilot" in job.argv for job in train.jobs)
     assert "sidecar" not in train.config["inputs"]
+
+    status_commands = "\n".join(
+        " ".join(command)
+        for command in _collect_status_commands(train, Path("/tmp/b4-collection"))
+    )
+    payload_commands = "\n".join(
+        " ".join(command)
+        for command in _collect_payload_commands(train, Path("/tmp/b4-collection"))
+    )
+    assert "/hosts/local/status.json" not in status_commands
+    assert "/hosts/remote/status.json" in status_commands
+    assert "/hosts/local/preflight.json" in status_commands
+    assert "/hosts/remote/preflight.json" in status_commands
+    assert "/hosts/local/outputs" not in payload_commands
+    assert "/hosts/remote/outputs" in payload_commands
 
     drifted = replace(
         train,
