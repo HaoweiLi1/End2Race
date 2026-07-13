@@ -60,13 +60,15 @@ Use `logs/archive/PATH_MIGRATION.tsv` for old-to-new paths and
 
 ## Current implementation boundary
 
-The repository has a historical PPO loop and the v2.2 components, but no
-single B+ runner currently connects hierarchical sampling, exact executed
-action/log-probability accounting, multi-objective GAE, dual updates,
-checkpoint releases and paired KPI evaluation. Implementing that runner is a
-proposed next task, not part of Tier 3.
+The repository now contains a managed B+ runner connecting hierarchical
+sampling, exact executed-action/log-probability accounting, multi-objective
+GAE, dual updates, checkpoint releases and paired KPI evaluation. Historical
+B2 used a centered deterministic deployment rule and completed one 20-iteration
+run; all candidates failed overtake feasibility. Prospective B3 adds a unified
+training/deployment distribution and 40-iteration RunPlan support. B3 code is
+CPU-contract-tested but no numerical B3 RunPlan or GPU result exists yet. See
+`.agents/B3_PPO_PLAN.md` and `.agents/B3_IMPLEMENTATION_RECORD.md`.
 
 Do not delete “old” `bplus_v22` modules based only on their names: current
 hierarchical modules import shared functionality from them. Code refactoring
 requires a separate dependency audit and test-preserving change.
-

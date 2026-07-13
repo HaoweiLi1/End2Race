@@ -1,9 +1,10 @@
-"""B2 deterministic paired evaluator, independent of warm-start releases.
+"""Versioned B2/B3 deterministic paired evaluator.
 
-The evaluator consumes generic injected PPO checkpoint loaders.  It executes
-the primary centered policy with zero behavior offsets and records the standard
-Bernoulli decision only as a same-state diagnostic.  Scenario sharding uses
-the physical row index in the corrected Task-8 TSV, never ``manifest_order``.
+B2 keeps its historical centered-primary contract and records standard mode as
+a same-state diagnostic.  B3 evaluates the standard mode of the same
+distribution PPO trained, so its primary and standard accounting are identical.
+Scenario sharding uses the physical row index in the corrected Task-8 TSV,
+never ``manifest_order``.
 """
 
 from __future__ import annotations
@@ -231,6 +232,17 @@ class B2DeterministicActor(nn.Module):
     def __init__(self, policy: nn.Module):
         super().__init__()
         self.policy = policy
+        self.primary_mode = getattr(
+            policy, "primary_deterministic_mode", DETERMINISTIC_CENTERED
+        )
+        if self.primary_mode not in {
+            DETERMINISTIC_CENTERED,
+            DETERMINISTIC_STANDARD,
+        }:
+            raise ValueError("candidate policy has an unknown deterministic mode")
+        self.standard_mode_is_diagnostic_only = (
+            self.primary_mode != DETERMINISTIC_STANDARD
+        )
         self.reset_runtime()
 
     @property
@@ -319,10 +331,17 @@ class B2DeterministicActor(nn.Module):
         if self.micro_steps % MACRO_STEPS == 0:
             lidar_history, scalar_history = self._history()
             primary = self.policy.deterministic_action(
-                bc_feature, lidar_history, scalar_history, DETERMINISTIC_CENTERED
+                bc_feature, lidar_history, scalar_history, self.primary_mode
             )
-            standard = self.policy.deterministic_action(
-                bc_feature, lidar_history, scalar_history, DETERMINISTIC_STANDARD
+            standard = (
+                self.policy.deterministic_action(
+                    bc_feature,
+                    lidar_history,
+                    scalar_history,
+                    DETERMINISTIC_STANDARD,
+                )
+                if self.standard_mode_is_diagnostic_only
+                else primary
             )
             self._held_action = primary
             self._records.append(
@@ -413,6 +432,8 @@ def paired_result_row(
     baseline_outcome,
     trajectory_sha256: str,
     accounting: Mapping[str, object] | None,
+    deterministic_mode: str = DETERMINISTIC_CENTERED,
+    standard_mode_is_diagnostic_only: bool = True,
 ) -> dict[str, object]:
     candidate = _outcome_values(outcome)
     baseline = _outcome_values(baseline_outcome)
@@ -445,8 +466,10 @@ def paired_result_row(
         "variant": variant,
         "arm": arm,
         "seed": int(seed),
-        "deterministic_mode": "bc" if variant == BC_VARIANT else DETERMINISTIC_CENTERED,
-        "standard_mode_is_diagnostic_only": variant != BC_VARIANT,
+        "deterministic_mode": "bc" if variant == BC_VARIANT else deterministic_mode,
+        "standard_mode_is_diagnostic_only": (
+            False if variant == BC_VARIANT else standard_mode_is_diagnostic_only
+        ),
         "checkpoint_sha256": checkpoint_sha256,
         "scenario_manifest_sha256": scenario_manifest_sha256,
         "checkpoint_manifest_sha256": checkpoint_manifest_sha256,
@@ -904,6 +927,12 @@ def evaluate_shard(
             actor = actor_factory(policies[spec.variant])
             result = simulator(actor, device, case)
             accounting = actor.accounting()
+            primary_mode = getattr(actor, "primary_mode", DETERMINISTIC_CENTERED)
+            standard_mode_is_diagnostic_only = getattr(
+                actor,
+                "standard_mode_is_diagnostic_only",
+                primary_mode != DETERMINISTIC_STANDARD,
+            )
             if bool(result.action_clipped) or int(accounting["external_clip_micro_steps"]) != 0:
                 raise AssertionError(f"candidate evaluator clipped action: {spec.variant}/{case['l2_id']}")
             rows.append(
@@ -920,6 +949,10 @@ def evaluate_shard(
                     baseline_outcome=baseline.outcome,
                     trajectory_sha256=trajectory_digest_fn(result.arrays),
                     accounting=accounting,
+                    deterministic_mode=primary_mode,
+                    standard_mode_is_diagnostic_only=(
+                        standard_mode_is_diagnostic_only
+                    ),
                 )
             )
     return EvaluationShard(
@@ -1321,10 +1354,23 @@ def merge_evaluation_shards(
                 spec = specs[variant]
                 if row["arm"] != spec.arm or int(row["seed"]) != spec.seed:
                     raise ValueError("B2 candidate row arm/seed mismatch")
-                if row["deterministic_mode"] != DETERMINISTIC_CENTERED:
-                    raise ValueError("B2 primary result is not centered deterministic")
-                if row["standard_mode_is_diagnostic_only"] is not True:
-                    raise ValueError("B2 standard mode was not marked diagnostic-only")
+                mode = row["deterministic_mode"]
+                diagnostic = row["standard_mode_is_diagnostic_only"]
+                if mode == DETERMINISTIC_CENTERED:
+                    if diagnostic is not True:
+                        raise ValueError("centered primary lacks standard diagnostic")
+                elif mode == DETERMINISTIC_STANDARD:
+                    if diagnostic is not False:
+                        raise ValueError("standard primary was mislabeled diagnostic")
+                    if (
+                        row["primary_intervention_decisions"]
+                        != row["standard_intervention_decisions"]
+                        or row["primary_brake_decisions"]
+                        != row["standard_brake_decisions"]
+                    ):
+                        raise ValueError("standard primary/diagnostic accounting differs")
+                else:
+                    raise ValueError("candidate deterministic mode is unsupported")
             if int(row["external_clip_micro_steps"]) != 0:
                 raise ValueError("B2 evaluation contains external action clipping")
             _check_row_pairing(row, baseline)

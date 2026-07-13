@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import Mapping, Sequence
 
 import torch
@@ -33,6 +34,17 @@ STEER_LIMIT = 0.52
 ACTION_SCHEMA = "bplus-v2.2-hierarchical-residual-action-1"
 CHECKPOINT_SCHEMA = "bplus-v2.2-hierarchical-warmstart-checkpoint-1"
 B2_HEAD_LEARNING_RATE = 3e-4
+B3_INTERVENTION_PRIOR_PROBABILITY = 0.10
+B3_CONDITIONAL_BRAKE_PRIOR_PROBABILITY = 0.50
+B3_INTERVENTION_PRIOR_LOGIT = math.log(
+    B3_INTERVENTION_PRIOR_PROBABILITY
+    / (1.0 - B3_INTERVENTION_PRIOR_PROBABILITY)
+)
+B3_CONDITIONAL_BRAKE_PRIOR_LOGIT = math.log(
+    B3_CONDITIONAL_BRAKE_PRIOR_PROBABILITY
+    / (1.0 - B3_CONDITIONAL_BRAKE_PRIOR_PROBABILITY)
+)
+B3_POLICY_SCHEMA = "bplus-v2.2-b3-unified-policy-1"
 
 
 @dataclass(frozen=True)
@@ -468,6 +480,10 @@ class RemediatedV22Policy(V22Policy):
             return distribution.deterministic()
         raise AssertionError("unreachable deterministic mode")
 
+    @property
+    def primary_deterministic_mode(self) -> str:
+        return DETERMINISTIC_CENTERED
+
     @staticmethod
     def compose(base_action, action):
         return HierarchicalResidualDistribution.compose(base_action, action).command
@@ -530,6 +546,158 @@ class RemediatedV22Policy(V22Policy):
                 + ", ".join(sorted(missing))
             )
         self.load_state_dict(dict(state), strict=True)
+
+
+class UnifiedV22Policy(RemediatedV22Policy):
+    """B3 policy whose rollout distribution and deployed mode share logits.
+
+    Raw gate-head initialization remains byte-for-byte ``-6``.  The frozen
+    prior transform moves those raw coordinates into one effective Bernoulli
+    parameterization used by sampling, replay and deterministic evaluation.
+    """
+
+    policy_schema = B3_POLICY_SCHEMA
+
+    def __init__(self, arm: str, **kwargs):
+        super().__init__(arm, **kwargs)
+        self.register_buffer(
+            "effective_intervention_prior_logit",
+            torch.tensor([B3_INTERVENTION_PRIOR_LOGIT], dtype=torch.float32),
+        )
+        self.register_buffer(
+            "effective_conditional_brake_prior_logit",
+            torch.tensor([B3_CONDITIONAL_BRAKE_PRIOR_LOGIT], dtype=torch.float32),
+        )
+
+    def _effective_distribution_parameters(
+        self,
+        bc_feature: torch.Tensor,
+        lidar_history: torch.Tensor,
+        scalar_history: torch.Tensor,
+    ):
+        top, steer, steer_std, brake_gate, brake, brake_std = (
+            self._distribution_parameters(bc_feature, lidar_history, scalar_history)
+        )
+        effective_top = (
+            top
+            - float(INITIAL_INTERVENTION_LOGIT)
+            + self.effective_intervention_prior_logit.to(top)
+        )
+        effective_brake = (
+            brake_gate
+            - float(INITIAL_BRAKE_LOGIT)
+            + self.effective_conditional_brake_prior_logit.to(brake_gate)
+        )
+        return effective_top, steer, steer_std, effective_brake, brake, brake_std
+
+    def _require_zero_gate_offsets(
+        self, exploration: BehaviorExplorationBatch | None = None
+    ) -> None:
+        if not torch.equal(
+            self.intervention_logit_offset,
+            torch.zeros_like(self.intervention_logit_offset),
+        ):
+            raise ValueError("B3 unified policy forbids persistent gate offsets")
+        if exploration is not None:
+            if not torch.equal(
+                exploration.intervention_logit_offset,
+                torch.zeros_like(exploration.intervention_logit_offset),
+            ) or not torch.equal(
+                exploration.conditional_brake_logit_offset,
+                torch.zeros_like(exploration.conditional_brake_logit_offset),
+            ):
+                raise ValueError("B3 unified policy forbids behavior gate offsets")
+
+    def distribution(
+        self,
+        bc_feature: torch.Tensor,
+        lidar_history: torch.Tensor,
+        scalar_history: torch.Tensor,
+    ) -> HierarchicalResidualDistribution:
+        self._require_zero_gate_offsets()
+        top, steer, steer_std, brake_gate, brake, brake_std = (
+            self._effective_distribution_parameters(
+                bc_feature, lidar_history, scalar_history
+            )
+        )
+        return HierarchicalResidualDistribution(
+            top, steer, steer_std, brake_gate, brake, brake_std
+        )
+
+    def behavior_distribution(
+        self,
+        bc_feature: torch.Tensor,
+        lidar_history: torch.Tensor,
+        scalar_history: torch.Tensor,
+        exploration: BehaviorExplorationBatch,
+    ) -> HierarchicalResidualDistribution:
+        if not isinstance(exploration, BehaviorExplorationBatch):
+            raise TypeError("B3 behavior distribution requires behavior metadata")
+        top, steer, steer_std, brake_gate, brake, brake_std = (
+            self._effective_distribution_parameters(
+                bc_feature, lidar_history, scalar_history
+            )
+        )
+        exploration.validate_like(top)
+        self._require_zero_gate_offsets(exploration)
+        return HierarchicalResidualDistribution(
+            top,
+            steer,
+            steer_std * exploration.steer_std_scale,
+            brake_gate,
+            brake,
+            brake_std * exploration.brake_std_scale,
+        )
+
+    def deterministic_action(
+        self,
+        bc_feature: torch.Tensor,
+        lidar_history: torch.Tensor,
+        scalar_history: torch.Tensor,
+        mode: str = DETERMINISTIC_STANDARD,
+    ) -> HierarchicalResidualAction:
+        if mode != DETERMINISTIC_STANDARD:
+            raise ValueError("B3 deterministic deployment requires standard mode")
+        return self.distribution(
+            bc_feature, lidar_history, scalar_history
+        ).deterministic()
+
+    @property
+    def primary_deterministic_mode(self) -> str:
+        return DETERMINISTIC_STANDARD
+
+    def load_unified_state_dict(self, state: Mapping[str, torch.Tensor]) -> None:
+        required = {
+            "intervention_gate.weight",
+            "intervention_gate.bias",
+            "intervention_logit_offset",
+            "effective_intervention_prior_logit",
+            "effective_conditional_brake_prior_logit",
+        }
+        missing = required - set(state)
+        if missing:
+            raise ValueError(
+                "B3 unified checkpoint/policy mismatch; missing "
+                + ", ".join(sorted(missing))
+            )
+        self.load_state_dict(dict(state), strict=True)
+        if not torch.equal(
+            self.effective_intervention_prior_logit,
+            torch.tensor(
+                [B3_INTERVENTION_PRIOR_LOGIT],
+                dtype=self.effective_intervention_prior_logit.dtype,
+                device=self.effective_intervention_prior_logit.device,
+            ),
+        ) or not torch.equal(
+            self.effective_conditional_brake_prior_logit,
+            torch.tensor(
+                [B3_CONDITIONAL_BRAKE_PRIOR_LOGIT],
+                dtype=self.effective_conditional_brake_prior_logit.dtype,
+                device=self.effective_conditional_brake_prior_logit.device,
+            ),
+        ):
+            raise ValueError("B3 unified checkpoint effective prior drift")
+        self._require_zero_gate_offsets()
 
 
 def apply_intervention_logit_offset(policy: RemediatedV22Policy, offset: float) -> None:

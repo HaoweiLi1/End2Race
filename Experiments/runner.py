@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Immutable control plane for End2Race experiments.
 
-New B2 work never executes from either host's mutable checkout.  A clean,
+New B2/B3 work never executes from either host's mutable checkout.  A clean,
 committed source tree is archived once, explicit runtime inputs are bundled,
 and both hosts execute from an isolated run root:
 
@@ -20,7 +20,8 @@ The public workflow is deliberately split into reviewable phases::
     ./run.sh status PLAN --all-hosts [--dry-run]
     ./run.sh collect PLAN [--dry-run]
 
-After training, ``plan-eval`` freezes the six iteration-20 checkpoints.  Eval
+After training, ``plan-eval`` freezes the six final checkpoints (iteration 20
+for historical B2 and iteration 40 for B3).  Eval
 shard 0 runs locally; shards 1--3 run sequentially under one remote GPU lock.
 ``merge-eval`` refuses incomplete or non-Cartesian shard output.
 
@@ -75,6 +76,8 @@ SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 ARMS = ("BC_FROZEN", "SIDECAR_FROZEN", "SIDECAR_FINETUNE")
 SEEDS = (0, 1)
 SHARD_COUNT = 4
+TRAIN_KINDS = frozenset({"b2_train", "b3_train"})
+EVAL_KINDS = frozenset({"b2_eval", "b3_eval"})
 EVAL_CONTROL_ONLY_PATHS = frozenset(
     {
         "Experiments/runner.py",
@@ -280,43 +283,63 @@ def _verify_plan(plan: RunPlan) -> None:
         _validate_host_root(host, plan.run_id)
         if not host.expected_environment:
             raise RunnerError(f"critical environment contract is empty: {host.host_id}")
-    if plan.kind == "b2_train":
+    if plan.kind in TRAIN_KINDS:
         identities = {(job.arm, job.seed) for job in plan.jobs if job.kind == "learner"}
         expected_identities = {(arm, seed) for arm in ARMS for seed in SEEDS}
         if identities != expected_identities or len(plan.jobs) != 6:
-            raise RunnerError("B2 train plan must contain exactly six arm-by-seed learners")
+            raise RunnerError("PPO train plan must contain exactly six arm-by-seed learners")
         if tuple(plan.required_cli) != REQUIRED_TRAIN_CLI:
-            raise RunnerError("B2 train CLI contract drift")
+            raise RunnerError("PPO train CLI contract drift")
         expected_topology = {
             str(index): dict(expectation)
             for index, expectation in BASELINE_SHARD_EXPECTATIONS.items()
         }
         if plan.config.get("bc_baseline_topology") != expected_topology:
-            raise RunnerError("B2 baseline topology contract drift")
-    elif plan.kind == "b2_eval":
+            raise RunnerError("PPO baseline topology contract drift")
+        expected_contract = (
+            "unified_standard_mode_v1"
+            if plan.kind == "b3_train"
+            else "centered_fresh_prior"
+        )
+        if plan.config.get("policy_contract", "centered_fresh_prior") != expected_contract:
+            raise RunnerError("PPO plan kind/policy contract mismatch")
+    elif plan.kind in EVAL_KINDS:
         if not plan.parent_plan_sha256 or not SHA256_RE.fullmatch(plan.parent_plan_sha256):
-            raise RunnerError("B2 eval plan lacks parent plan identity")
+            raise RunnerError("PPO eval plan lacks parent plan identity")
         if not plan.evaluation_contract:
-            raise RunnerError("B2 eval plan lacks evaluation contract")
+            raise RunnerError("PPO eval plan lacks evaluation contract")
+        expected_contract = (
+            "unified_standard_mode_v1"
+            if plan.kind == "b3_eval"
+            else "centered_fresh_prior"
+        )
+        expected_iteration = 40 if plan.kind == "b3_eval" else 20
+        if (
+            plan.config.get("policy_contract", "centered_fresh_prior")
+            != expected_contract
+            or int(plan.config.get("checkpoint_iteration", expected_iteration))
+            != expected_iteration
+        ):
+            raise RunnerError("PPO eval kind/policy checkpoint contract mismatch")
         contract = plan.evaluation_contract
         scenarios = contract.get("scenarios", [])
         variants = contract.get("variants", [])
         shard_count = int(contract.get("shard_count", -1))
         if shard_count != SHARD_COUNT:
-            raise RunnerError("B2 eval shard count drift")
+            raise RunnerError("PPO eval shard count drift")
         if int(contract.get("expected_scenario_count", -1)) != len(scenarios):
-            raise RunnerError("B2 eval scenario count drift")
+            raise RunnerError("PPO eval scenario count drift")
         if int(contract.get("expected_episode_rows", -1)) != len(scenarios) * len(variants):
-            raise RunnerError("B2 eval Cartesian count drift")
+            raise RunnerError("PPO eval Cartesian count drift")
         row_indices = [int(item["row_index"]) for item in scenarios]
         l2_ids = [str(item["l2_id"]) for item in scenarios]
         if row_indices != list(range(len(scenarios))) or len(set(l2_ids)) != len(l2_ids):
-            raise RunnerError("B2 eval scenarios must be ordered unique physical rows/L2")
+            raise RunnerError("PPO eval scenarios must be ordered unique physical rows/L2")
         if any(int(item["shard_index"]) != int(item["row_index"]) % SHARD_COUNT for item in scenarios):
-            raise RunnerError("B2 eval scenario assignment drift")
+            raise RunnerError("PPO eval scenario assignment drift")
         shard_jobs = {job.shard_index for job in plan.jobs if job.kind == "evaluation_shard"}
         if shard_jobs != set(range(SHARD_COUNT)) or len(plan.jobs) != SHARD_COUNT:
-            raise RunnerError("B2 eval plan must contain exactly four shards")
+            raise RunnerError("PPO eval plan must contain exactly four shards")
     else:
         raise RunnerError(f"unsupported run-plan kind: {plan.kind}")
 
@@ -656,8 +679,10 @@ def _training_jobs() -> tuple[tuple[JobSpec, ...], dict[str, tuple[str, ...]]]:
     return tuple(jobs), queues
 
 
-def _shared_training_config() -> dict[str, Any]:
-    return {
+def _shared_training_config(kind: str = "b2_train") -> dict[str, Any]:
+    if kind not in TRAIN_KINDS:
+        raise RunnerError(f"unsupported training config kind: {kind}")
+    common = {
         "iterations": 20,
         "episodes_per_iteration": 16,
         "collision_episodes_per_iteration": 8,
@@ -699,6 +724,24 @@ def _shared_training_config() -> dict[str, Any]:
         },
         "forbidden_inputs": ["D2_test", "fresh_pool", "final_pool", "eval_results"],
     }
+    if kind == "b2_train":
+        return common
+    common.update(
+        {
+            "policy_contract": "unified_standard_mode_v1",
+            "iterations": 40,
+            "deterministic_contract": "standard_mode_of_training_distribution",
+            "dual_freeze_through_iteration": 0,
+            "exploration": {
+                "intervention_prior_probability": 0.10,
+                "conditional_brake_prior_probability": 0.50,
+                "external_gate_offsets_forbidden": True,
+                "steer_std_scale": 0.1,
+                "brake_std_scale": 1.0,
+            },
+        }
+    )
+    return common
 
 
 def build_training_plan(
@@ -710,7 +753,10 @@ def build_training_plan(
     local_gpu_uuid: str,
     remote_gpu_uuid: str,
     environment: dict[str, str] | None = None,
+    kind: str = "b2_train",
 ) -> RunPlan:
+    if kind not in TRAIN_KINDS:
+        raise RunnerError(f"unsupported training plan kind: {kind}")
     _validate_run_id(run_id)
     commit, tree = _require_clean_commit(repo, commit)
     _source_has_cli_contract(repo, commit, REQUIRED_TRAIN_CLI)
@@ -740,7 +786,7 @@ def build_training_plan(
             RunPlan(
                 schema=PLAN_SCHEMA,
                 run_id=run_id,
-                kind="b2_train",
+                kind=kind,
                 created_at=_now(),
                 source_commit=commit,
                 source_tree=tree,
@@ -757,9 +803,17 @@ def build_training_plan(
                 queues=queues,
                 required_cli=REQUIRED_TRAIN_CLI,
                 module_path_contract=MODULE_PATH_CONTRACT,
-                config=_shared_training_config(),
+                config=_shared_training_config(kind),
                 collection_root=str(
-                    (repo / "Experiments/B2_ppo_pilot/runs" / run_id).resolve()
+                    (
+                        repo
+                        / (
+                            "Experiments/B3_ppo_unified/runs"
+                            if kind == "b3_train"
+                            else "Experiments/B2_ppo_pilot/runs"
+                        )
+                        / run_id
+                    ).resolve()
                 ),
             )
         )
@@ -808,7 +862,14 @@ def _parse_checkpoint(value: str) -> tuple[str, int, Path]:
 def _validate_training_checkpoint_source(
     parent: RunPlan, arm: str, seed: int, path: Path
 ) -> None:
-    if path.name != "iter_0020.pt" or path.parent.name != "checkpoints":
+    final_iteration = int(parent.config.get("iterations", -1))
+    expected_name = f"iter_{final_iteration:04d}.pt"
+    expected_schema = (
+        "bplus-v2.2-b3-ppo-pilot-1"
+        if parent.kind == "b3_train"
+        else "bplus-v2.2-b2-ppo-pilot-1"
+    )
+    if path.name != expected_name or path.parent.name != "checkpoints":
         raise RunnerError("evaluation checkpoint must be the final learner checkpoint")
     release = path.parent.parent
     if (
@@ -818,15 +879,20 @@ def _validate_training_checkpoint_source(
     ):
         raise RunnerError("evaluation checkpoint does not come from a COMPLETE learner")
     summary = json.loads((release / "summary.json").read_text(encoding="utf-8"))
+    recorded_final_sha = (
+        summary.get("final_checkpoint_sha256")
+        if parent.kind == "b3_train"
+        else summary.get("iteration20_checkpoint_sha256")
+    )
     if (
-        summary.get("schema") != "bplus-v2.2-b2-ppo-pilot-1"
+        summary.get("schema") != expected_schema
         or summary.get("integrity_passed") is not True
         or summary.get("passed") is not True
         or summary.get("arm") != arm
         or summary.get("seed") != seed
-        or summary.get("iterations") != 20
+        or summary.get("iterations") != final_iteration
         or summary.get("run_plan_sha256") != parent.plan_sha256
-        or summary.get("iteration20_checkpoint_sha256") != _sha256_file(path)
+        or recorded_final_sha != _sha256_file(path)
     ):
         raise RunnerError("evaluation checkpoint learner envelope mismatch")
 
@@ -870,8 +936,8 @@ def build_evaluation_plan(
 ) -> RunPlan:
     _validate_run_id(run_id)
     parent = load_plan(training_plan_path)
-    if parent.kind != "b2_train":
-        raise RunnerError("evaluation parent must be a B2 training plan")
+    if parent.kind not in TRAIN_KINDS:
+        raise RunnerError("evaluation parent must be a supported training plan")
     source_commit, source_tree = _require_clean_commit(repo, source_commit)
     _source_has_cli_contract(repo, source_commit, ("ppo-evaluate", "ppo-merge-eval"))
     source_delta = _validate_eval_control_only_source_delta(
@@ -913,7 +979,8 @@ def build_evaluation_plan(
                 files.append(("task8_release", f"task8/{path.relative_to(task8).as_posix()}", path))
             checkpoint_meta: list[dict[str, Any]] = []
             for arm, seed, path in sorted(parsed):
-                arcname = f"checkpoints/{arm}_seed{seed}_iter20.pt"
+                final_iteration = int(parent.config["iterations"])
+                arcname = f"checkpoints/{arm}_seed{seed}_iter{final_iteration}.pt"
                 sha = _sha256_file(path)
                 files.append(("checkpoint", arcname, path))
                 checkpoint_meta.append(
@@ -941,7 +1008,7 @@ def build_evaluation_plan(
                 RunPlan(
                     schema=PLAN_SCHEMA,
                     run_id=run_id,
-                    kind="b2_eval",
+                    kind="b3_eval" if parent.kind == "b3_train" else "b2_eval",
                     created_at=_now(),
                     source_commit=source_commit,
                     source_tree=source_tree,
@@ -960,11 +1027,24 @@ def build_evaluation_plan(
                     module_path_contract=parent.module_path_contract,
                     config={
                         "evaluation_offsets": [0.0, 0.0],
-                        "checkpoint_iteration": 20,
+                        "checkpoint_iteration": int(parent.config["iterations"]),
+                        "policy_contract": parent.config.get(
+                            "policy_contract", "centered_fresh_prior"
+                        ),
                         "parent_training_source_commit": parent.source_commit,
                         "control_only_source_delta": list(source_delta),
                     },
-                    collection_root=str((repo / "Experiments/B2_ppo_pilot/evaluations" / run_id).resolve()),
+                    collection_root=str(
+                        (
+                            repo
+                            / (
+                                "Experiments/B3_ppo_unified/evaluations"
+                                if parent.kind == "b3_train"
+                                else "Experiments/B2_ppo_pilot/evaluations"
+                            )
+                            / run_id
+                        ).resolve()
+                    ),
                     parent_plan_sha256=parent.plan_sha256,
                     evaluation_contract={
                         "manifest_relpath": "inputs/task8/development_scenarios.tsv",
@@ -1475,7 +1555,7 @@ def _marker_transfer_commands(
 
 
 def baseline_preflight(plan: RunPlan, dry_run: bool) -> int:
-    if plan.kind != "b2_train":
+    if plan.kind not in TRAIN_KINDS:
         raise RunnerError("BC baseline preflight requires a B2 training plan")
     local = _host(plan, "local")
     remote = _host(plan, "remote")
@@ -1836,7 +1916,7 @@ def _ready_command(plan: RunPlan) -> list[str]:
 
 
 def plumbing_smoke(plan: RunPlan, dry_run: bool) -> int:
-    if plan.kind != "b2_train":
+    if plan.kind not in TRAIN_KINDS:
         raise RunnerError("plumbing smoke requires a B2 training plan")
     local = _host(plan, "local")
     remote = _host(plan, "remote")
@@ -2064,7 +2144,7 @@ def ready_host(plan_path: Path, host_id: str) -> int:
     if host_id != "local":
         raise RunnerError("B2 READY marker is authored once on the local host")
     plan = load_plan(plan_path)
-    if plan.kind != "b2_train":
+    if plan.kind not in TRAIN_KINDS:
         raise RunnerError("B2 READY marker requires a training plan")
     host = _host(plan, host_id)
     root = Path(host.stage_root)
@@ -2314,7 +2394,7 @@ def _validate_cli_plan(plan: RunPlan, host: HostSpec) -> None:
     """Let the staged B2 implementation validate its full typed plan contract."""
 
     root = Path(host.stage_root)
-    command = "ppo-pilot" if plan.kind == "b2_train" else "ppo-evaluate"
+    command = "ppo-pilot" if plan.kind in TRAIN_KINDS else "ppo-evaluate"
     probe_job = JobSpec(
         "preflight", "preflight", host.host_id, "preflight", tuple(),
         "outputs/preflight", "cache/numba/preflight", gpu_exclusive=False,
@@ -2390,7 +2470,7 @@ def check_preflight_host(plan_path: Path, host_id: str) -> int:
     plan = load_plan(plan_path)
     host = _host(plan, host_id)
     check_stage_host(plan_path, host_id)
-    if plan.kind == "b2_train":
+    if plan.kind in TRAIN_KINDS:
         _validate_baseline_marker(plan, Path(host.stage_root))
     _validate_preflight_marker(plan, host, Path(host.stage_root))
     return 0
@@ -2400,7 +2480,7 @@ def preflight_host(plan_path: Path, host_id: str) -> int:
     plan = load_plan(plan_path)
     host = _host(plan, host_id)
     check_stage_host(plan_path, host_id)
-    if plan.kind == "b2_train":
+    if plan.kind in TRAIN_KINDS:
         _validate_baseline_marker(plan, Path(host.stage_root))
     root = Path(host.stage_root)
     existing_marker = root / "control/preflight.json"
@@ -2476,7 +2556,7 @@ def execute(plan: RunPlan, host_ids: Sequence[str], dry_run: bool) -> int:
 
 
 def resume(plan: RunPlan, host_ids: Sequence[str], dry_run: bool) -> int:
-    if plan.kind not in {"b2_train", "b2_eval"}:
+    if plan.kind not in TRAIN_KINDS | EVAL_KINDS:
         raise RunnerError("explicit resume is unavailable for this plan kind")
     commands = [
         _execute_command(plan, _host(plan, host_id), resume=True)
@@ -2513,13 +2593,19 @@ def _validate_job_output(plan: RunPlan, root: Path, job: JobSpec) -> None:
         if not summary_path.is_file():
             raise RunnerError(f"learner summary is missing: {job.job_id}")
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        expected_schema = (
+            "bplus-v2.2-b3-ppo-pilot-1"
+            if plan.kind == "b3_train"
+            else "bplus-v2.2-b2-ppo-pilot-1"
+        )
+        expected_iterations = int(plan.config["iterations"])
         if (
-            summary.get("schema") != "bplus-v2.2-b2-ppo-pilot-1"
+            summary.get("schema") != expected_schema
             or summary.get("integrity_passed") is not True
             or summary.get("passed") is not True
             or summary.get("arm") != job.arm
             or summary.get("seed") != job.seed
-            or summary.get("iterations") != 20
+            or summary.get("iterations") != expected_iterations
             or summary.get("run_plan_sha256") != plan.plan_sha256
         ):
             raise RunnerError(f"learner COMPLETE envelope mismatch: {job.job_id}")
@@ -2536,7 +2622,7 @@ def _tsv_scalar(value: Any) -> str:
 def _validate_eval_shard_output(plan: RunPlan, output: Path, job: JobSpec) -> None:
     """Strictly bind an atomic eval shard to its immutable EvalPlan."""
 
-    if plan.kind != "b2_eval" or not plan.evaluation_contract:
+    if plan.kind not in EVAL_KINDS or not plan.evaluation_contract:
         raise RunnerError("evaluation shard requires one B2 EvalPlan")
     children = list(output.iterdir())
     if any(path.is_symlink() or not path.is_file() for path in children):
@@ -2634,7 +2720,7 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
     host = _host(plan, host_id)
     root = Path(host.stage_root)
     check_preflight_host(plan_path, host_id)
-    if plan.kind == "b2_train":
+    if plan.kind in TRAIN_KINDS:
         _validate_baseline_marker(plan, root)
         _validate_plumbing_marker(plan, root)
         _validate_ready_marker(plan, root)
@@ -2648,7 +2734,7 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
     if not jobs:
         raise RunnerError(f"no jobs assigned to {host_id}")
     if resume:
-        if plan.kind not in {"b2_train", "b2_eval"}:
+        if plan.kind not in TRAIN_KINDS | EVAL_KINDS:
             raise RunnerError("this plan kind does not support explicit resume")
         if not status_path.is_file() or not events_path.is_file():
             raise RunnerError("resume requires an existing host status/event ledger")
@@ -2735,7 +2821,7 @@ def execute_host(plan_path: Path, host_id: str, *, resume: bool = False) -> int:
             and previous
             and previous.get("state") in {"FAILED", "RUNNING"}
         )
-        if resume_job and plan.kind == "b2_eval":
+        if resume_job and plan.kind in EVAL_KINDS:
             raise RunnerError(
                 "evaluation resume only recovers a validated atomic COMPLETE shard; "
                 f"incomplete shard must use a new EvalPlan: {job.job_id}"
@@ -2884,7 +2970,7 @@ def _collect_payload_commands(
             str(collection / "hosts/remote/outputs/"),
         ],
     ]
-    if plan.kind == "b2_train":
+    if plan.kind in TRAIN_KINDS:
         commands.extend(
             (
                 [
@@ -3067,7 +3153,7 @@ def _validate_collected_baseline_shards(
 def collect_baseline_failure(plan: RunPlan, dry_run: bool) -> int:
     """Atomically collect a terminal pre-PPO baseline acceptance failure."""
 
-    if plan.kind != "b2_train":
+    if plan.kind not in TRAIN_KINDS:
         raise RunnerError("baseline failure collection requires a training plan")
     collection = Path(plan.collection_root)
     partial = collection.with_name(collection.name + ".partial")
@@ -3178,7 +3264,7 @@ def collect_baseline_failure(plan: RunPlan, dry_run: bool) -> int:
 
 
 def collect(plan: RunPlan, dry_run: bool) -> int:
-    if plan.kind == "b2_train" and _lexists(
+    if plan.kind in TRAIN_KINDS and _lexists(
         Path(_host(plan, "local").stage_root)
         / "control/bc_baseline_preflight.failed.json"
     ):
@@ -3236,7 +3322,7 @@ def collect(plan: RunPlan, dry_run: bool) -> int:
             host_root = partial / f"hosts/{host_id}"
             for job in _host_jobs(plan, host_id):
                 _validate_job_output(plan, host_root, job)
-        if plan.kind == "b2_train":
+        if plan.kind in TRAIN_KINDS:
             baseline_value = _validate_baseline_marker(plan, partial)
             _validate_collected_baseline_shards(plan, partial, baseline_value)
             _validate_plumbing_marker(plan, partial)
@@ -3269,7 +3355,7 @@ def collect(plan: RunPlan, dry_run: bool) -> int:
 
 
 def validate_eval_collection(plan: RunPlan, collection: Path) -> dict[str, Any]:
-    if plan.kind != "b2_eval" or not plan.evaluation_contract:
+    if plan.kind not in EVAL_KINDS or not plan.evaluation_contract:
         raise RunnerError("merge requires a B2 evaluation plan")
     contract = plan.evaluation_contract
     scenarios = contract["scenarios"]
@@ -3390,26 +3476,26 @@ def _show(plan_path: Path, plan: RunPlan) -> None:
     path = str(plan_path)
     print("\n# canonical phase order")
     print(_display_command([wrapper, "stage", path, "--all-hosts"]))
-    if plan.kind == "b2_train":
+    if plan.kind in TRAIN_KINDS:
         print(_display_command([wrapper, "baseline-preflight", path]))
     print(_display_command([wrapper, "preflight", path, "--all-hosts"]))
-    if plan.kind == "b2_train":
+    if plan.kind in TRAIN_KINDS:
         print(_display_command([wrapper, "plumbing-smoke", path]))
     print(_display_command([wrapper, "execute", path, "--all-hosts"]))
-    if plan.kind in {"b2_train", "b2_eval"}:
+    if plan.kind in TRAIN_KINDS | EVAL_KINDS:
         print("# explicit resume only after a recorded interruption/failure")
         for host in plan.hosts:
             print(_display_command([wrapper, "resume", path, "--host", host.host_id]))
     print(_display_command([wrapper, "status", path, "--all-hosts"]))
     print(_display_command([wrapper, "collect", path]))
-    if plan.kind == "b2_eval":
+    if plan.kind in EVAL_KINDS:
         print(_display_command([wrapper, "merge-eval", path]))
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="run.sh", description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    sub.add_parser("list", help="show the immutable B2 workflow and legacy display entries")
+    sub.add_parser("list", help="show immutable B2/B3 workflows and legacy entries")
     legacy = sub.add_parser("legacy-show", help="show one non-executable B1 legacy template")
     legacy.add_argument("name", choices=sorted(LEGACY_SHOW_ONLY))
 
@@ -3419,6 +3505,15 @@ def _parser() -> argparse.ArgumentParser:
     plan.add_argument("--output", required=True, type=Path)
     plan.add_argument("--local-gpu-uuid", required=True)
     plan.add_argument("--remote-gpu-uuid", required=True)
+
+    plan_b3 = sub.add_parser(
+        "plan-b3", help="create one immutable six-learner B3 unified-policy plan"
+    )
+    plan_b3.add_argument("--run-id", required=True)
+    plan_b3.add_argument("--source-commit", default="HEAD")
+    plan_b3.add_argument("--output", required=True, type=Path)
+    plan_b3.add_argument("--local-gpu-uuid", required=True)
+    plan_b3.add_argument("--remote-gpu-uuid", required=True)
 
     plan_eval = sub.add_parser("plan-eval", help="freeze six checkpoints into an eval plan")
     plan_eval.add_argument("--run-id", required=True)
@@ -3513,13 +3608,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "[-> explicit resume] -> status -> collect"
             )
             print("B2 eval: plan-eval -> stage -> preflight -> execute -> collect -> merge-eval")
+            print(
+                "B3: plan-b3 -> show -> stage -> baseline-preflight -> preflight "
+                "-> plumbing-smoke -> execute [-> explicit resume] -> status -> collect"
+            )
+            print("B3 eval: plan-eval -> stage -> preflight -> execute -> collect -> merge-eval")
             for name in sorted(LEGACY_SHOW_ONLY):
                 print(f"{name} [legacy show-only]")
             return 0
         if args.action == "legacy-show":
             print(LEGACY_SHOW_ONLY[args.name])
             return 0
-        if args.action == "plan":
+        if args.action in {"plan", "plan-b3"}:
             built = build_training_plan(
                 repo=REPO_ROOT,
                 run_id=args.run_id,
@@ -3527,6 +3627,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 output=args.output.resolve(),
                 local_gpu_uuid=args.local_gpu_uuid,
                 remote_gpu_uuid=args.remote_gpu_uuid,
+                kind="b3_train" if args.action == "plan-b3" else "b2_train",
             )
             print(args.output.resolve())
             print(built.plan_sha256)

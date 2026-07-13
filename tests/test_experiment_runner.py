@@ -95,13 +95,15 @@ def host_specs(run_id: str) -> tuple[runner.HostSpec, runner.HostSpec]:
     )
 
 
-def training_plan(run_id: str, collection_root: Path) -> runner.RunPlan:
+def training_plan(
+    run_id: str, collection_root: Path, kind: str = "b2_train"
+) -> runner.RunPlan:
     jobs, queues = runner._training_jobs()
     return runner._seal_plan(
         runner.RunPlan(
             schema=runner.PLAN_SCHEMA,
             run_id=run_id,
-            kind="b2_train",
+            kind=kind,
             created_at="2026-07-12T12:00:00+08:00",
             source_commit="1" * 40,
             source_tree="2" * 40,
@@ -118,7 +120,7 @@ def training_plan(run_id: str, collection_root: Path) -> runner.RunPlan:
             queues=queues,
             required_cli=runner.REQUIRED_TRAIN_CLI,
             module_path_contract=runner.MODULE_PATH_CONTRACT,
-            config=runner._shared_training_config(),
+            config=runner._shared_training_config(kind),
             collection_root=str(collection_root),
         )
     )
@@ -691,6 +693,73 @@ def test_complete_requires_atomic_release_envelope() -> None:
             raise AssertionError("missing COMPLETE marker was accepted")
         except runner.RunnerError:
             pass
+
+
+def test_b3_plan_and_final_checkpoint_contract() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        plan = training_plan("b3_test_contract", root / "collection", "b3_train")
+        runner._verify_plan(plan)
+        assert plan.kind == "b3_train"
+        assert plan.config["policy_contract"] == "unified_standard_mode_v1"
+        assert plan.config["iterations"] == 40
+        assert plan.config["deterministic_contract"] == (
+            "standard_mode_of_training_distribution"
+        )
+        assert plan.config["dual_freeze_through_iteration"] == 0
+        assert plan.config["exploration"] == {
+            "intervention_prior_probability": 0.10,
+            "conditional_brake_prior_probability": 0.50,
+            "external_gate_offsets_forbidden": True,
+            "steer_std_scale": 0.1,
+            "brake_std_scale": 1.0,
+        }
+
+        job = next(item for item in plan.jobs if item.host_id == "local")
+        output = root / job.output_relpath
+        output.mkdir(parents=True)
+        (output / "COMPLETE").write_text("COMPLETE\n", encoding="utf-8")
+        (output / "summary.json").write_text(
+            json.dumps(
+                {
+                    "schema": "bplus-v2.2-b3-ppo-pilot-1",
+                    "integrity_passed": True,
+                    "passed": True,
+                    "arm": job.arm,
+                    "seed": job.seed,
+                    "iterations": 40,
+                    "run_plan_sha256": plan.plan_sha256,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        runner._validate_job_output(plan, root, job)
+
+        release = root / "learner"
+        checkpoint = release / "checkpoints/iter_0040.pt"
+        checkpoint.parent.mkdir(parents=True)
+        checkpoint.write_bytes(b"b3 checkpoint")
+        (release / "COMPLETE").write_text("COMPLETE\n", encoding="utf-8")
+        (release / "summary.json").write_text(
+            json.dumps(
+                {
+                    "schema": "bplus-v2.2-b3-ppo-pilot-1",
+                    "integrity_passed": True,
+                    "passed": True,
+                    "arm": job.arm,
+                    "seed": job.seed,
+                    "iterations": 40,
+                    "run_plan_sha256": plan.plan_sha256,
+                    "final_checkpoint_sha256": runner._sha256_file(checkpoint),
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        runner._validate_training_checkpoint_source(
+            plan, str(job.arm), int(job.seed), checkpoint
+        )
 
 
 def test_eval_checkpoint_requires_complete_parent_learner() -> None:
@@ -1521,6 +1590,7 @@ def main() -> None:
     test_eval_resume_rejects_incomplete_shard_without_cli_resume()
     test_fail_closed_names_and_pinned_wrapper()
     test_complete_requires_atomic_release_envelope()
+    test_b3_plan_and_final_checkpoint_contract()
     test_eval_checkpoint_requires_complete_parent_learner()
     test_gate_marker_semantics_and_tamper_rejection()
     test_show_phase_order_and_partial_quarantine()

@@ -3,11 +3,20 @@
 
 import torch
 
-from bplus_v22 import ARM_BC_FROZEN
+from bplus_v22 import ARMS, ARM_BC_FROZEN
+from bplus_v22.exploration import (
+    ActionNoiseKey,
+    BehaviorExplorationConfig,
+    DETERMINISTIC_CENTERED,
+    DETERMINISTIC_STANDARD,
+)
 from bplus_v22.remediated_model import (
+    B3_CONDITIONAL_BRAKE_PRIOR_PROBABILITY,
+    B3_INTERVENTION_PRIOR_PROBABILITY,
     HierarchicalResidualAction,
     HierarchicalResidualDistribution,
     RemediatedV22Policy,
+    UnifiedV22Policy,
 )
 
 
@@ -123,6 +132,118 @@ def main() -> None:
         raise AssertionError("old checkpoint schema was accepted")
     except ValueError as error:
         assert "schema mismatch" in str(error)
+
+    # B3 keeps raw -6 initialization but uses one effective distribution for
+    # sampling, replay and standard deterministic deployment.
+    unified = UnifiedV22Policy(ARM_BC_FROZEN).eval()
+    assert torch.equal(
+        unified.intervention_gate.bias,
+        torch.full_like(unified.intervention_gate.bias, -6.0),
+    )
+    assert torch.equal(
+        unified.brake_gate.bias,
+        torch.full_like(unified.brake_gate.bias, -6.0),
+    )
+    unified_distribution = unified.distribution(bc, lidar, scalar)
+    assert torch.allclose(
+        unified_distribution.intervention_probability,
+        torch.full((4, 1), B3_INTERVENTION_PRIOR_PROBABILITY),
+        atol=1e-7,
+        rtol=0.0,
+    )
+    assert torch.allclose(
+        unified_distribution.conditional_brake_probability,
+        torch.full((4, 1), B3_CONDITIONAL_BRAKE_PRIOR_PROBABILITY),
+        atol=1e-7,
+        rtol=0.0,
+    )
+    assert torch.allclose(
+        unified_distribution.unconditional_brake_probability,
+        torch.full((4, 1), 0.05),
+        atol=1e-7,
+        rtol=0.0,
+    )
+    unified_fresh = unified.deterministic_action(
+        bc, lidar, scalar, DETERMINISTIC_STANDARD
+    )
+    assert torch.equal(
+        unified_fresh.intervention_gate,
+        torch.zeros_like(unified_fresh.intervention_gate),
+    )
+    assert unified.primary_deterministic_mode == DETERMINISTIC_STANDARD
+    for arm in ARMS:
+        fresh_arm = UnifiedV22Policy(arm).eval()
+        fresh_distribution = fresh_arm.distribution(bc, lidar, scalar)
+        fresh_action = fresh_arm.deterministic_action(
+            bc, lidar, scalar, DETERMINISTIC_STANDARD
+        )
+        assert torch.equal(
+            fresh_action.intervention_gate,
+            torch.zeros_like(fresh_action.intervention_gate),
+        )
+        assert torch.allclose(
+            fresh_distribution.intervention_probability,
+            torch.full((4, 1), 0.10),
+            atol=1e-7,
+            rtol=0.0,
+        )
+    try:
+        unified.deterministic_action(bc, lidar, scalar, DETERMINISTIC_CENTERED)
+        raise AssertionError("B3 accepted the historical centered rule")
+    except ValueError as error:
+        assert "standard mode" in str(error)
+
+    zero_behavior = BehaviorExplorationConfig(
+        0.0, 0.0, 0.1, 1.0, "b3-unified"
+    ).as_batch(torch.empty(4, 1))
+    unified_behavior = unified.behavior_distribution(
+        bc, lidar, scalar, zero_behavior
+    )
+    assert torch.equal(
+        unified_behavior.intervention_logits,
+        unified_distribution.intervention_logits,
+    )
+    nonzero_behavior = BehaviorExplorationConfig(
+        0.1, 0.0, 0.1, 1.0, "forbidden"
+    ).as_batch(torch.empty(4, 1))
+    try:
+        unified.behavior_distribution(bc, lidar, scalar, nonzero_behavior)
+        raise AssertionError("B3 accepted an external gate offset")
+    except ValueError as error:
+        assert "forbids behavior gate offsets" in str(error)
+
+    # Deterministic keyed sampling sees the analytic B3 prior without touching
+    # global RNG, and unchanged replay remains ratio one.
+    count = 4096
+    udist = HierarchicalResidualDistribution(
+        unified_distribution.intervention_logits[0:1].expand(count, -1),
+        unified_distribution.steer.mean[0:1].expand(count, -1),
+        unified_distribution.steer.stddev[0:1].expand(count, -1),
+        unified_distribution.conditional_brake_logits[0:1].expand(count, -1),
+        unified_distribution.brake.mean[0:1].expand(count, -1),
+        unified_distribution.brake.stddev[0:1].expand(count, -1),
+    )
+    keys = tuple(ActionNoiseKey(31, f"L2:b3:{i}", 0, i) for i in range(count))
+    uaction = udist.sample_keyed(keys)
+    assert abs(float(uaction.intervention_gate.mean()) - 0.10) < 0.02
+    assert abs(float(uaction.brake_gate.mean()) - 0.05) < 0.015
+    assert torch.equal(
+        torch.exp(udist.log_prob(uaction) - udist.log_prob(uaction)),
+        torch.ones(count),
+    )
+
+    b2_state = RemediatedV22Policy(ARM_BC_FROZEN).state_dict()
+    try:
+        unified.load_unified_state_dict(b2_state)
+        raise AssertionError("B3 accepted a B2 checkpoint")
+    except ValueError as error:
+        assert "unified checkpoint" in str(error)
+    b3_state = unified.state_dict()
+    try:
+        RemediatedV22Policy(ARM_BC_FROZEN).load_hierarchical_state_dict(b3_state)
+        raise AssertionError("B2 accepted a B3 checkpoint")
+    except RuntimeError:
+        pass
     print("ALL TESTS PASSED")
 
 

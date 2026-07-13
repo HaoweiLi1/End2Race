@@ -3,12 +3,15 @@
 
 from dataclasses import dataclass, replace
 import hashlib
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 
 import torch
 import torch.nn as nn
 
 from bplus_v22 import ARMS, ARM_BC_FROZEN, PILOT_SEEDS
+from bplus_v22.cli import _checkpoint_specs
 from bplus_v22.ppo_eval import (
     BASELINE_SHARD_COUNT,
     BC_VARIANT,
@@ -27,11 +30,15 @@ from bplus_v22.ppo_eval import (
     validate_bc_baseline_shard,
     validate_task8_rows,
 )
-from bplus_v22.remediated_model import RemediatedV22Policy
+from bplus_v22.remediated_model import RemediatedV22Policy, UnifiedV22Policy
 
 
 def digest(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def file_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def expect(error_type, function) -> None:
@@ -111,6 +118,19 @@ class FakeActor(nn.Module):
             "max_brake_delta": 0.04,
             "external_clip_micro_steps": 0,
         }
+
+
+class FakeStandardActor(FakeActor):
+    primary_mode = "standard_bernoulli"
+    standard_mode_is_diagnostic_only = False
+
+    def accounting(self):
+        value = super().accounting()
+        value["standard_intervention_decisions"] = value[
+            "primary_intervention_decisions"
+        ]
+        value["standard_brake_decisions"] = value["primary_brake_decisions"]
+        return value
 
 
 class FakeBC(nn.Module):
@@ -224,6 +244,42 @@ def test_short_centered_actor_mechanics() -> None:
     assert all(torch.all(command[..., 1] >= 0.0) for command in commands)
 
 
+def test_short_unified_standard_actor_mechanics() -> None:
+    torch.set_num_threads(1)
+    policy = UnifiedV22Policy(ARM_BC_FROZEN).eval()
+    with torch.no_grad():
+        # Learned raw logits move the exact distribution used by both PPO and
+        # deterministic deployment; there is no centered evaluation rule.
+        policy.intervention_gate.bias.fill_(-3.0)
+        policy.brake_gate.bias.fill_(-5.0)
+    actor = B2DeterministicActor(policy).eval()
+    assert actor.primary_mode == "standard_bernoulli"
+    assert actor.standard_mode_is_diagnostic_only is False
+    hidden = torch.zeros(1, 1, actor.gru.hidden_size)
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(191)
+        lidars = torch.rand(13, 1, 1, 360) * 30.0
+        speeds = torch.rand(13, 1, 1, 1) * 5.0
+    with torch.no_grad():
+        for step in range(13):
+            actor.observe_actual_speed(float(speeds[step].item()) + 0.25)
+            command, hidden = actor(lidars[step], speeds[step], hidden)
+            actor.observe_applied_command(
+                float(command[0, -1, 0]), float(command[0, -1, 1])
+            )
+    accounting = actor.accounting()
+    assert accounting["macro_lengths"] == [10, 3]
+    assert accounting["primary_intervention_decisions"] == 2
+    assert accounting["primary_brake_decisions"] == 2
+    assert accounting["primary_intervention_decisions"] == accounting[
+        "standard_intervention_decisions"
+    ]
+    assert accounting["primary_brake_decisions"] == accounting[
+        "standard_brake_decisions"
+    ]
+    assert accounting["external_clip_micro_steps"] == 0
+
+
 def test_physical_sharding() -> None:
     rows = task8_rows()
     validate_task8_rows(rows)
@@ -234,6 +290,60 @@ def test_physical_sharding() -> None:
         assert [physical for physical, _ in shard[:3]] == [shard_index + 4 * n for n in range(3)]
     # Provenance values are reversed, proving assignment did not parse them.
     assert shards[0][0][1]["manifest_order"] == "287"
+
+
+def test_b3_eval_checkpoint_envelope() -> None:
+    training_manifest = "9" * 64
+    parent_plan = "7" * 64
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        rows = []
+        for arm in ARMS:
+            for seed in PILOT_SEEDS:
+                path = root / f"{arm}_seed{seed}_iter40.pt"
+                torch.save(
+                    {
+                        "schema": "bplus-v2.2-b3-ppo-checkpoint-1",
+                        "arm": arm,
+                        "seed": seed,
+                        "iteration": 40,
+                        "training_manifest_sha256": training_manifest,
+                        "run_plan_sha256": parent_plan,
+                        "checkpoint_id": f"{arm}-seed{seed}-iter0040",
+                    },
+                    path,
+                )
+                rows.append(
+                    {
+                        "arm": arm,
+                        "seed": seed,
+                        "relpath": path.name,
+                        "sha256": file_digest(path),
+                    }
+                )
+        contract = {
+            "training_manifest_sha256": training_manifest,
+            "checkpoint_set": rows,
+        }
+        specs, paths, observed_training = _checkpoint_specs(
+            root,
+            contract,
+            parent_plan,
+            eval_kind="b3_eval",
+            expected_iteration=40,
+        )
+        assert len(specs) == 6 and len(paths) == 6
+        assert observed_training == training_manifest
+        expect(
+            ValueError,
+            lambda: _checkpoint_specs(
+                root,
+                contract,
+                parent_plan,
+                eval_kind="b3_eval",
+                expected_iteration=20,
+            ),
+        )
 
 
 def baseline_bindings():
@@ -424,7 +534,7 @@ def test_baseline_merge_rejects_binding_and_inventory_drift() -> None:
     )
 
 
-def build_shards():
+def build_shards(actor_factory=FakeActor):
     rows = task8_rows()
     scenario_manifest = digest("task8-development")
     training_manifest = digest("b2-training-manifest")
@@ -442,7 +552,7 @@ def build_shards():
             device=torch.device("cpu"),
             shard_index=shard_index,
             shard_count=4,
-            actor_factory=FakeActor,
+            actor_factory=actor_factory,
             simulator=fake_simulator,
             trajectory_digest_fn=fake_trajectory_digest,
         )
@@ -487,6 +597,29 @@ def test_injected_eval_and_strict_merge() -> None:
         "direction_verdict" in summary["variants"][candidate_variant(arm, seed)]
         for arm in ARMS
         for seed in PILOT_SEEDS
+    )
+
+
+def test_injected_b3_standard_eval_contract() -> None:
+    rows, scenario_manifest, training_manifest, bc_sha, specs, shards = build_shards(
+        FakeStandardActor
+    )
+    merged, _ = merge_evaluation_shards(
+        shards=shards,
+        task8_rows=rows,
+        scenario_manifest_sha256=scenario_manifest,
+        checkpoint_manifest_sha256=training_manifest,
+        bc_checkpoint_sha256=bc_sha,
+        checkpoints=specs,
+    )
+    candidates = [row for row in merged if row["variant"] != BC_VARIANT]
+    assert all(row["deterministic_mode"] == "standard_bernoulli" for row in candidates)
+    assert all(row["standard_mode_is_diagnostic_only"] is False for row in candidates)
+    assert all(
+        row["primary_intervention_decisions"]
+        == row["standard_intervention_decisions"]
+        and row["primary_brake_decisions"] == row["standard_brake_decisions"]
+        for row in candidates
     )
 
     # Duplicate and missing Cartesian cells fail independently.
@@ -585,11 +718,14 @@ def test_loader_envelope_mismatch() -> None:
 
 def main() -> None:
     test_short_centered_actor_mechanics()
+    test_short_unified_standard_actor_mechanics()
     test_physical_sharding()
+    test_b3_eval_checkpoint_envelope()
     test_baseline_only_shards_and_topology_merge()
     test_baseline_count_drift_is_complete_acceptance_failure()
     test_baseline_merge_rejects_binding_and_inventory_drift()
     test_injected_eval_and_strict_merge()
+    test_injected_b3_standard_eval_contract()
     test_loader_envelope_mismatch()
     print("ALL TESTS PASSED")
 

@@ -1,25 +1,26 @@
 # End2Race Session Handoff — B+ v2.2 Objective-Aligned Policy Phase
 
-Generated: 2026-07-10; current checkpoint updated 2026-07-13 (first B2 product-KPI evaluation §22.9).
+Generated: 2026-07-10; current checkpoint updated 2026-07-13 (B3 unified-policy implementation §23).
 Repository: `/home/haowei/Documents/End2Race` (local) ↔ `haowei@192.168.2.127:~/Documents/End2Race` (active remote, host `haowei-MSI`). The historical `100.95.251.103` address is retired unless the user changes it again.
 Audience: a new chat/agent continuing this work with zero conversational context.
 
 Authority: this file is the current new-chat entry point. Newer numbered
 sections supersede older state/authorization text. Current execution authority
-is §13 as amended by §§20.4 and 22; current technical handoff and next action
-are §22, with §§17–21 and the B+ v2.2 spec/plan retained as provenance.
+is §13 as amended by §§20.4, 22 and 23; current technical handoff and next action
+are §23, with §§17–22 and the B+ v2.2 spec/plan retained as provenance.
 `docs/archive/handoffs/HANDOFF.md`, old remote-goal text, first D0 artifacts, unqualified
 P1/final-report bodies, and older Claude memories are historical evidence only.
 
 Agent navigation is `.agents/README.md` and `.agents/REPO_GUIDE.md`. The full
-historical ledger below is intentionally retained; use newest §22 for B2,
+historical ledger below is intentionally retained; use newest §23 for B3, §22 for B2,
 §21 for the prior Codex-chat handoff, §20 for Claude's restructure/run policy, and
 `docs/EXPERIMENT_RECORD.md` for the readable result summary.
 
 ## 0. Opening instruction for a new chat
 
-> Read `.agents/README.md`, §22, `.agents/B2_PPO_PLAN.md`,
-> `.agents/B2_PPO_REVIEW.md`, §20.4–20.7, `Experiments/INDEX.md`, then
+> Read `.agents/README.md`, §23, `.agents/B3_PPO_PLAN.md`,
+> `.agents/B3_IMPLEMENTATION_RECORD.md`, §22, §20.4–20.7,
+> `Experiments/INDEX.md`, then
 > §§13 and 17–18 as needed. Consult
 > `docs/superpowers/specs/2026-07-11-ppo-safety-first-bplus-v2.2.md` only as
 > historical technical provenance. Verify live local/remote state before acting. The
@@ -29,8 +30,9 @@ historical ledger below is intentionally retained; use newest §22 for B2,
 > EvalPlan `b2_eval_20260713_165800` are complete. Six integrity-valid candidates
 > all failed the direction gate because corrected overtake fell below BC; no arm
 > was selected and the fresh pool remains sealed. Do not continue these candidates
-> into medium/final evaluation. The next numerical run requires a new prospective
-> PPO objective/constraint decision and a unique immutable RunPlan.
+> into medium/final evaluation. B3 prospectively fixes the training/deployment
+> policy mismatch and is implemented but has no RunPlan or numerical result yet.
+> Review and commit the exact B3 source before creating one unique immutable plan.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -2129,3 +2131,96 @@ RunPlan, perform a read-only diagnosis of the actual dual trajectory,
 overtake/collision advantages and update scales, then write one prospective,
 minimal objective/constraint correction. Do not return to TTC or supervised
 warm-start admission gates.
+
+## 23. B3 unified-policy PPO rewrite and implementation (2026-07-13)
+
+The owner instructed Codex to rewrite the post-B2 direction and begin
+implementation. This section supersedes §22.9's generic “diagnose then decide”
+next step. It does not change the B2 FAILED result, authorize fresh-pool access,
+or report a new numerical result.
+
+### 23.1 Read-only B2 diagnosis behind the rewrite
+
+The central Claude finding was directionally correct: B2 optimized a stochastic
+raw-logit Bernoulli policy while primary product evaluation used a separate
+centered threshold at raw `-6`. The strongest observed symptom was that
+standard deterministic decisions were zero in the B2 product evaluation while
+the centered rule produced tens of thousands of interventions. The dual was
+not universally frozen — it ended near `1.033–1.045` for seed 0 and about
+`0.950` for seed 1 — but it was observing the nearly-BC stochastic rollout,
+not the much more intervention-heavy centered deployment policy.
+
+Claude's literal `raw - (-6)` and “keep 0.2 exploration floor” proposal was not
+adopted unchanged. The literal shift gives a fresh stochastic probability of
+0.5. Under the old coordinates a 0.2 multiplier remains far too weak (about
+0.53% top intervention and 0.0043% joint brake at fresh logits). B3 instead
+freezes explicit effective priors and removes gate offsets entirely.
+
+### 23.2 Frozen B3 policy contract
+
+The detailed authority is `.agents/B3_PPO_PLAN.md`:
+
+```text
+effective intervention = raw intervention - (-6) + logit(0.10)
+effective brake        = raw brake        - (-6) + logit(0.50)
+```
+
+Raw fresh constants remain `-6`. Fresh stochastic probabilities are 0.10 top,
+0.50 conditional brake and 0.05 joint brake; strict standard deterministic mode
+is still NO_OP. Sampling, stored/replayed log probability, entropy, checkpoint
+reload and primary product evaluation all use these effective logits. B3
+forbids centered mode and nonzero top/brake offsets.
+
+The objective, action bounds, curriculum, PPO clip/LRs, paired KPI gate and
+fresh-pool seal are unchanged. All B3 rollouts count toward the existing dual's
+32-episode warm-up. Training is a fresh fixed 40-iteration A/B/C x seed0/1 run;
+B2 candidates are not resumed and there is no automatic 60-iteration extension.
+
+### 23.3 Implemented files
+
+- `bplus_v22/remediated_model.py`: versioned `UnifiedV22Policy`, effective
+  prior buffers, standard-only deployment, zero-offset and schema rejection.
+- `bplus_v22/ppo_runner.py`: B2/B3 versioned config, 40-iteration curriculum,
+  exact replay/checkpoint/resume, every-rollout dual accounting and final
+  iteration-40 checkpoint.
+- `bplus_v22/ppo_eval.py` / `bplus_v22/cli.py`: policy-selected primary mode,
+  B3 standard-mode accounting and B3 iteration-40 checkpoint envelope.
+- `Experiments/runner.py`: `plan-b3`, `b3_train`/`b3_eval`, immutable two-host
+  staging and final-checkpoint collection while retaining B2 compatibility.
+- four focused test programs now contain explicit B3 contracts.
+
+Full implementation details and reviewer questions are in
+`.agents/B3_IMPLEMENTATION_RECORD.md`.
+
+### 23.4 Validation completed in this chat
+
+Nine standalone CPU contract programs passed: exploration, objective, PPO,
+PPO buffer, PPO environment, remediated model, PPO runner, PPO evaluator and
+experiment runner. They cover the analytic priors, fresh A/B/C NO_OP, ratio-one
+replay, B2/B3 schema isolation, checkpoint/resume, 32-episode dual timing,
+standard-mode evaluation, iteration-40 checkpoint binding and exact B3
+control-plane config. `run.sh list`, `plan-b3 --help` and the PPO CLI capability
+surface also load successfully.
+
+The complete historical B+ compatibility matrix is 20/21 passing. The only
+failure is the known migrated `test_bplus_v22_hierarchical_warmstart.py` path
+resolution described in `Experiments/INDEX.md`; it is not a B3 regression and
+the immutable historical release was not rewritten.
+
+No simulator/GPU job, immutable B3 RunPlan, stage, product evaluation, arm
+selection or pool opening occurred. The remote checkout was not modified in
+this implementation step.
+
+### 23.5 Next-chat boundary
+
+1. Review `.agents/B3_PPO_PLAN.md`, `.agents/B3_IMPLEMENTATION_RECORD.md` and
+   the actual diff; do not review from this narrative alone.
+2. A blocking objection must threaten sampled/executed/logged-action identity,
+   deterministic-policy identity, checkpoint continuity or the direct
+   collision/overtake decision. Do not add TTC or warm-start proxy gates.
+3. Commit the exact code/docs/tests before creating a plan; the control plane
+   intentionally rejects a dirty worktree.
+4. Then create one unique `plan-b3`, show and dry-run it, stage both hosts and
+   rerun the existing topology-matched BC baseline plus host/P3 preflights.
+5. Do not start six numerical learners unless the staged committed source and
+   shared READY marker all match. Do not create a second plan to tune outcomes.

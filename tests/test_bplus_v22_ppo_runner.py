@@ -15,18 +15,22 @@ from bplus_v22.exploration import ActionNoiseKey
 from bplus_v22.objective import OvertakeDual
 from bplus_v22.ppo import B2Critics, RunningCollisionScale, build_b2_optimizers
 from bplus_v22.ppo_runner import (
+    B3_ITERATIONS,
+    B3_POLICY_CONTRACT,
     COLLISION_SCALE_DECAY,
     ITERATIONS,
     _latent_branch_presence,
     _validate_control_plane_ready,
+    behavior_for_config,
     exploration_for_iteration,
     _read_iteration_ledger,
     _repair_torn_iteration_ledger,
     load_checkpoint,
+    load_policy_only_checkpoint,
     save_checkpoint,
     update_policy,
 )
-from bplus_v22.remediated_model import RemediatedV22Policy
+from bplus_v22.remediated_model import RemediatedV22Policy, UnifiedV22Policy
 
 
 def main() -> None:
@@ -140,6 +144,54 @@ def main() -> None:
     assert exploration_for_iteration(10).intervention_logit_offset == 0.0
     assert exploration_for_iteration(ITERATIONS).conditional_brake_logit_offset == 0.0
 
+    b3_config = {
+        "policy_contract": B3_POLICY_CONTRACT,
+        "iterations": 40,
+        "episodes_per_iteration": 16,
+        "collision_episodes_per_iteration": 8,
+        "remaining_episodes_per_iteration": 8,
+        "ppo_epochs": 3,
+        "minibatch_size": 128,
+        "clip_eps": 0.05,
+        "action_core_lr": 3e-5,
+        "head_lr": 3e-4,
+        "sidecar_lr": 3e-6,
+        "critic_lr": 5e-5,
+        "entropy_coef": 0.001,
+        "max_grad_norm": 0.5,
+        "target_kl": 0.03,
+        "replay_float32_atol": 1e-4,
+        "collision_scale_decay": 0.99,
+        "deterministic_contract": "standard_mode_of_training_distribution",
+        "dual_freeze_through_iteration": 0,
+        "bc_baseline_expected_collision": 24,
+        "bc_baseline_expected_overtake": 138,
+        "exploration": {
+            "intervention_prior_probability": 0.10,
+            "conditional_brake_prior_probability": 0.50,
+            "external_gate_offsets_forbidden": True,
+            "steer_std_scale": 0.1,
+            "brake_std_scale": 1.0,
+        },
+    }
+    for iteration in (1, 20, B3_ITERATIONS):
+        behavior = behavior_for_config(iteration, b3_config)
+        assert behavior.intervention_logit_offset == 0.0
+        assert behavior.conditional_brake_logit_offset == 0.0
+        assert behavior.schedule_id == f"b3-unified-policy-iter{iteration:02d}"
+    try:
+        behavior_for_config(B3_ITERATIONS + 1, b3_config)
+        raise RuntimeError("B3 accepted an iteration beyond 40")
+    except ValueError as error:
+        assert "1..40" in str(error)
+
+    # Every B3 rollout contributes to the existing 32-episode dual warm-up.
+    b3_dual = OvertakeDual(floor=0.30)
+    first_dual = b3_dual.update_with_record(0.20, completed_episodes=16)
+    assert not first_dual.updated and b3_dual.value == 1.0
+    second_dual = b3_dual.update_with_record(0.20, completed_episodes=16)
+    assert second_dual.updated and b3_dual.completed_episodes == 32
+
     policy = RemediatedV22Policy(ARM_BC_FROZEN, initialization_seed=123)
     critics = B2Critics(hidden_dim=8)
     optimizers = build_b2_optimizers(policy, critics, critic_learning_rate=5e-5)
@@ -182,6 +234,70 @@ def main() -> None:
             "brake_std_scale": 1.0,
         },
     }
+
+    unified_policy = UnifiedV22Policy(ARM_BC_FROZEN, initialization_seed=123)
+    unified_critics = B2Critics(hidden_dim=8)
+    unified_optimizers = build_b2_optimizers(
+        unified_policy, unified_critics, critic_learning_rate=5e-5
+    )
+    with tempfile.TemporaryDirectory() as directory:
+        b3_checkpoint = Path(directory) / "iter_0000.pt"
+        b3_digest = save_checkpoint(
+            b3_checkpoint,
+            policy=unified_policy,
+            critics=unified_critics,
+            optimizers=unified_optimizers,
+            dual=OvertakeDual(floor=0.3),
+            collision_scale=RunningCollisionScale(decay=COLLISION_SCALE_DECAY),
+            arm=ARM_BC_FROZEN,
+            seed=0,
+            iteration=0,
+            curriculum_digest="5" * 64,
+            training_manifest_sha256="6" * 64,
+            plan_sha256="7" * 64,
+            config=b3_config,
+            source_commit="8" * 40,
+            occurrence_count={},
+            optimizer_update_count=0,
+        )
+        b3_payload = torch.load(b3_checkpoint, map_location="cpu", weights_only=False)
+        assert b3_payload["schema"] == "bplus-v2.2-b3-ppo-checkpoint-1"
+        assert b3_payload["next_schedule"]["intervention_logit_offset"] == 0.0
+        restored_unified = UnifiedV22Policy(
+            ARM_BC_FROZEN, initialization_seed=123
+        )
+        restored_unified_critics = B2Critics(hidden_dim=8)
+        restored_unified_optimizers = build_b2_optimizers(
+            restored_unified, restored_unified_critics, critic_learning_rate=5e-5
+        )
+        load_checkpoint(
+            b3_checkpoint,
+            policy=restored_unified,
+            critics=restored_unified_critics,
+            optimizers=restored_unified_optimizers,
+            expected_arm=ARM_BC_FROZEN,
+            expected_seed=0,
+            expected_curriculum_digest="5" * 64,
+            expected_training_manifest_sha256="6" * 64,
+            expected_plan_sha256="7" * 64,
+            expected_source_commit="8" * 40,
+            expected_config=b3_config,
+            expected_iteration=0,
+            expected_occurrence_count={},
+            expected_checkpoint_sha256=b3_digest,
+        )
+        loaded_policy, loaded_payload = load_policy_only_checkpoint(
+            b3_checkpoint,
+            expected_arm=ARM_BC_FROZEN,
+            expected_seed=0,
+            expected_iteration=0,
+            expected_training_manifest_sha256="6" * 64,
+            expected_plan_sha256="7" * 64,
+            expected_checkpoint_sha256=b3_digest,
+            device=torch.device("cpu"),
+        )
+        assert isinstance(loaded_policy, UnifiedV22Policy)
+        assert loaded_payload["schema"] == "bplus-v2.2-b3-ppo-checkpoint-1"
     source_commit = "4" * 40
     occurrence_count = {"L2:test": 48}
     original = {name: value.detach().clone() for name, value in policy.state_dict().items()}

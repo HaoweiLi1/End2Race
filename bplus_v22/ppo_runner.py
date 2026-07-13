@@ -39,9 +39,12 @@ from bplus_v22.ppo_env import (
     run_b2_episode,
 )
 from bplus_v22.remediated_model import (
+    B3_CONDITIONAL_BRAKE_PRIOR_PROBABILITY,
+    B3_INTERVENTION_PRIOR_PROBABILITY,
     HierarchicalResidualAction,
     HierarchicalResidualDistribution,
     RemediatedV22Policy,
+    UnifiedV22Policy,
 )
 from bplus_v22.sidecar import load_sidecar_bundle
 from d25.oracle import load_bc_model
@@ -50,6 +53,10 @@ from d25.oracle import load_bc_model
 RUN_PLAN_SCHEMA = "end2race-b2-run-plan-1"
 PILOT_SCHEMA = "bplus-v2.2-b2-ppo-pilot-1"
 CHECKPOINT_SCHEMA = "bplus-v2.2-b2-ppo-checkpoint-1"
+B3_PILOT_SCHEMA = "bplus-v2.2-b3-ppo-pilot-1"
+B3_CHECKPOINT_SCHEMA = "bplus-v2.2-b3-ppo-checkpoint-1"
+B2_POLICY_CONTRACT = "centered_fresh_prior"
+B3_POLICY_CONTRACT = "unified_standard_mode_v1"
 ACTION_NOISE_SCHEMA = KEYED_ACTION_NOISE_SCHEMA
 MINIBATCH_ORDER_SCHEMA = "end2race:bplus-v2.2:b2-minibatch:v1"
 TRAINING_MANIFEST_NAME = "training_scenarios.tsv"
@@ -58,6 +65,7 @@ FULL_TOP_OFFSET = 3.8027754227
 FULL_BRAKE_OFFSET = 6.0
 EXPLORATION_MULTIPLIERS = (1.0,) * 5 + (0.8, 0.6, 0.4, 0.2) + (0.0,) * 11
 ITERATIONS = 20
+B3_ITERATIONS = 40
 EPISODES_PER_ITERATION = 16
 PPO_EPOCHS = 3
 MINIBATCH_SIZE = 128
@@ -67,6 +75,29 @@ TARGET_KL = 0.03
 MAX_GRAD_NORM = 0.5
 CRITIC_LR = 5e-5
 REPLAY_FLOAT32_ATOL = 1e-4
+
+
+def _policy_contract(config: Mapping[str, Any]) -> str:
+    value = config.get("policy_contract", B2_POLICY_CONTRACT)
+    if value not in {B2_POLICY_CONTRACT, B3_POLICY_CONTRACT}:
+        raise ValueError(f"unknown PPO policy contract: {value!r}")
+    return str(value)
+
+
+def _iterations(config: Mapping[str, Any]) -> int:
+    return B3_ITERATIONS if _policy_contract(config) == B3_POLICY_CONTRACT else ITERATIONS
+
+
+def _checkpoint_schema(config: Mapping[str, Any]) -> str:
+    return (
+        B3_CHECKPOINT_SCHEMA
+        if _policy_contract(config) == B3_POLICY_CONTRACT
+        else CHECKPOINT_SCHEMA
+    )
+
+
+def _pilot_schema(config: Mapping[str, Any]) -> str:
+    return B3_PILOT_SCHEMA if _policy_contract(config) == B3_POLICY_CONTRACT else PILOT_SCHEMA
 
 
 def _canonical_json(value: Any) -> bytes:
@@ -101,8 +132,8 @@ def load_run_plan(path: str | Path) -> dict[str, Any]:
     expected = hashlib.sha256(_canonical_json(unsigned)).hexdigest()
     if observed != expected:
         raise ValueError("B2 run-plan digest mismatch")
-    if payload.get("kind") != "b2_train":
-        raise ValueError("ppo-pilot requires a B2 training plan")
+    if payload.get("kind") not in {"b2_train", "b3_train"}:
+        raise ValueError("ppo-pilot requires a supported B2/B3 training plan")
     config = payload.get("config")
     if not isinstance(config, dict):
         raise ValueError("B2 run-plan config is missing")
@@ -208,6 +239,44 @@ def _validate_control_plane_ready(
 
 
 def _validate_config(config: Mapping[str, Any]) -> None:
+    contract = _policy_contract(config)
+    if contract == B3_POLICY_CONTRACT:
+        expected = {
+            "policy_contract": B3_POLICY_CONTRACT,
+            "iterations": B3_ITERATIONS,
+            "episodes_per_iteration": EPISODES_PER_ITERATION,
+            "collision_episodes_per_iteration": 8,
+            "remaining_episodes_per_iteration": 8,
+            "ppo_epochs": PPO_EPOCHS,
+            "minibatch_size": MINIBATCH_SIZE,
+            "clip_eps": CLIP_EPSILON,
+            "action_core_lr": 3e-5,
+            "head_lr": 3e-4,
+            "sidecar_lr": 3e-6,
+            "critic_lr": CRITIC_LR,
+            "entropy_coef": ENTROPY_COEFFICIENT,
+            "max_grad_norm": MAX_GRAD_NORM,
+            "target_kl": TARGET_KL,
+            "replay_float32_atol": REPLAY_FLOAT32_ATOL,
+            "collision_scale_decay": COLLISION_SCALE_DECAY,
+            "deterministic_contract": "standard_mode_of_training_distribution",
+            "dual_freeze_through_iteration": 0,
+            "bc_baseline_expected_collision": 24,
+            "bc_baseline_expected_overtake": 138,
+        }
+        for name, value in expected.items():
+            if config.get(name) != value:
+                raise ValueError(f"B3 locked config drift: {name}={config.get(name)!r}")
+        exploration = config.get("exploration")
+        if not isinstance(exploration, Mapping) or exploration != {
+            "intervention_prior_probability": B3_INTERVENTION_PRIOR_PROBABILITY,
+            "conditional_brake_prior_probability": B3_CONDITIONAL_BRAKE_PRIOR_PROBABILITY,
+            "external_gate_offsets_forbidden": True,
+            "steer_std_scale": 0.1,
+            "brake_std_scale": 1.0,
+        }:
+            raise ValueError("B3 unified exploration contract drift")
+        return
     expected = {
         "iterations": ITERATIONS,
         "episodes_per_iteration": EPISODES_PER_ITERATION,
@@ -295,18 +364,43 @@ def exploration_for_iteration(iteration: int) -> BehaviorExplorationConfig:
     )
 
 
+def behavior_for_config(
+    iteration: int, config: Mapping[str, Any]
+) -> BehaviorExplorationConfig:
+    if _policy_contract(config) == B2_POLICY_CONTRACT:
+        return exploration_for_iteration(iteration)
+    index = int(iteration)
+    if index != iteration or not 1 <= index <= B3_ITERATIONS:
+        raise ValueError("B3 iteration is outside 1..40")
+    return BehaviorExplorationConfig(
+        intervention_logit_offset=0.0,
+        conditional_brake_logit_offset=0.0,
+        steer_std_scale=0.1,
+        brake_std_scale=1.0,
+        schedule_id=f"b3-unified-policy-iter{index:02d}",
+    )
+
+
 def load_fresh_policy(
     arm: str,
     seed: int,
     bc_path: str | Path,
     sidecar_release: str | Path,
     device: torch.device,
+    policy_contract: str = B2_POLICY_CONTRACT,
 ) -> RemediatedV22Policy:
     if arm not in ARMS or int(seed) not in (0, 1):
         raise ValueError("invalid B2 policy identity")
     bc = load_bc_model(str(bc_path), device)
     sidecar_state, sidecar_mean, sidecar_std, _ = load_sidecar_bundle(sidecar_release)
-    policy = RemediatedV22Policy(
+    policy_class = (
+        UnifiedV22Policy
+        if policy_contract == B3_POLICY_CONTRACT
+        else RemediatedV22Policy
+    )
+    if policy_contract not in {B2_POLICY_CONTRACT, B3_POLICY_CONTRACT}:
+        raise ValueError("invalid PPO policy contract")
+    policy = policy_class(
         arm,
         bc_state_dict=bc.state_dict(),
         sidecar_state_dict=sidecar_state,
@@ -329,6 +423,7 @@ def _macro_record(
     arm: str,
     seed: int,
     iteration: int,
+    checkpoint_schema: str = CHECKPOINT_SCHEMA,
 ) -> MacroReplayRecord:
     action_tensor = torch.as_tensor(row.action, dtype=torch.float32).reshape(1, 4)
     action = HierarchicalResidualAction.from_tensor(action_tensor)
@@ -360,7 +455,7 @@ def _macro_record(
         arm=arm,
         training_seed=int(seed),
         policy_iteration=int(iteration),
-        checkpoint_schema=CHECKPOINT_SCHEMA,
+        checkpoint_schema=checkpoint_schema,
         bc_feature=row.bc_feature,
         lidar_history=row.lidar_history,
         scalar_history=row.scalar_history,
@@ -636,6 +731,8 @@ def save_checkpoint(
     ):
         raise ValueError("B2 checkpoint cannot absorb behavior exploration offset")
     _validate_config(config)
+    total_iterations = _iterations(config)
+    checkpoint_schema = _checkpoint_schema(config)
     if not isinstance(source_commit, str) or len(source_commit) != 40 or any(
         character not in "0123456789abcdef" for character in source_commit
     ):
@@ -651,7 +748,7 @@ def save_checkpoint(
     checkpoint_iteration = int(iteration)
     if (
         checkpoint_iteration != iteration
-        or not 0 <= checkpoint_iteration <= ITERATIONS
+        or not 0 <= checkpoint_iteration <= total_iterations
     ):
         raise ValueError("B2 checkpoint iteration is invalid")
     expected_episode_count = checkpoint_iteration * EPISODES_PER_ITERATION
@@ -663,7 +760,7 @@ def save_checkpoint(
     if checkpoint_iteration == 0 and update_count != 0:
         raise ValueError("B2 iteration-0 checkpoint cannot contain optimizer updates")
     payload = {
-        "schema": CHECKPOINT_SCHEMA,
+        "schema": checkpoint_schema,
         "checkpoint_id": f"{arm}-seed{seed}-iter{checkpoint_iteration:04d}",
         "arm": arm,
         "seed": int(seed),
@@ -689,8 +786,8 @@ def save_checkpoint(
         "rng_state": _rng_state(),
         "next_schedule": (
             None
-            if checkpoint_iteration >= ITERATIONS
-            else exploration_for_iteration(checkpoint_iteration + 1).as_dict()
+            if checkpoint_iteration >= total_iterations
+            else behavior_for_config(checkpoint_iteration + 1, config).as_dict()
         ),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -737,12 +834,14 @@ def load_checkpoint(
     if not isinstance(payload, dict) or set(payload) != expected_keys:
         raise ValueError("B2 checkpoint field inventory mismatch")
     iteration = int(expected_iteration)
-    if iteration != expected_iteration or not 0 <= iteration <= ITERATIONS:
+    total_iterations = _iterations(expected_config)
+    checkpoint_schema = _checkpoint_schema(expected_config)
+    if iteration != expected_iteration or not 0 <= iteration <= total_iterations:
         raise ValueError("B2 expected checkpoint iteration is invalid")
     expected_cursor = dict(sorted(expected_occurrence_count.items()))
     _validate_config(expected_config)
     if (
-        payload.get("schema") != CHECKPOINT_SCHEMA
+        payload.get("schema") != checkpoint_schema
         or payload.get("checkpoint_id")
         != f"{expected_arm}-seed{int(expected_seed)}-iter{iteration:04d}"
         or payload.get("arm") != expected_arm
@@ -766,8 +865,8 @@ def load_checkpoint(
         raise ValueError("B2 checkpoint optimizer-update cursor is invalid")
     expected_next = (
         None
-        if iteration >= ITERATIONS
-        else exploration_for_iteration(iteration + 1).as_dict()
+        if iteration >= total_iterations
+        else behavior_for_config(iteration + 1, expected_config).as_dict()
     )
     if payload.get("next_schedule") != expected_next:
         raise ValueError("B2 checkpoint next-schedule cursor mismatch")
@@ -779,7 +878,14 @@ def load_checkpoint(
     if torch.cuda.is_available() and len(rng_state["torch_cuda"]) != torch.cuda.device_count():
         raise ValueError("B2 checkpoint CUDA RNG device inventory mismatch")
     frozen_before = policy.frozen_snapshot()
-    policy.load_hierarchical_state_dict(payload["policy_state"])
+    if _policy_contract(expected_config) == B3_POLICY_CONTRACT:
+        if not isinstance(policy, UnifiedV22Policy):
+            raise ValueError("B3 checkpoint requires a unified policy instance")
+        policy.load_unified_state_dict(payload["policy_state"])
+    else:
+        if isinstance(policy, UnifiedV22Policy):
+            raise ValueError("B2 checkpoint cannot load into a unified policy")
+        policy.load_hierarchical_state_dict(payload["policy_state"])
     policy.assert_frozen_unchanged(frozen_before)
     if not torch.equal(
         policy.intervention_logit_offset,
@@ -811,8 +917,13 @@ def load_policy_only_checkpoint(
     if _file_sha256(source) != expected_checkpoint_sha256:
         raise ValueError("B2 policy-only checkpoint file digest mismatch")
     payload = torch.load(source, map_location="cpu", weights_only=False)
+    payload_config = payload.get("config")
+    if not isinstance(payload_config, Mapping):
+        raise ValueError("PPO policy-only checkpoint lacks locked config")
+    _validate_config(payload_config)
+    contract = _policy_contract(payload_config)
     if (
-        payload.get("schema") != CHECKPOINT_SCHEMA
+        payload.get("schema") != _checkpoint_schema(payload_config)
         or payload.get("arm") != expected_arm
         or payload.get("seed") != int(expected_seed)
         or payload.get("iteration") != int(expected_iteration)
@@ -821,10 +932,14 @@ def load_policy_only_checkpoint(
         or payload.get("run_plan_sha256") != expected_plan_sha256
     ):
         raise ValueError("B2 policy-only checkpoint envelope mismatch")
-    policy = RemediatedV22Policy(
+    policy_class = UnifiedV22Policy if contract == B3_POLICY_CONTRACT else RemediatedV22Policy
+    policy = policy_class(
         expected_arm, initialization_seed=SEED + int(expected_seed)
     ).to(device)
-    policy.load_hierarchical_state_dict(payload["policy_state"])
+    if contract == B3_POLICY_CONTRACT:
+        policy.load_unified_state_dict(payload["policy_state"])
+    else:
+        policy.load_hierarchical_state_dict(payload["policy_state"])
     if not torch.equal(
         policy.intervention_logit_offset,
         torch.zeros_like(policy.intervention_logit_offset),
@@ -951,7 +1066,9 @@ def _expected_occurrence_cursor(curriculum_plan, through_iteration: int) -> dict
     return dict(sorted(counts.items()))
 
 
-def _read_iteration_ledger(path: Path) -> list[dict[str, Any]]:
+def _read_iteration_ledger(
+    path: Path, max_iterations: int = ITERATIONS
+) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     raw = path.read_bytes()
@@ -968,7 +1085,7 @@ def _read_iteration_ledger(path: Path) -> list[dict[str, Any]]:
         if not isinstance(row, dict) or row.get("iteration") != line_number:
             raise ValueError("B2 iteration ledger sequence is not contiguous")
         rows.append(row)
-    if len(rows) > ITERATIONS:
+    if len(rows) > int(max_iterations):
         raise ValueError("B2 iteration ledger exceeds the frozen schedule")
     return rows
 
@@ -1065,6 +1182,9 @@ def run_plumbing_smoke(
     validated = validate_pilot_plan(plan_path)
     plan = validated["plan"]
     paths = validated["paths"]
+    config = plan["config"]
+    policy_contract = _policy_contract(config)
+    checkpoint_schema = _checkpoint_schema(config)
     device = torch.device(device_name)
     if device.type == "cuda" and not torch.cuda.is_available():
         raise ValueError("B2 plumbing smoke requested unavailable CUDA")
@@ -1080,13 +1200,20 @@ def run_plumbing_smoke(
     bc_checkpoint = paths["bc"]
     sidecar_bundle = paths["sidecar"] / "sidecar_bundle.pt"
     d2_metadata = paths["metadata"]
-    behavior = exploration_for_iteration(1)
+    behavior = behavior_for_config(1, config)
     arm_reports: dict[str, Any] = {}
     for arm in ARMS:
         torch.manual_seed(SEED)
         np.random.seed(SEED)
         random.seed(SEED)
-        policy = load_fresh_policy(arm, 0, paths["bc"], paths["sidecar"], device)
+        policy = load_fresh_policy(
+            arm,
+            0,
+            paths["bc"],
+            paths["sidecar"],
+            device,
+            policy_contract,
+        )
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(SEED + 1000)
             critics = B2Critics().to(device)
@@ -1107,7 +1234,14 @@ def run_plumbing_smoke(
             )
             buffer.add_episode(
                 [
-                    _macro_record(result, row, arm=arm, seed=0, iteration=1)
+                    _macro_record(
+                        result,
+                        row,
+                        arm=arm,
+                        seed=0,
+                        iteration=1,
+                        checkpoint_schema=checkpoint_schema,
+                    )
                     for row in result.transitions
                 ]
             )
@@ -1199,6 +1333,11 @@ def run_pilot_job(
     plan = validated["plan"]
     paths = validated["paths"]
     job = validated["job"]
+    config = plan["config"]
+    policy_contract = _policy_contract(config)
+    total_iterations = _iterations(config)
+    checkpoint_schema = _checkpoint_schema(config)
+    pilot_schema = _pilot_schema(config)
     _validate_control_plane_ready(plan, paths)
     arm = str(job["arm"])
     seed = int(job["seed"])
@@ -1213,7 +1352,14 @@ def run_pilot_job(
         torch.manual_seed(SEED + seed)
         np.random.seed(SEED + seed)
         random.seed(SEED + seed)
-        policy = load_fresh_policy(arm, seed, paths["bc"], paths["sidecar"], device)
+        policy = load_fresh_policy(
+            arm,
+            seed,
+            paths["bc"],
+            paths["sidecar"],
+            device,
+            policy_contract,
+        )
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(SEED + seed + 1000)
             critics = B2Critics().to(device)
@@ -1224,8 +1370,8 @@ def run_pilot_job(
         collision_scale = RunningCollisionScale(decay=COLLISION_SCALE_DECAY)
         scenarios = load_b2_scenario_sets(paths["task8"], paths["metadata"])
         curriculum = B2Curriculum(scenarios, seed)
-        curriculum_plan = curriculum.plan(ITERATIONS)
-        curriculum_digest = curriculum.digest(ITERATIONS)
+        curriculum_plan = curriculum.plan(total_iterations)
+        curriculum_digest = curriculum.digest(total_iterations)
         training_manifest = paths["task8"] / TRAINING_MANIFEST_NAME
         training_manifest_sha = _file_sha256(training_manifest)
         archived_rate = float(
@@ -1240,7 +1386,7 @@ def run_pilot_job(
         dual_floor = max(0.0, archived_rate - 0.01)
         dual = OvertakeDual(floor=dual_floor)
         config_record = {
-            "schema": PILOT_SCHEMA,
+            "schema": pilot_schema,
             "arm": arm,
             "seed": seed,
             "run_plan_sha256": plan["plan_sha256"],
@@ -1249,7 +1395,7 @@ def run_pilot_job(
             "training_manifest_sha256": training_manifest_sha,
             "archived_bc_overtake_rate": archived_rate,
             "dual_floor": dual_floor,
-            "config": plan["config"],
+            "config": config,
         }
         curriculum_record = _curriculum_record(curriculum_plan)
         checkpoint0 = partial / "checkpoints/iter_0000.pt"
@@ -1264,7 +1410,7 @@ def run_pilot_job(
                 raise ValueError("B2 resume config/curriculum prefix drift")
             _repair_torn_iteration_ledger(partial)
             iteration_rows_ledger = _read_iteration_ledger(
-                partial / "iterations.jsonl"
+                partial / "iterations.jsonl", total_iterations
             )
             committed_iteration = len(iteration_rows_ledger)
             _quarantine_uncommitted_resume_files(partial, committed_iteration)
@@ -1285,7 +1431,7 @@ def run_pilot_job(
                 expected_training_manifest_sha256=training_manifest_sha,
                 expected_plan_sha256=plan["plan_sha256"],
                 expected_source_commit=plan["source_commit"],
-                expected_config=plan["config"],
+                expected_config=config,
                 expected_iteration=committed_iteration,
                 expected_occurrence_count=expected_cursor,
                 expected_checkpoint_sha256=checkpoint_sha,
@@ -1313,7 +1459,7 @@ def run_pilot_job(
                 curriculum_digest=curriculum_digest,
                 training_manifest_sha256=training_manifest_sha,
                 plan_sha256=plan["plan_sha256"],
-                config=plan["config"],
+                config=config,
                 source_commit=plan["source_commit"],
                 occurrence_count={},
                 optimizer_update_count=0,
@@ -1322,9 +1468,9 @@ def run_pilot_job(
             optimizer_update_count = 0
             start_iteration = 1
             resumed_from_iteration = None
-        for iteration in range(start_iteration, ITERATIONS + 1):
+        for iteration in range(start_iteration, total_iterations + 1):
             iteration_rows = curriculum_plan[iteration - 1]
-            behavior = exploration_for_iteration(iteration)
+            behavior = behavior_for_config(iteration, config)
             buffer = EpisodeCompleteMacroBuffer(target_episodes=EPISODES_PER_ITERATION)
             outcome_rows = []
             for scenario in iteration_rows:
@@ -1346,6 +1492,7 @@ def run_pilot_job(
                         arm=arm,
                         seed=seed,
                         iteration=iteration,
+                        checkpoint_schema=checkpoint_schema,
                     )
                     for row in result.transitions
                 ]
@@ -1380,7 +1527,14 @@ def run_pilot_job(
             )
             optimizer_update_count += int(update["updates"])
             dual_record = None
-            if EXPLORATION_MULTIPLIERS[iteration - 1] == 0.0:
+            if policy_contract == B3_POLICY_CONTRACT:
+                overtake_rate = float(
+                    np.mean([row["terminal_overtake"] for row in outcome_rows])
+                )
+                dual_record = dual.update_with_record(
+                    overtake_rate, completed_episodes=len(outcome_rows)
+                ).ordered_log()
+            elif EXPLORATION_MULTIPLIERS[iteration - 1] == 0.0:
                 overtake_rate = float(np.mean([row["terminal_overtake"] for row in outcome_rows]))
                 dual_record = dual.update_with_record(
                     overtake_rate, completed_episodes=len(outcome_rows)
@@ -1401,7 +1555,7 @@ def run_pilot_job(
                 curriculum_digest=curriculum_digest,
                 training_manifest_sha256=training_manifest_sha,
                 plan_sha256=plan["plan_sha256"],
-                config=plan["config"],
+                config=config,
                 source_commit=plan["source_commit"],
                 occurrence_count=occurrence_count,
                 optimizer_update_count=optimizer_update_count,
@@ -1432,23 +1586,27 @@ def run_pilot_job(
                 },
             )
         summary = {
-            "schema": PILOT_SCHEMA,
+            "schema": pilot_schema,
             "passed": True,
             "integrity_passed": True,
             "arm": arm,
             "seed": seed,
-            "iterations": ITERATIONS,
+            "iterations": total_iterations,
             "resumed_from_iteration": resumed_from_iteration,
             "optimizer_minibatches_completed": optimizer_update_count,
             "iteration0_checkpoint_sha256": sha0,
-            "iteration20_checkpoint_sha256": _file_sha256(
-                partial / "checkpoints/iter_0020.pt"
+            "final_checkpoint_sha256": _file_sha256(
+                partial / f"checkpoints/iter_{total_iterations:04d}.pt"
             ),
             "training_manifest_sha256": training_manifest_sha,
             "curriculum_sha256": curriculum_digest,
             "run_plan_sha256": plan["plan_sha256"],
             "product_kpi_evaluated": False,
         }
+        if policy_contract == B2_POLICY_CONTRACT:
+            summary["iteration20_checkpoint_sha256"] = summary[
+                "final_checkpoint_sha256"
+            ]
         _write_json(partial / "summary.json", summary)
         (partial / "COMPLETE").write_text("COMPLETE\n", encoding="utf-8")
         output.parent.mkdir(parents=True, exist_ok=True)

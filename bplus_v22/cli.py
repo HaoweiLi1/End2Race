@@ -52,6 +52,7 @@ from bplus_v22.hierarchical_closed_loop import (
     validate_hierarchical_closed_loop,
 )
 from bplus_v22.ppo_runner import (
+    B3_CHECKPOINT_SCHEMA,
     CHECKPOINT_SCHEMA as B2_CHECKPOINT_SCHEMA,
     load_policy_only_checkpoint,
     run_plumbing_smoke,
@@ -100,8 +101,27 @@ def _sha256_file(path: str | Path) -> str:
 def _load_eval_plan(plan_path: str | Path, job_id: str | None = None):
     path = Path(plan_path).resolve()
     plan = json.loads(path.read_text(encoding="utf-8"))
-    if plan.get("schema") != B2_RUN_PLAN_SCHEMA or plan.get("kind") != "b2_eval":
-        raise ValueError("B2 evaluator requires a b2_eval RunPlan")
+    if plan.get("schema") != B2_RUN_PLAN_SCHEMA or plan.get("kind") not in {
+        "b2_eval",
+        "b3_eval",
+    }:
+        raise ValueError("PPO evaluator requires a b2_eval or b3_eval RunPlan")
+    config = plan.get("config")
+    expected_contract = (
+        "unified_standard_mode_v1"
+        if plan["kind"] == "b3_eval"
+        else "centered_fresh_prior"
+    )
+    expected_iteration = 40 if plan["kind"] == "b3_eval" else 20
+    if (
+        not isinstance(config, dict)
+        or config.get("policy_contract", "centered_fresh_prior")
+        != expected_contract
+        or int(config.get("checkpoint_iteration", expected_iteration))
+        != expected_iteration
+        or config.get("evaluation_offsets") != [0.0, 0.0]
+    ):
+        raise ValueError("PPO eval policy/iteration contract mismatch")
     observed = str(plan.get("plan_sha256", ""))
     unsigned = dict(plan)
     unsigned.pop("plan_sha256", None)
@@ -143,7 +163,16 @@ def _load_eval_plan(plan_path: str | Path, job_id: str | None = None):
     return path, plan, root, contract, selected
 
 
-def _checkpoint_specs(root: Path, contract: dict, parent_plan_sha256: str):
+def _checkpoint_specs(
+    root: Path,
+    contract: dict,
+    parent_plan_sha256: str,
+    *,
+    eval_kind: str,
+    expected_iteration: int,
+):
+    if eval_kind not in {"b2_eval", "b3_eval"}:
+        raise ValueError("unsupported PPO evaluation kind")
     training_sha = str(contract.get("training_manifest_sha256", ""))
     if len(training_sha) != 64:
         raise ValueError("B2 eval plan lacks training-manifest digest")
@@ -154,11 +183,14 @@ def _checkpoint_specs(root: Path, contract: dict, parent_plan_sha256: str):
         if not path.is_file() or _sha256_file(path) != row["sha256"]:
             raise ValueError("B2 eval checkpoint file drift")
         payload = torch.load(path, map_location="cpu", weights_only=False)
+        expected_schema = (
+            B3_CHECKPOINT_SCHEMA if eval_kind == "b3_eval" else B2_CHECKPOINT_SCHEMA
+        )
         if (
-            payload.get("schema") != B2_CHECKPOINT_SCHEMA
+            payload.get("schema") != expected_schema
             or payload.get("arm") != row["arm"]
             or payload.get("seed") != int(row["seed"])
-            or payload.get("iteration") != 20
+            or payload.get("iteration") != int(expected_iteration)
             or payload.get("training_manifest_sha256") != training_sha
             or payload.get("run_plan_sha256") != parent_plan_sha256
         ):
@@ -178,7 +210,11 @@ def _checkpoint_specs(root: Path, contract: dict, parent_plan_sha256: str):
 def validate_eval_plan(plan_path: str | Path) -> dict:
     _, plan, root, contract, _ = _load_eval_plan(plan_path)
     specs, _, training_sha = _checkpoint_specs(
-        root, contract, str(plan["parent_plan_sha256"])
+        root,
+        contract,
+        str(plan["parent_plan_sha256"]),
+        eval_kind=str(plan["kind"]),
+        expected_iteration=int(plan["config"]["checkpoint_iteration"]),
     )
     return {
         "passed": len(specs) == 6,
@@ -278,7 +314,11 @@ def run_eval_job(plan_path: str | Path, job_id: str, device_name: str = "cuda:0"
     _, plan, root, contract, job = _load_eval_plan(plan_path, job_id)
     parent_plan_sha = str(plan["parent_plan_sha256"])
     specs, checkpoint_paths, training_sha = _checkpoint_specs(
-        root, contract, parent_plan_sha
+        root,
+        contract,
+        parent_plan_sha,
+        eval_kind=str(plan["kind"]),
+        expected_iteration=int(plan["config"]["checkpoint_iteration"]),
     )
     device = torch.device(device_name)
     if device.type == "cuda" and not torch.cuda.is_available():
@@ -294,7 +334,7 @@ def run_eval_job(plan_path: str | Path, job_id: str, device_name: str = "cuda:0"
             checkpoint_paths[expected.variant],
             expected_arm=expected.arm,
             expected_seed=expected.seed,
-            expected_iteration=20,
+            expected_iteration=int(plan["config"]["checkpoint_iteration"]),
             expected_training_manifest_sha256=training_sha,
             expected_plan_sha256=parent_plan_sha,
             expected_checkpoint_sha256=expected.checkpoint_sha256,
@@ -358,7 +398,11 @@ def run_eval_job(plan_path: str | Path, job_id: str, device_name: str = "cuda:0"
 def merge_eval_job(plan_path: str | Path, input_root: str | Path, output_dir: str | Path) -> dict:
     _, plan, root, contract, _ = _load_eval_plan(plan_path)
     specs, _, training_sha = _checkpoint_specs(
-        root, contract, str(plan["parent_plan_sha256"])
+        root,
+        contract,
+        str(plan["parent_plan_sha256"]),
+        eval_kind=str(plan["kind"]),
+        expected_iteration=int(plan["config"]["checkpoint_iteration"]),
     )
     manifest = root / str(contract["manifest_relpath"])
     task8_rows = read_task8_development(manifest, contract["manifest_sha256"])
