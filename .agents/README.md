@@ -168,7 +168,8 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 
 > **B3 当前只完成实现，尚未运行：** B3 已把采样、PPO log-prob 与确定性
 > 部署统一为一个 effective-logit policy，并冻结 40-iteration 控制合同。
-> 九组核心 CPU 合同测试通过，但尚未创建 RunPlan、stage 或启动 GPU。
+> 九组核心 CPU 合同测试通过，源码提交为 `19e83ae`，但尚未创建 RunPlan、
+> stage 或启动 GPU。
 > 先读 `.agents/B3_PPO_PLAN.md` 与 `.agents/B3_IMPLEMENTATION_RECORD.md`。
 
 ---

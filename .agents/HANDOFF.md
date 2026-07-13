@@ -31,8 +31,9 @@ historical ledger below is intentionally retained; use newest §23 for B3, §22 
 > all failed the direction gate because corrected overtake fell below BC; no arm
 > was selected and the fresh pool remains sealed. Do not continue these candidates
 > into medium/final evaluation. B3 prospectively fixes the training/deployment
-> policy mismatch and is implemented but has no RunPlan or numerical result yet.
-> Review and commit the exact B3 source before creating one unique immutable plan.
+> policy mismatch and is implemented at commit `19e83ae`, but has no RunPlan or
+> numerical result yet. Review that exact source before creating one unique
+> immutable plan.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -2209,7 +2210,8 @@ the immutable historical release was not rewritten.
 
 No simulator/GPU job, immutable B3 RunPlan, stage, product evaluation, arm
 selection or pool opening occurred. The remote checkout was not modified in
-this implementation step.
+this implementation step. The exact implementation was committed locally as
+`19e83aed96126a61d9a848135fe860adc17ec48f`; it was not pushed.
 
 ### 23.5 Next-chat boundary
 
@@ -2218,8 +2220,8 @@ this implementation step.
 2. A blocking objection must threaten sampled/executed/logged-action identity,
    deterministic-policy identity, checkpoint continuity or the direct
    collision/overtake decision. Do not add TTC or warm-start proxy gates.
-3. Commit the exact code/docs/tests before creating a plan; the control plane
-   intentionally rejects a dirty worktree.
+3. The implementation is committed as `19e83ae`; verify a clean worktree and
+   review that commit before creating a plan.
 4. Then create one unique `plan-b3`, show and dry-run it, stage both hosts and
    rerun the existing topology-matched BC baseline plus host/P3 preflights.
 5. Do not start six numerical learners unless the staged committed source and

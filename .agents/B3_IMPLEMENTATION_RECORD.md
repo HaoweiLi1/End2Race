@@ -6,6 +6,8 @@ Design authority: `.agents/B3_PPO_PLAN.md`
 Parent result: B2 training `b2_direct_20260713_081422`, evaluation
 `b2_eval_20260713_165800`
 
+Implementation commit: `19e83aed96126a61d9a848135fe860adc17ec48f`
+
 ## 1. What B3 is fixing
 
 B2's stochastic rollout and deterministic product evaluation did not use the
@@ -183,7 +185,8 @@ continuity or the direct lexicographic KPI decision.
 
 ## 7. Next allowed operational step
 
-After this exact source is committed and independently reviewed, create one
+This exact source was committed as `19e83aed96126a61d9a848135fe860adc17ec48f`.
+After independent review, create one
 unique B3 RunPlan with `./run.sh plan-b3`, inspect it with `show`, and run only
 the existing staging, topology BC baseline, host preflight and plumbing-smoke
 phases. Numerical learners must not start unless those gates bind the same
