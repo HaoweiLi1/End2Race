@@ -1660,7 +1660,11 @@ def _remote_stage_commands(plan_path: Path, plan: RunPlan, host: HostSpec) -> li
         f"printf '%s  %s\\n' {shlex.quote(plan.inputs_archive_sha256)} {shlex.quote(inputs_target)} | sha256sum -c -; "
         f"tar -xf {shlex.quote(source_target)} -C {shlex.quote(root + '/repo')}; "
         f"tar -xf {shlex.quote(inputs_target)} -C {shlex.quote(root + '/inputs')}; "
-        f"{shlex.quote(host.python)} {shlex.quote(root + '/repo/Experiments/runner.py')} "
+        # The verification process imports staged modules before it makes the
+        # source tree read-only.  Suppress bytecode at that one bootstrap seam
+        # so the verifier cannot invalidate its own tracked-file inventory.
+        f"PYTHONDONTWRITEBYTECODE=1 {shlex.quote(host.python)} "
+        f"{shlex.quote(root + '/repo/Experiments/runner.py')} "
         f"_verify-stage {shlex.quote(plan_target)} --host remote"
     )
     return [

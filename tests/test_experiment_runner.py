@@ -260,6 +260,7 @@ def test_remote_stage_is_explicit_allowlist() -> None:
         assert "git pull" not in rendered and "git checkout" not in rendered
         assert "~/Documents/End2Race" not in rendered
         assert "set -eu; umask 077; test ! -e" in rendered
+        assert "PYTHONDONTWRITEBYTECODE=1" in rendered
 
 
 def test_remote_commands_have_ssh_keepalive() -> None:

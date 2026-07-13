@@ -556,6 +556,10 @@ deprecation warning 和 RK4 warning 也不构成 test failure。
 6. **Retained actor tail**：actor tail 不按自身长度重新归一成一个完整 optimizer step；
    它沿用 full-minibatch denominator。critic 按 owner 决定保留普通 unweighted
    per-state MSE。
+7. **Remote stage 自污染**：首个 owner-authorized RunPlan 在 rollout 前被 source
+   inventory gate 阻断。remote `_verify-stage` 首次 import 产生六个 `*.pyc`，使其下一次
+   check 正确失败。bootstrap 已增加 `PYTHONDONTWRITEBYTECODE=1`；失败 RunPlan/stage
+   保留且不得复用，新 commit 必须创建新 RunPlan。
 
 ### 12.6 Known limits and review boundary
 

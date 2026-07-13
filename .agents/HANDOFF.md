@@ -2449,3 +2449,16 @@ run BC plus all three candidates on the frozen 600-case grid: shard0 local,
 shards1-4 remote. Merge only after all 2400 paired rows and NPZ hashes validate.
 Do not add seed0, residual/gate/dual/anchor, change PPO values, extend iterations
 or open fresh/final pools.
+
+### 25.4 First staging attempt stopped before rollout
+
+RunPlan `b4_seed1_20260714_002701` (plan SHA
+`cdf9358ff36d72b2407362acd9c433ca93288d6dd8d2b1fa6d06d19bd0ab2012`, source
+`bc0d81ece46c77a96c001d565e1de3bd8ffa030c`) staged both hosts, but the first
+baseline stage check stopped before any episode. The remote `_verify-stage`
+process imported staged modules before making the tree read-only and created six
+`*.pyc` files inside `repo/`; its next inventory check correctly rejected them.
+The failed isolated roots/config archives are preserved. The runner bootstrap now
+sets `PYTHONDONTWRITEBYTECODE=1`, with a regression assertion in
+`test_experiment_runner.py`. A new source commit and unique RunPlan are required;
+never repair or reuse the failed staged root.
