@@ -9,8 +9,9 @@ the physical row index in the corrected Task-8 TSV, never ``manifest_order``.
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import hashlib
+import json
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
@@ -37,6 +38,11 @@ EXPECTED_VARIANTS = 1 + len(ARMS) * len(PILOT_SEEDS)
 EXPECTED_RESULTS = EXPECTED_SCENARIOS * EXPECTED_VARIANTS
 EXPECTED_BC_COLLISIONS = 24
 EXPECTED_BC_OVERTAKES = 138
+BASELINE_SHARD_COUNT = 4
+EXPECTED_BC_COLLISIONS_BY_SHARD = (12, 2, 5, 5)
+EXPECTED_BC_OVERTAKES_BY_SHARD = (32, 37, 33, 36)
+PPO_BASELINE_SHARD_SCHEMA = "bplus-v2.2-b2-bc-baseline-shard-1"
+PPO_BASELINE_PREFLIGHT_SCHEMA = "bplus-v2.2-b2-bc-baseline-preflight-2"
 CLUSTER_BOOTSTRAP_REPLICATES = 10000
 CLUSTER_BOOTSTRAP_DOMAIN = b"end2race:bplus-v2.2:b2-l4-bootstrap:v1\0"
 
@@ -59,6 +65,21 @@ def _is_sha256(value: str) -> bool:
 
 def _file_sha256(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def baseline_json_bytes(value: Mapping) -> bytes:
+    """One byte contract for shard files and their recorded file digests."""
+
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _baseline_payload_sha256(value: Mapping) -> str:
+    return hashlib.sha256(baseline_json_bytes(value)).hexdigest()
+
+
+def _validate_source_commit(value: str) -> None:
+    if len(value) != 40 or any(character not in "0123456789abcdef" for character in value):
+        raise ValueError("B2 baseline source commit is invalid")
 
 
 def candidate_variant(arm: str, seed: int) -> str:
@@ -446,6 +467,359 @@ def paired_result_row(
     }
 
 
+BASELINE_ROW_KEYS = {
+    "task8_row_index",
+    "l2_id",
+    "l4_id",
+    "map_name",
+    "trajectory_sha256",
+    "four_state",
+    "collision_any",
+    "ego_collision",
+    "opp_collision",
+    "terminal_overtake",
+    "confirmed_safe_pass",
+    "interaction_attempt",
+}
+
+
+def _validate_baseline_row(row: Mapping[str, object]) -> None:
+    boolean_fields = (
+        "collision_any",
+        "ego_collision",
+        "opp_collision",
+        "terminal_overtake",
+        "confirmed_safe_pass",
+        "interaction_attempt",
+    )
+    state_contract = {
+        "collision": (True, False, False),
+        "confirmed_pass": (False, True, True),
+        "terminal_overtake_only": (False, True, False),
+        "safe_follow": (False, False, False),
+    }
+    if (
+        not isinstance(row, Mapping)
+        or set(row) != BASELINE_ROW_KEYS
+        or type(row.get("task8_row_index")) is not int
+        or any(not isinstance(row.get(name), str) or not row[name] for name in (
+            "l2_id", "l4_id", "map_name"
+        ))
+        or not isinstance(row.get("trajectory_sha256"), str)
+        or not _is_sha256(row["trajectory_sha256"])
+        or row.get("four_state") not in state_contract
+        or any(type(row.get(field)) is not bool for field in boolean_fields)
+    ):
+        raise ValueError("B2 baseline shard row schema mismatch")
+    expected_state = state_contract[str(row["four_state"])]
+    observed_state = (
+        row["collision_any"],
+        row["terminal_overtake"],
+        row["confirmed_safe_pass"],
+    )
+    if (
+        observed_state != expected_state
+        or row["collision_any"] != (row["ego_collision"] or row["opp_collision"])
+    ):
+        raise ValueError("B2 baseline shard row four-state mismatch")
+
+
+@dataclass(frozen=True)
+class BCBaselineShard:
+    """One topology-bound, candidate-free BC baseline shard."""
+
+    shard_index: int
+    shard_count: int
+    run_plan_sha256: str
+    source_commit: str
+    source_archive_sha256: str
+    inputs_archive_sha256: str
+    scenario_manifest_sha256: str
+    bc_checkpoint_sha256: str
+    producer_host_id: str
+    producer_gpu_uuid: str
+    rows: tuple[dict[str, object], ...]
+    collision: int
+    terminal_overtake: int
+    schema: str = PPO_BASELINE_SHARD_SCHEMA
+    opened_development_only: bool = True
+    candidate_evaluated: bool = False
+
+    def __post_init__(self) -> None:
+        if self.schema != PPO_BASELINE_SHARD_SCHEMA:
+            raise ValueError("B2 baseline shard schema mismatch")
+        if type(self.shard_count) is not int or self.shard_count != BASELINE_SHARD_COUNT:
+            raise ValueError("B2 baseline shard count must be four")
+        if type(self.shard_index) is not int or self.shard_index not in range(
+            BASELINE_SHARD_COUNT
+        ):
+            raise ValueError("B2 baseline shard index is invalid")
+        for value, label in (
+            (self.run_plan_sha256, "run-plan"),
+            (self.source_archive_sha256, "source-archive"),
+            (self.inputs_archive_sha256, "inputs-archive"),
+            (self.scenario_manifest_sha256, "scenario-manifest"),
+            (self.bc_checkpoint_sha256, "BC-checkpoint"),
+        ):
+            if not _is_sha256(value):
+                raise ValueError(f"B2 baseline {label} SHA256 is invalid")
+        _validate_source_commit(self.source_commit)
+        if not self.producer_host_id or not self.producer_gpu_uuid:
+            raise ValueError("B2 baseline shard producer binding is empty")
+        if self.opened_development_only is not True or self.candidate_evaluated is not False:
+            raise ValueError("B2 baseline shard scope drift")
+        if len(self.rows) != EXPECTED_SCENARIOS // BASELINE_SHARD_COUNT:
+            raise ValueError("B2 baseline shard must contain exactly 72 rows")
+        for row in self.rows:
+            _validate_baseline_row(row)
+        indices = [row["task8_row_index"] for row in self.rows]
+        expected = list(range(self.shard_index, EXPECTED_SCENARIOS, BASELINE_SHARD_COUNT))
+        if indices != expected:
+            raise ValueError("B2 baseline shard physical row inventory drift")
+        if type(self.collision) is not int or type(self.terminal_overtake) is not int:
+            raise ValueError("B2 baseline shard counts must be integers")
+        if self.collision != sum(bool(row.get("collision_any")) for row in self.rows):
+            raise ValueError("B2 baseline shard collision total drift")
+        if self.terminal_overtake != sum(
+            bool(row.get("terminal_overtake")) for row in self.rows
+        ):
+            raise ValueError("B2 baseline shard overtake total drift")
+
+    def to_dict(self) -> dict[str, object]:
+        value = asdict(self)
+        value["rows"] = [dict(row) for row in self.rows]
+        value["scenario_count"] = len(self.rows)
+        return value
+
+
+def _coerce_baseline_shard(value: BCBaselineShard | Mapping) -> BCBaselineShard:
+    if isinstance(value, BCBaselineShard):
+        return value
+    if not isinstance(value, Mapping):
+        raise TypeError("B2 baseline shard must be a mapping or BCBaselineShard")
+    expected = {
+        "schema",
+        "shard_index",
+        "shard_count",
+        "run_plan_sha256",
+        "source_commit",
+        "source_archive_sha256",
+        "inputs_archive_sha256",
+        "scenario_manifest_sha256",
+        "bc_checkpoint_sha256",
+        "producer_host_id",
+        "producer_gpu_uuid",
+        "opened_development_only",
+        "candidate_evaluated",
+        "scenario_count",
+        "collision",
+        "terminal_overtake",
+        "rows",
+    }
+    if set(value) != expected or value.get("scenario_count") != 72:
+        raise ValueError("B2 baseline shard serialized envelope mismatch")
+    return BCBaselineShard(
+        schema=value["schema"],
+        shard_index=value["shard_index"],
+        shard_count=value["shard_count"],
+        run_plan_sha256=value["run_plan_sha256"],
+        source_commit=value["source_commit"],
+        source_archive_sha256=value["source_archive_sha256"],
+        inputs_archive_sha256=value["inputs_archive_sha256"],
+        scenario_manifest_sha256=value["scenario_manifest_sha256"],
+        bc_checkpoint_sha256=value["bc_checkpoint_sha256"],
+        producer_host_id=value["producer_host_id"],
+        producer_gpu_uuid=value["producer_gpu_uuid"],
+        opened_development_only=value["opened_development_only"],
+        candidate_evaluated=value["candidate_evaluated"],
+        collision=value["collision"],
+        terminal_overtake=value["terminal_overtake"],
+        rows=tuple(dict(row) for row in value["rows"]),
+    )
+
+
+def validate_bc_baseline_shard(value: Mapping) -> BCBaselineShard:
+    """Validate one serialized baseline shard and return its typed envelope."""
+
+    return _coerce_baseline_shard(value)
+
+
+def evaluate_bc_baseline_shard(
+    *,
+    task8_rows: Sequence[Mapping[str, str]],
+    scenario_manifest_sha256: str,
+    bc_model: nn.Module,
+    bc_checkpoint_sha256: str,
+    device: torch.device,
+    shard_index: int,
+    shard_count: int,
+    run_plan_sha256: str,
+    source_commit: str,
+    source_archive_sha256: str,
+    inputs_archive_sha256: str,
+    producer_host_id: str,
+    producer_gpu_uuid: str,
+    simulator: Simulator = simulate_episode,
+    trajectory_digest_fn: Callable[[Mapping], str] = trajectory_digest,
+) -> BCBaselineShard:
+    """Evaluate one physical-index-modulo BC shard without candidate loading."""
+
+    if shard_count != BASELINE_SHARD_COUNT:
+        raise ValueError("B2 baseline production topology requires four shards")
+    if not _is_sha256(scenario_manifest_sha256) or not _is_sha256(bc_checkpoint_sha256):
+        raise ValueError("B2 baseline shard manifest/checkpoint identity is invalid")
+    assigned = physical_shard_rows(task8_rows, shard_index, shard_count)
+    bc_model.eval()
+    rows: list[dict[str, object]] = []
+    for physical_index, case in assigned:
+        result = simulator(bc_model, device, case)
+        if bool(result.action_clipped):
+            raise AssertionError(f"B2 BC shard clipped action: {case['l2_id']}")
+        rows.append(
+            {
+                "task8_row_index": int(physical_index),
+                "l2_id": str(case["l2_id"]),
+                "l4_id": str(case["l4_id"]),
+                "map_name": str(case["map_name"]),
+                "trajectory_sha256": trajectory_digest_fn(result.arrays),
+                **_outcome_values(result.outcome),
+            }
+        )
+    return BCBaselineShard(
+        shard_index=int(shard_index),
+        shard_count=int(shard_count),
+        run_plan_sha256=run_plan_sha256,
+        source_commit=source_commit,
+        source_archive_sha256=source_archive_sha256,
+        inputs_archive_sha256=inputs_archive_sha256,
+        scenario_manifest_sha256=scenario_manifest_sha256,
+        bc_checkpoint_sha256=bc_checkpoint_sha256,
+        producer_host_id=producer_host_id,
+        producer_gpu_uuid=producer_gpu_uuid,
+        rows=tuple(rows),
+        collision=sum(bool(row["collision_any"]) for row in rows),
+        terminal_overtake=sum(bool(row["terminal_overtake"]) for row in rows),
+    )
+
+
+def merge_bc_baseline_shards(
+    *,
+    shards: Sequence[BCBaselineShard | Mapping],
+    task8_rows: Sequence[Mapping[str, str]],
+    run_plan_sha256: str,
+    source_commit: str,
+    source_archive_sha256: str,
+    inputs_archive_sha256: str,
+    scenario_manifest_sha256: str,
+    bc_checkpoint_sha256: str,
+    expected_producers: Mapping[int, tuple[str, str]],
+) -> dict[str, object]:
+    """Strictly merge topology-bound shards; count drift is an acceptance failure."""
+
+    validate_task8_rows(task8_rows)
+    if set(expected_producers) != set(range(BASELINE_SHARD_COUNT)):
+        raise ValueError("B2 baseline expected producer topology is incomplete")
+    coerced = tuple(
+        value if isinstance(value, BCBaselineShard) else validate_bc_baseline_shard(value)
+        for value in shards
+    )
+    if len(coerced) != BASELINE_SHARD_COUNT or {
+        shard.shard_index for shard in coerced
+    } != set(range(BASELINE_SHARD_COUNT)):
+        raise ValueError("B2 baseline shard inventory is incomplete or duplicated")
+    ordered = tuple(sorted(coerced, key=lambda shard: shard.shard_index))
+    bindings = {
+        "run_plan_sha256": run_plan_sha256,
+        "source_commit": source_commit,
+        "source_archive_sha256": source_archive_sha256,
+        "inputs_archive_sha256": inputs_archive_sha256,
+        "scenario_manifest_sha256": scenario_manifest_sha256,
+        "bc_checkpoint_sha256": bc_checkpoint_sha256,
+    }
+    for shard in ordered:
+        for name, expected in bindings.items():
+            if getattr(shard, name) != expected:
+                raise ValueError(f"B2 baseline shard binding mismatch: {name}")
+        if (shard.producer_host_id, shard.producer_gpu_uuid) != tuple(
+            expected_producers[shard.shard_index]
+        ):
+            raise ValueError("B2 baseline shard producer topology mismatch")
+
+    manifest_by_index = {index: row for index, row in enumerate(task8_rows)}
+    merged_rows: list[dict[str, object]] = []
+    shard_evidence: list[dict[str, object]] = []
+    for shard in ordered:
+        serialized = shard.to_dict()
+        shard_evidence.append(
+            {
+                "shard_index": shard.shard_index,
+                "producer_host_id": shard.producer_host_id,
+                "producer_gpu_uuid": shard.producer_gpu_uuid,
+                "scenario_count": len(shard.rows),
+                "collision": shard.collision,
+                "terminal_overtake": shard.terminal_overtake,
+                "file_sha256": _baseline_payload_sha256(serialized),
+            }
+        )
+        for row in shard.rows:
+            index = int(row["task8_row_index"])
+            case = manifest_by_index.get(index)
+            if case is None or any(
+                row.get(name) != case.get(name)
+                for name in ("l2_id", "l4_id", "map_name")
+            ):
+                raise ValueError("B2 baseline shard row/Task-8 identity mismatch")
+            merged_rows.append(
+                {
+                    **dict(row),
+                    "baseline_shard_index": shard.shard_index,
+                    "producer_host_id": shard.producer_host_id,
+                    "producer_gpu_uuid": shard.producer_gpu_uuid,
+                }
+            )
+    merged_rows.sort(key=lambda row: int(row["task8_row_index"]))
+    if [int(row["task8_row_index"]) for row in merged_rows] != list(
+        range(EXPECTED_SCENARIOS)
+    ) or len({str(row["l2_id"]) for row in merged_rows}) != EXPECTED_SCENARIOS:
+        raise ValueError("B2 baseline merged physical/L2 inventory drift")
+
+    collision_by_shard = [shard.collision for shard in ordered]
+    overtake_by_shard = [shard.terminal_overtake for shard in ordered]
+    collision = sum(collision_by_shard)
+    overtake = sum(overtake_by_shard)
+    count_checks = {
+        "collision_by_shard": collision_by_shard
+        == list(EXPECTED_BC_COLLISIONS_BY_SHARD),
+        "terminal_overtake_by_shard": overtake_by_shard
+        == list(EXPECTED_BC_OVERTAKES_BY_SHARD),
+        "collision_total": collision == EXPECTED_BC_COLLISIONS,
+        "terminal_overtake_total": overtake == EXPECTED_BC_OVERTAKES,
+    }
+    passed = all(count_checks.values())
+    return {
+        "schema": PPO_BASELINE_PREFLIGHT_SCHEMA,
+        "integrity_passed": True,
+        "passed": passed,
+        "acceptance_passed": passed,
+        **bindings,
+        "opened_development_only": True,
+        "candidate_evaluated": False,
+        "scenario_count": len(merged_rows),
+        "shard_count": BASELINE_SHARD_COUNT,
+        "expected_collision_by_shard": list(EXPECTED_BC_COLLISIONS_BY_SHARD),
+        "expected_terminal_overtake_by_shard": list(EXPECTED_BC_OVERTAKES_BY_SHARD),
+        "collision_by_shard": collision_by_shard,
+        "terminal_overtake_by_shard": overtake_by_shard,
+        "expected_collision": EXPECTED_BC_COLLISIONS,
+        "expected_terminal_overtake": EXPECTED_BC_OVERTAKES,
+        "collision": collision,
+        "terminal_overtake": overtake,
+        "count_checks": count_checks,
+        "shards": shard_evidence,
+        "rows": merged_rows,
+    }
+
+
 @dataclass(frozen=True)
 class EvaluationShard:
     shard_index: int
@@ -557,57 +931,6 @@ def evaluate_shard(
         checkpoint_sha256_by_variant=checkpoint_inventory,
         rows=tuple(rows),
     )
-
-
-def evaluate_bc_baseline_preflight(
-    *,
-    task8_rows: Sequence[Mapping[str, str]],
-    scenario_manifest_sha256: str,
-    bc_model: nn.Module,
-    bc_checkpoint_sha256: str,
-    device: torch.device,
-    simulator: Simulator = simulate_episode,
-    trajectory_digest_fn: Callable[[Mapping], str] = trajectory_digest,
-) -> dict[str, object]:
-    """Reproduce the frozen 288-row BC baseline before any learner is launched."""
-
-    validate_task8_rows(task8_rows)
-    if not _is_sha256(scenario_manifest_sha256) or not _is_sha256(
-        bc_checkpoint_sha256
-    ):
-        raise ValueError("B2 BC preflight manifest/checkpoint identity is invalid")
-    bc_model.eval()
-    rows: list[dict[str, object]] = []
-    for physical_index, case in enumerate(task8_rows):
-        result = simulator(bc_model, device, case)
-        if bool(result.action_clipped):
-            raise AssertionError(f"B2 BC preflight clipped action: {case['l2_id']}")
-        rows.append(
-            {
-                "task8_row_index": physical_index,
-                "l2_id": str(case["l2_id"]),
-                "l4_id": str(case["l4_id"]),
-                "map_name": str(case["map_name"]),
-                "trajectory_sha256": trajectory_digest_fn(result.arrays),
-                **_outcome_values(result.outcome),
-            }
-        )
-    collision = sum(bool(row["collision_any"]) for row in rows)
-    overtake = sum(bool(row["terminal_overtake"]) for row in rows)
-    if collision != EXPECTED_BC_COLLISIONS or overtake != EXPECTED_BC_OVERTAKES:
-        raise ValueError(
-            f"B2 BC preflight drift: collision={collision}, overtake={overtake}"
-        )
-    return {
-        "schema": "bplus-v2.2-b2-bc-baseline-preflight-1",
-        "passed": True,
-        "scenario_manifest_sha256": scenario_manifest_sha256,
-        "bc_checkpoint_sha256": bc_checkpoint_sha256,
-        "scenario_count": len(rows),
-        "collision": collision,
-        "terminal_overtake": overtake,
-        "rows": rows,
-    }
 
 
 def _expected_checkpoint_inventory(

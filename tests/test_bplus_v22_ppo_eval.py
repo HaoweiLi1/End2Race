@@ -10,17 +10,21 @@ import torch.nn as nn
 
 from bplus_v22 import ARMS, ARM_BC_FROZEN, PILOT_SEEDS
 from bplus_v22.ppo_eval import (
+    BASELINE_SHARD_COUNT,
     BC_VARIANT,
+    BCBaselineShard,
     B2DeterministicActor,
     CandidateCheckpoint,
     EvaluationShard,
     LoadedCandidatePolicy,
     candidate_variant,
+    evaluate_bc_baseline_shard,
     evaluate_shard,
-    evaluate_bc_baseline_preflight,
     load_candidate_policies,
+    merge_bc_baseline_shards,
     merge_evaluation_shards,
     physical_shard_rows,
+    validate_bc_baseline_shard,
     validate_task8_rows,
 )
 from bplus_v22.remediated_model import RemediatedV22Policy
@@ -113,6 +117,18 @@ class FakeBC(nn.Module):
     pass
 
 
+BASELINE_COLLISION_INDICES: set[int] = set()
+BASELINE_OVERTAKE_INDICES: set[int] = set()
+for _shard, (_collisions, _overtakes) in enumerate(
+    zip((12, 2, 5, 5), (32, 37, 33, 36))
+):
+    _physical = list(range(_shard, 288, BASELINE_SHARD_COUNT))
+    BASELINE_COLLISION_INDICES.update(_physical[:_collisions])
+    BASELINE_OVERTAKE_INDICES.update(
+        _physical[_collisions : _collisions + _overtakes]
+    )
+
+
 @dataclass(frozen=True)
 class FakeOutcome:
     four_state: str
@@ -139,8 +155,8 @@ def outcome(collision: bool, overtake: bool, confirmed: bool = False) -> FakeOut
 def fake_simulator(model, device, case):
     index = int(case["physical_test_index"])
     if isinstance(model, FakeBC):
-        collision = index < 24
-        overtake = 24 <= index < 162
+        collision = index in BASELINE_COLLISION_INDICES
+        overtake = index in BASELINE_OVERTAKE_INDICES
         token = f"BC:{index}"
     else:
         arm_index = ARMS.index(model.policy.arm)
@@ -151,7 +167,7 @@ def fake_simulator(model, device, case):
     result_outcome = outcome(
         collision,
         overtake,
-        confirmed=(not collision and index % 10 == 0),
+        confirmed=(overtake and index % 10 == 0),
     )
     return SimpleNamespace(
         arrays={"token": token},
@@ -220,6 +236,194 @@ def test_physical_sharding() -> None:
     assert shards[0][0][1]["manifest_order"] == "287"
 
 
+def baseline_bindings():
+    return {
+        "run_plan_sha256": digest("baseline-run-plan"),
+        "source_commit": "1" * 40,
+        "source_archive_sha256": digest("baseline-source"),
+        "inputs_archive_sha256": digest("baseline-inputs"),
+        "scenario_manifest_sha256": digest("baseline-task8"),
+        "bc_checkpoint_sha256": digest("baseline-bc"),
+    }
+
+
+def baseline_producers():
+    return {
+        0: ("local", "GPU-local"),
+        1: ("remote", "GPU-remote"),
+        2: ("remote", "GPU-remote"),
+        3: ("remote", "GPU-remote"),
+    }
+
+
+def build_baseline_shards(simulator=fake_simulator):
+    rows = task8_rows()
+    bindings = baseline_bindings()
+    producers = baseline_producers()
+    shards = tuple(
+        evaluate_bc_baseline_shard(
+            task8_rows=rows,
+            bc_model=FakeBC(),
+            device=torch.device("cpu"),
+            shard_index=shard_index,
+            shard_count=BASELINE_SHARD_COUNT,
+            producer_host_id=producers[shard_index][0],
+            producer_gpu_uuid=producers[shard_index][1],
+            simulator=simulator,
+            trajectory_digest_fn=fake_trajectory_digest,
+            **bindings,
+        )
+        for shard_index in range(BASELINE_SHARD_COUNT)
+    )
+    return rows, bindings, producers, shards
+
+
+def test_baseline_only_shards_and_topology_merge() -> None:
+    rows, bindings, producers, shards = build_baseline_shards()
+    assert all(isinstance(shard, BCBaselineShard) for shard in shards)
+    assert validate_bc_baseline_shard(shards[0].to_dict()) == shards[0]
+    assert [len(shard.rows) for shard in shards] == [72, 72, 72, 72]
+    assert [shard.collision for shard in shards] == [12, 2, 5, 5]
+    assert [shard.terminal_overtake for shard in shards] == [32, 37, 33, 36]
+    assert all(
+        all(row["task8_row_index"] % 4 == shard.shard_index for row in shard.rows)
+        for shard in shards
+    )
+    # Serialized JSON mappings are the production merge input.  Shard arrival
+    # order must not affect physical-row ordering in the canonical envelope.
+    merged = merge_bc_baseline_shards(
+        shards=tuple(shard.to_dict() for shard in reversed(shards)),
+        task8_rows=rows,
+        expected_producers=producers,
+        **bindings,
+    )
+    assert merged["integrity_passed"] is True
+    assert merged["passed"] is True
+    assert merged["acceptance_passed"] is True
+    assert merged["collision"] == 24
+    assert merged["terminal_overtake"] == 138
+    assert merged["collision_by_shard"] == [12, 2, 5, 5]
+    assert merged["terminal_overtake_by_shard"] == [32, 37, 33, 36]
+    assert [row["task8_row_index"] for row in merged["rows"]] == list(range(288))
+    assert merged["rows"][0]["producer_host_id"] == "local"
+    assert all(row["producer_host_id"] == "remote" for row in merged["rows"][1::4])
+    assert all(len(item["file_sha256"]) == 64 for item in merged["shards"])
+
+
+def test_baseline_count_drift_is_complete_acceptance_failure() -> None:
+    drift_index = next(
+        index
+        for index in range(3, 288, 4)
+        if index not in BASELINE_COLLISION_INDICES
+        and index not in BASELINE_OVERTAKE_INDICES
+    )
+
+    def drift_simulator(model, device, case):
+        result = fake_simulator(model, device, case)
+        if int(case["physical_test_index"]) != drift_index:
+            return result
+        return SimpleNamespace(
+            arrays=result.arrays,
+            outcome=outcome(False, True),
+            action_clipped=False,
+            episode_key=result.episode_key,
+        )
+
+    rows, bindings, producers, shards = build_baseline_shards(drift_simulator)
+    merged = merge_bc_baseline_shards(
+        shards=shards,
+        task8_rows=rows,
+        expected_producers=producers,
+        **bindings,
+    )
+    assert merged["integrity_passed"] is True
+    assert merged["passed"] is False
+    assert merged["acceptance_passed"] is False
+    assert merged["collision"] == 24
+    assert merged["terminal_overtake"] == 139
+    assert merged["terminal_overtake_by_shard"] == [32, 37, 33, 37]
+    assert merged["count_checks"]["terminal_overtake_by_shard"] is False
+    assert merged["count_checks"]["terminal_overtake_total"] is False
+    assert len(merged["rows"]) == 288
+    diagnostic = merged["rows"][drift_index]
+    assert diagnostic["l2_id"] == rows[drift_index]["l2_id"]
+    assert diagnostic["terminal_overtake"] is True
+    assert diagnostic["producer_host_id"] == "remote"
+
+
+def test_baseline_merge_rejects_binding_and_inventory_drift() -> None:
+    rows, bindings, producers, shards = build_baseline_shards()
+    expect(
+        ValueError,
+        lambda: merge_bc_baseline_shards(
+            shards=shards[:-1],
+            task8_rows=rows,
+            expected_producers=producers,
+            **bindings,
+        ),
+    )
+    duplicate = (shards[0], shards[0], shards[2], shards[3])
+    expect(
+        ValueError,
+        lambda: merge_bc_baseline_shards(
+            shards=duplicate,
+            task8_rows=rows,
+            expected_producers=producers,
+            **bindings,
+        ),
+    )
+    bad_host = replace(shards[1], producer_host_id="local")
+    expect(
+        ValueError,
+        lambda: merge_bc_baseline_shards(
+            shards=(shards[0], bad_host, shards[2], shards[3]),
+            task8_rows=rows,
+            expected_producers=producers,
+            **bindings,
+        ),
+    )
+    bad_gpu = replace(shards[1], producer_gpu_uuid="GPU-wrong")
+    expect(
+        ValueError,
+        lambda: merge_bc_baseline_shards(
+            shards=(shards[0], bad_gpu, shards[2], shards[3]),
+            task8_rows=rows,
+            expected_producers=producers,
+            **bindings,
+        ),
+    )
+    for field, wrong in (
+        ("run_plan_sha256", digest("wrong-plan")),
+        ("source_commit", "2" * 40),
+        ("source_archive_sha256", digest("wrong-source")),
+        ("inputs_archive_sha256", digest("wrong-inputs")),
+        ("scenario_manifest_sha256", digest("wrong-task8")),
+        ("bc_checkpoint_sha256", digest("wrong-bc")),
+    ):
+        bad_binding = replace(shards[2], **{field: wrong})
+        expect(
+            ValueError,
+            lambda bad_binding=bad_binding: merge_bc_baseline_shards(
+                shards=(shards[0], shards[1], bad_binding, shards[3]),
+                task8_rows=rows,
+                expected_producers=producers,
+                **bindings,
+            ),
+        )
+    bad_rows = list(shards[3].rows)
+    bad_rows[0] = {**bad_rows[0], "l2_id": "L2:wrong"}
+    bad_identity = replace(shards[3], rows=tuple(bad_rows))
+    expect(
+        ValueError,
+        lambda: merge_bc_baseline_shards(
+            shards=(shards[0], shards[1], shards[2], bad_identity),
+            task8_rows=rows,
+            expected_producers=producers,
+            **bindings,
+        ),
+    )
+
+
 def build_shards():
     rows = task8_rows()
     scenario_manifest = digest("task8-development")
@@ -284,19 +488,6 @@ def test_injected_eval_and_strict_merge() -> None:
         for arm in ARMS
         for seed in PILOT_SEEDS
     )
-
-    baseline_preflight = evaluate_bc_baseline_preflight(
-        task8_rows=rows,
-        scenario_manifest_sha256=scenario_manifest,
-        bc_model=FakeBC(),
-        bc_checkpoint_sha256=bc_sha,
-        device=torch.device("cpu"),
-        simulator=fake_simulator,
-        trajectory_digest_fn=fake_trajectory_digest,
-    )
-    assert baseline_preflight["passed"] is True
-    assert baseline_preflight["collision"] == 24
-    assert baseline_preflight["terminal_overtake"] == 138
 
     # Duplicate and missing Cartesian cells fail independently.
     duplicate = replace(shards[0], rows=shards[0].rows + (shards[0].rows[0],))
@@ -395,6 +586,9 @@ def test_loader_envelope_mismatch() -> None:
 def main() -> None:
     test_short_centered_actor_mechanics()
     test_physical_sharding()
+    test_baseline_only_shards_and_topology_merge()
+    test_baseline_count_drift_is_complete_acceptance_failure()
+    test_baseline_merge_rejects_binding_and_inventory_drift()
     test_injected_eval_and_strict_merge()
     test_loader_envelope_mismatch()
     print("ALL TESTS PASSED")

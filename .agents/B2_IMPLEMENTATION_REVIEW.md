@@ -103,7 +103,7 @@ was expected to move at iteration 10.
 
 The independent reviewer recommended reproducing the frozen 288-row BC result
 before running six learners rather than discovering environment drift at final
-merge. The control plane now requires one local BC-only baseline preflight:
+merge. The original implementation ran all rows locally:
 
 ```text
 288 scenarios
@@ -112,10 +112,20 @@ merge. The control plane now requires one local BC-only baseline preflight:
 0 candidates and 0 updates
 ```
 
-Its ordered L2/outcome/trajectory marker is bound to the training RunPlan and
-source commit and copied to the remote control root. Both host preflights refuse
-training without it. This is a correctness/baseline check, not a new model or
-proxy gate.
+The first live attempt correctly failed closed at `24/139`. Forensics proved
+that only physical row 199 (`L2:e2fd…64f0`, a 6.958 mm historical follow)
+changes from safe-follow on the remote RTX 4080 to terminal-overtake-only on
+the local RTX 3080. The final evaluation assigns that row to remote shard 3.
+Therefore the local-all-288 gate was prospectively replaced, without changing
+the 24/138 target, by the exact final topology: local shard0 and remote shards
+1–3, each 72 rows and each with its frozen collision/overtake counts.
+
+The four atomic candidate-free shard files and merged marker bind the training
+RunPlan, source/input archives, manifest, BC, producer host/GPU and physical
+row assignment. Count failure is terminal and preserves all 288 rows; it cannot
+be retried into a pass. Both host preflights still refuse training without the
+same merged marker. This is a correctness/baseline check, not a model or proxy
+gate.
 
 ## 5. Non-blocking observations retained honestly
 
@@ -203,3 +213,28 @@ Local execution evidence after the final changes:
 
 This closure authorizes a clean commit and isolated staging only. It is not a
 P3, learner, KPI, D2-test or fresh-pool result.
+
+## 8. Topology-matched baseline audit closure
+
+After the first immutable RunPlan exposed the local-RTX3080 `24/139` versus
+remote/final-topology `24/138` marginal outcome, the baseline gate was replaced
+prospectively by the exact evaluation topology: local shard 0 plus remote
+shards 1--3. A fresh read-only `claude-opus-4-8` / max audit initially returned
+`NO_GO` for two contract-honesty defects rather than a control-plane defect:
+
+- `.agents/README.md` still described the removed local-all-288 operation;
+- the now-unreachable exported all-288 evaluator and its green test were still
+  present as dead code.
+
+Both were removed before commit. The runner also now checks that its per-shard
+expectations cannot drift from the evaluator's acceptance tuples. The same
+Opus reviewer then returned **`GO` with no blocker**, after tracing every shard,
+merge, transfer, terminal-failure, preflight and direct-learner path. Two Codex
+adversarial audits independently returned GO.
+
+The complete standalone matrix after those changes is 39/40 PASS. The sole
+failure remains the known migrated immutable-path
+`test_bplus_v22_hierarchical_warmstart.py`; all B2 topology/control/learner
+tests, `py_compile` and `git diff --check` pass. This authorizes a new commit and
+new RunPlan only. It does not authorize reuse of the failed old RunPlan or a
+change from the frozen 24/138 topology result.

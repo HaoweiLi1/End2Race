@@ -141,7 +141,7 @@ ssh haowei@192.168.2.127
 ./run.sh plan ...                 # 生成一次、不可覆盖的计划
 ./run.sh show <plan.json>         # 只打印冻结命令
 ./run.sh stage <plan.json> --all-hosts # 两端仓库外隔离部署
-./run.sh baseline-preflight <plan.json> # 本地先重放 BC 288 行并锁死 24/138
+./run.sh baseline-preflight <plan.json> # 按最终拓扑重放：local shard0 + remote shards1–3，合并锁死 24/138
 ./run.sh preflight <plan.json> --all-hosts # source/input/env/GPU/CLI fail-closed
 ./run.sh plumbing-smoke <plan.json> # 四图×三臂各一次短更新，只验证接线
 ./run.sh execute <plan.json> --all-hosts # 只消费同一计划
@@ -190,6 +190,10 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
   collision RR 与 corrected overtake。Claude Code `claude-opus-4-8` / max 的
   设计审计与实现复核分别记录在 `.agents/B2_PPO_REVIEW.md`、
   `.agents/B2_IMPLEMENTATION_REVIEW.md`。
-- 当前固定远端 `haowei@192.168.2.127` 不可达，尚未取得 live remote GPU UUID，
-  因而没有创建 RunPlan、没有运行 P3 或 learner。不得填占位 UUID，也不得改用
-  远端旧 worktree；主机恢复后从隔离 staging 流程继续。
+- 固定远端 `haowei@192.168.2.127` 已恢复；live remote GPU UUID 为
+  `GPU-0b24596a-ad53-59cb-8584-7020253e5ac4`。首个隔离 RunPlan 已在 PPO/P3
+  前因 local-all-288 baseline 得到 `24/139` 而正确停止；forensic 证明唯一翻转
+  是最终属于 remote shard3 的 6.958 mm 临界场景。当前正在把 baseline 门改为
+  与最终 eval 相同的 local shard0 + remote shards1–3 拓扑；旧 RunPlan 不得复用，
+  也不得把基准改成139。新 commit/RunPlan 的 topology baseline、preflight、P3
+  全过后才可启动 learner。

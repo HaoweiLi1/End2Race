@@ -142,6 +142,8 @@ def _validate_control_plane_ready(
         if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
             raise ValueError(f"B2 learner lacks one safe control-plane marker: {path.name}")
     ready = json.loads(ready_path.read_text(encoding="utf-8"))
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    plumbing = json.loads(plumbing_path.read_text(encoding="utf-8"))
     expected_keys = {
         "schema",
         "passed",
@@ -165,6 +167,43 @@ def _validate_control_plane_ready(
         or ready.get("plumbing_marker_sha256") != _file_sha256(plumbing_path)
     ):
         raise ValueError("B2 learner READY authorization mismatch")
+    if (
+        not isinstance(baseline, dict)
+        or baseline.get("schema") != "bplus-v2.2-b2-bc-baseline-preflight-2"
+        or baseline.get("integrity_passed") is not True
+        or baseline.get("passed") is not True
+        or baseline.get("acceptance_passed") is not True
+        or baseline.get("candidate_evaluated") is not False
+        or type(baseline.get("scenario_count")) is not int
+        or baseline.get("scenario_count") != 288
+        or type(baseline.get("shard_count")) is not int
+        or baseline.get("shard_count") != 4
+        or type(baseline.get("collision")) is not int
+        or baseline.get("collision") != 24
+        or type(baseline.get("terminal_overtake")) is not int
+        or baseline.get("terminal_overtake") != 138
+        or baseline.get("collision_by_shard") != [12, 2, 5, 5]
+        or baseline.get("terminal_overtake_by_shard") != [32, 37, 33, 36]
+        or not isinstance(baseline.get("count_checks"), dict)
+        or set(baseline["count_checks"])
+        != {
+            "collision_by_shard",
+            "terminal_overtake_by_shard",
+            "collision_total",
+            "terminal_overtake_total",
+        }
+        or any(value is not True for value in baseline["count_checks"].values())
+    ):
+        raise ValueError("B2 learner baseline authorization mismatch")
+    if (
+        not isinstance(plumbing, dict)
+        or plumbing.get("schema") != "bplus-v2.2-b2-plumbing-smoke-1"
+        or plumbing.get("passed") is not True
+        or plumbing.get("product_outcomes_reported_or_compared") is not False
+        or plumbing.get("arm_selection_performed") is not False
+        or plumbing.get("ppo_pilot_iteration_completed") is not False
+    ):
+        raise ValueError("B2 learner plumbing authorization mismatch")
     return ready
 
 

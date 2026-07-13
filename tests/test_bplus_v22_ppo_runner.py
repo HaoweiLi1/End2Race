@@ -36,8 +36,34 @@ def main() -> None:
         control.mkdir()
         baseline = control / "bc_baseline_preflight.json"
         plumbing = control / "plumbing_smoke.json"
-        baseline.write_text("baseline\n", encoding="utf-8")
-        plumbing.write_text("plumbing\n", encoding="utf-8")
+        baseline_value = {
+            "schema": "bplus-v2.2-b2-bc-baseline-preflight-2",
+            "integrity_passed": True,
+            "passed": True,
+            "acceptance_passed": True,
+            "candidate_evaluated": False,
+            "scenario_count": 288,
+            "shard_count": 4,
+            "collision": 24,
+            "terminal_overtake": 138,
+            "collision_by_shard": [12, 2, 5, 5],
+            "terminal_overtake_by_shard": [32, 37, 33, 36],
+            "count_checks": {
+                "collision_by_shard": True,
+                "terminal_overtake_by_shard": True,
+                "collision_total": True,
+                "terminal_overtake_total": True,
+            },
+        }
+        plumbing_value = {
+            "schema": "bplus-v2.2-b2-plumbing-smoke-1",
+            "passed": True,
+            "product_outcomes_reported_or_compared": False,
+            "arm_selection_performed": False,
+            "ppo_pilot_iteration_completed": False,
+        }
+        baseline.write_text(json.dumps(baseline_value), encoding="utf-8")
+        plumbing.write_text(json.dumps(plumbing_value), encoding="utf-8")
         ready_plan = {
             "plan_sha256": "a" * 64,
             "source_commit": "b" * 40,
@@ -57,6 +83,18 @@ def main() -> None:
         ready_path = control / "READY.json"
         ready_path.write_text(json.dumps(ready), encoding="utf-8")
         assert _validate_control_plane_ready(ready_plan, {"root": root}) == ready
+        baseline_value["passed"] = False
+        baseline_value["acceptance_passed"] = False
+        baseline.write_text(json.dumps(baseline_value), encoding="utf-8")
+        ready["baseline_marker_sha256"] = hashlib.sha256(
+            baseline.read_bytes()
+        ).hexdigest()
+        ready_path.write_text(json.dumps(ready), encoding="utf-8")
+        try:
+            _validate_control_plane_ready(ready_plan, {"root": root})
+            raise RuntimeError("learner CLI accepted a renamed baseline failure")
+        except ValueError as error:
+            assert "baseline authorization mismatch" in str(error)
         ready_path.unlink()
         try:
             _validate_control_plane_ready(ready_plan, {"root": root})

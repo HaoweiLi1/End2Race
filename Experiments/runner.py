@@ -53,6 +53,14 @@ from typing import Any, Iterable, Mapping, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+# Internal control commands execute this file by absolute path from an
+# isolated staged tree.  Bind every lazy evidence-module import to that same
+# staged source, never to the caller's mutable cwd or an old remote checkout.
+try:
+    sys.path.remove(str(REPO_ROOT))
+except ValueError:
+    pass
+sys.path.insert(0, str(REPO_ROOT))
 REMOTE_HOST = "haowei@192.168.2.127"
 ISOLATED_BASE = PurePosixPath("/home/haowei/end2race_runs")
 PINNED_PYTHON = "/home/haowei/miniconda3/envs/end2race/bin/python"
@@ -67,6 +75,12 @@ SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 ARMS = ("BC_FROZEN", "SIDECAR_FROZEN", "SIDECAR_FINETUNE")
 SEEDS = (0, 1)
 SHARD_COUNT = 4
+BASELINE_SHARD_EXPECTATIONS = {
+    0: {"host_id": "local", "collision": 12, "terminal_overtake": 32},
+    1: {"host_id": "remote", "collision": 2, "terminal_overtake": 37},
+    2: {"host_id": "remote", "collision": 5, "terminal_overtake": 33},
+    3: {"host_id": "remote", "collision": 5, "terminal_overtake": 36},
+}
 CANONICAL_BC_SHA256 = (
     "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
 )
@@ -267,6 +281,12 @@ def _verify_plan(plan: RunPlan) -> None:
             raise RunnerError("B2 train plan must contain exactly six arm-by-seed learners")
         if tuple(plan.required_cli) != REQUIRED_TRAIN_CLI:
             raise RunnerError("B2 train CLI contract drift")
+        expected_topology = {
+            str(index): dict(expectation)
+            for index, expectation in BASELINE_SHARD_EXPECTATIONS.items()
+        }
+        if plan.config.get("bc_baseline_topology") != expected_topology:
+            raise RunnerError("B2 baseline topology contract drift")
     elif plan.kind == "b2_eval":
         if not plan.parent_plan_sha256 or not SHA256_RE.fullmatch(plan.parent_plan_sha256):
             raise RunnerError("B2 eval plan lacks parent plan identity")
@@ -619,6 +639,10 @@ def _shared_training_config() -> dict[str, Any]:
         "dual_freeze_through_iteration": 9,
         "bc_baseline_expected_collision": 24,
         "bc_baseline_expected_overtake": 138,
+        "bc_baseline_topology": {
+            str(index): dict(expectation)
+            for index, expectation in BASELINE_SHARD_EXPECTATIONS.items()
+        },
         "exploration": {
             "intervention_full_offset": 3.8027754227,
             "conditional_brake_full_offset": 6.0,
@@ -1166,8 +1190,7 @@ def _preflight_check_command(plan: RunPlan, host: HostSpec) -> list[str]:
     return argv if host.kind == "local" else _ssh_argv(host, argv)
 
 
-def _baseline_command(plan: RunPlan) -> list[str]:
-    host = _host(plan, "local")
+def _baseline_command(plan: RunPlan, host: HostSpec) -> list[str]:
     root = PurePosixPath(host.stage_root)
     inner = [
         host.python,
@@ -1175,9 +1198,115 @@ def _baseline_command(plan: RunPlan) -> list[str]:
         "_baseline-host",
         str(root / "control/run_plan.json"),
         "--host",
+        host.host_id,
+    ]
+    argv = ["flock", "-n", _lock_path(host), *inner]
+    return argv if host.kind == "local" else _ssh_argv(host, argv)
+
+
+def _baseline_shard_path(root: str | Path, shard_index: int) -> Path:
+    if shard_index not in range(SHARD_COUNT):
+        raise RunnerError(f"invalid BC baseline shard index: {shard_index}")
+    return Path(root) / "control/baseline_shards" / f"shard_{shard_index}.json"
+
+
+def _baseline_expected_producers(plan: RunPlan) -> dict[int, tuple[str, str]]:
+    from bplus_v22.ppo_eval import (
+        BASELINE_SHARD_COUNT,
+        EXPECTED_BC_COLLISIONS_BY_SHARD,
+        EXPECTED_BC_OVERTAKES_BY_SHARD,
+    )
+
+    ordered = [BASELINE_SHARD_EXPECTATIONS[index] for index in range(SHARD_COUNT)]
+    if (
+        BASELINE_SHARD_COUNT != SHARD_COUNT
+        or tuple(item["collision"] for item in ordered)
+        != EXPECTED_BC_COLLISIONS_BY_SHARD
+        or tuple(item["terminal_overtake"] for item in ordered)
+        != EXPECTED_BC_OVERTAKES_BY_SHARD
+    ):
+        raise RunnerError("runner/evaluator BC baseline acceptance contract drift")
+    result: dict[int, tuple[str, str]] = {}
+    for index, expectation in BASELINE_SHARD_EXPECTATIONS.items():
+        host = _host(plan, expectation["host_id"])
+        result[index] = (host.host_id, host.gpu_uuid)
+    return result
+
+
+def _validate_baseline_shard(plan: RunPlan, path: Path, shard_index: int) -> dict[str, Any]:
+    from bplus_v22.ppo_eval import validate_bc_baseline_shard
+
+    if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
+        raise RunnerError(f"BC baseline shard is missing or unsafe: {shard_index}")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        shard = validate_bc_baseline_shard(value)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+        raise RunnerError(f"BC baseline shard is invalid: {shard_index}: {error}") from error
+    expected_host, expected_gpu = _baseline_expected_producers(plan)[shard_index]
+    expected_manifest = _frozen_entry_sha256(plan, "task8/development_scenarios.tsv")
+    expected_bc = _frozen_entry_sha256(plan, "pretrained/end2race.pth", source=True)
+    if (
+        shard.shard_index != shard_index
+        or shard.shard_count != SHARD_COUNT
+        or shard.run_plan_sha256 != plan.plan_sha256
+        or shard.source_commit != plan.source_commit
+        or shard.source_archive_sha256 != plan.source_archive_sha256
+        or shard.inputs_archive_sha256 != plan.inputs_archive_sha256
+        or shard.scenario_manifest_sha256 != expected_manifest
+        or shard.bc_checkpoint_sha256 != expected_bc
+        or (shard.producer_host_id, shard.producer_gpu_uuid)
+        != (expected_host, expected_gpu)
+    ):
+        raise RunnerError(f"BC baseline shard binding mismatch: {shard_index}")
+    return value
+
+
+def _baseline_pull_commands(plan: RunPlan) -> list[list[str]]:
+    local = _host(plan, "local")
+    remote = _host(plan, "remote")
+    root = PurePosixPath(local.stage_root)
+    commands: list[list[str]] = []
+    for shard_index in (1, 2, 3):
+        incoming = root / "control/baseline_shards" / f".shard_{shard_index}.incoming.json"
+        commands.append(
+            [
+                "rsync",
+                "-a",
+                "--protect-args",
+                f"{remote.ssh_host}:{remote.stage_root}/control/baseline_shards/"
+                f"shard_{shard_index}.json",
+                str(incoming),
+            ]
+        )
+        commands.append(
+            [
+                local.python,
+                str(root / "repo/Experiments/runner.py"),
+                "_install-baseline-shard",
+                str(root / "control/run_plan.json"),
+                "--host",
+                "local",
+                "--shard-index",
+                str(shard_index),
+                "--source",
+                str(incoming),
+            ]
+        )
+    return commands
+
+
+def _baseline_merge_command(plan: RunPlan) -> list[str]:
+    local = _host(plan, "local")
+    root = PurePosixPath(local.stage_root)
+    return [
+        local.python,
+        str(root / "repo/Experiments/runner.py"),
+        "_merge-baseline-host",
+        str(root / "control/run_plan.json"),
+        "--host",
         "local",
     ]
-    return ["flock", "-n", _lock_path(host), *inner]
 
 
 def _frozen_entry_sha256(
@@ -1278,47 +1407,77 @@ def baseline_preflight(plan: RunPlan, dry_run: bool) -> int:
     local = _host(plan, "local")
     remote = _host(plan, "remote")
     local_marker = Path(local.stage_root) / "control/bc_baseline_preflight.json"
-    commands: list[list[str]] = [
+    failed_marker = Path(local.stage_root) / "control/bc_baseline_preflight.failed.json"
+    stage_commands: list[list[str]] = [
         _stage_check_command(plan, local),
         _stage_check_command(plan, remote),
     ]
-    if dry_run or not _lexists(local_marker):
-        if not dry_run:
-            _quarantine_uncommitted_marker(local_marker)
-        commands.append(_baseline_command(plan))
-    else:
-        _validate_baseline_marker(plan, Path(local.stage_root))
-    commands.extend(_marker_transfer_commands(plan, local_marker, remote, "baseline"))
-    for command in commands:
+    for command in stage_commands:
         code = _run_command(command, dry_run=dry_run)
+        if code:
+            return code
+    if not dry_run and _lexists(failed_marker):
+        _validate_baseline_marker(plan, Path(local.stage_root), failed_marker, require_pass=False)
+        print(f"terminal BC baseline acceptance failure: {failed_marker}", file=sys.stderr)
+        return 2
+    if not dry_run and _lexists(local_marker):
+        _validate_baseline_marker(plan, Path(local.stage_root))
+        transfer = _marker_transfer_commands(plan, local_marker, remote, "baseline")
+        for command in transfer:
+            code = _run_command(command, dry_run=False)
+            if code:
+                return code
+        return 0
+
+    host_commands = [_baseline_command(plan, local), _baseline_command(plan, remote)]
+    for command in host_commands:
+        print(_display_command(command))
+    pull_commands = _baseline_pull_commands(plan)
+    merge_command = _baseline_merge_command(plan)
+    transfer_commands = _marker_transfer_commands(plan, local_marker, remote, "baseline")
+    if dry_run:
+        for command in (*pull_commands, merge_command, *transfer_commands):
+            print(_display_command(command))
+        return 0
+
+    running = [subprocess.Popen(command) for command in host_commands]
+    failures = [process.wait() for process in running]
+    if any(code != 0 for code in failures):
+        return 1
+    for command in pull_commands:
+        code = _run_command(command, dry_run=dry_run)
+        if code:
+            return code
+    code = _run_command(merge_command, dry_run=False)
+    if code:
+        return code
+    _validate_baseline_marker(plan, Path(local.stage_root))
+    for command in transfer_commands:
+        code = _run_command(command, dry_run=False)
         if code:
             return code
     return 0
 
 
 def _validate_baseline_marker(
-    plan: RunPlan, root: Path, marker_path: Path | None = None
+    plan: RunPlan,
+    root: Path,
+    marker_path: Path | None = None,
+    *,
+    require_pass: bool = True,
 ) -> dict[str, Any]:
+    from bplus_v22.ppo_eval import (
+        baseline_json_bytes,
+        merge_bc_baseline_shards,
+    )
+
     path = marker_path or root / "control/bc_baseline_preflight.json"
     if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
         raise RunnerError("BC baseline preflight marker is missing")
-    value = json.loads(path.read_text(encoding="utf-8"))
-    expected_keys = {
-        "schema",
-        "passed",
-        "run_plan_sha256",
-        "source_commit",
-        "opened_development_only",
-        "candidate_evaluated",
-        "scenario_manifest_sha256",
-        "bc_checkpoint_sha256",
-        "scenario_count",
-        "collision",
-        "terminal_overtake",
-        "rows",
-    }
-    if not isinstance(value, dict) or set(value) != expected_keys:
-        raise RunnerError("BC baseline preflight marker schema mismatch")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RunnerError("BC baseline preflight marker is unreadable") from error
     manifest = _marker_manifest_path(root, "development_scenarios.tsv")
     expected_manifest_sha = _frozen_entry_sha256(
         plan, "task8/development_scenarios.tsv"
@@ -1326,93 +1485,97 @@ def _validate_baseline_marker(
     expected_bc_sha = _frozen_entry_sha256(
         plan, "pretrained/end2race.pth", source=True
     )
-    marker_rows = value.get("rows")
     if (
-        value.get("schema") != "bplus-v2.2-b2-bc-baseline-preflight-1"
-        or value.get("passed") is not True
+        not isinstance(value, dict)
         or value.get("run_plan_sha256") != plan.plan_sha256
         or value.get("source_commit") != plan.source_commit
-        or type(value.get("scenario_count")) is not int
-        or value.get("scenario_count") != 288
-        or type(value.get("collision")) is not int
-        or value.get("collision") != 24
-        or type(value.get("terminal_overtake")) is not int
-        or value.get("terminal_overtake") != 138
-        or value.get("candidate_evaluated") is not False
-        or value.get("opened_development_only") is not True
+        or value.get("source_archive_sha256") != plan.source_archive_sha256
+        or value.get("inputs_archive_sha256") != plan.inputs_archive_sha256
         or value.get("scenario_manifest_sha256") != expected_manifest_sha
         or _sha256_file(manifest) != expected_manifest_sha
         or value.get("bc_checkpoint_sha256") != expected_bc_sha
         or expected_bc_sha != CANONICAL_BC_SHA256
-        or not isinstance(marker_rows, list)
-        or len(marker_rows) != 288
     ):
         raise RunnerError("BC baseline preflight marker/envelope mismatch")
     manifest_rows = _read_tsv_rows(manifest)
     if len(manifest_rows) != 288:
         raise RunnerError("BC baseline preflight row inventory mismatch")
-    boolean_fields = (
-        "collision_any",
-        "ego_collision",
-        "opp_collision",
-        "terminal_overtake",
-        "confirmed_safe_pass",
-        "interaction_attempt",
-    )
-    state_contract = {
-        "collision": (True, False, False),
-        "confirmed_pass": (False, True, True),
-        "terminal_overtake_only": (False, True, False),
-        "safe_follow": (False, False, False),
+    rows = value.get("rows")
+    shard_summaries = value.get("shards")
+    if not isinstance(rows, list) or not isinstance(shard_summaries, list):
+        raise RunnerError("BC baseline preflight rows/shards are missing")
+    summaries = {
+        item.get("shard_index"): item
+        for item in shard_summaries
+        if isinstance(item, dict) and type(item.get("shard_index")) is int
     }
-    expected_row_keys = {
-        "task8_row_index",
-        "l2_id",
-        "l4_id",
-        "map_name",
-        "trajectory_sha256",
-        "four_state",
-        *boolean_fields,
-    }
-    for index, (expected, observed) in enumerate(zip(manifest_rows, marker_rows)):
-        if (
-            not isinstance(observed, dict)
-            or set(observed) != expected_row_keys
-            or type(observed.get("task8_row_index")) is not int
-            or observed.get("task8_row_index") != index
-            or observed.get("l2_id") != expected.get("l2_id")
-            or observed.get("l4_id") != expected.get("l4_id")
-            or observed.get("map_name") != expected.get("map_name")
-            or type(observed.get("trajectory_sha256")) is not str
-            or not SHA256_RE.fullmatch(observed["trajectory_sha256"])
-            or observed.get("four_state") not in state_contract
-            or any(not isinstance(observed.get(field), bool) for field in boolean_fields)
-        ):
-            raise RunnerError(f"BC baseline preflight semantic row mismatch: {index}")
-        expected_state = state_contract[observed["four_state"]]
-        observed_state = (
-            observed["collision_any"],
-            observed["terminal_overtake"],
-            observed["confirmed_safe_pass"],
+    if set(summaries) != set(range(SHARD_COUNT)) or len(shard_summaries) != SHARD_COUNT:
+        raise RunnerError("BC baseline preflight shard summary inventory mismatch")
+    serialized_shards: list[dict[str, Any]] = []
+    for shard_index in range(SHARD_COUNT):
+        summary = summaries[shard_index]
+        raw_rows: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict) or row.get("baseline_shard_index") != shard_index:
+                continue
+            raw = dict(row)
+            raw.pop("baseline_shard_index", None)
+            raw.pop("producer_host_id", None)
+            raw.pop("producer_gpu_uuid", None)
+            raw_rows.append(raw)
+        serialized_shards.append(
+            {
+                "schema": "bplus-v2.2-b2-bc-baseline-shard-1",
+                "shard_index": shard_index,
+                "shard_count": SHARD_COUNT,
+                "run_plan_sha256": plan.plan_sha256,
+                "source_commit": plan.source_commit,
+                "source_archive_sha256": plan.source_archive_sha256,
+                "inputs_archive_sha256": plan.inputs_archive_sha256,
+                "scenario_manifest_sha256": expected_manifest_sha,
+                "bc_checkpoint_sha256": expected_bc_sha,
+                "producer_host_id": summary.get("producer_host_id"),
+                "producer_gpu_uuid": summary.get("producer_gpu_uuid"),
+                "opened_development_only": True,
+                "candidate_evaluated": False,
+                "scenario_count": len(raw_rows),
+                "collision": summary.get("collision"),
+                "terminal_overtake": summary.get("terminal_overtake"),
+                "rows": raw_rows,
+            }
         )
-        if (
-            observed_state != expected_state
-            or observed["collision_any"]
-            != (observed["ego_collision"] or observed["opp_collision"])
-        ):
-            raise RunnerError(f"BC baseline preflight four-state mismatch: {index}")
-    if (
-        len({row["l2_id"] for row in marker_rows}) != 288
-        or sum(row["collision_any"] for row in marker_rows) != 24
-        or sum(row["terminal_overtake"] for row in marker_rows) != 138
+    try:
+        recomputed = merge_bc_baseline_shards(
+            shards=serialized_shards,
+            task8_rows=manifest_rows,
+            run_plan_sha256=plan.plan_sha256,
+            source_commit=plan.source_commit,
+            source_archive_sha256=plan.source_archive_sha256,
+            inputs_archive_sha256=plan.inputs_archive_sha256,
+            scenario_manifest_sha256=expected_manifest_sha,
+            bc_checkpoint_sha256=expected_bc_sha,
+            expected_producers=_baseline_expected_producers(plan),
+        )
+    except (ValueError, TypeError) as error:
+        raise RunnerError(f"BC baseline preflight semantic validation failed: {error}") from error
+    if baseline_json_bytes(recomputed) != baseline_json_bytes(value):
+        raise RunnerError("BC baseline preflight canonical serialization drift")
+    if require_pass and (
+        value.get("integrity_passed") is not True
+        or value.get("passed") is not True
+        or value.get("acceptance_passed") is not True
     ):
-        raise RunnerError("BC baseline preflight recomputed totals mismatch")
+        raise RunnerError("BC baseline preflight acceptance failed")
+    if not require_pass and (
+        value.get("integrity_passed") is not True
+        or value.get("passed") is not False
+        or value.get("acceptance_passed") is not False
+    ):
+        raise RunnerError("BC baseline failure marker semantics mismatch")
     return value
 
 
 def baseline_host(plan_path: Path, host_id: str) -> int:
-    if host_id != "local":
-        raise RunnerError("BC baseline preflight runs once on the local host")
     plan = load_plan(plan_path)
     host = _host(plan, host_id)
     check_stage_host(plan_path, host_id)
@@ -1420,40 +1583,156 @@ def baseline_host(plan_path: Path, host_id: str) -> int:
     _probe_gpu(host)
     _assert_live_environment(host)
     root = Path(host.stage_root)
-    probe_job = JobSpec(
-        "bc-baseline-preflight",
-        "preflight",
-        host.host_id,
-        "preflight",
-        tuple(),
-        "outputs/preflight",
-        "cache/numba/bc-baseline-preflight",
-        gpu_exclusive=True,
-    )
-    cache = root / probe_job.numba_cache_relpath
-    # A failed simulator attempt publishes no marker; reusing its isolated
-    # Numba cache makes the explicit baseline command safely retryable.
-    cache.mkdir(parents=True, exist_ok=True)
-    env = {**os.environ, **_job_environment(plan, host, probe_job)}
-    output = root / "control/bc_baseline_preflight.json"
-    subprocess.run(
-        [
-            host.python,
-            "-m",
-            "bplus_v22.cli",
-            "ppo-baseline-preflight",
-            "--run-plan",
-            str(plan_path),
-            "--output",
-            str(output),
-        ],
-        check=True,
-        cwd=root / "repo",
-        env=env,
-    )
-    _validate_baseline_marker(plan, root)
-    os.chmod(output, 0o444)
+    shard_indices = [
+        index
+        for index, expectation in BASELINE_SHARD_EXPECTATIONS.items()
+        if expectation["host_id"] == host_id
+    ]
+    if not shard_indices:
+        raise RunnerError(f"host has no BC baseline shards: {host_id}")
+    shard_dir = root / "control/baseline_shards"
+    shard_dir.mkdir(parents=True, exist_ok=True)
+    for shard_index in shard_indices:
+        output = _baseline_shard_path(root, shard_index)
+        if _lexists(output):
+            _validate_baseline_shard(plan, output, shard_index)
+            continue
+        _quarantine_uncommitted_marker(output)
+        probe_job = JobSpec(
+            f"bc-baseline-shard{shard_index}",
+            "preflight",
+            host.host_id,
+            "preflight",
+            tuple(),
+            "outputs/preflight",
+            f"cache/numba/bc-baseline-shard{shard_index}",
+            gpu_exclusive=True,
+        )
+        (root / probe_job.numba_cache_relpath).mkdir(parents=True, exist_ok=True)
+        env = {**os.environ, **_job_environment(plan, host, probe_job)}
+        subprocess.run(
+            [
+                host.python,
+                "-m",
+                "bplus_v22.cli",
+                "ppo-baseline-preflight",
+                "--run-plan",
+                str(plan_path),
+                "--output",
+                str(output),
+                "--host-id",
+                host.host_id,
+                "--gpu-uuid",
+                host.gpu_uuid,
+                "--shard-index",
+                str(shard_index),
+                "--shard-count",
+                str(SHARD_COUNT),
+            ],
+            check=True,
+            cwd=root / "repo",
+            env=env,
+        )
+        _validate_baseline_shard(plan, output, shard_index)
     return 0
+
+
+def install_baseline_shard(
+    plan_path: Path, host_id: str, shard_index: int, source: Path
+) -> int:
+    if host_id != "local" or shard_index not in (1, 2, 3):
+        raise RunnerError("only remote baseline shards may be installed locally")
+    plan = load_plan(plan_path)
+    root = Path(_host(plan, host_id).stage_root)
+    check_stage_host(plan_path, host_id)
+    control = (root / "control").resolve()
+    if source.is_symlink() or not source.is_file() or source.stat().st_nlink != 1:
+        raise RunnerError("incoming BC baseline shard is not one private regular file")
+    source = source.resolve()
+    try:
+        source.relative_to(control)
+    except ValueError as error:
+        raise RunnerError("incoming BC baseline shard escaped control directory") from error
+    _validate_baseline_shard(plan, source, shard_index)
+    destination = _baseline_shard_path(root, shard_index)
+    if source == destination.resolve():
+        raise RunnerError("incoming BC baseline shard aliases destination")
+    if _lexists(destination):
+        _validate_baseline_shard(plan, destination, shard_index)
+        if destination.stat().st_nlink != 1 or os.path.samefile(source, destination):
+            raise RunnerError("published BC baseline shard has an unsafe hardlink")
+        if _sha256_file(destination) != _sha256_file(source):
+            raise RunnerError("published BC baseline shard differs from incoming evidence")
+        source.unlink()
+        return 0
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    private = destination.parent / f".shard_{shard_index}.{os.getpid()}.validated.partial"
+    if _lexists(private):
+        raise RunnerError("private BC baseline shard install path already exists")
+    try:
+        with source.open("rb") as read_handle, private.open("xb") as write_handle:
+            shutil.copyfileobj(read_handle, write_handle)
+            write_handle.flush()
+            os.fsync(write_handle.fileno())
+        _validate_baseline_shard(plan, private, shard_index)
+        os.chmod(private, 0o444)
+        os.replace(private, destination)
+        source.unlink()
+    finally:
+        if _lexists(private):
+            private.unlink()
+    _validate_baseline_shard(plan, destination, shard_index)
+    return 0
+
+
+def merge_baseline_host(plan_path: Path, host_id: str) -> int:
+    from bplus_v22.ppo_eval import baseline_json_bytes, merge_bc_baseline_shards
+
+    if host_id != "local":
+        raise RunnerError("BC baseline merge runs only on the controller host")
+    plan = load_plan(plan_path)
+    root = Path(_host(plan, host_id).stage_root)
+    check_stage_host(plan_path, host_id)
+    canonical = root / "control/bc_baseline_preflight.json"
+    failed = root / "control/bc_baseline_preflight.failed.json"
+    if _lexists(failed):
+        _validate_baseline_marker(plan, root, failed, require_pass=False)
+        return 3
+    if _lexists(canonical):
+        _validate_baseline_marker(plan, root, canonical)
+        return 0
+    shard_values = [
+        _validate_baseline_shard(plan, _baseline_shard_path(root, index), index)
+        for index in range(SHARD_COUNT)
+    ]
+    manifest = _marker_manifest_path(root, "development_scenarios.tsv")
+    merged = merge_bc_baseline_shards(
+        shards=shard_values,
+        task8_rows=_read_tsv_rows(manifest),
+        run_plan_sha256=plan.plan_sha256,
+        source_commit=plan.source_commit,
+        source_archive_sha256=plan.source_archive_sha256,
+        inputs_archive_sha256=plan.inputs_archive_sha256,
+        scenario_manifest_sha256=_sha256_file(manifest),
+        bc_checkpoint_sha256=_frozen_entry_sha256(
+            plan, "pretrained/end2race.pth", source=True
+        ),
+        expected_producers=_baseline_expected_producers(plan),
+    )
+    destination = canonical if merged["passed"] is True else failed
+    partial = destination.with_suffix(destination.suffix + ".partial")
+    if _lexists(destination) or _lexists(partial):
+        raise RunnerError("BC baseline merge destination already exists")
+    with partial.open("xb") as handle:
+        handle.write(baseline_json_bytes(merged))
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.chmod(partial, 0o444)
+    os.replace(partial, destination)
+    _validate_baseline_marker(
+        plan, root, destination, require_pass=merged["passed"] is True
+    )
+    return 0 if merged["passed"] is True else 3
 
 
 def _plumbing_command(plan: RunPlan) -> list[str]:
@@ -2436,6 +2715,12 @@ def _collect_payload_commands(
                 str(collection / "control/bc_baseline_preflight.json"),
                 ],
                 [
+                    "cp",
+                    "-a",
+                    str(Path(local.stage_root) / "control/baseline_shards"),
+                    str(collection / "control/baseline_shards"),
+                ],
+                [
                 "cp",
                 "-a",
                 str(Path(local.stage_root) / "control/plumbing_smoke.json"),
@@ -2582,7 +2867,143 @@ def _record_collection_failure(
     )
 
 
+def _validate_collected_baseline_shards(
+    plan: RunPlan, partial: Path, baseline_value: Mapping[str, Any]
+) -> None:
+    shard_sha = {
+        item["shard_index"]: item["file_sha256"]
+        for item in baseline_value["shards"]
+    }
+    if set(shard_sha) != set(range(SHARD_COUNT)):
+        raise RunnerError("collected BC baseline shard inventory mismatch")
+    for shard_index in range(SHARD_COUNT):
+        shard_path = _baseline_shard_path(partial, shard_index)
+        _validate_baseline_shard(plan, shard_path, shard_index)
+        if _sha256_file(shard_path) != shard_sha[shard_index]:
+            raise RunnerError(
+                f"collected BC baseline shard hash mismatch: {shard_index}"
+            )
+
+
+def collect_baseline_failure(plan: RunPlan, dry_run: bool) -> int:
+    """Atomically collect a terminal pre-PPO baseline acceptance failure."""
+
+    if plan.kind != "b2_train":
+        raise RunnerError("baseline failure collection requires a training plan")
+    collection = Path(plan.collection_root)
+    partial = collection.with_name(collection.name + ".partial")
+    if _lexists(collection):
+        raise FileExistsError(collection)
+    if _lexists(partial) and not dry_run:
+        _quarantine_collection_partial(collection, partial)
+    local = _host(plan, "local")
+    remote = _host(plan, "remote")
+    commands = [
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "control/bc_baseline_preflight.failed.json"),
+            str(partial / "control/bc_baseline_preflight.failed.json"),
+        ],
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "control/baseline_shards"),
+            str(partial / "control/baseline_shards"),
+        ],
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "inputs/task8/development_scenarios.tsv"),
+            str(partial / "control/input_contract/development_scenarios.tsv"),
+        ],
+        [
+            "cp",
+            "-a",
+            str(Path(local.stage_root) / "control/STAGED"),
+            str(partial / "hosts/local/STAGED"),
+        ],
+        [
+            "rsync",
+            "-a",
+            "--protect-args",
+            f"{remote.ssh_host}:{remote.stage_root}/control/STAGED",
+            str(partial / "hosts/remote/STAGED"),
+        ],
+    ]
+    for command in commands:
+        print(_display_command(command))
+    if dry_run:
+        return 0
+    (partial / "control/input_contract").mkdir(parents=True)
+    (partial / "hosts/local").mkdir(parents=True)
+    (partial / "hosts/remote").mkdir(parents=True)
+    for index, command in enumerate(commands):
+        code = subprocess.run(command, check=False).returncode
+        if code:
+            _record_collection_failure(
+                partial,
+                plan,
+                phase="baseline_failure_copy",
+                error=f"command exited {code}",
+                command_index=index,
+                exit_code=code,
+            )
+            return code
+    try:
+        failed_path = partial / "control/bc_baseline_preflight.failed.json"
+        failed_value = _validate_baseline_marker(
+            plan, partial, failed_path, require_pass=False
+        )
+        _validate_collected_baseline_shards(plan, partial, failed_value)
+        for host_id in ("local", "remote"):
+            staged = partial / f"hosts/{host_id}/STAGED"
+            if (
+                not staged.is_file()
+                or staged.is_symlink()
+                or staged.read_text(encoding="utf-8") != plan.plan_sha256 + "\n"
+            ):
+                raise RunnerError(
+                    f"baseline failure collection STAGED mismatch: {host_id}"
+                )
+    except Exception as error:
+        _record_collection_failure(
+            partial, plan, phase="baseline_failure_validation", error=error
+        )
+        raise
+    (partial / "run_plan.json").write_text(
+        json.dumps(_plan_to_dict(plan), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (partial / "FAILED.json").write_text(
+        json.dumps(
+            {
+                "schema": "end2race-b2-baseline-failure-collection-1",
+                "state": "FAILED",
+                "terminal_phase": "baseline_preflight",
+                "plan_sha256": plan.plan_sha256,
+                "source_commit": plan.source_commit,
+                "baseline_failure_sha256": _sha256_file(
+                    partial / "control/bc_baseline_preflight.failed.json"
+                ),
+                "collected_at": _now(),
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    os.replace(partial, collection)
+    return 0
+
+
 def collect(plan: RunPlan, dry_run: bool) -> int:
+    if plan.kind == "b2_train" and _lexists(
+        Path(_host(plan, "local").stage_root)
+        / "control/bc_baseline_preflight.failed.json"
+    ):
+        return collect_baseline_failure(plan, dry_run)
     collection = Path(plan.collection_root)
     partial = collection.with_name(collection.name + ".partial")
     if _lexists(collection):
@@ -2637,7 +3058,8 @@ def collect(plan: RunPlan, dry_run: bool) -> int:
             for job in _host_jobs(plan, host_id):
                 _validate_job_output(plan, host_root, job)
         if plan.kind == "b2_train":
-            _validate_baseline_marker(plan, partial)
+            baseline_value = _validate_baseline_marker(plan, partial)
+            _validate_collected_baseline_shards(plan, partial, baseline_value)
             _validate_plumbing_marker(plan, partial)
             _validate_ready_marker(plan, partial)
             remote_baseline = partial / "control/remote_bc_baseline_preflight.json"
@@ -2864,7 +3286,21 @@ def _parser() -> argparse.ArgumentParser:
     internal_preflight.add_argument("--host", choices=("local", "remote"), required=True)
     internal_baseline = sub.add_parser("_baseline-host", help=argparse.SUPPRESS)
     _add_plan_argument(internal_baseline)
-    internal_baseline.add_argument("--host", choices=("local",), required=True)
+    internal_baseline.add_argument(
+        "--host", choices=("local", "remote"), required=True
+    )
+    internal_install_baseline = sub.add_parser(
+        "_install-baseline-shard", help=argparse.SUPPRESS
+    )
+    _add_plan_argument(internal_install_baseline)
+    internal_install_baseline.add_argument("--host", choices=("local",), required=True)
+    internal_install_baseline.add_argument("--shard-index", type=int, required=True)
+    internal_install_baseline.add_argument("--source", type=Path, required=True)
+    internal_merge_baseline = sub.add_parser(
+        "_merge-baseline-host", help=argparse.SUPPRESS
+    )
+    _add_plan_argument(internal_merge_baseline)
+    internal_merge_baseline.add_argument("--host", choices=("local",), required=True)
     internal_plumbing = sub.add_parser("_plumbing-host", help=argparse.SUPPRESS)
     _add_plan_argument(internal_plumbing)
     internal_plumbing.add_argument("--host", choices=("local",), required=True)
@@ -2964,6 +3400,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             return preflight_host(plan_path, args.host)
         if args.action == "_baseline-host":
             return baseline_host(plan_path, args.host)
+        if args.action == "_install-baseline-shard":
+            return install_baseline_shard(
+                plan_path, args.host, args.shard_index, args.source
+            )
+        if args.action == "_merge-baseline-host":
+            return merge_baseline_host(plan_path, args.host)
         if args.action == "_plumbing-host":
             return plumbing_host(plan_path, args.host)
         if args.action == "_ready-host":

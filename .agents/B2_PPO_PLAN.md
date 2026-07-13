@@ -585,12 +585,30 @@ sidecar initialization 使用过全部 1,928 non-test episodes，因此这 288 �
 
 ### P0b — BC-only opened-development baseline reproduction
 
-在六个 learner 启动前，本地只运行一次冻结 BC 的 288-row Task-8 panel；不加载
-candidate、不训练、不排名。必须完整得到 `24` 次 any-agent collision 与 `138`
-次 corrected terminal overtake，并保存 ordered L2/outcome/trajectory digest marker。
-该 marker 绑定 training RunPlan/source commit，复制到远端 control root；两端
-preflight 都必须验证它。任何偏差先阻断 learner，避免训练完成后才发现 evaluator
-或环境基准漂移。
+在六个 learner 启动前，冻结 BC 按与最终 evaluation 完全相同的物理分片运行；
+不加载 candidate、不训练、不排名：
+
+| shard | host | rows | collision | corrected overtake |
+|---|---|---:|---:|---:|
+| 0 | local RTX 3080 | 72 | 12 | 32 |
+| 1 | remote RTX 4080 | 72 | 2 | 37 |
+| 2 | remote RTX 4080 | 72 | 5 | 33 |
+| 3 | remote RTX 4080 | 72 | 5 | 36 |
+| merged | topology-matched | 288 | 24 | 138 |
+
+分配规则固定为 physical row index modulo 4。每个 shard 保存 ordered
+L2/outcome/trajectory digest 与 producer host/GPU；trajectory digest 只保护本次
+产物内部完整性，不和历史另一设备的 trajectory bytes 做硬比较。合并 marker 绑定
+training RunPlan/source/input/manifest/BC，复制到远端 control root；两端 preflight
+都必须验证它。
+
+这个修改源自首个 RunPlan 在 PPO/P3 前的真实失败：让 local RTX 3080 重放全部
+288 行得到 `24/139`，而 remote RTX 4080 得到历史一致的 `24/138`。唯一翻转是
+physical row 199 的 `L2:e2fd…64f0`，历史终点仅落后 `6.958 mm`；该行最终属于
+remote shard 3。因此旧的 local-all-288 门与最终执行拓扑不一致，不得把冻结目标
+改成 139。任何 topology-matched shard/merged 偏差仍阻断 learner。count mismatch
+必须保存完整 288 行的 terminal acceptance-FAILED evidence，同一 RunPlan 不得反复
+重抽直到偶然通过；只有进程/传输不完整可以补齐或重传。
 
 ### P1 — sampled / executed / logged consistency
 

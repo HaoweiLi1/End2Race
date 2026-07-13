@@ -2005,3 +2005,63 @@ UUID. When the host returns, the next legal sequence is: observe the live UUID
 and environment → create the RunPlan from the then-clean committed HEAD →
 show/dry-run → isolated two-host stage → 288-row BC baseline → both preflights →
 P3 → six frozen learners. Never run from or modify the stale remote checkout.
+
+### 22.7 First B2 RunPlan stopped before PPO; topology-matched baseline fix
+
+The remote network recovered on 2026-07-13. Both GPUs, displays, disk and the
+pinned conda environments were live; Python patch versions differ only within
+3.10, while torch/numpy/numba/gym/scipy match exactly. The owner explicitly
+ruled out treating the Python patch as an experimental difference, so the
+control contract records Python major.minor and still pins all critical package
+versions exactly.
+
+RunPlan `b2_direct_20260713_064744` (source `aba2eb9`, plan SHA
+`379e6279…d7e5`) was shown, fully dry-run and staged into both isolated roots.
+Its pre-PPO local-all-288 BC baseline then failed closed at 24 collisions / 139
+corrected overtakes. No preflight, P3, learner, candidate evaluation or PPO
+update ran.
+
+The failure exposed a real topology bug rather than data drift:
+
+- Task-8 old/new manifests are identical except the corrected non-load-bearing
+  `manifest_order`; all 288 L2 fields and the BC checkpoint hashes match.
+- A complete local forensic replay differs from historical BC outcomes on
+  exactly physical row 199, `L2:e2fd1a…64f0`: safe-follow becomes
+  terminal-overtake-only.
+- Its historical terminal margin is only `-0.006958 m`.
+- A complete remote RTX 4080 replay is outcome-identical to historical Task 10
+  and returns 24/138; local RTX 3080 returns 24/139.
+- Row 199 belongs to final remote shard 3. The final frozen topology therefore
+  still has per-shard collision/overtake `[12/32, 2/37, 5/33, 5/36]`, merged
+  24/138.
+
+The old failed isolated root is preserved. Do not reuse its RunPlan or change
+the expected baseline to 139. The prospective fix runs BC using the exact final
+modulo-4 topology, atomically preserves four candidate-free shard ledgers,
+hard-gates each shard and the merged 24/138 result, records trajectory hashes
+without cross-device trajectory-byte comparison, and publishes a terminal
+full-row FAILED envelope on an outcome-count mismatch. A terminal acceptance
+failure cannot be rerun into a pass; transfer/process interruptions reuse
+complete shards. Internal runner imports are explicitly bound to the staged
+repo root so mutable local/old remote checkouts cannot satisfy evidence
+validation.
+
+After review and commit, create a new RunPlan/run ID, stage fresh isolated
+roots, rerun topology-matched baseline, then proceed to both host preflights and
+P3. Six learners remain unauthorized until READY is published.
+
+### 22.8 Topology fix is audited and ready for a new RunPlan
+
+The final topology-baseline diff passed two independent Codex adversarial
+audits and a read-only `claude-opus-4-8` / max audit. The first Opus pass found
+only stale contract/dead-code wording: `.agents/README.md` still said the 288
+rows ran locally, and an unreachable exported all-288 evaluator remained under
+test. Both were removed. The follow-up verdict was `GO` with no blocker.
+
+The runner now also fails closed if its per-shard expectation copy differs from
+the evaluator tuples. The final standalone matrix remains 39/40, with only the
+known migrated historical warm-start path failure; all B2 tests and compilation
+checks pass. Commit these exact files, create a unique RunPlan from that clean
+commit, and rerun the topology-matched baseline. Do not reuse
+`b2_direct_20260713_064744`, do not change 138 to 139, and do not start a learner
+until both host preflights plus P3 have published the shared READY marker.

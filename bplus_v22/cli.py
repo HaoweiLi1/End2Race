@@ -59,11 +59,13 @@ from bplus_v22.ppo_runner import (
     validate_pilot_plan,
 )
 from bplus_v22.ppo_eval import (
+    BASELINE_SHARD_COUNT,
     CandidateCheckpoint,
     EvaluationShard,
     LoadedCandidatePolicy,
+    baseline_json_bytes,
+    evaluate_bc_baseline_shard,
     evaluate_shard,
-    evaluate_bc_baseline_preflight,
     merge_evaluation_shards,
     read_task8_development,
 )
@@ -186,9 +188,14 @@ def validate_eval_plan(plan_path: str | Path) -> dict:
     }
 
 
-def run_bc_baseline_preflight(
+def run_bc_baseline_shard(
     plan_path: str | Path,
     output_path: str | Path,
+    *,
+    host_id: str,
+    gpu_uuid: str,
+    shard_index: int,
+    shard_count: int = BASELINE_SHARD_COUNT,
     device_name: str = "cuda:0",
 ) -> dict:
     validated = validate_pilot_plan(plan_path)
@@ -202,32 +209,36 @@ def run_bc_baseline_preflight(
     rows = read_task8_development(manifest, manifest_sha)
     bc_sha = _sha256_file(paths["bc"])
     bc = load_bc_model(str(paths["bc"]), device)
-    result = evaluate_bc_baseline_preflight(
+    shard = evaluate_bc_baseline_shard(
         task8_rows=rows,
         scenario_manifest_sha256=manifest_sha,
         bc_model=bc,
         bc_checkpoint_sha256=bc_sha,
         device=device,
+        shard_index=shard_index,
+        shard_count=shard_count,
+        run_plan_sha256=plan["plan_sha256"],
+        source_commit=plan["source_commit"],
+        source_archive_sha256=plan["source_archive_sha256"],
+        inputs_archive_sha256=plan["inputs_archive_sha256"],
+        producer_host_id=host_id,
+        producer_gpu_uuid=gpu_uuid,
     )
-    result.update(
-        {
-            "run_plan_sha256": plan["plan_sha256"],
-            "source_commit": plan["source_commit"],
-            "opened_development_only": True,
-            "candidate_evaluated": False,
-        }
-    )
+    result = shard.to_dict()
     output = Path(output_path)
     if output.exists() or output.with_suffix(output.suffix + ".partial").exists():
         raise FileExistsError(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     partial = output.with_suffix(output.suffix + ".partial")
-    partial.write_text(
-        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    with partial.open("xb") as handle:
+        handle.write(baseline_json_bytes(result))
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.chmod(partial, 0o444)
     os.replace(partial, output)
     return {
         "passed": True,
+        "shard_index": result["shard_index"],
         "scenario_count": result["scenario_count"],
         "collision": result["collision"],
         "terminal_overtake": result["terminal_overtake"],
@@ -406,6 +417,12 @@ def parse_args():
     ppo_baseline = sub.add_parser("ppo-baseline-preflight")
     ppo_baseline.add_argument("--run-plan", required=True)
     ppo_baseline.add_argument("--output", required=True)
+    ppo_baseline.add_argument("--host-id", choices=("local", "remote"), required=True)
+    ppo_baseline.add_argument("--gpu-uuid", required=True)
+    ppo_baseline.add_argument("--shard-index", type=int, required=True)
+    ppo_baseline.add_argument(
+        "--shard-count", type=int, default=BASELINE_SHARD_COUNT
+    )
     ppo_baseline.add_argument("--device", default="cuda:0")
     ppo_plumbing = sub.add_parser("ppo-plumbing-smoke")
     ppo_plumbing.add_argument("--run-plan", required=True)
@@ -596,8 +613,14 @@ def main() -> None:
             "commands": sorted(B2_COMMANDS),
         }
     elif args.command == "ppo-baseline-preflight":
-        result = run_bc_baseline_preflight(
-            args.run_plan, args.output, device_name=args.device
+        result = run_bc_baseline_shard(
+            args.run_plan,
+            args.output,
+            host_id=args.host_id,
+            gpu_uuid=args.gpu_uuid,
+            shard_index=args.shard_index,
+            shard_count=args.shard_count,
+            device_name=args.device,
         )
     elif args.command == "ppo-plumbing-smoke":
         result = run_plumbing_smoke_release(

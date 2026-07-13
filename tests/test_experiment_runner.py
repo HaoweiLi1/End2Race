@@ -11,6 +11,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -26,6 +27,36 @@ assert SPEC is not None and SPEC.loader is not None
 runner = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = runner
 SPEC.loader.exec_module(runner)
+
+
+def test_runner_binds_lazy_imports_to_its_own_repo() -> None:
+    assert sys.path[0] == str(ROOT)
+    assert runner.REPO_ROOT == ROOT
+
+    with tempfile.TemporaryDirectory() as temporary:
+        base = Path(temporary)
+        staged = base / "isolated/repo"
+        (staged / "Experiments").mkdir(parents=True)
+        copied = staged / "Experiments/runner.py"
+        shutil.copy2(ROOT / "Experiments/runner.py", copied)
+        unrelated = base / "unrelated"
+        unrelated.mkdir()
+        code = (
+            "import importlib.util,sys;"
+            f"p={str(copied)!r};"
+            "s=importlib.util.spec_from_file_location('staged_runner',p);"
+            "m=importlib.util.module_from_spec(s);sys.modules[s.name]=m;"
+            "s.loader.exec_module(m);print(sys.path[0]);print(m.REPO_ROOT)"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=unrelated,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        lines = result.stdout.splitlines()
+        assert lines == [str(staged), str(staged)]
 
 
 def host_specs(run_id: str) -> tuple[runner.HostSpec, runner.HostSpec]:
@@ -493,7 +524,17 @@ def marker_fixture(root: Path) -> tuple[runner.RunPlan, dict, dict]:
     with development.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=("manifest_order", "l2_id", "l4_id", "map_name"),
+            fieldnames=(
+                "manifest_order",
+                "panel",
+                "l2_id",
+                "l4_id",
+                "map_name",
+                "skill",
+                "opponent_raceline",
+                "speedscale_hex",
+                "resolved_ego_idx",
+            ),
             delimiter="\t",
         )
         writer.writeheader()
@@ -501,9 +542,14 @@ def marker_fixture(root: Path) -> tuple[runner.RunPlan, dict, dict]:
             writer.writerow(
                 {
                     "manifest_order": index,
+                    "panel": "development",
                     "l2_id": f"L2:dev:{index:03d}",
                     "l4_id": f"L4:dev:{index:03d}",
                     "map_name": maps[index % 4],
+                    "skill": "skill_F",
+                    "opponent_raceline": "raceline0",
+                    "speedscale_hex": "0x1.0000000000000p-1",
+                    "resolved_ego_idx": 100 + index,
                 }
             )
     training = task8 / "training_scenarios.tsv"
@@ -574,13 +620,24 @@ def marker_fixture(root: Path) -> tuple[runner.RunPlan, dict, dict]:
             plan_sha256="",
         )
     )
+    collision_by_shard = (12, 2, 5, 5)
+    confirmed_by_shard = (29, 31, 32, 34)
+    terminal_only_by_shard = (3, 6, 1, 2)
     baseline_rows = []
     for index in range(288):
-        if index < 24:
+        shard_index = index % 4
+        ordinal = index // 4
+        if ordinal < collision_by_shard[shard_index]:
             four_state = "collision"
-        elif index < 100:
+        elif ordinal < (
+            collision_by_shard[shard_index] + confirmed_by_shard[shard_index]
+        ):
             four_state = "confirmed_pass"
-        elif index < 162:
+        elif ordinal < (
+            collision_by_shard[shard_index]
+            + confirmed_by_shard[shard_index]
+            + terminal_only_by_shard[shard_index]
+        ):
             four_state = "terminal_overtake_only"
         else:
             four_state = "safe_follow"
@@ -592,28 +649,53 @@ def marker_fixture(root: Path) -> tuple[runner.RunPlan, dict, dict]:
                 "map_name": maps[index % 4],
                 "trajectory_sha256": f"{index:064x}",
                 "four_state": four_state,
-                "collision_any": index < 24,
-                "ego_collision": index < 24,
+                "collision_any": four_state == "collision",
+                "ego_collision": four_state == "collision",
                 "opp_collision": False,
-                "terminal_overtake": 24 <= index < 162,
-                "confirmed_safe_pass": 24 <= index < 100,
+                "terminal_overtake": four_state
+                in {"confirmed_pass", "terminal_overtake_only"},
+                "confirmed_safe_pass": four_state == "confirmed_pass",
                 "interaction_attempt": True,
             }
         )
-    baseline = {
-        "schema": "bplus-v2.2-b2-bc-baseline-preflight-1",
-        "passed": True,
-        "run_plan_sha256": plan.plan_sha256,
-        "source_commit": plan.source_commit,
-        "opened_development_only": True,
-        "candidate_evaluated": False,
-        "scenario_manifest_sha256": runner._sha256_file(development),
-        "bc_checkpoint_sha256": runner.CANONICAL_BC_SHA256,
-        "scenario_count": 288,
-        "collision": 24,
-        "terminal_overtake": 138,
-        "rows": baseline_rows,
-    }
+    from bplus_v22.ppo_eval import BCBaselineShard, merge_bc_baseline_shards
+
+    shards = []
+    producers = runner._baseline_expected_producers(plan)
+    for shard_index in range(4):
+        shard_rows = tuple(
+            row for row in baseline_rows if row["task8_row_index"] % 4 == shard_index
+        )
+        shards.append(
+            BCBaselineShard(
+                shard_index=shard_index,
+                shard_count=4,
+                run_plan_sha256=plan.plan_sha256,
+                source_commit=plan.source_commit,
+                source_archive_sha256=plan.source_archive_sha256,
+                inputs_archive_sha256=plan.inputs_archive_sha256,
+                scenario_manifest_sha256=runner._sha256_file(development),
+                bc_checkpoint_sha256=runner.CANONICAL_BC_SHA256,
+                producer_host_id=producers[shard_index][0],
+                producer_gpu_uuid=producers[shard_index][1],
+                rows=shard_rows,
+                collision=sum(row["collision_any"] for row in shard_rows),
+                terminal_overtake=sum(
+                    row["terminal_overtake"] for row in shard_rows
+                ),
+            )
+        )
+    baseline = merge_bc_baseline_shards(
+        shards=shards,
+        task8_rows=runner._read_tsv_rows(development),
+        run_plan_sha256=plan.plan_sha256,
+        source_commit=plan.source_commit,
+        source_archive_sha256=plan.source_archive_sha256,
+        inputs_archive_sha256=plan.inputs_archive_sha256,
+        scenario_manifest_sha256=runner._sha256_file(development),
+        bc_checkpoint_sha256=runner.CANONICAL_BC_SHA256,
+        expected_producers=producers,
+    )
     selected = []
     for index, map_name in enumerate(maps):
         selected.append(
@@ -909,6 +991,110 @@ def test_marker_reuse_and_atomic_install() -> None:
         assert "_install-marker" in rendered
 
 
+def test_baseline_topology_commands_and_terminal_failure() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        plan = training_plan("b2_baseline_topology", root / "collection")
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            assert runner.baseline_preflight(plan, True) == 0
+        rendered = stdout.getvalue()
+        assert rendered.count("_baseline-host") == 2
+        assert "--host local" in rendered and "--host remote" in rendered
+        assert rendered.count("_install-baseline-shard") == 3
+        assert rendered.count("_merge-baseline-host") == 1
+        assert "shard_1.json" in rendered
+        assert "shard_2.json" in rendered
+        assert "shard_3.json" in rendered
+        assert rendered.count("flock -n") == 2
+
+        local = replace(runner._host(plan, "local"), stage_root=str(root))
+        remote = replace(runner._host(plan, "remote"), stage_root=str(root))
+        terminal_plan = replace(plan, hosts=(local, remote))
+        control = root / "control"
+        control.mkdir()
+        failed = control / "bc_baseline_preflight.failed.json"
+        failed.write_text("{}\n", encoding="utf-8")
+        with mock.patch.object(runner, "_run_command", return_value=0), mock.patch.object(
+            runner, "_validate_baseline_marker"
+        ), mock.patch.object(
+            runner.subprocess,
+            "Popen",
+            side_effect=AssertionError("terminal failure reran simulator"),
+        ):
+            assert runner.baseline_preflight(terminal_plan, False) == 2
+
+
+def test_remote_baseline_shard_atomic_install() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        plan, baseline, _ = marker_fixture(root)
+        local = replace(runner._host(plan, "local"), stage_root=str(root))
+        installed_plan = replace(
+            plan, hosts=(local, runner._host(plan, "remote"))
+        )
+        summary = next(item for item in baseline["shards"] if item["shard_index"] == 1)
+        rows = []
+        for row in baseline["rows"]:
+            if row["baseline_shard_index"] != 1:
+                continue
+            raw = dict(row)
+            raw.pop("baseline_shard_index")
+            raw.pop("producer_host_id")
+            raw.pop("producer_gpu_uuid")
+            rows.append(raw)
+        shard = {
+            "schema": "bplus-v2.2-b2-bc-baseline-shard-1",
+            "shard_index": 1,
+            "shard_count": 4,
+            "run_plan_sha256": installed_plan.plan_sha256,
+            "source_commit": installed_plan.source_commit,
+            "source_archive_sha256": installed_plan.source_archive_sha256,
+            "inputs_archive_sha256": installed_plan.inputs_archive_sha256,
+            "scenario_manifest_sha256": baseline["scenario_manifest_sha256"],
+            "bc_checkpoint_sha256": runner.CANONICAL_BC_SHA256,
+            "producer_host_id": summary["producer_host_id"],
+            "producer_gpu_uuid": summary["producer_gpu_uuid"],
+            "opened_development_only": True,
+            "candidate_evaluated": False,
+            "scenario_count": 72,
+            "collision": summary["collision"],
+            "terminal_overtake": summary["terminal_overtake"],
+            "rows": rows,
+        }
+        control = root / "control"
+        control.mkdir(exist_ok=True)
+        incoming = control / ".shard_1.incoming.json"
+        incoming.write_text(json.dumps(shard), encoding="utf-8")
+        with mock.patch.object(runner, "load_plan", return_value=installed_plan), mock.patch.object(
+            runner, "check_stage_host"
+        ):
+            assert runner.install_baseline_shard(
+                root / "control/run_plan.json", "local", 1, incoming
+            ) == 0
+            destination = runner._baseline_shard_path(root, 1)
+            assert destination.is_file() and destination.stat().st_nlink == 1
+            original_sha = runner._sha256_file(destination)
+            retry = control / ".shard_1.retry.json"
+            retry.write_bytes(destination.read_bytes())
+            assert runner.install_baseline_shard(
+                root / "control/run_plan.json", "local", 1, retry
+            ) == 0
+            assert not retry.exists()
+            changed = dict(shard)
+            changed["producer_gpu_uuid"] = "GPU-wrong"
+            tampered = control / ".shard_1.tampered.json"
+            tampered.write_text(json.dumps(changed), encoding="utf-8")
+            try:
+                runner.install_baseline_shard(
+                    root / "control/run_plan.json", "local", 1, tampered
+                )
+                raise AssertionError("tampered baseline shard was installed")
+            except runner.RunnerError:
+                pass
+            assert runner._sha256_file(destination) == original_sha
+
+
 def test_collect_status_first_failure_then_clean_retry() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -987,6 +1173,8 @@ def test_collect_status_first_failure_then_clean_retry() -> None:
         ), mock.patch.object(
             runner, "_validate_baseline_marker"
         ), mock.patch.object(
+            runner, "_validate_collected_baseline_shards"
+        ), mock.patch.object(
             runner, "_validate_plumbing_marker"
         ), mock.patch.object(
             runner, "_validate_ready_marker"
@@ -998,6 +1186,37 @@ def test_collect_status_first_failure_then_clean_retry() -> None:
         assert collection.is_dir()
         attempts = root / "collection.attempt_failures/attempt_001"
         assert (attempts / "collection.partial/failure.json").is_file()
+
+
+def test_baseline_failure_collection_is_control_only() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        plan = training_plan("b2_failed_collection", root / "collection")
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            assert runner.collect_baseline_failure(plan, True) == 0
+        rendered = stdout.getvalue()
+        assert "bc_baseline_preflight.failed.json" in rendered
+        assert "baseline_shards" in rendered
+        assert "development_scenarios.tsv" in rendered
+        assert rendered.count("STAGED") == 4
+        assert "status.json" not in rendered
+        assert "READY.json" not in rendered
+        assert "/outputs" not in rendered
+
+        local = replace(runner._host(plan, "local"), stage_root=str(root))
+        terminal_plan = replace(
+            plan, hosts=(local, runner._host(plan, "remote"))
+        )
+        (root / "control").mkdir()
+        (root / "control/bc_baseline_preflight.failed.json").write_text(
+            "{}\n", encoding="utf-8"
+        )
+        with mock.patch.object(
+            runner, "collect_baseline_failure", return_value=7
+        ) as failure_collect:
+            assert runner.collect(terminal_plan, False) == 7
+        failure_collect.assert_called_once_with(terminal_plan, False)
 
 
 def test_extracted_source_drift_is_rejected() -> None:
@@ -1056,7 +1275,26 @@ def test_critical_environment_normalizes_python_patch() -> None:
     assert environment["python"] == f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
+def test_runner_and_evaluator_baseline_contract_cannot_drift() -> None:
+    import bplus_v22.ppo_eval as ppo_eval
+
+    with tempfile.TemporaryDirectory() as temporary:
+        plan = training_plan("b2_contract_consistency", Path(temporary) / "collection")
+        assert len(runner._baseline_expected_producers(plan)) == runner.SHARD_COUNT
+        with mock.patch.object(
+            ppo_eval,
+            "EXPECTED_BC_COLLISIONS_BY_SHARD",
+            (13, 2, 5, 4),
+        ):
+            try:
+                runner._baseline_expected_producers(plan)
+                raise AssertionError("runner/evaluator baseline drift was accepted")
+            except runner.RunnerError as error:
+                assert "acceptance contract drift" in str(error)
+
+
 def main() -> None:
+    test_runner_binds_lazy_imports_to_its_own_repo()
     test_plan_digest_and_tamper()
     test_learner_queues_are_complete_and_nonshardable()
     test_dry_run_never_accesses_remote_or_old_worktree()
@@ -1070,10 +1308,14 @@ def main() -> None:
     test_gate_marker_semantics_and_tamper_rejection()
     test_show_phase_order_and_partial_quarantine()
     test_marker_reuse_and_atomic_install()
+    test_baseline_topology_commands_and_terminal_failure()
+    test_remote_baseline_shard_atomic_install()
     test_collect_status_first_failure_then_clean_retry()
+    test_baseline_failure_collection_is_control_only()
     test_extracted_source_drift_is_rejected()
     test_stage_publication_is_required()
     test_critical_environment_normalizes_python_patch()
+    test_runner_and_evaluator_baseline_contract_cannot_drift()
     print("ALL TESTS PASSED")
 
 
