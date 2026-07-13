@@ -48,6 +48,16 @@ rollout has analytic `P(I)=0.10`, `P(B|I)=0.50`, joint brake probability 0.05,
 while strict deterministic mode (`ell > 0`) is exact NO_OP. The old centered
 threshold is forbidden in B3.
 
+The conditional-brake boundary is deliberately learnable rather than a second
+deployment rule. At `ell_B=0`, the Bernoulli distribution has probability 0.5
+and maximum entropy. Its entropy derivative with respect to the logit is zero
+at that maximum; the PPO learning signal instead comes from the sampled
+log-probability derivative `d log p(a) / d ell_B = a - 0.5`, which is `+0.5`
+for brake and `-0.5` for no-brake. Thus PPO gradients can move the same decision
+surface later used by standard deterministic deployment. The deterministic
+comparison remains strict: with intervention active, `ell_B == 0` means
+no-brake and any positive `ell_B` means brake.
+
 The same `ell_I/ell_B` must be used by:
 
 - keyed rollout sampling;
@@ -102,13 +112,15 @@ blocking:
 1. fresh deterministic A/B/C behavior is exactly BC with zero residual;
 2. analytic fresh probabilities are 0.10/0.50/0.05;
 3. B3 rejects centered mode and nonzero gate offsets;
-4. unchanged checkpoint replay has ratio one within the existing float32 bound;
-5. sampled latent, executed action and logged probability are consistent;
-6. composition remains bound-preserving with zero external clipping;
-7. B2 and B3 checkpoint/action-policy schemas cannot be confused;
-8. checkpoint/resume preserves effective priors, dual, optimizer and RNG state;
-9. dual first becomes eligible only after 32 completed B3 episodes;
-10. a B3 RunPlan is exactly 40 iterations and contains no external gate-offset
+4. with intervention active, conditional-brake `ell_B == 0` selects no-brake
+   while `ell_B > 0` selects brake;
+5. unchanged checkpoint replay has ratio one within the existing float32 bound;
+6. sampled latent, executed action and logged probability are consistent;
+7. composition remains bound-preserving with zero external clipping;
+8. B2 and B3 checkpoint/action-policy schemas cannot be confused;
+9. checkpoint/resume preserves effective priors, dual, optimizer and RNG state;
+10. dual first becomes eligible only after 32 completed B3 episodes;
+11. a B3 RunPlan is exactly 40 iterations and contains no external gate-offset
     schedule or fresh-pool input.
 
 TTC, Brier, supervised witness recall and warm-start calibration are nonblocking

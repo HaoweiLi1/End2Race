@@ -187,6 +187,39 @@ def main() -> None:
             atol=1e-7,
             rtol=0.0,
         )
+
+    # B3's conditional brake boundary is independently load-bearing once the
+    # top intervention gate has become active.  Equality at effective logit 0
+    # must remain no-brake; the smallest prospective positive perturbation
+    # must select brake under the same standard deterministic rule.
+    with torch.no_grad():
+        unified.intervention_gate.weight.zero_()
+        unified.brake_gate.weight.zero_()
+        unified.intervention_gate.bias.fill_(-3.0)
+        unified.brake_gate.bias.fill_(-6.0)
+    brake_boundary_distribution = unified.distribution(bc, lidar, scalar)
+    assert torch.equal(
+        brake_boundary_distribution.conditional_brake_logits,
+        torch.zeros_like(
+            brake_boundary_distribution.conditional_brake_logits
+        ),
+    )
+    brake_boundary = unified.deterministic_action(
+        bc, lidar, scalar, DETERMINISTIC_STANDARD
+    )
+    assert torch.all(brake_boundary.intervention_gate == 1)
+    assert torch.all(brake_boundary.brake_gate == 0)
+    with torch.no_grad():
+        unified.brake_gate.bias.fill_(-6.0 + 1e-4)
+    brake_positive = unified.deterministic_action(
+        bc, lidar, scalar, DETERMINISTIC_STANDARD
+    )
+    assert torch.all(brake_positive.intervention_gate == 1)
+    assert torch.all(brake_positive.brake_gate == 1)
+    with torch.no_grad():
+        unified.intervention_gate.bias.fill_(-6.0)
+        unified.brake_gate.bias.fill_(-6.0)
+
     try:
         unified.deterministic_action(bc, lidar, scalar, DETERMINISTIC_CENTERED)
         raise AssertionError("B3 accepted the historical centered rule")

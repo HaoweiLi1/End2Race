@@ -127,6 +127,8 @@ The new assertions cover:
 
 - exact 0.10 / 0.50 / 0.05 fresh probabilities;
 - fresh A/B/C standard deterministic NO_OP;
+- with top intervention active, effective conditional-brake logit equality at
+  zero selects no-brake and a `+1e-4` perturbation selects brake;
 - keyed sampling near the analytic prior;
 - unchanged replay ratio one;
 - centered/nonzero-offset rejection;
@@ -178,6 +180,12 @@ Review code rather than the narrative, focusing on these exact questions:
    any executable B3 path?
 8. Does the 40-iteration budget introduce any unreviewed objective, reward,
    curriculum, action-budget or product-gate change?
+
+Post-implementation audit addendum: the explicit B3 conditional-brake
+`0 / +epsilon` boundary regression and the policy-log-probability gradient
+explanation are now part of the fixed review surface. This closes the only
+missing contract identified by the first Claude review without changing B3
+behavior or any numerical setting.
 
 Do not demand a new TTC, warm-start or proxy-quality gate. A blocking finding
 must threaten policy/log-probability correctness, action execution, checkpoint

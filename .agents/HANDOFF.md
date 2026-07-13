@@ -2208,6 +2208,13 @@ failure is the known migrated `test_bplus_v22_hierarchical_warmstart.py` path
 resolution described in `Experiments/INDEX.md`; it is not a B3 regression and
 the immutable historical release was not rewritten.
 
+After the first Claude audit, one missing direct B3 boundary regression was
+added prospectively: with top intervention active, effective conditional-brake
+logit `0` selects no-brake and `+1e-4` selects brake. B3 plan §3 now also states
+the precise learning argument: Bernoulli entropy is maximal (and its own
+derivative zero) at logit zero, while sampled policy log-probability has
+gradient `a-0.5`, so PPO can move the exact deployed decision surface.
+
 No simulator/GPU job, immutable B3 RunPlan, stage, product evaluation, arm
 selection or pool opening occurred. The remote checkout was not modified in
 this implementation step. The exact implementation was committed locally as
