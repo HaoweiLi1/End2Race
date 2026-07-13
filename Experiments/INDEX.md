@@ -27,7 +27,7 @@
 | 编号 | 原路径 | 内容 | 状态 |
 |---|---|---|---|
 | `B1_route_r2_scaffold` | `logs/bplus_v22_d3r2_20260711` | v2.2 支架：层级动作、identity 门、warm-start、闭环评估（Task 1–10） | Task 10 **FAILED**；warm-start 两次失败 |
-| `B2_ppo_pilot` | — | B+ v2.2 PPO 接线 + 三臂 BC-direct pilot | **实现/preflight 中**；owner 已授权 managed B2，计划见 `.agents/B2_PPO_PLAN.md`，Opus审计见 `.agents/B2_PPO_REVIEW.md` |
+| `B2_ppo_pilot` | — | B+ v2.2 PPO 接线 + 三臂 BC-direct pilot | **首轮训练与评估完成，产品方向门 FAILED**；六个候选均净损失超车，未选臂，fresh pool 未打开。训练 `b2_direct_20260713_081422`，评估 `b2_eval_20260713_165800` |
 
 ## C 轮 — 预留
 

@@ -1,6 +1,6 @@
 # End2Race Session Handoff — B+ v2.2 Objective-Aligned Policy Phase
 
-Generated: 2026-07-10; current checkpoint updated 2026-07-12 (B2 implementation checkpoint §22).
+Generated: 2026-07-10; current checkpoint updated 2026-07-13 (first B2 product-KPI evaluation §22.9).
 Repository: `/home/haowei/Documents/End2Race` (local) ↔ `haowei@192.168.2.127:~/Documents/End2Race` (active remote, host `haowei-MSI`). The historical `100.95.251.103` address is retired unless the user changes it again.
 Audience: a new chat/agent continuing this work with zero conversational context.
 
@@ -25,12 +25,12 @@ historical ledger below is intentionally retained; use newest §22 for B2,
 > historical technical provenance. Verify live local/remote state before acting. The
 > remote Codex goal is revoked and must not be resumed. D2/D2R retain their
 > original failed gates; TTC is prospectively diagnostic-only for the policy
-> phase. B1 Task 10 failed, and the latest numerical result is the hierarchical
-> replacement Task 6 failure in §18.13; no full B+ PPO iteration, arm selection,
-> D2-test opening or fresh-pool result exists. B2 is now owner-authorized and
-> implemented through local P0/P1/one-episode P3 smoke; the full six-learner
-> pilot has not started. Execution must use §22's clean-commit immutable
-> RunPlan and isolated local/remote roots, never the stale remote worktree.
+> phase. B2 training RunPlan `b2_direct_20260713_081422` and frozen evaluation
+> EvalPlan `b2_eval_20260713_165800` are complete. Six integrity-valid candidates
+> all failed the direction gate because corrected overtake fell below BC; no arm
+> was selected and the fresh pool remains sealed. Do not continue these candidates
+> into medium/final evaluation. The next numerical run requires a new prospective
+> PPO objective/constraint decision and a unique immutable RunPlan.
 
 ## 1. Historical one-paragraph state (2026-07-10; superseded by §§14–18)
 
@@ -2065,3 +2065,67 @@ checks pass. Commit these exact files, create a unique RunPlan from that clean
 commit, and rerun the topology-matched baseline. Do not reuse
 `b2_direct_20260713_064744`, do not change 138 to 139, and do not start a learner
 until both host preflights plus P3 have published the shared READY marker.
+
+### 22.9 First direct B2 PPO product-KPI evaluation (2026-07-13)
+
+The managed B2 experiment is now numerically complete through the opened-
+development evaluation. Training RunPlan `b2_direct_20260713_081422` produced
+six integrity-valid iteration-20 checkpoints: three arms, two seeds. This was
+the first B+ v2.2 PPO run evaluated directly against corrected collision and
+overtake outcomes rather than a TTC or supervised warm-start proxy.
+
+The first EvalPlan, `b2_eval_20260713_111923`, is preserved as an incomplete
+control-plane attempt: local shard 0 was stale, remote shard 2 had an atomic
+COMPLETE payload despite an SSH exit-120 status, and shard 3 never started. It
+was not overwritten or used for the scientific result. The prospective
+control-only recovery commit `66eec4ed68b5089dce0af99f4932501580ad9683`
+added SSH keepalives, strict atomic-COMPLETE shard recovery and exact evaluation
+ledger validation without changing evaluator, model, simulator or checkpoint
+bytes.
+
+The canonical EvalPlan is `b2_eval_20260713_165800`, plan SHA
+`0d4a58e2d1cae9d98cf65363509ded4c319df98c49c16100c843539f73fef41f`.
+Local shard 0 and remote shards 1–3 completed 288 scenarios x 7 variants =
+2,016 rows. Collection and merge passed, all Cartesian keys were unique, every
+variant had all 288 L2s, external clipping was zero, and an independent TSV
+recomputation matched `merged/summary.json`. The topology-matched BC baseline
+is exactly 24 collisions and 138 terminal overtakes.
+
+Per-seed product results:
+
+| Variant | collision / RR | overtake | fixed/new collision | gained/lost overtake | verdict |
+|---|---:|---:|---:|---:|---|
+| `BC_FROZEN::seed0` | 26 / 1.083 | 124 | 11/13 | 7/21 | FAILED_DIRECTION_GATE |
+| `BC_FROZEN::seed1` | 11 / 0.458 | 113 | 20/7 | 7/32 | FAILED_DIRECTION_GATE |
+| `SIDECAR_FROZEN::seed0` | 17 / 0.708 | 118 | 14/7 | 6/26 | FAILED_DIRECTION_GATE |
+| `SIDECAR_FROZEN::seed1` | 17 / 0.708 | 97 | 19/12 | 7/48 | FAILED_DIRECTION_GATE |
+| `SIDECAR_FINETUNE::seed0` | 8 / 0.333 | 95 | 21/5 | 1/44 | FAILED_DIRECTION_GATE |
+| `SIDECAR_FINETUNE::seed1` | 9 / 0.375 | 88 | 20/5 | 1/51 | FAILED_DIRECTION_GATE |
+
+Pooled collision RR is 0.771 for A, 0.708 for B and 0.354 for C, but pooled
+terminal overtakes are only 237, 215 and 183 versus the two-seed BC total 276.
+Every seed fails even the opened-development 1 percentage-point overtake
+tolerance, so all also fail the owner's strict product constraint.
+
+This is a substantive objective failure, not an integrity or action-interface
+failure. PPO learned behavior capable of reducing collisions: in particular C
+reached 8/9 collisions. It did so largely by suppressing interaction and
+overtaking, however; C lost 44/51 overtakes and produced zero
+collision-to-confirmed-safe-pass conversions in both seeds. The result does not
+support the claim that safety is unlearnable. It shows that the current PPO
+objective/constraint path did not preserve the lexicographically primary
+overtake behavior.
+
+Canonical local evidence:
+
+- `Experiments/B2_ppo_pilot/evaluations/b2_eval_20260713_165800/merged/summary.json`
+- `Experiments/B2_ppo_pilot/evaluations/b2_eval_20260713_165800/merged/episodes.tsv`
+- `Experiments/B2_ppo_pilot/evaluations/b2_eval_20260713_165800/merged/COMPLETE`
+
+Terminal decision: `any_opened_dev_point_target_hit=false`,
+`arm_selection_performed=false`, `fresh_pool_opened=false`. Do not medium-
+confirm, select, or further evaluate these checkpoints. Before any new PPO
+RunPlan, perform a read-only diagnosis of the actual dual trajectory,
+overtake/collision advantages and update scales, then write one prospective,
+minimal objective/constraint correction. Do not return to TTC or supervised
+warm-start admission gates.

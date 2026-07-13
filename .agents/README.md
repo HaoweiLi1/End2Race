@@ -157,11 +157,12 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 
 **新增托管工作 → 在 `runner.py` 里加 Job，不要写成 shell 单行命令。** 一个 job 应该在烧 GPU 之前就能被审阅、被 dry-run。
 
-> **B2 当前处于实现/preflight 阶段：** 旧 `b2-exploration-sweep` 与
-> `b2-ppo-pilot-seed0` 占位 job 不得执行。owner 已授权 managed B2，但只有
-> `.agents/B2_PPO_PLAN.md` 的 Tasks 0–6、测试、隔离 staging 和 preflight
-> 全部通过后才可启动冻结的20轮数值 pilot。远端旧 dirty repository 永不作为
-> B2 执行目录。
+> **B2 首轮 pilot 与冻结评估已完成：** 训练 RunPlan 是
+> `b2_direct_20260713_081422`，评估 EvalPlan 是
+> `b2_eval_20260713_165800`。六个 candidate 全部 integrity PASS，但全部因
+> corrected overtake 下降而未通过方向门；没有 arm selection，fresh pool 未打开。
+> 不得继续运行同一候选、medium/final confirmation 或旧占位 job。下一次数值
+> PPO 必须来自新的、前瞻性批准的目标/约束修订和唯一 RunPlan。
 
 ---
 
@@ -173,27 +174,23 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 
 ---
 
-## 6. 当前位置（2026-07-12）
+## 6. 当前位置（2026-07-13）
 
 - 历史 PPO/P1 与 B1 Task 10 记录过碰撞和超车；真正缺失的是：**尚无
   B+ v2.2 PPO 学习后的 candidate 接受当前词典序开发门或 fresh 产品门。**
 - 五个感知探针保留其原始 TTC-gate FAIL，TTC 已被 owner 前瞻性降为
   policy diagnostic；旧 warm-start 闭环有害，hierarchical replacement
   Task 6 又出现 positive recall 0，因此 warm-start 不再建议作为 PPO 准入门。
-- 仓库有历史 `train_ppo.py`；B+ v2.2 的层级 rollout、完整 replay、two-head
-  constrained clipped PPO、双层探索、exact checkpoint/resume、直接 KPI evaluator
-  与隔离 RunPlan runner 现已接通。两轮 Opus 实现审计已闭环为
-  `GO_FOR_STAGING`；数值 pilot 尚未启动，仍须完成 clean commit、BC-only 288
-  基准预检、两端 staging/preflight 和四图 plumbing smoke。
-- 已批准下一步见 `.agents/B2_PPO_PLAN.md`：从 BC-identical fresh policy
-  开始三臂 PPO，用完整记账的 top/conditional-brake 训练期探索，直接评估
-  collision RR 与 corrected overtake。Claude Code `claude-opus-4-8` / max 的
-  设计审计与实现复核分别记录在 `.agents/B2_PPO_REVIEW.md`、
-  `.agents/B2_IMPLEMENTATION_REVIEW.md`。
-- 固定远端 `haowei@192.168.2.127` 已恢复；live remote GPU UUID 为
-  `GPU-0b24596a-ad53-59cb-8584-7020253e5ac4`。首个隔离 RunPlan 已在 PPO/P3
-  前因 local-all-288 baseline 得到 `24/139` 而正确停止；forensic 证明唯一翻转
-  是最终属于 remote shard3 的 6.958 mm 临界场景。当前正在把 baseline 门改为
-  与最终 eval 相同的 local shard0 + remote shards1–3 拓扑；旧 RunPlan 不得复用，
-  也不得把基准改成139。新 commit/RunPlan 的 topology baseline、preflight、P3
-  全过后才可启动 learner。
+- B+ v2.2 专用 PPO runner 已实现并完成首次三臂、双 seed、20-iteration
+  managed pilot。六个 learner release 全部 integrity PASS；训练 RunPlan 是
+  `b2_direct_20260713_081422`。
+- topology-matched BC baseline、双端 preflight 与 P3 均通过。冻结评估
+  `b2_eval_20260713_165800` 已完成 4 shards、288 场景、7 variants、2,016 行，
+  `integrity_passed=true`，并独立重算一致。
+- **六个候选全部未通过真实方向门**：没有任何 seed 同时满足 corrected
+  overtake 非劣与 collision `RR <= 0.70`。最安全的 C 臂为 8/9 次碰撞
+  (`RR=0.333/0.375`)，但超车从 BC 的 138 降到 95/88；所有候选都净损失超车。
+- `any_opened_dev_point_target_hit=false`、`arm_selection_performed=false`、
+  `fresh_pool_opened=false`。不得打开 fresh/final pool，也不得把碰撞下降单独写成
+  成功。下一步只能基于训练/paired transition 证据前瞻性修订 PPO 目标或约束，
+  不能返回 TTC 或 warm-start 代理门。
