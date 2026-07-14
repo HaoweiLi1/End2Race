@@ -91,7 +91,7 @@ halving both parameter-group LRs. The critic still completes three epochs.
 The initial implementation commit is
 `8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The final reviewed
 execution-source commit is
-`1c096c235e8c1a664ee2782cd8dd2f41c6988b11`. The authoritative learner must
+`3e262e2bf00acd8ef9338122a82780e68a825981`. The authoritative learner must
 use a clean archive from that pushed commit, an immutable B7 RunPlan,
 remote `DISPLAY=:1`, the physical GPU lock, and isolated output/cache paths.
 No seed1 learner or candidate evaluation existed at this implementation
@@ -120,3 +120,6 @@ evaluation was produced by the failed attempt, and it is not resumed.
 
 Compact evidence is retained at
 `docs/ppo/evidence/b7_stale_critic_gradient_20260714/`.
+The superseded staged source was
+`1c096c235e8c1a664ee2782cd8dd2f41c6988b11`; it is not legal for the restarted
+learner.

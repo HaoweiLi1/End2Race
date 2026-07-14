@@ -3030,11 +3030,10 @@ seconds. Full compatibility, staged smoke and immutable RunPlan still precede
 the authoritative learner.
 
 The initial B7 implementation commit is
-`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The final reviewed
-execution-source commit, including the input-archive and immutable BC-row
-RunPlan freeze, is `1c096c235e8c1a664ee2782cd8dd2f41c6988b11`.
-The following documentation-only boundary commit must not replace that source
-identity in the B7 RunPlan.
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The staging-integrity source used
+for the first attempt, including the input-archive and immutable BC-row RunPlan
+freeze, was `1c096c235e8c1a664ee2782cd8dd2f41c6988b11`. It is superseded by the
+remediation boundary in §34.
 
 ## 34. B7 first staged attempt failed closed and was remediated (2026-07-14)
 
@@ -3052,3 +3051,6 @@ and all nine compatibility programs. No candidate/evaluation was produced.
 The failed partial run is not resumed; a new source archive and RunPlan must
 restart seed1 from iteration 0. Compact evidence is under
 `docs/ppo/evidence/b7_stale_critic_gradient_20260714/`.
+The superseding legal execution-source commit is
+`3e262e2bf00acd8ef9338122a82780e68a825981`; its following boundary-only commit
+must not replace this identity in the restarted RunPlan.

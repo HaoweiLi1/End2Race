@@ -3,12 +3,14 @@
 Status: prospective implementation and execution plan, 2026-07-14
 
 Implementation/source boundary:
-`1c096c235e8c1a664ee2782cd8dd2f41c6988b11`.
+`3e262e2bf00acd8ef9338122a82780e68a825981`.
 
 The initial implementation landed at
-`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`; the later source boundary above
-adds only the staging-integrity requirements needed to freeze the input archive
-and immutable 288-row BC baseline in the RunPlan.
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. Staging-integrity changes at
+`1c096c235e8c1a664ee2782cd8dd2f41c6988b11` froze the input archive and
+immutable 288-row BC baseline. The final boundary above additionally clears
+stale critic gradients between iterations after the first staged attempt
+failed closed; it does not change the scientific configuration.
 
 ## 1. Decision and bounded claim
 
