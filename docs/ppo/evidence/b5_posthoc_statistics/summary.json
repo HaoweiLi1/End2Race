@@ -1,0 +1,53 @@
+{
+  "analysis_status": "read-only post-hoc qualification of an opened-development panel",
+  "claim_boundary": {
+    "fresh_or_final_confirmation": false,
+    "historical_verdict_preserved": "OPENED_DEVELOPMENT_SURVIVOR",
+    "qualification": "feasibility gate passed, paired safety effect statistically inconclusive, checkpoint not promoted"
+  },
+  "inference_contract": {
+    "cluster_bootstrap": "percentile interval from resampling the 50 startpoint blocks with replacement",
+    "cluster_sign_flip": "exact enumeration conditional on the 50 observed block-effect vectors, but its inferential validity requires startpoint-level sign symmetry/exchangeability",
+    "occurrence_exact_mcnemar": "transparent case-level description; it ignores within-startpoint dependence",
+    "selection_adjustment": "joint same-sign enumeration across the three correlated snapshots; the max-net-effect event is conservative because it does not condition on the overtake gate"
+  },
+  "input": {
+    "conditions_per_startpoint": 12,
+    "paired_rows": "docs/ppo/evidence/b5_safe_trust_region/product_paired_rows.tsv",
+    "paired_rows_sha256": "4c48fbbfce9f495aaf7e21f5a3f7afe52674d2e5f8973e8159645d467f6830a3",
+    "rows": 2400,
+    "source_commit": "05701c1a804b0bb79b47ddcc1386898c7ad8e547",
+    "startpoints": 50,
+    "variants": [
+      "BC",
+      "seed1_iter10",
+      "seed1_iter20",
+      "seed1_iter30"
+    ]
+  },
+  "metrics": {
+    "collision": {
+      "joint_sign_flip_state_count": 1120,
+      "observed_net_effect_by_variant": {
+        "seed1_iter10": 2,
+        "seed1_iter20": -1,
+        "seed1_iter30": -3
+      },
+      "selection_aware_one_sided_max_net_effect_p": 0.5789680480957031,
+      "selection_statistic": "maximum net effect across iter10/iter20/iter30",
+      "startpoint_count": 50
+    },
+    "overtake": {
+      "joint_sign_flip_state_count": 1816,
+      "observed_net_effect_by_variant": {
+        "seed1_iter10": 5,
+        "seed1_iter20": 7,
+        "seed1_iter30": 1
+      },
+      "selection_aware_one_sided_max_net_effect_p": 0.17398464679718018,
+      "selection_statistic": "maximum net effect across iter10/iter20/iter30",
+      "startpoint_count": 50
+    }
+  },
+  "schema": "end2race-b5-statistical-qualification-1"
+}

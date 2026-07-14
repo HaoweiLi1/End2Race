@@ -20,6 +20,9 @@
   `.agents/B5_SAFE_TRUST_REGION_PLAN.md`、
   `.agents/B5_SAFE_TRUST_REGION_RESULT.md`（exact result/evidence boundary
   `d57d6e9bc4c49fdd9e522f4b4e825277239b405d`）
+- **B5-A 统计限定与 objective-alignment 机制审计** →
+  `.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`（B5-B weighting
+  learner `NO-GO, UNRUN`）
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
 - 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`
@@ -57,6 +60,10 @@ Residual 唯一正确，也不判定 frozen GRU representation 是否充分。�
 `9 fixed / 7 new collision`，因此选择为 `OPENED_DEVELOPMENT_SURVIVOR`。
 它未达到 collision `<=16` target，且 iter20/30 回升至 25/27 collisions。
 该面板不是 fresh/final；外部结果审阅前不得运行 seed0 或打开 sealed pool。
+后续 startpoint-cluster 复算确认 iter10 的 `9 fixed / 7 new` 仍在噪声底内；
+历史 feasibility verdict 保留，但 checkpoint 不晋升。对 opened-Austin outcome
+权重的远端函数空间/actor+Adam 审计未满足启动 B5-B 的机制条件，因此 B5-B 和
+AR(1) 均未运行；详见 post-hoc audit。
 
 **每设一道门，都要能回答一句话：「这道门挡住了，交付物会因此变好吗？」答不上来的门，不要设。**
 

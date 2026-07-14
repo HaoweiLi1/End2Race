@@ -31,3 +31,13 @@ def test_function_metric_uses_declared_action_scales():
     result = MODULE.weighted_direction_metrics(direction, reference, weight)
     assert abs(result["direction_norm"] - 1.0) < 1e-7
     assert abs(result["cosine"] - 1.0) < 1e-12
+
+
+def main():
+    test_opened_prevalence_weights_preserve_mean_episode_mass()
+    test_function_metric_uses_declared_action_scales()
+    print("B5 objective-alignment audit contracts passed")
+
+
+if __name__ == "__main__":
+    main()

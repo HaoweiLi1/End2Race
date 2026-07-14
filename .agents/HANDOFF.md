@@ -2794,3 +2794,53 @@ The exact result/evidence content boundary is
 `d57d6e9bc4c49fdd9e522f4b4e825277239b405d`; external reviewers should inspect
 `072e0df..d57d6e9bc4c49fdd9e522f4b4e825277239b405d` rather than relying only on
 this handoff narrative.
+
+## 30. B5-A statistical qualification and objective-weighting NO-GO (2026-07-14)
+
+### 30.1 What was done
+
+1. Added a read-only paired statistical audit over the immutable B5 2,400 rows.
+   Iter10 collision is `9 fixed / 7 new`, occurrence exact McNemar two-sided
+   `p=0.803619`, startpoint sign-flip one-sided `p=0.408356`, and startpoint
+   bootstrap 95% interval `[-6,10]`.
+2. The same startpoint sign was applied jointly to iter10/20/30. The
+   selection-aware maximum net-collision probability is `0.578968`; the old
+   independent-three-snapshot approximation is not used.
+3. Added a remote RTX 4080 SUPER function-space audit of B5 iterations 1-10.
+   It uses batch-one 100 Hz canonical BC replay on collision/overtake/follow
+   histories plus every frame of the 64-episode safe reference.
+4. Decomposed the full-rollout gradient by archived BC outcome, then restored
+   each pre-update actor and complete Adam state and executed one candidate
+   base-LR epoch with the exact historical minibatch order. The original
+   candidate reproduces logged first-attempt `D_safe` within `4.997e-7`.
+5. Corrected one proposed-design omission: prevalence weighting applies only
+   to advantage normalization and PPO surrogate. Historical episode-equal
+   trust weight remains authoritative for rollout KL, clip fraction, mean-bound
+   regularization, critic, and `D_safe`.
+
+### 30.2 Result and interpretation
+
+- B5 iter10 remains the historical `OPENED_DEVELOPMENT_SURVIVOR`, but its
+  safety effect is statistically inconclusive and the checkpoint is not
+  promoted.
+- The proposed weights are opened-Austin development weights, not fresh or
+  universal product prevalence.
+- In restored actor+Adam base epochs, original weighting passed `D_safe` in
+  `7/10`; proposed weighting passed in `5/10`.
+- Proposed weighting lowered B4-direction cosine in only `4/10` candidate
+  epochs and safe-cap cosine in `3/9`; median differences were adverse
+  (`+0.06150`, `+0.01081`).
+- Median collision-component function norm fell to `0.19518` of original.
+
+This weakens the specific prevalence-weight repair without disproving the
+broader objective/distribution-mismatch hypothesis. Full-rollout gradients,
+Adam epochs, and causal learner outcomes remain distinct objects.
+
+### 30.3 Current legal step
+
+`B5-B objective weighting = NO-GO, UNRUN`. No B5-B RunPlan, learner,
+evaluation, AR(1), seed0, GRU unfreeze, candidate promotion, or sealed-pool
+opening is authorized. External review should inspect
+`.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`, the two analysis
+scripts, and `docs/ppo/evidence/b5_{posthoc_statistics,objective_alignment}/`.
+A later numerical experiment requires a new prospective owner decision.

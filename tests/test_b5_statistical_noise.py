@@ -25,3 +25,13 @@ def test_joint_sign_flip_preserves_snapshot_dependence():
         count for state, count in distribution.items() if max(state) >= max(observed)
     ) / sum(distribution.values())
     assert max_p == 0.5
+
+
+def main():
+    test_exact_mcnemar_matches_b5_iter10_counts()
+    test_joint_sign_flip_preserves_snapshot_dependence()
+    print("B5 statistical qualification contracts passed")
+
+
+if __name__ == "__main__":
+    main()

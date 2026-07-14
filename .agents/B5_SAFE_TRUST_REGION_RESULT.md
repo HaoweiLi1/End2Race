@@ -250,3 +250,27 @@ the exact code and evidence diff. If it returns GO, seed0 replication requires
 a separate prospective owner decision. No seed0 run, B5-B/AR(1), threshold or
 optimizer change, GRU unfreeze, residual, sampler/reward change, extra
 iterations, candidate promotion or fresh/final opening is automatic.
+
+## 10. External statistical qualification (2026-07-14)
+
+The historical preregistered verdict remains `OPENED_DEVELOPMENT_SURVIVOR`,
+but iter10 is now explicitly qualified as:
+
+> Feasibility gate passed; paired safety effect statistically inconclusive;
+> checkpoint not promoted.
+
+For collision, `9 fixed / 7 new` gives occurrence-level exact McNemar
+two-sided `p=0.803619`; startpoint-block sign-flip gives one-sided `p=0.408356`
+and a 95% cluster-bootstrap interval `[-6,10]` for the net count. Jointly
+accounting for inspection of iter10/20/30, the max-net-collision sign-flip
+probability is `0.578968`. These clustered calculations have an explicit
+startpoint sign-symmetry assumption and do not convert the panel into fresh
+confirmation.
+
+A phase-0 audit also tested the proposed opened-Austin prevalence weighting
+without launching a learner. Restored actor+Adam candidate epochs passed the
+safe cap `7/10` times under the historical objective but only `5/10` under the
+proposed weights; the correction did not systematically rotate updates away
+from the B4/global or safe-cap directions and reduced collision-gradient
+function norm to about `0.195` of the original. B5-B was therefore not run.
+See `.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`.

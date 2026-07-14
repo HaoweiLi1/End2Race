@@ -234,7 +234,7 @@ B5-A 随后在保持 B4 科学设置不变时加入 canonical-BC safe-reference 
 | B2 | BC-direct PPO pilot，三臂×双 seed×20 iterations | **训练与冻结开发评估完成；六候选方向门全部 FAILED** |
 | B3 | unified train/deploy residual policy | **IMPLEMENTED, REVIEWED GO, PAUSED UNRUN** |
 | B4 | plain End2Race output-head-only PPO，seed1×30 | **训练与 3×4×50 评估完成；SUBSTANTIVE NEGATIVE** |
-| B5-A | B4 严格单变量 + canonical-BC safe-reference hard cap，seed1×30 | **训练与 3×4×50 opened 评估完成；iter10 SURVIVOR，未达 collision target** |
+| B5-A | B4 严格单变量 + canonical-BC safe-reference hard cap，seed1×30 | **训练与 3×4×50 opened 评估完成；iter10 保留历史 SURVIVOR 标签，但 safety effect 统计不确定且未达 collision target** |
 
 ### 5.3 Task 6 第一次失败：gate bias 初始化错配（已修复）
 
@@ -394,6 +394,19 @@ iter10 通过 overtake `>=325`、collision `<24`、`fixed>new` 和 speed project
 但后期 collision 在 cap 内仍回升，不能推断 closed-loop 安全已经解决，也不能自动
 归因为 exploration/representation。fresh/final 仍封存；seed0 需要外部结果审阅后
 另行批准。完整记录见 `.agents/B5_SAFE_TRUST_REGION_RESULT.md`。
+
+后续只读审计将 600 rows 按 50 个 startpoint 聚类：iter10 collision 的
+occurrence McNemar two-sided `p=0.803619`，startpoint sign-flip one-sided
+`p=0.408356`，bootstrap 95% interval `[-6,10]`；三 snapshot joint max-effect
+probability 为 `0.578968`。因此历史 feasibility verdict 保留，但不能写成已确认
+安全提升，checkpoint 不晋升。
+
+同一审计还在远端恢复 B5 iterations 1–10 的 actor+Adam 和原 minibatch order，
+测试 opened-Austin outcome 权重。加权 base epoch 的 safe-cap 通过数为 `5/10`
+（原 objective `7/10`），且没有系统降低 B4/global 或 cap direction alignment；
+collision-gradient function norm 中位数仅为原来的 `0.19518`。所以 B5-B
+objective-weighting learner 为 `NO-GO, UNRUN`。详见
+`.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`。
 
 ---
 
