@@ -129,7 +129,9 @@ def write_tsv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
         raise ValueError("objective-alignment field order drift")
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields, delimiter="\t")
+        writer = csv.DictWriter(
+            handle, fieldnames=fields, delimiter="\t", lineterminator="\n"
+        )
         writer.writeheader()
         writer.writerows(rows)
 

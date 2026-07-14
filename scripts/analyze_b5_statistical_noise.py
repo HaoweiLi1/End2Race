@@ -57,7 +57,9 @@ def write_tsv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
     if any(list(row) != fields for row in rows):
         raise ValueError("B5 statistical table field order drift")
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, delimiter="\t", fieldnames=fields)
+        writer = csv.DictWriter(
+            handle, delimiter="\t", fieldnames=fields, lineterminator="\n"
+        )
         writer.writeheader()
         writer.writerows(rows)
 
