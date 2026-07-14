@@ -2847,3 +2847,86 @@ A later numerical experiment requires a new prospective owner decision.
 The exact post-hoc code-and-evidence content boundary is
 `ba0d9c6400b75498f2e258ed2019982863cdd1c6`; review
 `24fece8bc1ff86c4959b258190dbedfb21591968..ba0d9c6400b75498f2e258ed2019982863cdd1c6`.
+
+## 31. B6 temporal-exploration phase-0 NO-GO (2026-07-14)
+
+This section supersedes §30's statement that AR(1) was unauthorized. The owner
+subsequently authorized a training-only, no-learning direct-outcome audit.
+The complete record is `.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md`.
+
+### 31.1 What was done
+
+1. Corrected the external proposal before execution: the 1,440 rows are
+   clustered by 60 L4 identities, not treated as independent; every L4 has one
+   deterministic hash-selected collision/overtake/follow L2; four fixed
+   innovation seeds use common keyed `xi_t`; safe collision and lost overtake
+   are conjunctive gates in addition to collision repair.
+2. Implemented a no-learning iid vs stationary AR(1), `rho=.95`, comparison.
+   Canonical BC actor, GRU, simulator, action projection and per-step marginal
+   std `(.03,.20)` remained unchanged at 100 Hz. Candidate conditional
+   log-probability recomputes both current and previous means.
+3. Froze final replacement RunPlan SHA256
+   `4a3923dbe2cf87073aa0aadb0bc59d8d8222882c107cb3d31c5e50f275dbbe7f`
+   and execution source `677ab3a75070f7ef5d685ad34e987f65c99893b3`.
+4. Ran all 1,440 episodes remotely with `DISPLAY=:1`, one CPU simulator queue
+   and RTX 4080 SUPER actor inference. Copied all rows locally and reproduced
+   the remote summary/paired/report/COMPLETE hashes exactly.
+
+Final direct result:
+
+| Contrast AR(1)-iid | Net / denominator | Rate | L4 one-sided p | Verdict |
+|---|---:|---:|---:|---|
+| collision repair | `+8/240` | `+3.33pp` | `0.2620` | fail |
+| safe-to-collision harm | `+48/480` | `+10.00pp` | `4.19e-9` | fail adverse |
+| lost overtake | `+17/240` | `+7.08pp` | `0.000473` | fail adverse |
+
+Integrity passed. AR(1) lag-1 was `0.9499/0.9490`, iid was approximately zero,
+marginal std matched, framewise ratio error was zero, batched errors were below
+their prospective bounds, and speed projection was zero. Therefore NO-GO is a
+scientific mechanism result, not an execution-integrity failure. No learner,
+checkpoint, Austin evaluation, seed0 or sealed-data access exists.
+
+### 31.2 Problems encountered
+
+1. Attempt v1 stopped after 98 rows: the sampler carried its private
+   pre-addition float32 noise, while replay can reconstruct only
+   `stored_raw-stored_mean`. This caused max log-prob replay error `1.36e-4`.
+2. Attempt v2 stopped after 75 rows: the existing B4 `1e-4` batched tolerance
+   was reused even though AR(1)'s conditional std is only
+   `sqrt(1-.95^2)=.31225` of marginal std, amplifying batch-one/batched GEMM
+   rounding. Max ratio delta reached `1.35e-4`.
+3. GitHub push was temporarily blocked on SSH, HTTPS and SSH-over-443 by proxy
+   disconnects; exact local archives still staged the remote source.
+
+No partial attempt produced a summary, and no partial outcome was analyzed or
+reused. Both remote roots are preserved with failure suffixes.
+
+### 31.3 How they were solved
+
+1. AR state now uses the actually stored latent displacement
+   `(raw-mean).detach()`. A unit test verifies stored raw minus framewise mean
+   exactly equals the carried trace.
+2. The final integrity contract separates exact framewise probability identity
+   (`<=1e-6`, observed 0) from numerical batched replay. iid retains B4's
+   `1e-4`; AR(1) uses `3.3e-4`, derived prospectively from
+   `1e-4/sqrt(1-.95^2)` and not from an outcome.
+3. The GitHub network recovered and final RunPlan source `677ab3a` was pushed
+   before result publication.
+
+### 31.4 Interpretation and next legal action
+
+- Temporal coherence was real: at 0.5 seconds, AR(1) rolling-mean RMS was about
+  five times iid in both action dimensions. Equal per-step marginal std does
+  not equal equal low-frequency maneuver energy.
+- The mechanism repaired a few more archived collision trials but harmed many
+  more archived safe trials and overtakes. Rare, similar steering projection
+  rates and zero speed projection rule out clipping as the cause.
+- This rejects the exact unconditional full-action `rho=.95`, std `(.03,.20)`
+  process. It does not prove every correlated exploration or plain-End2Race
+  update impossible.
+- Per owner stopping discipline, do not tune rho/std, start the AR(1) learner,
+  resume B5, change cap/LR/batch, run seed0 or open Austin/sealed data. The
+  frozen-feature direct-head tuning line is closed under current authority.
+- The next legal step is external review of the B6 packet, followed by a new
+  prospective decision between canonical-End2Race representation adaptation
+  and an explicit bounded macro safety-control proposal.

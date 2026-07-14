@@ -280,3 +280,25 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 - 详细冻结协议与结果：`.agents/B5_SAFE_TRUST_REGION_PLAN.md`、
   `.agents/B5_SAFE_TRUST_REGION_RESULT.md`。下一合法动作是外部结果审阅；不得自动
   运行 seed0、B5-B/AR(1)、修改 cap/LR、解冻 GRU 或打开 fresh/final。
+
+---
+
+## 8. B6 AR(1) phase-0 已完成（2026-07-14）
+
+- 外审批准的下一变量先以 no-learning direct-outcome audit 执行；没有启动 PPO
+  learner。simulator、GRU 与 canonical BC actor mean 始终为 100 Hz。
+- 使用 Task-8 training-only 中 60 个同时含 collision/overtake/follow 的 L4，
+  每个 outcome hash 选一个 L2，4 个固定 innovation seeds，iid/AR(1) 两臂，
+  共 1,440 episodes / 720 pairs。Austin 600、seed0 与 sealed pool 未使用。
+- 最终有效边界为 source `677ab3a75070f7ef5d685ad34e987f65c99893b3`、
+  RunPlan SHA256 `4a3923dbe2cf87073aa0aadb0bc59d8d8222882c107cb3d31c5e50f275dbbe7f`。
+- integrity PASS：iid lag-1 约 0，AR(1) 约 0.95；marginal std 相符；framewise
+  ratio error 0；speed projection 0。
+- direct result 为 NO-GO：repair `+8/240`（3.33pp，L4 p=0.262）；safe→collision
+  harm `+48/480`（10pp，L4 p=4.19e-9）；lost overtake `+17/240`
+  （7.08pp，L4 p=0.000473）。learner 保持 UNRUN。
+- 结论只否定 `rho=.95 + std=(.03,.20)` 的无条件 full-action correlated
+  exploration，不否定所有 temporal exploration 或 plain End2Race。
+  但按 owner 停止规则，当前 frozen-feature direct-head 调参线关闭；下一步必须先
+  外审 `.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md`，再前瞻性决定
+  representation adaptation 或 bounded macro safety-control proposal。

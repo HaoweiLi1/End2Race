@@ -408,6 +408,38 @@ collision-gradient function norm 中位数仅为原来的 `0.19518`。所以 B5-
 objective-weighting learner 为 `NO-GO, UNRUN`。详见
 `.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`。
 
+### B6 100 Hz temporally coherent exploration phase-0
+
+B6 没有启动 learner，而是先在 training-only population 上比较 canonical
+BC actor 的 iid 与 `rho=.95` AR(1) full-action noise。simulator、GRU、actor mean
+保持 100 Hz，单步 marginal std 保持 steer `.03` / speed `.20`。
+
+60 个 L4 各自确定性选择 collision/overtake/follow 三个 L2；4 个 common
+innovation seeds、两臂共 1,440 episodes。统计以 L4 聚类。最终有效 RunPlan
+SHA256 为 `4a3923dbe2cf87073aa0aadb0bc59d8d8222882c107cb3d31c5e50f275dbbe7f`，
+execution source 为 `677ab3a75070f7ef5d685ad34e987f65c99893b3`。
+
+完整性通过：iid lag-1 近零，AR(1) 为 `0.9499/0.9490`，marginal std 误差
+最多约 1.04%，framewise pre-update ratio error 为 0，speed projection 为 0。
+0.5 秒 rolling-mean RMS 显示 AR(1) 的持续扰动约为 iid 的五倍，证明时间相关
+机制确实生效。
+
+但 direct outcome 明确不支持 learner：
+
+| AR(1)-iid | 净效应 | rate | L4 one-sided p |
+|---|---:|---:|---:|
+| collision repair | `+8/240` | `+3.33pp` | `0.2620` |
+| safe→collision harm | `+48/480` | `+10.00pp` | `4.19e-9` |
+| lost overtake | `+17/240` | `+7.08pp` | `0.000473` |
+
+因此 B6 为 `INTEGRITY_PASS / SCIENTIFIC_NO_GO / LEARNER_UNRUN`。这否定的是
+相同 marginal std 下、无条件施加的 `rho=.95` correlated full-action noise，
+不是所有 temporal exploration 或 plain End2Race。按 owner 停止规则，当前
+frozen-feature direct-head 调参线关闭；下一步只能先外审，再前瞻性决定
+representation adaptation 或 bounded macro safety-control。Austin 600、seed0、
+fresh/final 与 sealed test 均未打开。详见
+`.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md`。
+
 ---
 
 ## 7. 代理弯路与真实 KPI 失败（供未来参考）

@@ -22,7 +22,7 @@
 
 `A3` 里的 `artifacts/split_lock/test_seal.json`（SHA256 `cee71d81…a87e`）是**从未打开的分组测试集**的封条。不要动它。
 
-## B 轮 — Route-R2 策略（已完成至 B5-A；下一轮未授权）
+## B 轮 — Route-R2 策略（已完成至 B6 phase-0；下一轮未授权）
 
 | 编号 | 原路径 | 内容 | 状态 |
 |---|---|---|---|
@@ -31,6 +31,7 @@
 | `B3_ppo_unified` | — | 统一 stochastic rollout / PPO log-prob / deterministic deployment 的三臂 PPO | **实现、边界回归和独立审阅 GO，尚未创建 RunPlan 或运行 GPU**；固定 40 iterations，B2 结果不续训 |
 | `B4_direct_head_ppo` | — | plain End2Race frozen-feature output-head-only PPO，唯一 seed1 | **30/30 训练与 2400-row 产品评估完成，B4_SUBSTANTIVE_NEGATIVE**；BC/iter10/20/30 collision-overtake=`24/342`,`24/332`,`36/294`,`39/296`，未选择 candidate；只读原因分析见 `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`，fresh/final pool 未打开 |
 | `B5_safe_trust_region` | — | B4 严格单变量 + 64-episode canonical-BC safe-reference hard cap，唯一 seed1 | **30/30 与 opened 600-case 评估完成；iter10 保留历史 SURVIVOR 标签但安全效应统计不确定、checkpoint 未晋升**；BC/iter10/20/30=`24/342`,`22/347`,`25/349`,`27/343`，target `collision<=16` 未达到；opened-Austin objective weighting 的 phase-0 审计为 NO-GO/UNRUN，fresh/final 未打开 |
+| `B6_temporal_phase0` | — | training-only canonical BC：100 Hz iid vs `rho=.95` AR(1)，60 matched L4×3 outcomes×4 innovations，无学习 | **1,440 episodes integrity PASS；scientific NO-GO，learner UNRUN**；repair `+8/240` 不显著，safe→collision `+48/480`、lost overtake `+17/240` 显著恶化；Austin/seed0/sealed 未用 |
 
 ## C 轮 — 预留
 
@@ -117,3 +118,9 @@ B5-A 的 post-hoc startpoint-cluster 审计与函数空间/actor+Adam objective
 审计是只读分析，不是新的 learner 实验。结果位于
 `docs/ppo/evidence/b5_posthoc_statistics/` 和
 `docs/ppo/evidence/b5_objective_alignment/`；它们不授权 B5-B。
+
+B6 的有效 no-learning evidence 位于
+`docs/ppo/evidence/b6_temporal_phase0_v3/`，结果说明文件为
+`.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md`。不得启动 AR(1) learner、
+调 rho/std 或把 partial v1/v2 行混入有效结果。当前 frozen-feature
+direct-head 调参线已按 owner 规则关闭；新实验需要独立前瞻性决策。

@@ -19,5 +19,30 @@ attempts are preserved separately and cannot be resumed:
   smaller conditional standard deviation.
 
 The active integrity contract separately checks exact framewise probability
-identity and bounded batched numerical replay. This run starts from an empty
-output directory and must complete all 1,440 episodes.
+identity and bounded batched numerical replay.
+
+## Completed result
+
+All 1,440 episodes completed on the remote RTX 4080 SUPER. Local independent
+summarization of the copied atomic rows reproduced the remote summary and
+paired table byte for byte.
+
+Decision: **NO-GO; learner unrun**.
+
+```text
+collision repair AR1-iid:       +8/240  (+3.33 pp), L4 p=0.2620
+safe-to-collision harm AR1-iid: +48/480 (+10.00 pp), L4 p=4.19e-9
+lost overtake AR1-iid:          +17/240 (+7.08 pp), L4 p=0.000473
+```
+
+Files:
+
+- `episode_results.jsonl`: all 1,440 atomic episode ledgers, compacted without
+  changing any field;
+- `paired_results.tsv`: 720 complete iid/AR(1) pairs;
+- `summary.json` and `report.md`: frozen gates and final decision;
+- `remote_run.log`: execution progress and runtime warnings;
+- `COMPLETE`: digest of `summary.json`.
+
+The result packet is interpreted in
+`.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md`.
