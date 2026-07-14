@@ -2986,3 +2986,45 @@ CPU affinity, GPU slot capacity, thread limits and disjoint output/cache/RNG
 identity, then launch bounded independent queues from inside the locked host
 controller. Until that change is reviewed, keep existing serial managed-run
 semantics.
+
+## 33. B7 plain recurrent PPO owner authorization and implementation start (2026-07-14)
+
+The owner explicitly stopped the Route-B gate/macro/wrapper loop and authorized
+one combined engineering configuration whose deployment artifact is still the
+canonical 12-key `End2Race.state_dict()`. This new authority supersedes earlier
+"no remote job" wording only for B7. It does not reopen B3/B5/B6, Austin 600,
+seed0, or any sealed/final pool.
+
+The prospective protocol is `.agents/B7_PLAIN_RECURRENT_PPO_PLAN.md`. Its
+primary contracts are: freeze `k`, speed MLP and dummy embedding; train the
+original GRU at `1e-6` and output head at `1e-5`; retain 100 Hz iid raw Normal
+actions; distribute collision `-2` over the final 100 frames with
+discount-equivalent weighting; collect 32 complete unique-L2 episodes; perform
+one framewise recurrent actor optimizer step; train a 13D privileged critic for
+three episode-weighted epochs; and hard-mine only scenario identities from the
+immediately previous current-policy rollout.
+
+Post-update acceptance uses exact fixed-variance mean-KL: all-rollout old-policy
+KL `<=.015` and canonical-BC KL `<=.01` on this rollout's archived-BC-safe
+observation histories. Rejection restores actor plus complete Adam state, still
+trains the critic, and halves both actor LRs for the next iteration. Three
+consecutive rejections stop before a candidate exists.
+
+Only remote seed1 through iteration 10 is initially legal. The sole candidate
+is iter10 and the first evaluation is the immutable 288 opened-development
+panel (BC 24 collision / 138 overtake). Continue requires overtake `>=132`,
+fixed-new `>=6`, collision `<=18`, exact L4-cluster one-sided sign-flip
+`p<=.10`, and zero deterministic speed projection. Collision `<=16` remains
+the opened-development target. Seed0 is fail-closed behind a passed seed1
+evaluation artifact.
+
+Implementation is versioned in `bplus_v22/b7_recurrent.py`, `b7_env.py`,
+`b7_eval.py`, `scripts/run_b7_recurrent.py`, and `scripts/run_b7_eval.py`; old
+B4/B5/B6 sources remain unchanged. Initial local evidence already established:
+the real 1,640-row sampler yields 32 unique L2s with exact map quotas; an
+801-step real simulator episode replays framewise with zero mean delta; a known
+447-step BC collision receives exactly 100 nonzero collision rewards and its
+window-start discounted-return error is `1.8e-8`; an 801-step full recurrent
+backward uses about 322 MiB CUDA allocation and completes locally in about two
+seconds. Full compatibility, staged smoke and immutable RunPlan still precede
+the authoritative learner.

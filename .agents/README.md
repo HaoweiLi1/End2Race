@@ -311,3 +311,24 @@ affinity、thread limit 和独立输出/cache/RNG 固定进 RunPlan。
   representation adaptation 或 bounded macro safety-control proposal。
 - B6 code/evidence review boundary 是
   `081092987877619e9b84f108f80cbebe3bda847c`；其后的提交只记录可寻址边界。
+
+---
+
+## 9. B7 plain recurrent PPO 已获执行授权（2026-07-14）
+
+- owner 已停止 Route-B gate/macro/wrapper 循环，并授权一个单配置的产品导向
+  engineering run；完整冻结协议见 `.agents/B7_PLAIN_RECURRENT_PPO_PLAN.md`。
+- deployment 仍为 canonical 12-key `End2Race.state_dict()`；冻结输入编码，低 LR
+  训练原始 GRU (`1e-6`) 与 output head (`1e-5`)。
+- 每轮 32 个完整 episode，只做一个 recurrent actor Adam step；collision `-2`
+  分布到终局前 100 frames，critic 增加 normalized remaining time 并按 episode
+  等权。
+- sampler 固定为 16 map-balanced representative + 8 archived BC collision + 8
+  previous-policy hard/preservation；只复用 scenario identity，不复用 transition。
+- actor step 只有在 old-policy rollout mean-KL `<=.015` 且本轮 archived-BC-safe
+  observation histories 上 canonical-BC mean-KL `<=.01` 时接受；否则恢复 actor+
+  完整 Adam、下轮两个 LR 均减半，连续三次拒绝即停。
+- 只运行远端 seed1、10 iterations、只评估 iter10。若 288 opened-development
+  gate 不通过，plain recurrent PPO 主线关闭；通过后才可外审并条件运行 seed0。
+- 新 authority 覆盖本文件更早的“远端 unattended authority revoked”历史描述，
+  但只限这个 B7 RunPlan；不得并行复制 seed1、打开 Austin/sealed 或自动调参。

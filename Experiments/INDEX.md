@@ -129,3 +129,9 @@ direct-head 调参线已按 owner 规则关闭；新实验需要独立前瞻性�
 `.agents/COMPUTE_CAPACITY_AND_EXECUTION_GUIDE.md`。当前 runner 仍以单个物理 GPU
 `flock` 串行执行 host jobs；文档中的 4/6 learner slots 与 CPU evaluator profile
 是下一版 runner 的资源合同要求，不授权手工 SSH 绕过 RunPlan/READY/COMPLETE。
+
+B7 已获得新的、范围受限的 owner 执行授权。其 versioned source、RunPlan、训练
+release 与 288 evaluation 应放在 `B7_plain_recurrent_ppo/`；协议见
+`.agents/B7_PLAIN_RECURRENT_PPO_PLAN.md`。初始只允许远端 seed1/iter10。若 seed1
+门失败，不创建 seed0/Austin 任务；若通过，后续任务仍需使用冻结 checkpoint 与
+显式授权 artifact。

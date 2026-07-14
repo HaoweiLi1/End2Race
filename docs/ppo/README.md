@@ -100,3 +100,16 @@ For exhaustive lookup, use `AUTHORITY_INDEX.md`,
   transfer. Do not duplicate a job to fill the device. Use the measured
   profiles in `.agents/COMPUTE_CAPACITY_AND_EXECUTION_GUIDE.md` only after the
   resource topology is frozen in a new RunPlan.
+
+## 2026-07-14 B7 execution authority
+
+The newest owner decision supersedes the stale B4-era boundary above for one
+specific run only. B7 is a plain canonical-End2Race recurrent PPO engineering
+configuration: original GRU plus output head, localized collision credit, 32
+complete episodes, one accumulated actor optimizer step, previous-policy hard
+scenario mining and current-rollout BC-safe rollback. Read
+`.agents/B7_PLAIN_RECURRENT_PPO_PLAN.md` before execution.
+
+Only remote seed1 through iteration 10 and one iteration-10 288-panel
+evaluation are authorized initially. No duplicate learner, seed0, Austin 600
+or sealed/final access is authorized unless the prospective seed1 gate passes.
