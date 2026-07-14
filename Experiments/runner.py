@@ -2638,7 +2638,10 @@ def plumbing_smoke(plan: RunPlan, dry_run: bool) -> int:
 
 
 def _validate_plumbing_marker(
-    plan: RunPlan, root: Path, marker_path: Path | None = None
+    plan: RunPlan,
+    root: Path,
+    marker_path: Path | None = None,
+    b5_reference_path: Path | None = None,
 ) -> dict[str, Any]:
     path = marker_path or root / "control/plumbing_smoke.json"
     if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
@@ -2670,7 +2673,7 @@ def _validate_plumbing_marker(
         )
         solver = value.get("safe_solver") if isinstance(value, dict) else None
         initial_safe = value.get("iteration0_safe") if isinstance(value, dict) else None
-        reference_path = root / "inputs/b5/safe_reference.npz"
+        reference_path = b5_reference_path or root / "inputs/b5/safe_reference.npz"
         expected_maps = ("Austin", "Hockenheim", "MoscowRaceway", "Nuerburgring")
         if (
             not isinstance(value, dict)
@@ -3099,7 +3102,10 @@ def _validate_plumbing_marker(
 
 
 def _validate_ready_marker(
-    plan: RunPlan, root: Path, marker_path: Path | None = None
+    plan: RunPlan,
+    root: Path,
+    marker_path: Path | None = None,
+    b5_reference_path: Path | None = None,
 ) -> dict[str, Any]:
     path = marker_path or root / "control/READY.json"
     if not path.is_file() or path.is_symlink() or path.stat().st_nlink != 1:
@@ -3118,7 +3124,9 @@ def _validate_ready_marker(
     baseline = root / "control/bc_baseline_preflight.json"
     plumbing = root / "control/plumbing_smoke.json"
     _validate_baseline_marker(plan, root, baseline)
-    _validate_plumbing_marker(plan, root, plumbing)
+    _validate_plumbing_marker(
+        plan, root, plumbing, b5_reference_path=b5_reference_path
+    )
     if (
         not isinstance(value, dict)
         or set(value) != expected_keys
@@ -4343,6 +4351,15 @@ def _collect_payload_commands(
                 ],
             )
         )
+        if plan.kind == "b5_train":
+            commands.append(
+                [
+                    "cp",
+                    "-a",
+                    str(Path(local.stage_root) / "inputs/b5/safe_reference.npz"),
+                    str(collection / "control/input_contract/safe_reference.npz"),
+                ]
+            )
     return commands
 
 
@@ -4638,14 +4655,33 @@ def collect(plan: RunPlan, dry_run: bool) -> int:
         if plan.kind in TRAIN_KINDS:
             baseline_value = _validate_baseline_marker(plan, partial)
             _validate_collected_baseline_shards(plan, partial, baseline_value)
-            _validate_plumbing_marker(plan, partial)
-            _validate_ready_marker(plan, partial)
+            collected_b5_reference = (
+                partial / "control/input_contract/safe_reference.npz"
+                if plan.kind == "b5_train"
+                else None
+            )
+            _validate_plumbing_marker(
+                plan, partial, b5_reference_path=collected_b5_reference
+            )
+            _validate_ready_marker(
+                plan, partial, b5_reference_path=collected_b5_reference
+            )
             remote_baseline = partial / "control/remote_bc_baseline_preflight.json"
             remote_plumbing = partial / "control/remote_plumbing_smoke.json"
             remote_ready = partial / "control/remote_READY.json"
             _validate_baseline_marker(plan, partial, remote_baseline)
-            _validate_plumbing_marker(plan, partial, remote_plumbing)
-            _validate_ready_marker(plan, partial, remote_ready)
+            _validate_plumbing_marker(
+                plan,
+                partial,
+                remote_plumbing,
+                b5_reference_path=collected_b5_reference,
+            )
+            _validate_ready_marker(
+                plan,
+                partial,
+                remote_ready,
+                b5_reference_path=collected_b5_reference,
+            )
             if (
                 _sha256_file(remote_baseline)
                 != _sha256_file(partial / "control/bc_baseline_preflight.json")

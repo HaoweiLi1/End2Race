@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 from pathlib import Path
 import tempfile
+from unittest import mock
 
 import torch
 
@@ -115,6 +117,58 @@ def main() -> None:
         assert plan.jobs[0].seed == 1
         assert plan.jobs[0].kind == "b5_training"
         assert plan.queues == {"b5-seed1-remote": ("b5-seed1",)}
+
+        payload_commands = "\n".join(
+            " ".join(command)
+            for command in runner._collect_payload_commands(
+                plan, Path(directory) / "collection.partial"
+            )
+        )
+        assert "inputs/b5/safe_reference.npz" in payload_commands
+        assert "control/input_contract/safe_reference.npz" in payload_commands
+
+        collected_root = Path(directory) / "collected"
+        collected_control = collected_root / "control"
+        collected_control.mkdir(parents=True)
+        baseline_marker = collected_control / "bc_baseline_preflight.json"
+        plumbing_marker = collected_control / "plumbing_smoke.json"
+        ready_marker = collected_control / "READY.json"
+        collected_reference = collected_control / "input_contract/safe_reference.npz"
+        collected_reference.parent.mkdir()
+        baseline_marker.write_text("{}\n", encoding="utf-8")
+        plumbing_marker.write_text("{}\n", encoding="utf-8")
+        collected_reference.write_bytes(reference_path.read_bytes())
+        ready_marker.write_text(
+            json.dumps(
+                {
+                    "schema": "end2race-b5-safe-ready-1",
+                    "passed": True,
+                    "run_plan_sha256": plan.plan_sha256,
+                    "source_commit": plan.source_commit,
+                    "source_archive_sha256": plan.source_archive_sha256,
+                    "inputs_archive_sha256": plan.inputs_archive_sha256,
+                    "baseline_marker_sha256": runner._sha256_file(baseline_marker),
+                    "plumbing_marker_sha256": runner._sha256_file(plumbing_marker),
+                },
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        with mock.patch.object(runner, "_validate_baseline_marker"), mock.patch.object(
+            runner, "_validate_plumbing_marker"
+        ) as validate_plumbing:
+            runner._validate_ready_marker(
+                plan,
+                collected_root,
+                b5_reference_path=collected_reference,
+            )
+        validate_plumbing.assert_called_once_with(
+            plan,
+            collected_root,
+            plumbing_marker,
+            b5_reference_path=collected_reference,
+        )
 
         changed = replace(
             plan,
