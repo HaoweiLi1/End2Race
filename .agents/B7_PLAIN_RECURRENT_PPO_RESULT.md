@@ -128,3 +128,12 @@ local experiment tree and the remote immutable stage.
 | `train_seed1.log` | `0be17c3026466899a59d5fb1717aa9d320669baaaf332753b9482b1a99508d9a` |
 
 No evaluation rows exist because no candidate existed.
+
+## 6. Later post-hoc evaluation cancellation
+
+The owner later authorized a diagnostic Austin-600 evaluation of the last
+accepted iter6 actor, then explicitly terminated it before completion. Local
+shard0 stopped at 84/120 without `COMPLETE`; remote shards1-4 completed before
+the stop arrived, but were never merged. The outputs are quarantined as
+`ABORTED_BY_OWNER`. They are not a B7 evaluation result and do not modify the
+`EARLY_STOP_NO_CANDIDATE` verdict.

@@ -3076,3 +3076,16 @@ recurrent PPO engineering line is closed pending a new prospective direction.
 The exact result record is `.agents/B7_PLAIN_RECURRENT_PPO_RESULT.md`; compact
 evidence is `docs/ppo/evidence/b7_plain_recurrent_negative_20260714/` and the
 full 1.5 GiB release remains in the experiment tree and remote stage.
+
+## 36. B7 iter6 post-hoc 600 evaluation revoked (2026-07-14)
+
+The owner briefly authorized one diagnostic evaluation of the last accepted
+iter6 actor, selected before outcomes. The owner then explicitly terminated it.
+Local shard0 stopped at 84/120 and has no `COMPLETE`; remote shards1-4 had
+finished 480/480 before the stop command arrived. No merge or paired summary
+was run, and both output roots were renamed
+`seed1_iter6_posthoc.ABORTED_BY_OWNER`.
+
+Do not resume, merge, inspect for model selection or report these rows as a
+600-case result. B7 remains `EARLY_STOP_NO_CANDIDATE`; there is no valid B7
+evaluation result.

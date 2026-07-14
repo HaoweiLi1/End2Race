@@ -1,6 +1,12 @@
 # B7 iter6 post-hoc Austin-600 evaluation plan
 
-Status: owner-authorized diagnostic override, 2026-07-14
+Status: **ABORTED BY OWNER; NO VALID EVALUATION RESULT**, 2026-07-14
+
+The owner revoked this evaluation while it was running. Local shard0 stopped
+at 84/120 metrics and has no `COMPLETE`; remote shards1-4 had reached 480/480
+before the termination command arrived. No merge, paired analysis or 600-case
+summary was run. Both output roots were renamed with
+`seed1_iter6_posthoc.ABORTED_BY_OWNER` and must not be resumed or counted.
 
 ## Frozen selection
 
@@ -46,3 +52,5 @@ speed projection, occurrence McNemar and 50-startpoint cluster sign-flip.
 
 This is opened-development, post-hoc diagnostic evidence. It cannot rewrite the
 historical B7 `EARLY_STOP_NO_CANDIDATE` verdict or authorize seed0/sealed data.
+After the owner cancellation above, the plan is historical only and no valid
+diagnostic result exists.
