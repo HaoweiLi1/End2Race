@@ -9,7 +9,8 @@ simulator continue to run at 100 Hz:
   ``epsilon_t = rho * epsilon_{t-1} + sqrt(1-rho**2) * sigma * xi_t``.
 
 The selection and innovation streams are domain separated and independent of
-global NumPy/PyTorch RNG state so the audit is resumable and replayable.
+global NumPy/PyTorch RNG state so the audit is resumable in its recorded
+runtime and replayable from its exact inputs.
 """
 
 from __future__ import annotations
@@ -295,8 +296,14 @@ class B6Phase0Policy(B4DirectHeadPolicy):
             conditional_mean = mean + self.rho * self._previous_noise
             conditional_std = std * math.sqrt(1.0 - self.rho**2)
             log_prob = factorized_log_prob(raw, conditional_mean, conditional_std)
-        self._previous_noise = noise.detach()
-        self._noise_trace.append(noise[0].detach().cpu().double().numpy())
+        # The replay contract conditions on the policy variable that is
+        # actually stored in the buffer.  In float32, ``mean + noise - mean``
+        # need not be bit-identical to the pre-addition ``noise``.  Therefore
+        # the next AR state and the audit trace must use the reconstructible
+        # latent displacement, not the private pre-rounding tensor.
+        stored_noise = (raw - mean).detach()
+        self._previous_noise = stored_noise
+        self._noise_trace.append(stored_noise[0].cpu().double().numpy())
         self._innovation_trace.append(innovation_np.copy())
         self._step_index += 1
         return raw, log_prob

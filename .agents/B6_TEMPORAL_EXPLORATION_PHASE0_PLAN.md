@@ -94,7 +94,9 @@ any-agent-collision / 8-second horizon semantics.
 ## 4. Common-random-number action contract
 
 For each `(L2, innovation seed, step)` a SHA256/Box-Muller mapping produces a
-hardware-independent two-dimensional standard Normal innovation `xi_t`.
+global-RNG-independent two-dimensional standard Normal innovation `xi_t`.
+The runtime and source identity are recorded; cross-platform libm bit identity
+is not assumed.
 
 ```text
 iid:
@@ -137,7 +139,7 @@ within one L4 are not treated as independent clusters.
 ### Integrity
 
 ```text
-max conditional log-prob replay error <= 1e-5
+max pre-update abs(ratio - 1)         <= 1e-4
 abs iid lag-1 correlation             <= 0.02, both action dimensions
 AR(1) lag-1 correlation               in [0.93,0.97], both dimensions
 marginal std relative error           <= 5%, both arms/dimensions
@@ -188,3 +190,32 @@ seed0 / sealed pool:   UNTOUCHED
 
 No rho sweep, alternate seed count, learner, LR change, cap change, GRU
 unfreeze or objective change is permitted as remediation inside this run.
+
+## 8. Correctness-only replacement before valid outcomes
+
+The first remote attempt from execution source
+`8055eed8794fcbbea96f94d33874fb80da356558` was stopped incomplete after 98
+of 1,440 episodes. No summary was generated and no outcome count was inspected.
+An online integrity check observed maximum batch-replay log-probability error
+`1.3589859008789062e-4`.
+
+The cause was computational rather than scientific: the AR sampler carried
+the private pre-addition float32 noise into the next step, while replay can
+only reconstruct `stored_raw - replayed_mean`. The replacement sampler carries
+that stored-latent displacement. A second distinction was also made explicit:
+batch-one rollout and batched head GEMM can differ by normal float32
+accumulation order, so the project-level B4 contract is
+`max abs(exp(new_logp-old_logp)-1) <= 1e-4`, while the pure conditional formula
+has an exact unit test.
+
+The failed directory is preserved remotely as:
+
+```text
+/home/haowei/end2race_analysis/
+  b6_temporal_phase0_8055eed.failed_ar_state_replay
+```
+
+The scientific selection, innovations, rho and outcome gates are unchanged.
+A replacement RunPlan must bind the corrected implementation before any valid
+episode is started; none of the 98 invalid-attempt rows may be resumed or
+combined with it.

@@ -1,0 +1,15 @@
+{
+  "attempt_execution_source": "8055eed8794fcbbea96f94d33874fb80da356558",
+  "by_mode": {
+    "ar1": 49,
+    "iid": 49
+  },
+  "complete": false,
+  "episode_count": 98,
+  "learner_started": false,
+  "max_abs_log_prob_replay_error": 0.00013589859008789062,
+  "outcomes_analyzed": false,
+  "reason": "AR state used private pre-addition noise rather than stored raw latent displacement",
+  "remote_preserved_path": "/home/haowei/end2race_analysis/b6_temporal_phase0_8055eed.failed_ar_state_replay",
+  "status": "STOPPED_CORRECTNESS_FAILURE"
+}

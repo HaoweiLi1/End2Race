@@ -228,7 +228,7 @@ def prepare(args: argparse.Namespace) -> None:
             "ar1_lag1_min": 0.93,
             "ar1_lag1_max": 0.97,
             "marginal_std_relative_error_max": 0.05,
-            "conditional_log_prob_replay_atol": 1e-5,
+            "pre_update_max_abs_ratio_minus_one": 1e-4,
         },
         "decision": (
             "learner GO only when all integrity, repair, safe-collision, and "
@@ -287,7 +287,7 @@ def _noise_digest(value: np.ndarray) -> str:
     return hashlib.sha256(array.tobytes()).hexdigest()
 
 
-def replay_log_prob(policy: B6Phase0Policy, result, device: torch.device) -> float:
+def replay_log_prob(policy: B6Phase0Policy, result, device: torch.device) -> dict[str, float]:
     feature = torch.from_numpy(np.stack([row.feature for row in result.transitions])).to(device)
     raw = torch.from_numpy(np.stack([row.raw_action for row in result.transitions])).to(device)
     old = torch.tensor(
@@ -311,7 +311,13 @@ def replay_log_prob(policy: B6Phase0Policy, result, device: torch.device) -> flo
                     )
                 )
             replayed = torch.cat(values)
-    return float(torch.max(torch.abs(replayed - old)).item())
+    delta = replayed - old
+    return {
+        "max_abs_log_prob_delta": float(torch.max(torch.abs(delta)).item()),
+        "max_abs_ratio_minus_one": float(
+            torch.max(torch.abs(torch.exp(delta) - 1.0)).item()
+        ),
+    }
 
 
 def run(args: argparse.Namespace) -> None:
@@ -369,7 +375,7 @@ def run(args: argparse.Namespace) -> None:
             episode_id=task_order,
             deterministic=False,
         )
-        log_prob_error = replay_log_prob(policy, result, device)
+        replay_error = replay_log_prob(policy, result, device)
         trace = policy.noise_trace
         innovations = policy.innovation_trace
         if len(trace) != result.step_count or len(innovations) != result.step_count:
@@ -390,7 +396,12 @@ def run(args: argparse.Namespace) -> None:
             "speed_projection_count": result.speed_projection_count,
             "max_abs_steer_projection_delta": result.max_abs_steer_projection_delta,
             "max_abs_speed_projection_delta": result.max_abs_speed_projection_delta,
-            "max_abs_conditional_log_prob_replay_error": log_prob_error,
+            "max_abs_conditional_log_prob_replay_error": replay_error[
+                "max_abs_log_prob_delta"
+            ],
+            "max_abs_pre_update_ratio_minus_one": replay_error[
+                "max_abs_ratio_minus_one"
+            ],
             "trajectory_sha256": trajectory_digest(result.arrays),
             "noise_sha256": _noise_digest(trace),
             "innovation_sha256": _noise_digest(innovations),
@@ -559,6 +570,7 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
     }
     projections: dict[str, Counter[str]] = {mode: Counter() for mode in B6_MODES}
     max_log_prob = 0.0
+    max_ratio = 0.0
     for row in episodes:
         mode_outcomes[row["mode"]][row["archived_outcome"]][row["corrected_outcome"]] += 1
         projections[row["mode"]].update(
@@ -570,6 +582,7 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
             }
         )
         max_log_prob = max(max_log_prob, float(row["max_abs_conditional_log_prob_replay_error"]))
+        max_ratio = max(max_ratio, float(row["max_abs_pre_update_ratio_minus_one"]))
     noise = {
         mode: _aggregate_trace([row for row in episodes if row["mode"] == mode])
         for mode in B6_MODES
@@ -580,7 +593,7 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
         for mode in B6_MODES
     }
     integrity = bool(
-        max_log_prob <= 1e-5
+        max_ratio <= 1e-4
         and max(abs(value) for value in noise["iid"]["lag1_correlation"]) <= 0.02
         and all(0.93 <= value <= 0.97 for value in noise["ar1"]["lag1_correlation"])
         and max(value for mode in B6_MODES for value in relative_std_errors[mode]) <= 0.05
@@ -636,6 +649,7 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
         "relative_std_errors": relative_std_errors,
         "projection_counts": {mode: dict(projections[mode]) for mode in B6_MODES},
         "max_abs_conditional_log_prob_replay_error": max_log_prob,
+        "max_abs_pre_update_ratio_minus_one": max_ratio,
         "gates": {
             "integrity": integrity,
             "collision_repair": repair_gate,

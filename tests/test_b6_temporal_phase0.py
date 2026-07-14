@@ -111,6 +111,19 @@ def main() -> None:
         assert results[mode].step_count == len(policy.noise_trace)
         assert results[mode].step_count == len(policy.innovation_trace)
         assert results[mode].speed_projection_count == 0
+        features = torch.from_numpy(
+            np.stack([row.feature for row in results[mode].transitions])
+        )
+        with torch.no_grad():
+            # Framewise batch-one replay isolates the latent-state contract
+            # from the separately tolerated batch-GEMM accumulation order.
+            means = torch.cat(
+                [policy.mean_from_feature(features[index : index + 1]) for index in range(len(features))]
+            ).numpy()
+        stored_raw = np.stack([row.raw_action for row in results[mode].transitions])
+        assert np.array_equal(
+            policy.noise_trace.astype(np.float32), stored_raw - means
+        )
     common = min(results["iid"].step_count, results["ar1"].step_count)
     assert np.array_equal(
         policies["iid"].innovation_trace[:common],
