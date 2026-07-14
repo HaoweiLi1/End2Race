@@ -302,3 +302,5 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
   但按 owner 停止规则，当前 frozen-feature direct-head 调参线关闭；下一步必须先
   外审 `.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md`，再前瞻性决定
   representation adaptation 或 bounded macro safety-control proposal。
+- B6 code/evidence review boundary 是
+  `081092987877619e9b84f108f80cbebe3bda847c`；其后的提交只记录可寻址边界。

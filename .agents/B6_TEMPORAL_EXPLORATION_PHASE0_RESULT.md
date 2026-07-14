@@ -186,3 +186,13 @@ Compact evidence is under `docs/ppo/evidence/b6_temporal_phase0_v3/`:
 The two incomplete correctness attempts remain documented in the v1/v2
 evidence directories and remote quarantine paths. They are not part of any
 scientific count.
+
+The exact B6 code-and-evidence content boundary is
+`081092987877619e9b84f108f80cbebe3bda847c`. External review should inspect:
+
+```text
+9aeddcc3ecd4d7f896e5a00660c545d6176fba17
+  ..081092987877619e9b84f108f80cbebe3bda847c
+```
+
+The following commit only binds this addressable review boundary.

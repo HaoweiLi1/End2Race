@@ -2930,3 +2930,7 @@ reused. Both remote roots are preserved with failure suffixes.
 - The next legal step is external review of the B6 packet, followed by a new
   prospective decision between canonical-End2Race representation adaptation
   and an explicit bounded macro safety-control proposal.
+
+The exact B6 code-and-evidence content boundary is
+`081092987877619e9b84f108f80cbebe3bda847c`; review
+`9aeddcc3ecd4d7f896e5a00660c545d6176fba17..081092987877619e9b84f108f80cbebe3bda847c`.
