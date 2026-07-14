@@ -27,7 +27,7 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from bplus_v22.b4_direct import mean_bound_penalty
+from bplus_v22.b4_direct import _minibatches, _permutation, mean_bound_penalty
 from bplus_v22.b5_safe import load_reference
 from model import End2Race
 
@@ -312,37 +312,60 @@ def replay_inventory(
     return result
 
 
+def objective_inputs(
+    replay: Mapping[str, Any],
+    device: torch.device,
+    objective: str,
+) -> dict[str, Any]:
+    result = {
+        "feature": torch.from_numpy(replay["feature"]).to(device),
+        "action": torch.from_numpy(replay["raw_action"]).to(device),
+        "old_log_prob": torch.from_numpy(replay["old_log_prob"]).to(device),
+        "advantage": torch.from_numpy(replay["advantage"]).to(device),
+        "trust_weight": torch.from_numpy(replay["actor_weight"]).to(device),
+        "outcome": np.asarray(replay["outcome"]),
+    }
+    if objective == "b5_original":
+        objective_weight = result["trust_weight"].clone()
+    elif objective == "opened_austin_prevalence":
+        multipliers = torch.tensor(
+            [PREVALENCE[str(label)] for label in result["outcome"]],
+            dtype=result["trust_weight"].dtype,
+            device=device,
+        )
+        objective_weight = result["trust_weight"] * multipliers
+    else:
+        raise ValueError(f"unknown gradient objective: {objective}")
+    if abs(float(objective_weight.mean()) - 1.0) > 2e-5:
+        raise AssertionError("objective weights do not retain global mean one")
+    result["objective_weight"] = objective_weight
+    result["normalized_advantage"] = weighted_normalize(
+        result["advantage"], objective_weight
+    )
+    if objective == "b5_original":
+        stored = torch.from_numpy(replay["normalized_advantage"]).to(device)
+        max_error = float(
+            torch.max(torch.abs(result["normalized_advantage"] - stored)).item()
+        )
+        if max_error > 2e-5:
+            raise AssertionError(f"stored B5 normalized advantage mismatch: {max_error}")
+    return result
+
+
 def objective_gradients(
     head: torch.nn.Module,
     replay: Mapping[str, Any],
     device: torch.device,
     objective: str,
 ) -> tuple[dict[str, tuple[torch.Tensor, ...]], dict[str, float]]:
-    feature = torch.from_numpy(replay["feature"]).to(device)
-    action = torch.from_numpy(replay["raw_action"]).to(device)
-    old_log_prob = torch.from_numpy(replay["old_log_prob"]).to(device)
-    advantage = torch.from_numpy(replay["advantage"]).to(device)
-    trust_weight = torch.from_numpy(replay["actor_weight"]).to(device)
-    outcome = np.asarray(replay["outcome"])
-    if objective == "b5_original":
-        objective_weight = trust_weight.clone()
-    elif objective == "opened_austin_prevalence":
-        multipliers = torch.tensor(
-            [PREVALENCE[str(label)] for label in outcome],
-            dtype=trust_weight.dtype,
-            device=device,
-        )
-        objective_weight = trust_weight * multipliers
-    else:
-        raise ValueError(f"unknown gradient objective: {objective}")
-    if abs(float(objective_weight.mean()) - 1.0) > 2e-5:
-        raise AssertionError("objective weights do not retain global mean one")
-    normalized = weighted_normalize(advantage, objective_weight)
-    if objective == "b5_original":
-        stored = torch.from_numpy(replay["normalized_advantage"]).to(device)
-        max_error = float(torch.max(torch.abs(normalized - stored)).item())
-        if max_error > 2e-5:
-            raise AssertionError(f"stored B5 normalized advantage mismatch: {max_error}")
+    inputs = objective_inputs(replay, device, objective)
+    feature = inputs["feature"]
+    action = inputs["action"]
+    old_log_prob = inputs["old_log_prob"]
+    trust_weight = inputs["trust_weight"]
+    objective_weight = inputs["objective_weight"]
+    normalized = inputs["normalized_advantage"]
+    outcome = inputs["outcome"]
     parameters = tuple(head.parameters())
     gradients: dict[str, tuple[torch.Tensor, ...]] = {}
     for component in OUTCOMES:
@@ -361,7 +384,8 @@ def objective_gradients(
             current_weight = objective_weight[start:stop] * mask
             loss = (
                 -(current_weight * surrogate).sum()
-                + 0.01 * (current_weight * mean_bound_penalty(mean)).sum()
+                + 0.01
+                * (trust_weight[start:stop] * mask * mean_bound_penalty(mean)).sum()
             ) / len(feature)
             loss.backward()
         gradients[component] = tuple(
@@ -387,6 +411,89 @@ def objective_gradients(
             (objective_weight * normalized).sum().item() / objective_weight.sum().item()
         ),
         "max_abs_preupdate_ratio_minus_one": max_ratio_error,
+    }
+
+
+def safe_reference_mean_kl(
+    head: torch.nn.Module,
+    reference: Any,
+    device: torch.device,
+) -> float:
+    frame_parts = []
+    with torch.inference_mode():
+        for start in range(0, reference.frame_count, CHUNK):
+            stop = min(reference.frame_count, start + CHUNK)
+            mean = head(reference.feature[start:stop].to(device)).double()
+            bc = reference.bc_mean[start:stop].to(device).double()
+            std = torch.tensor(STD, dtype=torch.float64, device=device)
+            frame_parts.append(0.5 * torch.sum(((mean - bc) / std) ** 2, dim=1).cpu())
+    frame = torch.cat(frame_parts)
+    episode = []
+    cursor = 0
+    for length in reference.lengths:
+        episode.append(frame[cursor : cursor + length].mean())
+        cursor += length
+    return float(torch.stack(episode).mean().item())
+
+
+def candidate_actor_epoch(
+    checkpoint_path: Path,
+    replay: Mapping[str, Any],
+    objective: str,
+    iteration: int,
+    device: torch.device,
+) -> tuple[torch.nn.Module, dict[str, float]]:
+    """Replay one base-LR actor epoch, including historical Adam state/order."""
+
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    head = load_head(checkpoint_path, device)
+    optimizer = torch.optim.Adam(head.parameters(), lr=3e-5)
+    optimizer.load_state_dict(checkpoint["actor_optimizer_state_dict"])
+    for group in optimizer.param_groups:
+        group["lr"] = 3e-5
+    inputs = objective_inputs(replay, device, objective)
+    feature = inputs["feature"]
+    action = inputs["action"]
+    old_log_prob = inputs["old_log_prob"]
+    trust_weight = inputs["trust_weight"]
+    objective_weight = inputs["objective_weight"]
+    normalized = inputs["normalized_advantage"]
+    order = _permutation(len(feature), 1, iteration, 0, "actor")
+    optimizer_steps = 0
+    head.train()
+    for cpu_indices in _minibatches(order, 1024):
+        indices = cpu_indices.to(device)
+        mean = head(feature[indices])
+        log_prob = normal_log_prob(mean, action[indices])
+        ratio = torch.exp(log_prob - old_log_prob[indices])
+        current_advantage = normalized[indices]
+        surrogate = torch.minimum(
+            ratio * current_advantage,
+            torch.clamp(ratio, 0.9, 1.1) * current_advantage,
+        )
+        loss = (
+            -(objective_weight[indices] * surrogate).sum()
+            + 0.01 * (trust_weight[indices] * mean_bound_penalty(mean)).sum()
+        ) / 1024.0
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(tuple(head.parameters()), 0.5)
+        optimizer.step()
+        optimizer_steps += 1
+    head.eval()
+    new_log_prob = []
+    with torch.inference_mode():
+        for start in range(0, len(feature), CHUNK):
+            stop = min(start + CHUNK, len(feature))
+            new_log_prob.append(normal_log_prob(head(feature[start:stop]), action[start:stop]))
+    new_log_prob = torch.cat(new_log_prob)
+    ratio = torch.exp(new_log_prob - old_log_prob)
+    weighted_kl = float((trust_weight * (old_log_prob - new_log_prob)).mean().item())
+    weighted_clip = float((trust_weight * (torch.abs(ratio - 1.0) > 0.1)).mean().item())
+    return head, {
+        "optimizer_steps": optimizer_steps,
+        "trust_weighted_rollout_kl": weighted_kl,
+        "trust_weighted_clip_fraction": weighted_clip,
     }
 
 
@@ -486,7 +593,17 @@ def main() -> None:
         (args.b5_training_root / "curriculum.json").read_text(encoding="utf-8")
     )["rows"]
     curriculum = {row["l2_id"]: row["archived_bc_outcome"] for row in curriculum_rows}
+    historical_iterations = {
+        int(row["iteration"]): row
+        for row in (
+            json.loads(line)
+            for line in (args.b5_training_root / "iterations.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        )
+    }
     gradient_rows: list[dict[str, Any]] = []
+    candidate_rows: list[dict[str, Any]] = []
     iteration_rows: list[dict[str, Any]] = []
     for iteration in range(1, args.gradient_iterations + 1):
         replay = replay_inventory(
@@ -540,6 +657,73 @@ def main() -> None:
                 row for row in objective_records if row["gradient_component"] == "collision"
             ]
             safe_all = next(row for row in all_records if row["probe_group"] == "safe_reference")
+            candidate, candidate_checks = candidate_actor_epoch(
+                checkpoint_paths[iteration - 1], replay, objective, iteration, device
+            )
+            candidate_safe = safe_reference_mean_kl(candidate, reference, device)
+            historical_base_attempt_error: float | str = ""
+            if objective == "b5_original":
+                historical_first_epoch = historical_iterations[iteration]["update"][
+                    "actor_epoch_records"
+                ][0]
+                historical_base_safe = float(
+                    historical_first_epoch["attempts"][0]["safe"]["mean"]
+                )
+                historical_base_attempt_error = abs(candidate_safe - historical_base_safe)
+                if historical_base_attempt_error > 1e-6:
+                    raise AssertionError(
+                        "counterfactual original epoch does not reproduce historical base attempt"
+                    )
+            candidate_records = []
+            for group, probe in probes.items():
+                candidate_delta = (
+                    means(candidate, probe.feature, device)
+                    - checkpoint_means[iteration - 1][group]
+                )
+                b4_candidate = weighted_direction_metrics(
+                    candidate_delta, b4_direction[group], probe.weight
+                )
+                actual_candidate = weighted_direction_metrics(
+                    candidate_delta,
+                    checkpoint_means[iteration][group]
+                    - checkpoint_means[iteration - 1][group],
+                    probe.weight,
+                )
+                cap_candidate = weighted_direction_metrics(
+                    candidate_delta,
+                    checkpoint_means[iteration - 1][group] - bc_means[group],
+                    probe.weight,
+                )
+                candidate_row = {
+                    "iteration": iteration,
+                    "objective": objective,
+                    "probe_group": group,
+                    "candidate_epoch_standardized_update_norm": b4_candidate[
+                        "direction_norm"
+                    ],
+                    "cosine_with_b4_global_direction": b4_candidate["cosine"],
+                    "inner_with_b4_global_direction": b4_candidate["inner_product"],
+                    "cosine_with_actual_b5_update": actual_candidate["cosine"],
+                    "cosine_with_preupdate_bc_displacement": cap_candidate["cosine"],
+                    "first_order_bc_displacement_increase": cap_candidate[
+                        "inner_product"
+                    ],
+                    "post_candidate_d_safe": candidate_safe,
+                    "safe_cap_pass": candidate_safe <= 0.01,
+                    "trust_weighted_rollout_kl": candidate_checks[
+                        "trust_weighted_rollout_kl"
+                    ],
+                    "trust_weighted_clip_fraction": candidate_checks[
+                        "trust_weighted_clip_fraction"
+                    ],
+                    "optimizer_steps": candidate_checks["optimizer_steps"],
+                    "historical_base_attempt_d_safe_error": historical_base_attempt_error,
+                }
+                candidate_rows.append(candidate_row)
+                candidate_records.append(candidate_row)
+            candidate_safe_row = next(
+                row for row in candidate_records if row["probe_group"] == "safe_reference"
+            )
             iteration_objective[objective] = {
                 "checks": checks,
                 "mean_b4_global_cosine": scalar_mean(
@@ -554,7 +738,19 @@ def main() -> None:
                 "mean_collision_component_functional_norm": scalar_mean(
                     [float(row["functional_direction_norm"]) for row in collision_records]
                 ),
+                "candidate_mean_b4_global_cosine": scalar_mean(
+                    [float(row["cosine_with_b4_global_direction"]) for row in candidate_records]
+                ),
+                "candidate_safe_cap_alignment_cosine": candidate_safe_row[
+                    "cosine_with_preupdate_bc_displacement"
+                ],
+                "candidate_safe_cap_first_order_increase": candidate_safe_row[
+                    "first_order_bc_displacement_increase"
+                ],
+                "candidate_post_d_safe": candidate_safe,
+                "candidate_safe_cap_pass": candidate_safe <= 0.01,
             }
+            del candidate
         raw = iteration_objective["b5_original"]
         corrected = iteration_objective["opened_austin_prevalence"]
         collision_norm_ratio = (
@@ -592,6 +788,35 @@ def main() -> None:
                 "corrected_max_abs_preupdate_ratio_minus_one": corrected["checks"][
                     "max_abs_preupdate_ratio_minus_one"
                 ],
+                "raw_candidate_mean_b4_global_cosine": raw[
+                    "candidate_mean_b4_global_cosine"
+                ],
+                "corrected_candidate_mean_b4_global_cosine": corrected[
+                    "candidate_mean_b4_global_cosine"
+                ],
+                "corrected_minus_raw_candidate_b4_cosine": corrected[
+                    "candidate_mean_b4_global_cosine"
+                ]
+                - raw["candidate_mean_b4_global_cosine"],
+                "raw_candidate_safe_cap_alignment_cosine": raw[
+                    "candidate_safe_cap_alignment_cosine"
+                ],
+                "corrected_candidate_safe_cap_alignment_cosine": corrected[
+                    "candidate_safe_cap_alignment_cosine"
+                ],
+                "corrected_minus_raw_candidate_cap_cosine": (
+                    float(corrected["candidate_safe_cap_alignment_cosine"])
+                    - float(raw["candidate_safe_cap_alignment_cosine"])
+                    if corrected["candidate_safe_cap_alignment_cosine"] != ""
+                    and raw["candidate_safe_cap_alignment_cosine"] != ""
+                    else ""
+                ),
+                "raw_candidate_post_d_safe": raw["candidate_post_d_safe"],
+                "corrected_candidate_post_d_safe": corrected["candidate_post_d_safe"],
+                "raw_candidate_safe_cap_pass": raw["candidate_safe_cap_pass"],
+                "corrected_candidate_safe_cap_pass": corrected[
+                    "candidate_safe_cap_pass"
+                ],
             }
         )
         del head
@@ -601,6 +826,11 @@ def main() -> None:
 
     finite_cap = [
         row for row in iteration_rows if row["corrected_minus_raw_cap_cosine"] != ""
+    ]
+    finite_candidate_cap = [
+        row
+        for row in iteration_rows
+        if row["corrected_minus_raw_candidate_cap_cosine"] != ""
     ]
     summary = {
         "schema": SCHEMA,
@@ -649,6 +879,35 @@ def main() -> None:
                     ]
                 )
             ),
+            "candidate_epochs_with_lower_b4_global_cosine": sum(
+                row["corrected_minus_raw_candidate_b4_cosine"] < 0.0
+                for row in iteration_rows
+            ),
+            "candidate_epochs_with_lower_safe_cap_cosine": sum(
+                row["corrected_minus_raw_candidate_cap_cosine"] < 0.0
+                for row in finite_candidate_cap
+            ),
+            "candidate_raw_safe_cap_pass_count": sum(
+                bool(row["raw_candidate_safe_cap_pass"]) for row in iteration_rows
+            ),
+            "candidate_corrected_safe_cap_pass_count": sum(
+                bool(row["corrected_candidate_safe_cap_pass"]) for row in iteration_rows
+            ),
+            "median_corrected_minus_raw_candidate_b4_cosine": float(
+                np.median(
+                    [row["corrected_minus_raw_candidate_b4_cosine"] for row in iteration_rows]
+                )
+            ),
+            "median_corrected_minus_raw_candidate_cap_cosine": float(
+                np.median(
+                    [
+                        row["corrected_minus_raw_candidate_cap_cosine"]
+                        for row in finite_candidate_cap
+                    ]
+                )
+            )
+            if finite_candidate_cap
+            else "",
         },
         "interpretation_contract": {
             "gradient": (
@@ -667,11 +926,21 @@ def main() -> None:
                 "alignment can support or weaken the objective-mismatch hypothesis but cannot by "
                 "itself prove that a weighted PPO run will improve collision"
             ),
+            "candidate_epoch": (
+                "one counterfactual base-LR epoch restores the historical actor Adam state and "
+                "minibatch order; it is closer to the learner than the full-batch gradient but "
+                "does not execute the safe-cap retry ladder or later actor epochs"
+            ),
+            "regularizer_weight": (
+                "prevalence weights affect advantage normalization and PPO surrogate only; the "
+                "mean-bound regularizer retains the historical episode-equal trust weight"
+            ),
         },
     }
     args.output_dir.mkdir(parents=True, exist_ok=True)
     write_tsv(args.output_dir / "function_updates.tsv", function_rows)
     write_tsv(args.output_dir / "gradient_alignment.tsv", gradient_rows)
+    write_tsv(args.output_dir / "candidate_epoch_alignment.tsv", candidate_rows)
     write_tsv(args.output_dir / "gradient_iteration_summary.tsv", iteration_rows)
     json_dump(args.output_dir / "summary.json", summary)
     print(json.dumps(summary, indent=2, sort_keys=True))
