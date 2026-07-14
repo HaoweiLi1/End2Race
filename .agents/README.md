@@ -22,7 +22,8 @@
   `d57d6e9bc4c49fdd9e522f4b4e825277239b405d`）
 - **B5-A 统计限定与 objective-alignment 机制审计** →
   `.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`（B5-B weighting
-  learner `NO-GO, UNRUN`）
+  learner `NO-GO, UNRUN`；exact content boundary
+  `ba0d9c6400b75498f2e258ed2019982863cdd1c6`）
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
 - 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`

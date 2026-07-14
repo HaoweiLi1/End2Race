@@ -2844,3 +2844,6 @@ opening is authorized. External review should inspect
 `.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`, the two analysis
 scripts, and `docs/ppo/evidence/b5_{posthoc_statistics,objective_alignment}/`.
 A later numerical experiment requires a new prospective owner decision.
+The exact post-hoc code-and-evidence content boundary is
+`ba0d9c6400b75498f2e258ed2019982863cdd1c6`; review
+`24fece8bc1ff86c4959b258190dbedfb21591968..ba0d9c6400b75498f2e258ed2019982863cdd1c6`.

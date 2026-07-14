@@ -274,3 +274,5 @@ proposed weights; the correction did not systematically rotate updates away
 from the B4/global or safe-cap directions and reduced collision-gradient
 function norm to about `0.195` of the original. B5-B was therefore not run.
 See `.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md`.
+The post-hoc code-and-evidence content boundary is
+`ba0d9c6400b75498f2e258ed2019982863cdd1c6`.

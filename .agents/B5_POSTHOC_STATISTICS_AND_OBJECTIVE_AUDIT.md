@@ -226,6 +226,10 @@ scripts/analyze_b5_statistical_noise.py
 scripts/analyze_b5_objective_alignment.py
 ```
 
+The exact code-and-evidence content boundary is
+`ba0d9c6400b75498f2e258ed2019982863cdd1c6`. External review should inspect
+`24fece8bc1ff86c4959b258190dbedfb21591968..ba0d9c6400b75498f2e258ed2019982863cdd1c6`.
+
 Important evidence SHA256 values:
 
 | File | SHA256 |
