@@ -1,0 +1,15 @@
+{
+  "candidate_actor_file_sha256": null,
+  "candidate_actor_tensor_sha256": null,
+  "candidate_iteration": null,
+  "completed_iterations": 9,
+  "evaluation_performed": false,
+  "integrity_passed": true,
+  "plan_sha256": "3cd0f801f59609fcf6ab02a674851f49678de6b0fb04dc6a27201ff08c2672ad",
+  "schema": "end2race-b7-plain-recurrent-result-1",
+  "sealed_pool_opened": false,
+  "seed": 1,
+  "seed0_started": false,
+  "status": "EARLY_STOP_NO_CANDIDATE",
+  "stopped_after_three_consecutive_actor_rejections": true
+}

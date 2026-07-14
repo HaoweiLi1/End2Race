@@ -3054,3 +3054,25 @@ restart seed1 from iteration 0. Compact evidence is under
 The superseding legal execution-source commit is
 `3e262e2bf00acd8ef9338122a82780e68a825981`; its following boundary-only commit
 must not replace this identity in the restarted RunPlan.
+
+## 35. B7 authoritative result: early stop, no candidate (2026-07-14)
+
+The remediated clean-stage learner used source `3e262e2bf00acd8ef9338122a82780e68a825981`
+and immutable RunPlan digest
+`3cd0f801f59609fcf6ab02a674851f49678de6b0fb04dc6a27201ff08c2672ad`.
+It crossed the previously failing iteration boundary, then completed nine
+iterations, 288 complete episodes and 203,289 transitions.
+
+Actor steps at iterations 1/2/3/6 were accepted. Iterations 4/5 and 7/8/9 were
+rolled back with complete actor+Adam restoration; all critic epochs still
+completed. Iterations 7/8/9 were three consecutive safe-cap failures, so the
+pre-registered early-stop rule fired. The atomic summary status is
+`EARLY_STOP_NO_CANDIDATE`, and only the canonical iter0 actor exists.
+
+No iter10 candidate means no 288 evaluation, seed0, Austin 600 or sealed/final
+access was legal or performed. Do not select iter6 post hoc, resume, change the
+cap/LR/window/std/episode count, or extend the run. The owner-specified plain
+recurrent PPO engineering line is closed pending a new prospective direction.
+The exact result record is `.agents/B7_PLAIN_RECURRENT_PPO_RESULT.md`; compact
+evidence is `docs/ppo/evidence/b7_plain_recurrent_negative_20260714/` and the
+full 1.5 GiB release remains in the experiment tree and remote stage.

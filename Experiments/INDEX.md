@@ -135,3 +135,9 @@ release 与 288 evaluation 应放在 `B7_plain_recurrent_ppo/`；协议见
 `.agents/B7_PLAIN_RECURRENT_PPO_PLAN.md`。初始只允许远端 seed1/iter10。若 seed1
 门失败，不创建 seed0/Austin 任务；若通过，后续任务仍需使用冻结 checkpoint 与
 显式授权 artifact。
+
+B7 的合法 remediated seed1 release 为
+`B7_plain_recurrent_ppo/runs/b7_seed1_20260714_114132/remote/seed1`。它在 iter9
+因连续三次 actor rollback 提前停止，未产生 iter10 candidate；因此不存在 B7
+evaluation release，seed0/Austin/sealed 均未创建。compact evidence 位于
+`docs/ppo/evidence/b7_plain_recurrent_negative_20260714/`。

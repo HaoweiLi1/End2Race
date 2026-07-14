@@ -1,6 +1,6 @@
 # Analysis and Report Index
 
-Updated: 2026-07-12. The purpose of this index is to locate evidence without
+Updated: 2026-07-14. The purpose of this index is to locate evidence without
 searching dozens of dated run directories.
 
 Complete machine-readable inventories are:
@@ -21,6 +21,11 @@ Complete machine-readable inventories are:
 | D2.5 | `logs/d25_counterfactual_20260711/D25_EVIDENCE_REPORT_20260711.md` | 67/91 tested cases recovered by fixed library |
 | D2R-G | `logs/d2r_geometry_20260711/D2R_EVIDENCE_REPORT_20260711.md` | original TTC/2s-FA gate failed |
 | B+ v2.2 | `logs/bplus_v22_d3r2_20260711/{STATUS,DECISIONS,EXPERIMENTS}.md` | Task 10 failed; hierarchical Task 6 failed; no PPO |
+| B2/B3 | `.agents/PPO_DEVELOPMENT_REPORT.md`, `.agents/B3_PPO_PLAN.md` | B2 failed overtake direction; B3 reviewed GO but paused unrun |
+| B4 | `.agents/B4_DIRECT_HEAD_PPO_RESULT.md` | plain frozen-feature direct head substantive negative |
+| B5 | `.agents/B5_SAFE_TRUST_REGION_RESULT.md`, `.agents/B5_POSTHOC_STATISTICS_AND_OBJECTIVE_AUDIT.md` | behavior preserved; safety effect inconclusive; no promotion |
+| B6 | `.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md` | `rho=.95` unconditional AR(1) no-go; learner unrun |
+| B7 | `.agents/B7_PLAIN_RECURRENT_PPO_RESULT.md` | remediated recurrent run early-stopped; no candidate/evaluation |
 
 The concise cross-stage interpretation is
 `docs/ppo/EXPERIMENT_HISTORY.md`.
@@ -35,6 +40,10 @@ The detailed Chinese chronology and mechanism discussion is
 - D2.5: `logs/d25_counterfactual_20260711/artifacts/`.
 - D2R-G: `logs/d2r_geometry_20260711/artifacts/`.
 - B+ v2.2: `logs/bplus_v22_d3r2_20260711/artifacts/`.
+- B7 compact result:
+  `docs/ppo/evidence/b7_plain_recurrent_negative_20260714/`.
+- B7 full release:
+  `Experiments/B7_plain_recurrent_ppo/runs/b7_seed1_20260714_114132/remote/seed1/`.
 
 Canonical paths were not moved by Tier 3.
 
@@ -66,4 +75,5 @@ were not deleted.
 - Task 6 metrics cannot rank A/B/C.
 - Task 10 and the 288-scenario development panel provide no policy
   generalization evidence.
-- No v2.2 PPO result currently exists.
+- B7 did not reach its candidate evaluation boundary; do not interpret its
+  early stop as a measured collision/overtake result or select iter6 post hoc.

@@ -120,3 +120,10 @@ record and remediation are in
 [evidence/b7_stale_critic_gradient_20260714/README.md](evidence/b7_stale_critic_gradient_20260714/README.md).
 The authoritative run must restart from iteration 0 using the superseding
 source/RunPlan boundary; the incomplete attempt is never resumed or merged.
+
+The remediated authoritative run subsequently stopped after iteration 9 under
+the prospective three-consecutive-rejection rule. Four actor steps were
+accepted and five were rolled back; no iteration-10 actor exists. Therefore no
+288 evaluation or conditional seed0 was run. The final result is
+`.agents/B7_PLAIN_RECURRENT_PPO_RESULT.md`, with compact evidence at
+[evidence/b7_plain_recurrent_negative_20260714/README.md](evidence/b7_plain_recurrent_negative_20260714/README.md).

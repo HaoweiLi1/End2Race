@@ -190,3 +190,33 @@ versus 4.0% on the product grid. These facts prioritize missing BC-preserving
 constraints as the leading diagnosis, while leaving exploration, sampler and
 representation causality unresolved. See
 `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`; no new run is authorized.
+
+## 10. B5 preservation, B6 temporal audit and B7 recurrent engineering close
+
+B5-A added a canonical-BC safe-reference cap to the frozen-feature direct
+head. It prevented B4's severe overtake collapse, but its best opened-Austin
+snapshot changed collision only from 24 to 22 (`9 fixed / 7 new`), with paired
+safety evidence statistically inconclusive. The checkpoint was not promoted.
+
+B6 then tested equal-marginal-std `rho=.95` AR(1) exploration without learning
+on training-only scenarios. Relative to iid it added 8/240 collision repairs,
+but also 48/480 safe-to-collision transitions and 17/240 lost overtakes. The
+AR(1) learner remained unrun.
+
+The owner finally authorized one combined plain recurrent PPO engineering run:
+train the original GRU plus output head at low LR, localize collision cost over
+the final second, collect 32 complete episodes, perform one recurrent actor
+step, hard-mine current-policy failures and reject updates exceeding a
+current-rollout BC-safe cap.
+
+The remediated seed1 run used source
+`3e262e2bf00acd8ef9338122a82780e68a825981` and RunPlan digest
+`3cd0f801f59609fcf6ab02a674851f49678de6b0fb04dc6a27201ff08c2672ad`.
+It accepted actor steps 1/2/3/6, rolled back 4/5/7/8/9 and stopped after the
+third consecutive rejection at iteration 9. No iter10 candidate existed, so
+no 288 evaluation, seed0, Austin 600 or sealed access occurred.
+
+This closes the owner-specified plain recurrent PPO engineering line as
+`EARLY_STOP_NO_CANDIDATE`. It does not establish candidate collision/overtake
+performance because the evaluation boundary was never reached. Exact evidence
+and interpretation are in `.agents/B7_PLAIN_RECURRENT_PPO_RESULT.md`.

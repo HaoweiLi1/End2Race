@@ -332,3 +332,16 @@ affinity、thread limit 和独立输出/cache/RNG 固定进 RunPlan。
   gate 不通过，plain recurrent PPO 主线关闭；通过后才可外审并条件运行 seed0。
 - 新 authority 覆盖本文件更早的“远端 unattended authority revoked”历史描述，
   但只限这个 B7 RunPlan；不得并行复制 seed1、打开 Austin/sealed 或自动调参。
+
+## 10. B7 已早停、无 candidate（2026-07-14）
+
+- remediation 后的合法 source 为 `3e262e2bf00acd8ef9338122a82780e68a825981`，
+  RunPlan SHA256 为 `3cd0f801f59609fcf6ab02a674851f49678de6b0fb04dc6a27201ff08c2672ad`。
+- seed1 共完成 9 iteration、288 complete episodes、203,289 transitions；actor
+  update 在 iter1/2/3/6 接受，在 iter4/5/7/8/9 回滚。
+- iter7/8/9 连续三次 safe KL 超过 `0.01`，故按预注册规则早停；状态为
+  `EARLY_STOP_NO_CANDIDATE`。只有 canonical BC 的 iter0 actor，不存在 iter10。
+- 因没有 candidate，288 eval、seed0、Austin 600 与 sealed/final 均未启动。
+  不得 post-hoc 选择 iter6、放宽 cap、续跑或调参。
+- 该结果关闭 owner 指定的 plain recurrent PPO engineering line，但没有形成
+  candidate KPI 结论。详见 `.agents/B7_PLAIN_RECURRENT_PPO_RESULT.md`。

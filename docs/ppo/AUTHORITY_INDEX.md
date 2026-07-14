@@ -1,24 +1,24 @@
 # Handoff and Authority Index
 
-Updated: 2026-07-12. This index consolidates every handoff found in the local
+Updated: 2026-07-14. This index consolidates every handoff found in the local
 workspace and makes its authority boundary explicit.
 
 ## Current authority
 
 `.agents/HANDOFF.md` is the only current handoff. Newer numbered sections
-supersede older sections. Its newest §19 records the local Tier-3 organization
-and the proposed BC-direct PPO direction; it does not authorize a numerical
-PPO run.
+supersede older sections. Its newest §35 records the completed B7 early stop,
+absence of a candidate and exhaustion of that run's execution authority.
 
 Current execution facts:
 
-- the primary assistant controls work;
-- unattended remote Codex authority is revoked;
-- active remote address remains `haowei@192.168.2.127`, but the Tier-3
-  organization did not access or modify it;
-- the D2 test/final pools remain unopened;
-- hierarchical Task 6 is the latest numerical result and is FAILED;
-- replacement Task 9/10 and PPO have not run.
+- the B7-specific remote authority was consumed by the completed seed1 run;
+- the valid B7 source is `3e262e2bf00acd8ef9338122a82780e68a825981` and
+  RunPlan digest is
+  `3cd0f801f59609fcf6ab02a674851f49678de6b0fb04dc6a27201ff08c2672ad`;
+- B7 stopped at iteration 9 after three consecutive actor-update rejections;
+  no candidate, evaluation or seed0 exists;
+- Austin 600 was not reopened for B7, and the D2 test/final pools remain sealed;
+- the next legal experiment requires a new prospective owner decision.
 
 ## Historical handoffs
 
@@ -42,11 +42,10 @@ authority.
 
 1. `docs/ppo/README.md`.
 2. `docs/ppo/EXPERIMENT_HISTORY.md`.
-3. `.agents/HANDOFF.md` newest section, then only the historical sections
+3. `.agents/B7_PLAIN_RECURRENT_PPO_RESULT.md` for the latest execution result.
+4. `.agents/HANDOFF.md` newest section, then only the historical sections
    needed for provenance.
-4. `docs/ppo/NEXT_PPO_DIRECTION.md` for the proposed, not-yet-run experiment.
 5. Original canonical reports when exact numbers or hashes are required.
 
 No historical handoff may be used to resume unattended execution or to
 override a newer failed gate.
-
