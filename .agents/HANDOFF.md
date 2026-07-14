@@ -2655,6 +2655,11 @@ nine B2/B3 compatibility programs also pass; Python compilation and B5 CLI
 loads pass. The production-shaped simulator smoke is rerun separately before
 the immutable B5 RunPlan.
 
+The exact implementation commit is
+`7bb258c1fa3bec13463f72e332f2cd313be95103` (tree
+`8fd503f27e9476a5baf687cd7cb2b772bea07860`). External reviewers must inspect
+`072e0df..7bb258c1fa3bec13463f72e332f2cd313be95103`, not only this handoff prose.
+
 ### 28.4 Remaining legal execution order
 
 1. freeze/push the exact B5 source boundary;

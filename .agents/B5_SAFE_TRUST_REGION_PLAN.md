@@ -1,6 +1,6 @@
 # B5-A plain-End2Race safe-reference trust-region plan
 
-Status: **OWNER-APPROVED STRICT SINGLE-VARIABLE IMPLEMENTATION; RUNPLAN NOT YET CREATED**
+Status: **OWNER-APPROVED STRICT SINGLE-VARIABLE IMPLEMENTATION FROZEN; RUNPLAN NOT YET CREATED**
 
 Date: 2026-07-14
 
@@ -285,5 +285,9 @@ separate prospective decision.
 - `tests/test_b5_safe.py`, `tests/test_b5_control_plane.py`: solver, optimizer,
   reference, checkpoint and single-variable regressions.
 
-The exact review commit and RunPlan/reference digests are recorded in
+The implementation review boundary is exact commit
+`7bb258c1fa3bec13463f72e332f2cd313be95103`; review the actual diff
+`072e0df..7bb258c1fa3bec13463f72e332f2cd313be95103`. The later provenance-only
+commit that records this SHA may be the RunPlan source commit; it does not
+change the B5 implementation. RunPlan/reference digests are recorded in
 `.agents/HANDOFF.md` once they exist.
