@@ -1,0 +1,72 @@
+{
+  "actor": "canonical_bc_plain_end2race",
+  "actor_hz": 100,
+  "decision": "learner GO only when all integrity, repair, safe-collision, and overtake-preservation gates pass conjunctively",
+  "expected_episode_count": 1440,
+  "forbidden": [
+    "learner",
+    "Austin_600_mechanism_selection",
+    "seed0",
+    "sealed_pool",
+    "hyperparameter_tuning"
+  ],
+  "implementation_boundary": "5a4c48f2debb8f4dd58807c966d47635408698d9",
+  "innovation_seeds": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "inputs": {
+    "bc_checkpoint_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "metadata_sha256": "468d8be50aecad19f89fbf2c35dc421acb4244a61f957f77dcfff1acd227eda3",
+    "task8_complete_sha256": "a4bccf5c13ef5ff8311e59b34d492bc7072a55298723601a6a9c127053aee8fc",
+    "training_manifest_sha256": "2e70d274853a2b5ed5518fdd926d45ab96a81943e80069a6ecc90160b7cc91ba"
+  },
+  "integrity_gate": {
+    "ar1_batched_pre_update_max_abs_ratio_minus_one": 0.00033,
+    "ar1_batched_tolerance_basis": "B4 1e-4 scaled by 1/sqrt(1-rho^2), rounded upward",
+    "ar1_lag1_max": 0.97,
+    "ar1_lag1_min": 0.93,
+    "framewise_pre_update_max_abs_ratio_minus_one": 1e-06,
+    "iid_abs_lag1_max": 0.02,
+    "iid_batched_pre_update_max_abs_ratio_minus_one": 0.0001,
+    "marginal_std_relative_error_max": 0.05
+  },
+  "marginal_std": {
+    "speed": 0.2,
+    "steer": 0.03
+  },
+  "matched_l4_count": 60,
+  "modes": [
+    "iid",
+    "ar1"
+  ],
+  "outcomes": [
+    "collision",
+    "overtake",
+    "follow"
+  ],
+  "overtake_preservation_gate": {
+    "l4_cluster_bootstrap_upper_one_sided_90_max": 0.05,
+    "lost_overtake_rate_ar1_minus_iid_max": 0.0
+  },
+  "primary_gate": {
+    "collision_repair_net_pair_count_equivalent_rate": 0.05,
+    "collision_repair_net_pair_count_min": 12,
+    "l4_cluster_signflip_one_sided_max": 0.1
+  },
+  "rho": 0.95,
+  "safe_collision_noninferiority_gate": {
+    "l4_cluster_bootstrap_upper_one_sided_90_max": 0.02,
+    "point_difference_ar1_minus_iid_max": 0.0
+  },
+  "schema": "end2race-b6-temporal-phase0-run-plan-1",
+  "scientific_change": "iid_100hz_noise_vs_ar1_rho_0.95_no_learning",
+  "selected_scenario_count": 180,
+  "selection_digest": "7224f1f3da6a35febc50392cc35b4844076c77094f508d78dbe7b9b3fafb93fd",
+  "selection_file_sha256": "7612d66ecd4708fb20905266c88033e5ffe6dd903aae4cdca310d7d1ae7c2b44",
+  "selection_rule": "intersection of training L4 containing collision/overtake/follow; one L2 per L4/outcome by domain-separated SHA256",
+  "simulator_hz": 100,
+  "status": "FROZEN_BEFORE_OUTCOMES"
+}

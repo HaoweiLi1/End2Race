@@ -267,3 +267,12 @@ The second failed directory is preserved remotely as:
 
 Again, none of its rows may be reused. The final replacement keeps the same
 selection, innovations, rho, outcome estimands and scientific gates.
+
+Active final replacement boundary:
+
+```text
+implementation:   5a4c48f2debb8f4dd58807c966d47635408698d9
+selection digest: 7224f1f3da6a35febc50392cc35b4844076c77094f508d78dbe7b9b3fafb93fd
+selection file:   7612d66ecd4708fb20905266c88033e5ffe6dd903aae4cdca310d7d1ae7c2b44
+RunPlan:          4a3923dbe2cf87073aa0aadb0bc59d8d8222882c107cb3d31c5e50f275dbbe7f
+```
