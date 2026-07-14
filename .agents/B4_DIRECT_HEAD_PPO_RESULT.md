@@ -188,6 +188,8 @@ presented as a continuation or rescue of B4.
 That read-only analysis is now complete in
 `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`, with reproducible compact tables
 under `docs/ppo/evidence/b4_substantive_negative/`. It preserves this verdict.
+The exact analysis/code/table review boundary is
+`dd49ce00bc82095a1cdd832caa485bce01c1991f`.
 The strongest measured signal is monotonic BC-relative action drift—especially
 global slowing—without a cumulative BC trust region. Empirically iid 100 Hz
 exploration and a 9.375x collision-prevalence shift are secondary supported

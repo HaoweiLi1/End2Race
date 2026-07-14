@@ -14,7 +14,8 @@
   `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`
 - **B4 数值结果与外审证据** → `.agents/B4_DIRECT_HEAD_PPO_RESULT.md`
 - **B4 substantive-negative 原因分析与下一假设排序** →
-  `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`
+  `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`（exact content boundary
+  `dd49ce00bc82095a1cdd832caa485bce01c1991f`）
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
 - 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`

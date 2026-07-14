@@ -2573,6 +2573,9 @@ uploaded. It does not reopen B4 or authorize a new experiment.
    50-step averaging matches iid theory, and maximum old-log-probability error
    is `6.34e-5`. Collision prevalence was 37.5% in training versus 4.0% in the
    product grid (`9.375x`).
+5. The complete analysis script/report/compact-table content is frozen at exact
+   commit `dd49ce00bc82095a1cdd832caa485bce01c1991f`. Review the actual Git diff
+   `4b06b7af0d6c84d45e688bd54478705ef021927f..dd49ce00bc82095a1cdd832caa485bce01c1991f`.
 
 ### 27.2 Interpretation and limits
 

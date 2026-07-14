@@ -8,6 +8,9 @@ Numerical verdict: **B4_SUBSTANTIVE_NEGATIVE (unchanged)**
 
 Next experiment authority: **none**
 
+Exact analysis/code/table review boundary:
+`dd49ce00bc82095a1cdd832caa485bce01c1991f`
+
 ## 1. Executive judgment
 
 B4's numerical failure is real. The collector/update/checkpoint/evaluator
@@ -269,8 +272,8 @@ An external reviewer should receive and inspect, in order:
 5. `docs/ppo/evidence/b4_substantive_negative/README.md`, `summary.json` and the
    six TSV tables — compact evidence;
 6. the Git diff from `4b06b7af0d6c84d45e688bd54478705ef021927f` to the final
-   published review commit — actual implementation, remediation, execution
-   record and analysis boundary.
+   analysis boundary `dd49ce00bc82095a1cdd832caa485bce01c1991f` — actual
+   implementation, remediation, execution record and analysis code/tables.
 
 The ignored multi-gigabyte replay/NPZ release is not duplicated into Git. Its
 location and input-ledger hashes are recorded so an authorized reviewer with
