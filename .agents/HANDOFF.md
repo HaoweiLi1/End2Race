@@ -2699,3 +2699,93 @@ The narrow repair moves synthetic feature/critic tensors to the policy device
 and copies stored fixture arrays back to CPU. `tests/test_b5_safe.py` now
 executes this helper on CUDA when available. The failed RunPlan/root and gate
 evidence remain immutable; a new commit and new unique RunPlan are required.
+
+## 29. B5-A completed with one opened-development survivor (2026-07-14)
+
+This section supersedes §28.4 as current execution authority. The complete
+external result record is `.agents/B5_SAFE_TRUST_REGION_RESULT.md`.
+
+### 29.1 What was done
+
+1. Built the prospective 64-episode safe reference from training-only data:
+   4 maps x 2 BC-safe outcomes x 8 unique-L4 episodes, 51,264 frames. Its
+   SHA256 is
+   `6b0e69417ff4e127f3959b5c3506115d5e4420cbb551a1a7bf2abea758b0fe4c`.
+   Canonical BC `D_safe` was `9.97e-12`; B4 iter10/20/30 were
+   `0.02613/0.12316/0.15835`, so the frozen `0.01` cap targeted the measured
+   B4 drift before training.
+2. Created valid RunPlan `b5_seed1_20260714_021544`, embedded plan SHA256
+   `20e0af679b13f8ab1e3ee296ffe11189a8c584cc2ef363384fddc8e04d16af63`,
+   source commit `482491969b01a632f5726b81316953397c6abd49`. Both hosts staged and
+   passed preflight; the unchanged 288 baseline reproduced exact 24/138 and
+   production-shaped B5 plumbing passed before identical READY markers.
+3. Ran the sole authorized seed1 learner on the remote RTX 4080 SUPER with
+   `DISPLAY=:1`. It finished 30/30 from 10:28:32 to 10:52:03 +08:00. Across
+   87 considered actor epochs, 46 were accepted and 41 skipped; the final and
+   maximum iteration-level `D_safe` were `0.0099626` and `0.0099957`. All
+   90 critic epochs completed, frozen actor tensors stayed exact, and plain
+   iter0/10/20/30 snapshots strict-load with 12 canonical keys.
+4. Used the local host for each shard0 while the remote host sequentially ran
+   shards1-4. Reused B4's immutable 600 canonical-BC rows and added 1,800 B5
+   rows. All 2,400 paired metrics/NPZ hashes validated on the unchanged Austin
+   `3 racelines x 4 speeds x 50 startpoints` opened panel.
+5. Atomically collected the valid training release under
+   `Experiments/B5_safe_trust_region/runs/b5_seed1_20260714_021544` and the
+   evaluation under
+   `Experiments/B5_safe_trust_region/opened_evaluations/b5_opened_seed1_20260714_021544`.
+   A compact Git packet is in `docs/ppo/evidence/b5_safe_trust_region/`.
+
+Final result:
+
+| variant | collision | overtake | follow | fixed/new C | gained/lost O | feasible |
+|---|---:|---:|---:|---:|---:|---|
+| BC | 24 | 342 | 234 | — | — | baseline |
+| iter10 | 22 | 347 | 231 | 9/7 | 12/7 | yes |
+| iter20 | 25 | 349 | 226 | 5/6 | 12/5 | no |
+| iter30 | 27 | 343 | 230 | 5/8 | 11/10 | no |
+
+All candidates passed the overtake floor 325 and had zero deterministic speed
+projection. Only iter10 passed collision `<24` and `fixed>new`; it is selected
+as `OPENED_DEVELOPMENT_SURVIVOR`. It did not hit collision target `<=16`.
+
+### 29.2 Problems encountered
+
+1. The first B5 RunPlan in §28.5 stopped before READY because the synthetic
+   CUDA plumbing fixture mixed CPU feature tensors with a CUDA policy. It
+   produced no learner iteration.
+2. The valid learner launch requested `--all-hosts` although only remote owned
+   a job. Local correctly reported no assigned job; the remote process and
+   status ledger remained authoritative and completed normally.
+3. After the valid learner had atomically completed, three collection attempts
+   failed evidence validation. The collection did not initially carry the
+   265 MiB safe reference needed to revalidate B5 plumbing. The first narrow
+   repair exposed a second path: READY internally revalidated plumbing without
+   the alternate collected reference path.
+
+### 29.3 How they were solved
+
+1. Commit `ba25e34c0e503638c5540b0f7c98394da2c1b995` made the fixture
+   device-correct and added a CUDA regression; a new RunPlan was used.
+2. The remote learner was monitored by PID, GPU UUID, status and the 30-record
+   ledger. No local learner or seed replica was created.
+3. Collection repair commit
+   `e39eb39731ab343b8e25485b29979c8e1d831880` copies the reference into the
+   collected input contract and threads it through direct plumbing and nested
+   READY validation. B5 control-plane and generic runner regressions pass. The
+   fourth collection completed atomically; the three failed partials are
+   quarantined and did not alter any scientific output.
+
+### 29.4 Interpretation and next legal action
+
+- Relative to B4's `24/332`, `36/294`, `39/296`, B5's
+  `22/347`, `25/349`, `27/343` strongly supports improved BC behavior
+  preservation for this seed on the opened panel.
+- It does not establish final generalization or solve the collision target.
+  Collision rose after iter10 despite the fixed-history average cap remaining
+  valid, so off-manifold closed-loop selectivity remains an open limitation.
+- Do not label the residual gap automatically as exploration-, representation-
+  or reward-limited. Those variables were not isolated.
+- Stop after Git publication and external result review. Seed0 replication
+  requires a separate prospective owner decision. Do not automatically run
+  B5-B/AR(1), alter the cap/LR/sampler/reward, unfreeze GRU, add residual, extend
+  iterations, promote the candidate, or open fresh/final pools.

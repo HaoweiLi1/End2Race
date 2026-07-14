@@ -1,11 +1,16 @@
 # B5-A plain-End2Race safe-reference trust-region plan
 
-Status: **OWNER-APPROVED STRICT SINGLE-VARIABLE IMPLEMENTATION FROZEN; RUNPLAN NOT YET CREATED**
+Status: **EXECUTED; OPENED-DEVELOPMENT SURVIVOR; EXTERNAL RESULT REVIEW REQUIRED**
 
 Date: 2026-07-14
 
 This is the prospective authority for B5-A. It does not alter B2/B3/B4
 history, reopen B4, authorize B5-B/AR(1), or open any fresh/final pool.
+
+Execution closed under RunPlan `b5_seed1_20260714_021544`, embedded SHA256
+`20e0af679b13f8ab1e3ee296ffe11189a8c584cc2ef363384fddc8e04d16af63`.
+The selected opened-development snapshot is seed1 iter10 at 22 collisions and
+347 overtakes versus BC 24/342. See `.agents/B5_SAFE_TRUST_REGION_RESULT.md`.
 
 ## 1. Scientific question
 

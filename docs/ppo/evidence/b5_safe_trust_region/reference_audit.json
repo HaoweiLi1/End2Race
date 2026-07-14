@@ -1,0 +1,106 @@
+{
+  "metrics": {
+    "BC": {
+      "checkpoint_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+      "safe": {
+        "episode_count": 64,
+        "episode_max": 1.4551285833850326e-11,
+        "episode_p50": 1.0677555813858755e-11,
+        "episode_p95": 1.3157909793891442e-11,
+        "frame_count": 51264,
+        "frame_max": 1.5419270450129332e-10,
+        "frame_p50": 5.926123842381538e-12,
+        "frame_p95": 3.157967855661497e-11,
+        "mean": 9.973614132483584e-12,
+        "stratum_mean": {
+          "Austin/follow": 9.033182384020391e-12,
+          "Austin/overtake": 1.1183610920600415e-11,
+          "Hockenheim/follow": 8.544427584027692e-12,
+          "Hockenheim/overtake": 1.1104009459208412e-11,
+          "MoscowRaceway/follow": 7.555004778341506e-12,
+          "MoscowRaceway/overtake": 1.1139404711135565e-11,
+          "Nuerburgring/follow": 8.067693065511025e-12,
+          "Nuerburgring/overtake": 1.3161580157023672e-11
+        }
+      }
+    },
+    "b4_iter10": {
+      "checkpoint_sha256": "271a875a7f8803d6606d1ba18b4d48fa4b1c91043758d8f637d349d87add4183",
+      "safe": {
+        "episode_count": 64,
+        "episode_max": 0.05241708053299908,
+        "episode_p50": 0.027282865979503537,
+        "episode_p95": 0.03680987925612451,
+        "frame_count": 51264,
+        "frame_max": 0.7324769976082399,
+        "frame_p50": 0.0205541639305544,
+        "frame_p95": 0.06718887029901578,
+        "mean": 0.02612874743139282,
+        "stratum_mean": {
+          "Austin/follow": 0.0269523340085841,
+          "Austin/overtake": 0.0280250151629456,
+          "Hockenheim/follow": 0.021802505771498414,
+          "Hockenheim/overtake": 0.022786597431115635,
+          "MoscowRaceway/follow": 0.022713559037827655,
+          "MoscowRaceway/overtake": 0.02644728738034874,
+          "Nuerburgring/follow": 0.030226480505576647,
+          "Nuerburgring/overtake": 0.03007620015324579
+        }
+      }
+    },
+    "b4_iter20": {
+      "checkpoint_sha256": "bb7258f056c39f60e798c683c1816afd8361e0611c0d70a1a3eee47c8cfa939c",
+      "safe": {
+        "episode_count": 64,
+        "episode_max": 0.1696515035024746,
+        "episode_p50": 0.1186855043254817,
+        "episode_p95": 0.16023450091178407,
+        "frame_count": 51264,
+        "frame_max": 1.3438743912306768,
+        "frame_p50": 0.11864516162398059,
+        "frame_p95": 0.22501301553061515,
+        "mean": 0.12315663286348792,
+        "stratum_mean": {
+          "Austin/follow": 0.12967419614128936,
+          "Austin/overtake": 0.1419113183194761,
+          "Hockenheim/follow": 0.11744520625697369,
+          "Hockenheim/overtake": 0.13124424203929283,
+          "MoscowRaceway/follow": 0.12008239861560857,
+          "MoscowRaceway/overtake": 0.11740477588957701,
+          "Nuerburgring/follow": 0.11476019183412745,
+          "Nuerburgring/overtake": 0.11273073381155838
+        }
+      }
+    },
+    "b4_iter30": {
+      "checkpoint_sha256": "cfbac4c045f58a30ef3199f83929adba7c0e2677bc5c830e5c666a7509e75f32",
+      "safe": {
+        "episode_count": 64,
+        "episode_max": 0.2379575555834875,
+        "episode_p50": 0.152116633230576,
+        "episode_p95": 0.2123370701070832,
+        "frame_count": 51264,
+        "frame_max": 3.846184397198411,
+        "frame_p50": 0.15126102483806064,
+        "frame_p95": 0.2832375229040832,
+        "mean": 0.15834632780825247,
+        "stratum_mean": {
+          "Austin/follow": 0.17525205784697562,
+          "Austin/overtake": 0.19707265043727754,
+          "Hockenheim/follow": 0.1561873038091689,
+          "Hockenheim/overtake": 0.16966376063407937,
+          "MoscowRaceway/follow": 0.14269884610988387,
+          "MoscowRaceway/overtake": 0.1506618168688873,
+          "Nuerburgring/follow": 0.13321701878508085,
+          "Nuerburgring/overtake": 0.14201716797466613
+        }
+      }
+    }
+  },
+  "passed": true,
+  "reference_episode_count": 64,
+  "reference_frame_count": 51264,
+  "reference_sha256": "6b0e69417ff4e127f3959b5c3506115d5e4420cbb551a1a7bf2abea758b0fe4c",
+  "safe_cap": 0.01,
+  "schema": "end2race-b5-safe-reference-audit-1"
+}

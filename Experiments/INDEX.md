@@ -22,7 +22,7 @@
 
 `A3` 里的 `artifacts/split_lock/test_seal.json`（SHA256 `cee71d81…a87e`）是**从未打开的分组测试集**的封条。不要动它。
 
-## B 轮 — Route-R2 策略（已完成至 B4；下一轮未授权）
+## B 轮 — Route-R2 策略（已完成至 B5-A；下一轮未授权）
 
 | 编号 | 原路径 | 内容 | 状态 |
 |---|---|---|---|
@@ -30,6 +30,7 @@
 | `B2_ppo_pilot` | — | B+ v2.2 PPO 接线 + 三臂 BC-direct pilot | **首轮训练与评估完成，产品方向门 FAILED**；六个候选均净损失超车，未选臂，fresh pool 未打开。训练 `b2_direct_20260713_081422`，评估 `b2_eval_20260713_165800` |
 | `B3_ppo_unified` | — | 统一 stochastic rollout / PPO log-prob / deterministic deployment 的三臂 PPO | **实现、边界回归和独立审阅 GO，尚未创建 RunPlan 或运行 GPU**；固定 40 iterations，B2 结果不续训 |
 | `B4_direct_head_ppo` | — | plain End2Race frozen-feature output-head-only PPO，唯一 seed1 | **30/30 训练与 2400-row 产品评估完成，B4_SUBSTANTIVE_NEGATIVE**；BC/iter10/20/30 collision-overtake=`24/342`,`24/332`,`36/294`,`39/296`，未选择 candidate；只读原因分析见 `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`，fresh/final pool 未打开 |
+| `B5_safe_trust_region` | — | B4 严格单变量 + 64-episode canonical-BC safe-reference hard cap，唯一 seed1 | **30/30 与 opened 600-case 评估完成，选择 iter10 为 OPENED_DEVELOPMENT_SURVIVOR**；BC/iter10/20/30=`24/342`,`22/347`,`25/349`,`27/343`，target `collision<=16` 未达到；外部结果审阅前不运行 seed0，fresh/final 未打开 |
 
 ## C 轮 — 预留
 
@@ -106,4 +107,8 @@ BC/P3 marker 后才会启动 learner。不要手工创建或修改 READY。
 B4 的唯一已授权执行现已关闭。训练 release 是
 `B4_direct_head_ppo/runs/b4_seed1_20260714_003027`，最终 3x4x50 证据是
 `B4_direct_head_ppo/product_evaluations/b4_product_seed1_20260714_003027/final`。
-不要用上述命令自动创建 B3/B5 或续跑 B4；需新的前瞻性 owner decision。
+B5-A 的有效训练 release 是
+`B5_safe_trust_region/runs/b5_seed1_20260714_021544`，opened evaluation 是
+`B5_safe_trust_region/opened_evaluations/b5_opened_seed1_20260714_021544/final`。
+不要用上述命令自动创建 B3/B5-B、续跑 B4/B5-A、运行 seed0 或打开 sealed
+pool；需新的前瞻性 owner decision。

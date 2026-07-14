@@ -16,6 +16,9 @@
 - **B4 substantive-negative 原因分析与下一假设排序** →
   `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`（exact content boundary
   `dd49ce00bc82095a1cdd832caa485bce01c1991f`）
+- **B5-A safe-reference 单变量实验计划与结果** →
+  `.agents/B5_SAFE_TRUST_REGION_PLAN.md`、
+  `.agents/B5_SAFE_TRUST_REGION_RESULT.md`
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
 - 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`
@@ -47,6 +50,12 @@ BC-relative equal-std KL 约为 `0.027/0.138/0.188`；100 Hz exploration 的
 lag-1 correlation 约为零，训练 collision 比例是 product 的 `9.375x`。
 这些证据优先支持“缺少 BC-preserving constraint 导致非选择性累计漂移”，但不证明
 Residual 唯一正确，也不判定 frozen GRU representation 是否充分。详见 analysis record。
+
+2026-07-14 B5-A 已完成唯一 seed1：safe-reference hard cap 全程满足，iter10
+在相同 opened 600-case panel 得到 `22 collision / 347 overtake`，paired
+`9 fixed / 7 new collision`，因此选择为 `OPENED_DEVELOPMENT_SURVIVOR`。
+它未达到 collision `<=16` target，且 iter20/30 回升至 25/27 collisions。
+该面板不是 fresh/final；外部结果审阅前不得运行 seed0 或打开 sealed pool。
 
 **每设一道门，都要能回答一句话：「这道门挡住了，交付物会因此变好吗？」答不上来的门，不要设。**
 
@@ -240,7 +249,7 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 
 ---
 
-## 7. B5-A 当前授权（2026-07-14）
+## 7. B5-A 已完成状态（2026-07-14）
 
 - B4 已在 Austin `3 racelines x 4 speeds x 50 startpoints` 面板得到真实的
   `B4_SUBSTANTIVE_NEGATIVE`；该 600-case 面板现正式称为
@@ -251,11 +260,14 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 - 唯一新增机制是从 1,640 个 training L2 确定性选择的 64-episode canonical-BC
   safe reference，以及累计 `D_safe <= 0.01` hard cap。拒绝 retry 必须同时恢复
   output head 与完整 Adam state，并复用相同 minibatch order。
-- B5-A 仍只有一个合法 learner：**seed1，远端 RTX 4080 SUPER**。本地不能因 GPU
-  空闲而补跑 seed0 或第二 arm。
-- 完成训练后只新增 iter10/20/30 各 600 rows；复用 B4 的 immutable BC rows。
-  本地负责 shard0（1/5），远端负责 shards1-4（4/5），两端各自一次只运行一个
-  CPU-bound evaluation queue。
-- 详细冻结协议与外部 review checklist：
-  `.agents/B5_SAFE_TRUST_REGION_PLAN.md`。在 reference audit、精确 Git commit、
-  immutable RunPlan 和所有 blocking preflight 完成前不得启动 learner。
+- 唯一合法 learner seed1 已在远端 RTX 4080 SUPER 完成 30/30；本地只承担
+  correctness 与 product shard0，没有补跑 seed0 或第二 arm。
+- reference audit、BC baseline、双端 preflight、production plumbing、原子训练
+  release 与 1,800 个新 candidate episodes 均完成。复用的 600 个 BC rows 加上
+  candidates 共 2,400 paired rows，完整性通过。
+- 正式结果为：iter10 `22/347`、iter20 `25/349`、iter30 `27/343`
+  （collision/overtake）。只有 iter10 满足 collision `<24`、overtake `>=325`、
+  `fixed>new` 和 speed projection 0，故选择为 opened-development survivor。
+- 详细冻结协议与结果：`.agents/B5_SAFE_TRUST_REGION_PLAN.md`、
+  `.agents/B5_SAFE_TRUST_REGION_RESULT.md`。下一合法动作是外部结果审阅；不得自动
+  运行 seed0、B5-B/AR(1)、修改 cap/LR、解冻 GRU 或打开 fresh/final。

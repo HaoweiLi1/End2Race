@@ -3,7 +3,7 @@
 > 本文件是**全部实验轨道的历史记录**，含已废弃轨道。
 > 当前工作状态与下一步请看 `.agents/HANDOFF.md`（唯一权威入口）。
 > 仓库文件/代码结构说明请看 `.agents/REPO_GUIDE.md`。
-> 生成时间：2026-07-12；B4 执行结果更新于 2026-07-14。
+> 生成时间：2026-07-12；B5-A 执行结果更新于 2026-07-14。
 
 ---
 
@@ -24,6 +24,8 @@ D2/B1 之后第一次用当前 B+ 目标直接裁决学习后的候选。
 
 2026-07-14 owner 对 B4 作了前瞻性目标变更：安全优先，corrected overtake 最多
 相对 BC 降低 5%。这不追溯改写 B2/B3。B4 已按该规则执行并关闭，结果见 §6。
+B5-A 随后在保持 B4 科学设置不变时加入 canonical-BC safe-reference hard cap；
+唯一 seed1 在 opened development 选出 iter10 survivor，但尚未 fresh/final 确认。
 
 ---
 
@@ -42,7 +44,7 @@ D2/B1 之后第一次用当前 B+ 目标直接裁决学习后的候选。
 | **D2 表示探针** | 07-11 | 4 个家族**全部未过** TTC 门 | ✅ 是（数据集仍在用） |
 | **D2.5 反事实** | 07-11 | 67/91 可恢复，Route-R2 动作空间可行 | ✅ 是 |
 | **D2R 几何探针** | 07-11 | **未过** TTC + 2s 误报门 | ✅ 是 |
-| **B+ v2.2 / B2→B4 PPO** | 07-11~14 | B2 六候选失败；B3 暂停未运行；B4 direct-head 无合格 snapshot，substantive negative | ✅ 是（当前证据） |
+| **B+ v2.2 / B2→B5-A PPO** | 07-11~14 | B2 六候选失败；B3 暂停；B4 negative；B5-A iter10 为 opened-development survivor | ✅ 是（当前证据） |
 
 ---
 
@@ -232,6 +234,7 @@ D2/B1 之后第一次用当前 B+ 目标直接裁决学习后的候选。
 | B2 | BC-direct PPO pilot，三臂×双 seed×20 iterations | **训练与冻结开发评估完成；六候选方向门全部 FAILED** |
 | B3 | unified train/deploy residual policy | **IMPLEMENTED, REVIEWED GO, PAUSED UNRUN** |
 | B4 | plain End2Race output-head-only PPO，seed1×30 | **训练与 3×4×50 评估完成；SUBSTANTIVE NEGATIVE** |
+| B5-A | B4 严格单变量 + canonical-BC safe-reference hard cap，seed1×30 | **训练与 3×4×50 opened 评估完成；iter10 SURVIVOR，未达 collision target** |
 
 ### 5.3 Task 6 第一次失败：gate bias 初始化错配（已修复）
 
@@ -367,6 +370,30 @@ iter20/30 两门均失败。最终 `selected_candidate=null`，B4 为
 `B4_SUBSTANTIVE_NEGATIVE`。这否定的是本次 frozen-feature、head-only PPO 配置，
 不证明 residual、GRU unfreeze 或其他未运行设计会成功。fresh/final pool 未打开。
 完整记录见 `.agents/B4_DIRECT_HEAD_PPO_RESULT.md`。
+
+### B5-A canonical-BC safe-reference trust region
+
+B5-A 完整保留 B4 的 actor、可训练参数、LR、clip、epochs、100 Hz iid
+exploration、reward、精确 seed1 curriculum、30 iterations 和 snapshots；唯一新增
+机制是在 64 个 training-only canonical-BC safe histories 上约束平均
+`D_safe<=0.01`，并以 actor+Adam 完整回退和固定 LR ladder 执行 hard cap。
+
+远端 seed1 完成 30/30；87 个 considered actor epochs 中接受 46、跳过 41，
+critic 为 90/90 epochs，最大 iteration-level `D_safe=0.0099957`。Austin opened
+600-case 结果为：
+
+| variant | collision | overtake | follow | fixed/new collision | 判定 |
+|---|---:|---:|---:|---:|---|
+| BC | 24 | 342 | 234 | — | baseline |
+| iter10 | 22 | 347 | 231 | 9/7 | **opened-development survivor** |
+| iter20 | 25 | 349 | 226 | 5/6 | collision fail |
+| iter30 | 27 | 343 | 230 | 5/8 | collision fail |
+
+iter10 通过 overtake `>=325`、collision `<24`、`fixed>new` 和 speed projection 0，
+但未达到 collision `<=16` 的 opened target。该结果支持 BC preservation 假设，
+但后期 collision 在 cap 内仍回升，不能推断 closed-loop 安全已经解决，也不能自动
+归因为 exploration/representation。fresh/final 仍封存；seed0 需要外部结果审阅后
+另行批准。完整记录见 `.agents/B5_SAFE_TRUST_REGION_RESULT.md`。
 
 ---
 
