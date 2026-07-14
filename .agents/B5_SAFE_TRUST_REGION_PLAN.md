@@ -285,9 +285,10 @@ separate prospective decision.
 - `tests/test_b5_safe.py`, `tests/test_b5_control_plane.py`: solver, optimizer,
   reference, checkpoint and single-variable regressions.
 
-The implementation review boundary is exact commit
-`7bb258c1fa3bec13463f72e332f2cd313be95103`; review the actual diff
-`072e0df..7bb258c1fa3bec13463f72e332f2cd313be95103`. The later provenance-only
-commit that records this SHA may be the RunPlan source commit; it does not
-change the B5 implementation. RunPlan/reference digests are recorded in
-`.agents/HANDOFF.md` once they exist.
+The corrected implementation review boundary is exact commit
+`ba25e34c0e503638c5540b0f7c98394da2c1b995`; review the actual diff
+`072e0df..ba25e34c0e503638c5540b0f7c98394da2c1b995`. Commit `7bb258c` is the
+initial implementation, while `ba25e34` adds the narrow CUDA fixture repair
+recorded in HANDOFF §28.5. The later provenance-only commit that records this
+SHA may be the replacement RunPlan source commit; it does not change the B5
+implementation. RunPlan/reference digests are recorded in `.agents/HANDOFF.md`.
