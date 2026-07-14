@@ -237,3 +237,25 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
   `fresh_pool_opened=false`。不得打开 fresh/final pool，也不得把碰撞下降单独写成
   成功。下一步只能基于训练/paired transition 证据前瞻性修订 PPO 目标或约束，
   不能返回 TTC 或 warm-start 代理门。
+
+---
+
+## 7. B5-A 当前授权（2026-07-14）
+
+- B4 已在 Austin `3 racelines x 4 speeds x 50 startpoints` 面板得到真实的
+  `B4_SUBSTANTIVE_NEGATIVE`；该 600-case 面板现正式称为
+  **opened-development regression panel**，fresh/final 仍封存。
+- B5-A 是严格单变量实验：完整保留 B4 seed1 的模型、LR、clip、epochs、100 Hz
+  iid exploration、reward、`6/6/4` 精确 curriculum 顺序、30 iterations 和
+  `0/10/20/30` snapshots。
+- 唯一新增机制是从 1,640 个 training L2 确定性选择的 64-episode canonical-BC
+  safe reference，以及累计 `D_safe <= 0.01` hard cap。拒绝 retry 必须同时恢复
+  output head 与完整 Adam state，并复用相同 minibatch order。
+- B5-A 仍只有一个合法 learner：**seed1，远端 RTX 4080 SUPER**。本地不能因 GPU
+  空闲而补跑 seed0 或第二 arm。
+- 完成训练后只新增 iter10/20/30 各 600 rows；复用 B4 的 immutable BC rows。
+  本地负责 shard0（1/5），远端负责 shards1-4（4/5），两端各自一次只运行一个
+  CPU-bound evaluation queue。
+- 详细冻结协议与外部 review checklist：
+  `.agents/B5_SAFE_TRUST_REGION_PLAN.md`。在 reference audit、精确 Git commit、
+  immutable RunPlan 和所有 blocking preflight 完成前不得启动 learner。

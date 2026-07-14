@@ -2602,3 +2602,73 @@ uploaded. It does not reopen B4 or authorize a new experiment.
    analysis report first. A training-only BC-relative trust region/action anchor
    is ranked ahead of coherent noise, sampler change and GRU unfreeze, but this
    is prioritization rather than execution authority or a promise of success.
+
+## 28. B5-A strict safe-reference authority and implementation (2026-07-14)
+
+This section supersedes §27.3 item 3 only for the explicitly owner-approved
+B5-A experiment. It does not authorize B5-B, AR(1), seed0, fresh/final data, a
+GRU unfreeze, residual, sampler/reward changes or extra iterations.
+
+### 28.1 Owner decision
+
+B5-A must be a literal single-variable comparison with B4. Actor LR `3e-5`,
+clip `0.10`, maximum three actor epochs, rollout weighted KL `0.015`, critic
+`3e-4/3`, iid 100 Hz Normal exploration, std `0.03/0.20`, terminal `-2*C+O`,
+gamma/lambda `.999/.997`, exact seed1 `6/6/4` curriculum order, 30 iterations
+and snapshots `0/10/20/30` all stay unchanged.
+
+The only new mechanism is a fixed 64-episode canonical-BC safe-reference
+empirical mean-KL cap `D_safe <= 0.01`. Its eight map/outcome strata each have
+eight unique-L4 training episodes selected prospectively by domain-separated
+hash. All features use batch-one framewise 100 Hz canonical replay.
+
+### 28.2 Correctness implementation
+
+1. `bplus_v22/b5_safe.py` defines the reference artifact and episode-equivalent
+   float64 safe metric. The actor-epoch retry ladder is exactly
+   `[1, 1/2, 1/4, 1/8, 1/16]`.
+2. Every attempt restores the same pre-epoch output head and complete Adam
+   state, then uses the same B4 minibatch permutation. All failed attempts
+   restore exactly. Accepted lower-LR Adam moments stay, while optimizer LR is
+   returned to base `3e-5` before the next epoch/checkpoint.
+3. Only safe-cap violation causes rollback. The accepted epoch retains B4's
+   post-epoch rollout-KL stop semantics; critic still completes all three
+   epochs on acceptance, skip or KL stop.
+4. `scripts/build_b5_safe_reference.py` and
+   `scripts/audit_b5_safe_reference.py` implement the prospective reference and
+   mandatory BC/B4 iter10/20/30 pre-RunPlan audit.
+5. `bplus_v22/b5_runner.py`, `b5_cli.py`, `bplus_v22/cli.py` and
+   `Experiments/runner.py` add one versioned B5 learner, staged plumbing,
+   reference-bound full checkpoints and strict atomic collection without
+   modifying frozen B4 source.
+6. `scripts/b5_opened_product_eval.py` delegates candidate rollout to the
+   unchanged B4 600-case evaluator and only adds B5 RunPlan authorization plus
+   an opened-development merge against immutable B4 BC rows.
+
+### 28.3 Validation completed before reference generation
+
+`tests/test_b5_safe.py` passes reference selection/save/load, exact actor+Adam
+rollback, lower-multiplier acceptance, critic isolation and checkpoint resume.
+`tests/test_b5_control_plane.py` passes the exact B4 numerical config,
+curriculum digest and one-remote-seed1 topology. Four B4 contract programs and
+nine B2/B3 compatibility programs also pass; Python compilation and B5 CLI
+loads pass. The production-shaped simulator smoke is rerun separately before
+the immutable B5 RunPlan.
+
+### 28.4 Remaining legal execution order
+
+1. freeze/push the exact B5 source boundary;
+2. build the 64-episode reference from opened training NPZs, then pull it to
+   local evidence storage;
+3. audit BC and B4 iter10/20/30; BC must be zero and iter10 must exceed `0.01`;
+4. create one immutable `plan-b5`, stage both hosts, reproduce 24/138 baseline,
+   pass local B5 plumbing and identical READY markers;
+5. run the sole seed1 learner on remote with `DISPLAY=:1`, monitor through 30;
+6. collect, then evaluate only iter10/20/30 on the opened 600 panel: local
+   shard0 and remote shards1-4 concurrently, one eval queue per host;
+7. merge integrity/fixed-new/gained-lost/cap-binding evidence and publish the
+   result packet plus exact Git commit.
+
+Do not infer `exploration-limited` from a negative. A survivor is only an
+opened-development survivor and requires external review before any seed0
+replication.

@@ -82,6 +82,8 @@ from bplus_v22.b4_runner import (
     run_b4_pilot_job,
     validate_b4_pilot_plan,
 )
+from bplus_v22.b5_cli import run_b5_baseline_shard, run_b5_plumbing_release
+from bplus_v22.b5_runner import run_b5_pilot_job, validate_b5_pilot_plan
 
 
 B2_CAPABILITIES_SCHEMA = "bplus-v22-cli-capabilities-1"
@@ -98,6 +100,11 @@ B4_COMMANDS = (
     "b4-pilot",
     "b4-evaluate",
     "b4-merge-eval",
+)
+B5_COMMANDS = (
+    "b5-baseline-preflight",
+    "b5-plumbing-smoke",
+    "b5-pilot",
 )
 B2_RUN_PLAN_SCHEMA = "end2race-b2-run-plan-1"
 
@@ -503,6 +510,24 @@ def parse_args():
     b4_merge.add_argument("--run-plan", required=True)
     b4_merge.add_argument("--input-root", required=True)
     b4_merge.add_argument("--output-dir", required=True)
+    b5_baseline = sub.add_parser("b5-baseline-preflight")
+    b5_baseline.add_argument("--run-plan", required=True)
+    b5_baseline.add_argument("--output", required=True)
+    b5_baseline.add_argument("--host-id", choices=("local", "remote"), required=True)
+    b5_baseline.add_argument("--gpu-uuid", required=True)
+    b5_baseline.add_argument("--shard-index", type=int, required=True)
+    b5_baseline.add_argument("--shard-count", type=int, default=BASELINE_SHARD_COUNT)
+    b5_baseline.add_argument("--device", default="cuda:0")
+    b5_plumbing = sub.add_parser("b5-plumbing-smoke")
+    b5_plumbing.add_argument("--run-plan", required=True)
+    b5_plumbing.add_argument("--output", required=True)
+    b5_plumbing.add_argument("--device", default="cuda:0")
+    b5_pilot = sub.add_parser("b5-pilot")
+    b5_pilot.add_argument("--run-plan", required=True)
+    b5_pilot.add_argument("--job-id")
+    b5_pilot.add_argument("--validate-plan-only", action="store_true")
+    b5_pilot.add_argument("--resume", action="store_true")
+    b5_pilot.add_argument("--device", default="cuda:0")
     ppo_baseline = sub.add_parser("ppo-baseline-preflight")
     ppo_baseline.add_argument("--run-plan", required=True)
     ppo_baseline.add_argument("--output", required=True)
@@ -699,7 +724,7 @@ def main() -> None:
     if args.command == "capabilities":
         result = {
             "schema": B2_CAPABILITIES_SCHEMA,
-            "commands": sorted(B2_COMMANDS + B4_COMMANDS),
+            "commands": sorted(B2_COMMANDS + B4_COMMANDS + B5_COMMANDS),
         }
     elif args.command == "b4-baseline-preflight":
         result = run_b4_baseline_shard(
@@ -745,6 +770,37 @@ def main() -> None:
         result = merge_b4_eval_job(
             args.run_plan, args.input_root, args.output_dir
         )
+    elif args.command == "b5-baseline-preflight":
+        result = run_b5_baseline_shard(
+            args.run_plan,
+            args.output,
+            host_id=args.host_id,
+            gpu_uuid=args.gpu_uuid,
+            shard_index=args.shard_index,
+            shard_count=args.shard_count,
+            device_name=args.device,
+        )
+    elif args.command == "b5-plumbing-smoke":
+        result = run_b5_plumbing_release(
+            args.run_plan, args.output, device_name=args.device
+        )
+    elif args.command == "b5-pilot":
+        if args.validate_plan_only:
+            validated = validate_b5_pilot_plan(args.run_plan)
+            result = {
+                "passed": True,
+                "job_count": len(validated["plan"]["jobs"]),
+                "plan_sha256": validated["plan"]["plan_sha256"],
+            }
+        else:
+            if not args.job_id:
+                raise ValueError("b5-pilot execution requires --job-id")
+            result = run_b5_pilot_job(
+                args.run_plan,
+                args.job_id,
+                device_name=args.device,
+                resume=args.resume,
+            )
     elif args.command == "ppo-baseline-preflight":
         result = run_bc_baseline_shard(
             args.run_plan,
