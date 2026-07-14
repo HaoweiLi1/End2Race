@@ -53,6 +53,9 @@ PLAN_SCHEMA = "end2race-b6-temporal-phase0-run-plan-1"
 RESULT_SCHEMA = "end2race-b6-temporal-phase0-episode-1"
 SUMMARY_SCHEMA = "end2race-b6-temporal-phase0-summary-1"
 BOOTSTRAP_SAMPLES = 200_000
+B4_BATCHED_RATIO_ATOL = 1e-4
+B6_AR1_BATCHED_RATIO_ATOL = 3.3e-4
+B6_FRAMEWISE_RATIO_ATOL = 1e-6
 
 SELECTION_FIELDS = (
     "matched_order",
@@ -228,7 +231,12 @@ def prepare(args: argparse.Namespace) -> None:
             "ar1_lag1_min": 0.93,
             "ar1_lag1_max": 0.97,
             "marginal_std_relative_error_max": 0.05,
-            "pre_update_max_abs_ratio_minus_one": 1e-4,
+            "framewise_pre_update_max_abs_ratio_minus_one": B6_FRAMEWISE_RATIO_ATOL,
+            "iid_batched_pre_update_max_abs_ratio_minus_one": B4_BATCHED_RATIO_ATOL,
+            "ar1_batched_pre_update_max_abs_ratio_minus_one": B6_AR1_BATCHED_RATIO_ATOL,
+            "ar1_batched_tolerance_basis": (
+                "B4 1e-4 scaled by 1/sqrt(1-rho^2), rounded upward"
+            ),
         },
         "decision": (
             "learner GO only when all integrity, repair, safe-collision, and "
@@ -294,29 +302,43 @@ def replay_log_prob(policy: B6Phase0Policy, result, device: torch.device) -> dic
         [row.old_log_prob for row in result.transitions], dtype=torch.float32, device=device
     )
     with torch.no_grad():
-        mean = policy.mean_from_feature(feature)
+        means = {
+            "batched": policy.mean_from_feature(feature),
+            "framewise": torch.cat(
+                [
+                    policy.mean_from_feature(feature[index : index + 1])
+                    for index in range(len(feature))
+                ]
+            ),
+        }
+
+    def values_for(mean: torch.Tensor) -> torch.Tensor:
         if policy.mode == "iid":
-            replayed = factorized_log_prob(raw, mean, policy.action_std.to(mean))
-        else:
-            values = []
-            for index in range(len(raw)):
-                values.append(
-                    ar1_conditional_log_prob(
-                        raw[index : index + 1],
-                        mean[index : index + 1],
-                        previous_raw_action=None if index == 0 else raw[index - 1 : index],
-                        previous_mean=None if index == 0 else mean[index - 1 : index],
-                        std=policy.action_std.to(mean),
-                        rho=policy.rho,
-                    )
+            return factorized_log_prob(raw, mean, policy.action_std.to(mean))
+        values = []
+        for index in range(len(raw)):
+            values.append(
+                ar1_conditional_log_prob(
+                    raw[index : index + 1],
+                    mean[index : index + 1],
+                    previous_raw_action=None if index == 0 else raw[index - 1 : index],
+                    previous_mean=None if index == 0 else mean[index - 1 : index],
+                    std=policy.action_std.to(mean),
+                    rho=policy.rho,
                 )
-            replayed = torch.cat(values)
-    delta = replayed - old
+            )
+        return torch.cat(values)
+
+    replayed = {name: values_for(mean) for name, mean in means.items()}
+    deltas = {name: value - old for name, value in replayed.items()}
     return {
-        "max_abs_log_prob_delta": float(torch.max(torch.abs(delta)).item()),
-        "max_abs_ratio_minus_one": float(
+        f"{name}_max_abs_log_prob_delta": float(torch.max(torch.abs(delta)).item())
+        for name, delta in deltas.items()
+    } | {
+        f"{name}_max_abs_ratio_minus_one": float(
             torch.max(torch.abs(torch.exp(delta) - 1.0)).item()
-        ),
+        )
+        for name, delta in deltas.items()
     }
 
 
@@ -397,10 +419,13 @@ def run(args: argparse.Namespace) -> None:
             "max_abs_steer_projection_delta": result.max_abs_steer_projection_delta,
             "max_abs_speed_projection_delta": result.max_abs_speed_projection_delta,
             "max_abs_conditional_log_prob_replay_error": replay_error[
-                "max_abs_log_prob_delta"
+                "framewise_max_abs_log_prob_delta"
             ],
-            "max_abs_pre_update_ratio_minus_one": replay_error[
-                "max_abs_ratio_minus_one"
+            "max_abs_framewise_pre_update_ratio_minus_one": replay_error[
+                "framewise_max_abs_ratio_minus_one"
+            ],
+            "max_abs_batched_pre_update_ratio_minus_one": replay_error[
+                "batched_max_abs_ratio_minus_one"
             ],
             "trajectory_sha256": trajectory_digest(result.arrays),
             "noise_sha256": _noise_digest(trace),
@@ -570,7 +595,8 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
     }
     projections: dict[str, Counter[str]] = {mode: Counter() for mode in B6_MODES}
     max_log_prob = 0.0
-    max_ratio = 0.0
+    max_framewise_ratio = 0.0
+    max_batched_ratio = {mode: 0.0 for mode in B6_MODES}
     for row in episodes:
         mode_outcomes[row["mode"]][row["archived_outcome"]][row["corrected_outcome"]] += 1
         projections[row["mode"]].update(
@@ -582,7 +608,14 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
             }
         )
         max_log_prob = max(max_log_prob, float(row["max_abs_conditional_log_prob_replay_error"]))
-        max_ratio = max(max_ratio, float(row["max_abs_pre_update_ratio_minus_one"]))
+        max_framewise_ratio = max(
+            max_framewise_ratio,
+            float(row["max_abs_framewise_pre_update_ratio_minus_one"]),
+        )
+        max_batched_ratio[row["mode"]] = max(
+            max_batched_ratio[row["mode"]],
+            float(row["max_abs_batched_pre_update_ratio_minus_one"]),
+        )
     noise = {
         mode: _aggregate_trace([row for row in episodes if row["mode"] == mode])
         for mode in B6_MODES
@@ -593,7 +626,9 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
         for mode in B6_MODES
     }
     integrity = bool(
-        max_ratio <= 1e-4
+        max_framewise_ratio <= B6_FRAMEWISE_RATIO_ATOL
+        and max_batched_ratio["iid"] <= B4_BATCHED_RATIO_ATOL
+        and max_batched_ratio["ar1"] <= B6_AR1_BATCHED_RATIO_ATOL
         and max(abs(value) for value in noise["iid"]["lag1_correlation"]) <= 0.02
         and all(0.93 <= value <= 0.97 for value in noise["ar1"]["lag1_correlation"])
         and max(value for mode in B6_MODES for value in relative_std_errors[mode]) <= 0.05
@@ -649,7 +684,8 @@ def summarize(args: argparse.Namespace, plan: dict[str, Any], rows) -> None:
         "relative_std_errors": relative_std_errors,
         "projection_counts": {mode: dict(projections[mode]) for mode in B6_MODES},
         "max_abs_conditional_log_prob_replay_error": max_log_prob,
-        "max_abs_pre_update_ratio_minus_one": max_ratio,
+        "max_abs_framewise_pre_update_ratio_minus_one": max_framewise_ratio,
+        "max_abs_batched_pre_update_ratio_minus_one": max_batched_ratio,
         "gates": {
             "integrity": integrity,
             "collision_repair": repair_gate,

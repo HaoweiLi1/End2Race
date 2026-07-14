@@ -139,11 +139,18 @@ within one L4 are not treated as independent clusters.
 ### Integrity
 
 ```text
-max pre-update abs(ratio - 1)         <= 1e-4
+framewise max abs(ratio - 1)          <= 1e-6
+iid batched max abs(ratio - 1)        <= 1e-4 (existing B4 contract)
+AR(1) batched max abs(ratio - 1)      <= 3.3e-4
 abs iid lag-1 correlation             <= 0.02, both action dimensions
 AR(1) lag-1 correlation               in [0.93,0.97], both dimensions
 marginal std relative error           <= 5%, both arms/dimensions
 ```
+
+The AR(1) batched bound is not tuned to outcomes. It is the existing B4
+`1e-4` batch-GEMM tolerance scaled by the conditional standard-deviation
+factor `1/sqrt(1-0.95^2)=3.2026`, then rounded upward. Framewise replay remains
+the hard probability-variable identity test.
 
 ### Collision repair
 
@@ -231,3 +238,32 @@ replacement RunPlan:      b3725809c65b5ac66aae4bfb853accc87c95af35fb4cf53d5d1903
 
 The replacement selection is byte-identical to the original; only the
 correctness implementation boundary and replay integrity contract changed.
+
+## 9. Second correctness-only replacement
+
+The execution source `5ad2f60f3b930c27b062c558bf53897ca127b745`
+was also stopped incomplete, after 75 rows and before outcome analysis. Its
+maximum batched ratio delta was `1.3494491577148438e-4`, just above the reused
+B4 `1e-4` threshold. The stored-latent AR state was already correct.
+
+This exposed a separate numerical issue: AR(1)'s conditional standard
+deviation is `sqrt(1-rho^2)=0.31225` times the marginal standard deviation, so
+the same batch-one versus batched-head mean rounding is amplified by about
+`3.2026` in standardized log probability. The final replacement therefore
+separates:
+
+```text
+framewise probability identity: hard <= 1e-6 ratio delta
+iid batched numerical replay:   hard <= 1e-4
+AR1 batched numerical replay:   hard <= 3.3e-4 (derived scaling)
+```
+
+The second failed directory is preserved remotely as:
+
+```text
+/home/haowei/end2race_analysis/
+  b6_temporal_phase0_v2_5ad2f60.failed_batched_ratio_tolerance
+```
+
+Again, none of its rows may be reused. The final replacement keeps the same
+selection, innovations, rho, outcome estimands and scientific gates.
