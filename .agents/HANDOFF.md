@@ -2677,3 +2677,23 @@ The exact implementation commit is
 Do not infer `exploration-limited` from a negative. A survivor is only an
 opened-development survivor and requires external review before any seed0
 replication.
+
+### 28.5 First B5 RunPlan stopped before READY (2026-07-14)
+
+RunPlan `b5_seed1_20260714_020022` (SHA256
+`a644fe69ab9c5f623f57ec117e639ebd61b5a1af2958cb9738412032cf7c3589`)
+successfully staged both hosts, reproduced baseline shards
+`12/32, 2/37, 5/33, 5/36`, merged exact `24 collision / 138 overtake`, and
+passed both host preflights. It then stopped fail-closed in local B5 plumbing
+before READY or learner launch.
+
+The four-map/live stochastic portion completed, but the synthetic hard-cap
+solver fixture created CPU feature tensors after moving its policy to CUDA.
+The CUDA linear layer rejected the mixed-device input. CPU unit tests had not
+exercised that helper on CUDA. No candidate, actor checkpoint or iteration
+ledger exists for this RunPlan.
+
+The narrow repair moves synthetic feature/critic tensors to the policy device
+and copies stored fixture arrays back to CPU. `tests/test_b5_safe.py` now
+executes this helper on CUDA when available. The failed RunPlan/root and gate
+evidence remain immutable; a new commit and new unique RunPlan are required.

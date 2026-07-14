@@ -286,11 +286,12 @@ def _synthetic_safe_reference(policy: B4DirectHeadPolicy, device: torch.device) 
 
 def _synthetic_batch(policy: B4DirectHeadPolicy) -> B4Batch:
     generator = torch.Generator().manual_seed(507141)
+    device = next(policy.parameters()).device
     transitions = []
     for episode in range(16):
         for step in range(2):
-            feature = torch.randn((1, 1680), generator=generator)
-            privileged = torch.randn((1, 12), generator=generator)
+            feature = torch.randn((1, 1680), generator=generator).to(device)
+            privileged = torch.randn((1, 12), generator=generator).to(device)
             with torch.no_grad():
                 mean = policy.mean_from_feature(feature)
                 raw = mean + (0.25 if (episode + step) % 2 else -0.25) * policy.action_std
@@ -303,11 +304,11 @@ def _synthetic_batch(policy: B4DirectHeadPolicy) -> B4Batch:
                     l2_id=f"L2:{episode:064x}",
                     episode_id=episode,
                     step_index=step,
-                    feature=feature[0].numpy().astype(np.float32),
-                    privileged_feature=privileged[0].numpy().astype(np.float32),
-                    raw_action=raw[0].numpy().astype(np.float32),
-                    executed_action=executed[0].numpy().astype(np.float32),
-                    projection_delta=delta[0].numpy().astype(np.float32),
+                    feature=feature[0].cpu().numpy().astype(np.float32),
+                    privileged_feature=privileged[0].cpu().numpy().astype(np.float32),
+                    raw_action=raw[0].cpu().numpy().astype(np.float32),
+                    executed_action=executed[0].cpu().numpy().astype(np.float32),
+                    projection_delta=delta[0].cpu().numpy().astype(np.float32),
                     old_log_prob=float(old_log_prob.item()),
                     old_value=float(value.item()),
                     reward=float((-2, 0, 1)[episode % 3]) if terminal else 0.0,

@@ -30,6 +30,7 @@ from bplus_v22.b5_safe import (
     select_reference_rows,
     update_policy_with_safe_cap,
 )
+from bplus_v22.b5_runner import _synthetic_batch
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -160,6 +161,12 @@ def main() -> None:
     assert len({row["l2_id"] for row in selected}) == 64
     assert len({row["l4_id"] for row in selected}) == 64
     assert selected == select_reference_rows(list(reversed(rows)))
+
+    if torch.cuda.is_available():
+        cuda_policy = policy_for(FROZEN_B4_CONFIG).to("cuda:0")
+        cuda_batch = _synthetic_batch(cuda_policy)
+        assert cuda_batch.feature.device.type == "cpu"
+        assert cuda_batch.privileged_feature.device.type == "cpu"
 
     config = replace(
         FROZEN_B4_CONFIG,
