@@ -1,8 +1,19 @@
 # B6 temporally coherent exploration phase-0 plan
 
-Status: **IMPLEMENTATION PREFLIGHT; NO LEARNER AUTHORIZED**
+Status: **FROZEN PHASE-0 RUNPLAN; NO LEARNER AUTHORIZED**
 
 Date: 2026-07-14
+
+Implementation boundary:
+`496c2d37e36a34897a50db8ba046208f9cc13656`
+
+Frozen artifacts:
+
+```text
+selection digest: 7224f1f3da6a35febc50392cc35b4844076c77094f508d78dbe7b9b3fafb93fd
+selection file:   7612d66ecd4708fb20905266c88033e5ffe6dd903aae4cdca310d7d1ae7c2b44
+RunPlan file:     07a185042f26e87ca152e5d90ad9ea6a1a2ae0f35dc91c96a47d2b83adda60eb
+```
 
 ## 1. Question
 
