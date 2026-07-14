@@ -278,9 +278,10 @@ tests, compilation, deterministic smoke and later physical evaluation shard 0.
 Once iteration 10 is immutable, local shard 0 and the three remote shards start
 concurrently so both GPUs perform useful, nonduplicated work.
 
-Every process freezes one numerical-library thread and unbuffered output.  The
-remote job is launched from a clean source archive at the exact reviewed commit,
-not from the remote machine's dirty historical checkout.  Logs, process state,
+Every process freezes one numerical-library thread and unbuffered output. The
+remote job is launched from a clean source archive at the exact reviewed commit
+plus a digest-frozen inputs archive containing Task-8/metadata and the immutable
+288 BC rows, not from the remote machine's dirty historical checkout. Logs, process state,
 GPU telemetry, iteration ledger, checkpoint and COMPLETE envelope are monitored
 until a terminal result exists.
 

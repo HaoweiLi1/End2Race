@@ -104,21 +104,32 @@ def make_plan(args: argparse.Namespace) -> int:
         "bc": args.bc,
         "task8": args.task8,
         "metadata": args.metadata,
+        "baseline": args.baseline_rows,
     }
     resolved = {name: (repo / value).resolve() for name, value in inputs.items()}
-    if not resolved["bc"].is_file() or not resolved["metadata"].is_file():
+    if (
+        not resolved["bc"].is_file()
+        or not resolved["metadata"].is_file()
+        or not resolved["baseline"].is_file()
+    ):
         raise ValueError("B7 plan input file is missing")
     if not (resolved["task8"] / "COMPLETE").is_file():
         raise ValueError("B7 Task-8 input release is incomplete")
     source_commit = str(args.source_commit)
     source_archive_sha256 = str(args.source_archive_sha256)
-    if len(source_commit) != 40 or len(source_archive_sha256) != 64:
+    inputs_archive_sha256 = str(args.inputs_archive_sha256)
+    if (
+        len(source_commit) != 40
+        or len(source_archive_sha256) != 64
+        or len(inputs_archive_sha256) != 64
+    ):
         raise ValueError("B7 source identity is malformed")
     value: dict[str, Any] = {
         "schema": PLAN_SCHEMA,
         "kind": "b7_plain_recurrent_train",
         "source_commit": source_commit,
         "source_archive_sha256": source_archive_sha256,
+        "inputs_archive_sha256": inputs_archive_sha256,
         "created_at": args.created_at,
         "primary_host": "remote",
         "primary_seed": 1,
@@ -136,6 +147,8 @@ def make_plan(args: argparse.Namespace) -> int:
             ),
             "metadata_relpath": inputs["metadata"],
             "metadata_sha256": sha256(resolved["metadata"]),
+            "baseline_rows_relpath": inputs["baseline"],
+            "baseline_rows_sha256": sha256(resolved["baseline"]),
         },
         "execution": {
             "remote_display": ":1",
@@ -187,12 +200,14 @@ def load_plan(path: str | Path, repo: str | Path) -> tuple[dict[str, Any], dict[
         "bc": (root / inputs["bc_relpath"]).resolve(),
         "task8": (root / inputs["task8_relpath"]).resolve(),
         "metadata": (root / inputs["metadata_relpath"]).resolve(),
+        "baseline": (root / inputs["baseline_rows_relpath"]).resolve(),
     }
     checks = {
         "bc_sha256": sha256(paths["bc"]),
         "training_manifest_sha256": sha256(paths["task8"] / "training_scenarios.tsv"),
         "development_manifest_sha256": sha256(paths["task8"] / "development_scenarios.tsv"),
         "metadata_sha256": sha256(paths["metadata"]),
+        "baseline_rows_sha256": sha256(paths["baseline"]),
     }
     if any(inputs[name] != value for name, value in checks.items()):
         raise ValueError("B7 RunPlan input digest drift")
@@ -644,6 +659,7 @@ def parser() -> argparse.ArgumentParser:
     plan.add_argument("--output", required=True)
     plan.add_argument("--source-commit", required=True)
     plan.add_argument("--source-archive-sha256", required=True)
+    plan.add_argument("--inputs-archive-sha256", required=True)
     plan.add_argument("--created-at", required=True)
     plan.add_argument("--bc", default="pretrained/end2race.pth")
     plan.add_argument(
@@ -653,6 +669,10 @@ def parser() -> argparse.ArgumentParser:
     plan.add_argument(
         "--metadata",
         default="Experiments/A3_d2_representation/artifacts/non_test_full_20260711_175713/episode_metadata.tsv",
+    )
+    plan.add_argument(
+        "--baseline-rows",
+        default="Experiments/B2_ppo_pilot/evaluations/b2_eval_20260713_165800/merged/episodes.tsv",
     )
     plan.set_defaults(func=make_plan)
 

@@ -41,6 +41,8 @@ def _development_rows(task8: Path):
 
 def run_shard(args: argparse.Namespace) -> int:
     plan, paths = load_plan(args.plan, args.repo)
+    if Path(args.baseline_rows).resolve() != paths["baseline"]:
+        raise ValueError("B7 evaluation baseline path differs from the RunPlan")
     output = Path(args.output).resolve()
     if output.exists():
         raise FileExistsError(output)
@@ -68,6 +70,8 @@ def _load_shard(path: str | Path) -> B7EvaluationShard:
 
 def merge(args: argparse.Namespace) -> int:
     plan, paths = load_plan(args.plan, args.repo)
+    if Path(args.baseline_rows).resolve() != paths["baseline"]:
+        raise ValueError("B7 evaluation baseline path differs from the RunPlan")
     output = Path(args.output).resolve()
     if output.exists():
         raise FileExistsError(output)
