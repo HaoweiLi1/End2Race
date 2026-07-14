@@ -88,15 +88,16 @@ halving both parameter-group LRs. The critic still completes three epochs.
 
 ## Execution boundary
 
-The exact implementation/source commit is
-`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The authoritative learner must
+The initial implementation commit is
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The final reviewed
+execution-source commit is
+`1c096c235e8c1a664ee2782cd8dd2f41c6988b11`. The authoritative learner must
 use a clean archive from that pushed commit, an immutable B7 RunPlan,
 remote `DISPLAY=:1`, the physical GPU lock, and isolated output/cache paths.
 No seed1 learner or candidate evaluation existed at this implementation
-boundary. This follow-up change records only the addressable boundary.
+boundary. No code after the final execution-source commit may enter the B7
+source archive.
 
 Before RunPlan creation, staging review added one infrastructure-only fix: the
 RunPlan now freezes the inputs-archive digest and the immutable 288 BC-row file
-digest in addition to Task-8, metadata, BC and source identities. The final
-source SHA supersedes the provisional SHA above and is recorded in the next
-boundary-only commit.
+digest in addition to Task-8, metadata, BC and source identities.

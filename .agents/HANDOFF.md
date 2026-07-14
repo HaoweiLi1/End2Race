@@ -3029,7 +3029,9 @@ backward uses about 322 MiB CUDA allocation and completes locally in about two
 seconds. Full compatibility, staged smoke and immutable RunPlan still precede
 the authoritative learner.
 
-The exact B7 implementation and execution-source commit is
-`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The next commit only records this
-addressable boundary; it is not a code change and must not replace the source
+The initial B7 implementation commit is
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The final reviewed
+execution-source commit, including the input-archive and immutable BC-row
+RunPlan freeze, is `1c096c235e8c1a664ee2782cd8dd2f41c6988b11`.
+The following documentation-only boundary commit must not replace that source
 identity in the B7 RunPlan.

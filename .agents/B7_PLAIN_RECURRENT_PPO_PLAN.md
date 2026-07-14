@@ -3,7 +3,12 @@
 Status: prospective implementation and execution plan, 2026-07-14
 
 Implementation/source boundary:
-`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`.
+`1c096c235e8c1a664ee2782cd8dd2f41c6988b11`.
+
+The initial implementation landed at
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`; the later source boundary above
+adds only the staging-integrity requirements needed to freeze the input archive
+and immutable 288-row BC baseline in the RunPlan.
 
 ## 1. Decision and bounded claim
 
