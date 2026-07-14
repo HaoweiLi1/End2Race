@@ -1,10 +1,10 @@
 # B6 temporally coherent exploration phase-0 plan
 
-Status: **FROZEN PHASE-0 RUNPLAN; NO LEARNER AUTHORIZED**
+Status: **FROZEN REPLACEMENT PHASE-0 RUNPLAN; NO LEARNER AUTHORIZED**
 
 Date: 2026-07-14
 
-Implementation boundary:
+Initial implementation boundary:
 `496c2d37e36a34897a50db8ba046208f9cc13656`
 
 Frozen artifacts:
@@ -219,3 +219,15 @@ The scientific selection, innovations, rho and outcome gates are unchanged.
 A replacement RunPlan must bind the corrected implementation before any valid
 episode is started; none of the 98 invalid-attempt rows may be resumed or
 combined with it.
+
+Active replacement boundary:
+
+```text
+corrected implementation: d71efe948d8b6d9523535840e1364e5608481051
+selection digest:         7224f1f3da6a35febc50392cc35b4844076c77094f508d78dbe7b9b3fafb93fd
+selection file:           7612d66ecd4708fb20905266c88033e5ffe6dd903aae4cdca310d7d1ae7c2b44
+replacement RunPlan:      b3725809c65b5ac66aae4bfb853accc87c95af35fb4cf53d5d19039f09a679d5
+```
+
+The replacement selection is byte-identical to the original; only the
+correctness implementation boundary and replay integrity contract changed.
