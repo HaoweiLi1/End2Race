@@ -182,3 +182,14 @@ the existing paired rows, replay files and snapshots to distinguish two facts:
 updates caused both collision and overtake regression. Any B5 proposal must be
 a new prospective owner decision with one isolated hypothesis; it must not be
 presented as a continuation or rescue of B4.
+
+## 8. Post-hoc cause analysis
+
+That read-only analysis is now complete in
+`.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`, with reproducible compact tables
+under `docs/ppo/evidence/b4_substantive_negative/`. It preserves this verdict.
+The strongest measured signal is monotonic BC-relative action drift—especially
+global slowing—without a cumulative BC trust region. Empirically iid 100 Hz
+exploration and a 9.375x collision-prevalence shift are secondary supported
+contributors. Frozen representation sufficiency and all counterfactual fixes
+remain unresolved; no new run is authorized.

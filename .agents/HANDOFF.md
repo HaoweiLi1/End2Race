@@ -2546,3 +2546,56 @@ the final verdict is `B4_SUBSTANTIVE_NEGATIVE`; selected candidate is none.
    release, product rows and final report. The local branch is intentionally
    not pushed in this execution because the owner said to ignore the GitHub
    publication blocker.
+
+## 27. B4 substantive-negative diagnosis and publication authority (2026-07-14)
+
+This section supersedes §26.4 item 4 only with respect to GitHub publication:
+the owner now explicitly requires the missing commits and analysis packet to be
+uploaded. It does not reopen B4 or authorize a new experiment.
+
+### 27.1 What was done
+
+1. Added `scripts/analyze_b4_substantive_negative.py`, a read-only reproduction
+   over the frozen product rows, per-episode NPZ files, training replays,
+   curriculum and actor snapshots. The exact recurrent replay uses batch-one,
+   step-by-step hidden-state updates and reproduces stored BC actions within
+   `2.98e-7 rad / 2.86e-6 m/s`.
+2. Generated the compact review packet under
+   `docs/ppo/evidence/b4_substantive_negative/`: independent paired-transition
+   flags, condition coverage, BC-relative action/parameter drift, exploration
+   reconstruction, iter10 precursor actions and a claim-bounded summary.
+3. Added `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`. The strongest diagnosis
+   is nonselective cumulative drift without a BC-preserving constraint. Mean
+   signed speed drift is `-0.031/-0.095/-0.102 m/s` and shared-state KL is
+   `0.027/0.138/0.188` at iter10/20/30.
+4. Reconstructed all 351,946 training raw actions from the pre-update heads:
+   noise std is `0.029991/0.199711`, lag-1 correlation is approximately zero,
+   50-step averaging matches iid theory, and maximum old-log-probability error
+   is `6.34e-5`. Collision prevalence was 37.5% in training versus 4.0% in the
+   product grid (`9.375x`).
+
+### 27.2 Interpretation and limits
+
+- B4 remains an integrity-valid `B4_SUBSTANTIVE_NEGATIVE`; no candidate exists.
+- Output-head capacity is not the leading diagnosis because iter10 materially
+  swapped cases. Missing BC behavior preservation is the best-supported next
+  hypothesis, but Residual is not proven necessary or uniquely correct.
+- 100 Hz iid exploration and curriculum shift are directly measured; their
+  causal contribution is not isolated.
+- The 11 fixed and 11 new collision precursor features are substantially mixed
+  under one descriptive cosine diagnostic. This does not prove frozen-GRU
+  insufficiency or justify an unfreeze.
+- Only seed1 was authorized, so seed variance is unknown; the negative remains
+  valid for the frozen B4 configuration.
+
+### 27.3 Next-chat instructions
+
+1. Treat the plan, result, negative-analysis report, reproduction script and
+   compact evidence tables as one external-review packet.
+2. Verify the pushed Git diff rather than relying only on these narratives.
+3. Do not start B3/B5, seed0, a GRU unfreeze, anchor, noise/sampler change or
+   extended B4 run without a new prospective owner decision.
+4. If a new one-variable experiment is requested, review the ranking in the
+   analysis report first. A training-only BC-relative trust region/action anchor
+   is ranked ahead of coherent noise, sampler change and GRU unfreeze, but this
+   is prioritization rather than execution authority or a promise of success.

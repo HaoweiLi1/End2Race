@@ -181,3 +181,12 @@ improvement and `fixed>new`, so B4 closed as `B4_SUBSTANTIVE_NEGATIVE` with no
 selected candidate. Fresh/final pools remain sealed. This rejects the tested
 frozen-feature direct-head configuration; it does not prove residual policies,
 GRU unfreezing, or any other unrun alternative would succeed.
+
+Post-hoc read-only replay on the same BC observation histories found mean
+signed speed shifts of approximately `-0.031/-0.095/-0.102 m/s` and
+BC-relative equal-std KL of `0.027/0.138/0.188` at iter10/20/30. Training noise
+was empirically iid at 100 Hz, and collision prevalence was 37.5% in training
+versus 4.0% on the product grid. These facts prioritize missing BC-preserving
+constraints as the leading diagnosis, while leaving exploration, sampler and
+representation causality unresolved. See
+`.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`; no new run is authorized.

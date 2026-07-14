@@ -40,6 +40,11 @@ product success.
   completed 2,400 product-grid episodes. BC/iter10/iter20/iter30
   collision-overtake counts were `24/342`, `24/332`, `36/294`, `39/296`.
   No snapshot was feasible; B4 is `B4_SUBSTANTIVE_NEGATIVE` and selected none.
+- A read-only replay diagnosis found monotonic BC-relative action drift, nearly
+  exact 100 Hz iid exploration, and 9.375x collision oversampling. This ranks a
+  deployment-compatible BC-relative trust region as the first *unrun*
+  one-variable hypothesis; it does not authorize B5 or settle representation
+  sufficiency.
 - Fresh/final pools remain sealed. No B3/B5 or B4 continuation is authorized.
 
 ## Interpretation
@@ -64,11 +69,15 @@ Any next experiment requires a new prospective owner decision.
    The longer Chinese record is `docs/EXPERIMENT_RECORD.md`.
 2. `.agents/B4_DIRECT_HEAD_PPO_RESULT.md` — exact B4 identities, numerical
    result, failures/fixes, evidence paths and stop decision.
-3. [NEXT_PPO_DIRECTION.md](NEXT_PPO_DIRECTION.md) — historical proposal that
+3. `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md` — reproducible cause analysis,
+   claim boundaries and external-review packet.
+4. [evidence/b4_substantive_negative/README.md](evidence/b4_substantive_negative/README.md)
+   — compact Git-tracked tables and reproduction command.
+5. [NEXT_PPO_DIRECTION.md](NEXT_PPO_DIRECTION.md) — historical proposal that
    preceded the now-closed B4 run; it is not current execution authority.
-4. [ARTIFACT_RETENTION.md](ARTIFACT_RETENTION.md) — what local evidence is
+6. [ARTIFACT_RETENTION.md](ARTIFACT_RETENTION.md) — what local evidence is
    retained and how historical material was archived.
-5. `.agents/HANDOFF.md` — full historical authority ledger; newest numbered
+7. `.agents/HANDOFF.md` — full historical authority ledger; newest numbered
    section wins when older sections conflict.
 
 For exhaustive lookup, use `AUTHORITY_INDEX.md`,

@@ -1,0 +1,13 @@
+opp_raceline	opp_speedscale	train_collision	train_overtake	train_follow	product_bc_collision	product_bc_overtaking	product_bc_following	seed1_iter10_fixed_collision	seed1_iter10_new_collision	seed1_iter10_gained_overtake	seed1_iter10_lost_overtake	seed1_iter20_fixed_collision	seed1_iter20_new_collision	seed1_iter20_gained_overtake	seed1_iter20_lost_overtake	seed1_iter30_fixed_collision	seed1_iter30_new_collision	seed1_iter30_gained_overtake	seed1_iter30_lost_overtake
+raceline0	0.5	0	13	0	1	49	0	0	0	0	0	1	0	1	0	1	1	1	1
+raceline0	0.6	2	10	0	0	50	0	0	0	0	0	0	1	0	3	0	1	0	1
+raceline0	0.7	8	8	1	4	43	3	3	4	3	5	4	4	3	11	4	3	5	5
+raceline0	0.8	15	9	6	3	25	22	2	3	1	6	2	5	1	12	2	4	2	12
+raceline1	0.5	8	0	9	3	3	44	2	3	0	3	1	4	0	3	1	4	1	3
+raceline1	0.6	6	0	8	2	0	48	1	0	0	0	0	1	0	0	1	0	0	0
+raceline1	0.7	0	0	11	0	0	50	0	0	0	0	0	2	0	0	0	1	0	0
+raceline1	0.8	2	0	20	0	0	50	0	0	0	0	0	0	0	0	0	0	0	0
+raceline2	0.5	2	8	0	2	48	0	0	0	0	0	0	0	0	0	0	0	0	0
+raceline2	0.6	4	10	0	1	49	0	0	0	0	0	0	6	0	6	0	9	0	9
+raceline2	0.7	2	13	0	4	46	0	2	0	2	0	3	3	3	4	2	5	2	7
+raceline2	0.8	11	7	2	4	29	17	1	1	2	4	3	0	2	19	3	1	1	20

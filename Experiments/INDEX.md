@@ -29,7 +29,7 @@
 | `B1_route_r2_scaffold` | `logs/bplus_v22_d3r2_20260711` | v2.2 支架：层级动作、identity 门、warm-start、闭环评估（Task 1–10） | Task 10 **FAILED**；warm-start 两次失败 |
 | `B2_ppo_pilot` | — | B+ v2.2 PPO 接线 + 三臂 BC-direct pilot | **首轮训练与评估完成，产品方向门 FAILED**；六个候选均净损失超车，未选臂，fresh pool 未打开。训练 `b2_direct_20260713_081422`，评估 `b2_eval_20260713_165800` |
 | `B3_ppo_unified` | — | 统一 stochastic rollout / PPO log-prob / deterministic deployment 的三臂 PPO | **实现、边界回归和独立审阅 GO，尚未创建 RunPlan 或运行 GPU**；固定 40 iterations，B2 结果不续训 |
-| `B4_direct_head_ppo` | — | plain End2Race frozen-feature output-head-only PPO，唯一 seed1 | **30/30 训练与 2400-row 产品评估完成，B4_SUBSTANTIVE_NEGATIVE**；BC/iter10/20/30 collision-overtake=`24/342`,`24/332`,`36/294`,`39/296`，未选择 candidate，fresh/final pool 未打开 |
+| `B4_direct_head_ppo` | — | plain End2Race frozen-feature output-head-only PPO，唯一 seed1 | **30/30 训练与 2400-row 产品评估完成，B4_SUBSTANTIVE_NEGATIVE**；BC/iter10/20/30 collision-overtake=`24/342`,`24/332`,`36/294`,`39/296`，未选择 candidate；只读原因分析见 `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`，fresh/final pool 未打开 |
 
 ## C 轮 — 预留
 

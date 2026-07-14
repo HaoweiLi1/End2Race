@@ -13,6 +13,8 @@
   `B4_SUBSTANTIVE_NEGATIVE`，未选择 candidate）→
   `.agents/B4_DIRECT_HEAD_PPO_PLAN.md`
 - **B4 数值结果与外审证据** → `.agents/B4_DIRECT_HEAD_PPO_RESULT.md`
+- **B4 substantive-negative 原因分析与下一假设排序** →
+  `.agents/B4_SUBSTANTIVE_NEGATIVE_ANALYSIS.md`
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
 - 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`
@@ -37,6 +39,13 @@ B3 不追溯改写，状态为已实现、已审阅 GO、暂停未运行。详�
 `24/332`，iter20 为 `36/294`，iter30 为 `39/296`。没有 snapshot 同时满足
 collision strict improvement、`fixed>new` 和 overtake `>=325`，因此 selected
 candidate 为 none。当前没有自动 B3/B5 或追加 seed 的 authority；详见 result record。
+
+现有 product rows、replay 与 snapshots 的只读复算进一步确认：iter10/20/30
+在相同 BC 历史上的平均 signed speed drift 约为 `-0.031/-0.095/-0.102 m/s`，
+BC-relative equal-std KL 约为 `0.027/0.138/0.188`；100 Hz exploration 的
+lag-1 correlation 约为零，训练 collision 比例是 product 的 `9.375x`。
+这些证据优先支持“缺少 BC-preserving constraint 导致非选择性累计漂移”，但不证明
+Residual 唯一正确，也不判定 frozen GRU representation 是否充分。详见 analysis record。
 
 **每设一道门，都要能回答一句话：「这道门挡住了，交付物会因此变好吗？」答不上来的门，不要设。**
 
