@@ -133,7 +133,13 @@ def write_tsv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
             handle, fieldnames=fields, delimiter="\t", lineterminator="\n"
         )
         writer.writeheader()
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow(
+                {
+                    field: "NA" if row.get(field, "") in ("", None) else row[field]
+                    for field in fields
+                }
+            )
 
 
 def json_dump(path: Path, value: Mapping[str, Any]) -> None:
