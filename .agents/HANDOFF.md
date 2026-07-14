@@ -3028,3 +3028,8 @@ window-start discounted-return error is `1.8e-8`; an 801-step full recurrent
 backward uses about 322 MiB CUDA allocation and completes locally in about two
 seconds. Full compatibility, staged smoke and immutable RunPlan still precede
 the authoritative learner.
+
+The exact B7 implementation and execution-source commit is
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The next commit only records this
+addressable boundary; it is not a code change and must not replace the source
+identity in the B7 RunPlan.

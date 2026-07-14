@@ -2,6 +2,9 @@
 
 Status: prospective implementation and execution plan, 2026-07-14
 
+Implementation/source boundary:
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`.
+
 ## 1. Decision and bounded claim
 
 B7 stops the Route-B gate/macro/wrapper loop and tests one product-oriented

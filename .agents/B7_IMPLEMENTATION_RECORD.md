@@ -88,9 +88,9 @@ halving both parameter-group LRs. The critic still completes three epochs.
 
 ## Execution boundary
 
-The implementation commit is recorded in a follow-up review-boundary commit so
-that it can be addressed by an exact full SHA. The authoritative learner must
-use a clean archive from the pushed source commit, an immutable B7 RunPlan,
+The exact implementation/source commit is
+`8b8f01cbf6b302a5916c137d53e2869a2f371ba3`. The authoritative learner must
+use a clean archive from that pushed commit, an immutable B7 RunPlan,
 remote `DISPLAY=:1`, the physical GPU lock, and isolated output/cache paths.
-No seed1 learner or candidate evaluation existed when this implementation
-record was first committed.
+No seed1 learner or candidate evaluation existed at this implementation
+boundary. This follow-up change records only the addressable boundary.
