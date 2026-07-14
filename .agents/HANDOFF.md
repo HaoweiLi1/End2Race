@@ -2789,3 +2789,8 @@ as `OPENED_DEVELOPMENT_SURVIVOR`. It did not hit collision target `<=16`.
   requires a separate prospective owner decision. Do not automatically run
   B5-B/AR(1), alter the cap/LR/sampler/reward, unfreeze GRU, add residual, extend
   iterations, promote the candidate, or open fresh/final pools.
+
+The exact result/evidence content boundary is
+`d57d6e9bc4c49fdd9e522f4b4e825277239b405d`; external reviewers should inspect
+`072e0df..d57d6e9bc4c49fdd9e522f4b4e825277239b405d` rather than relying only on
+this handoff narrative.

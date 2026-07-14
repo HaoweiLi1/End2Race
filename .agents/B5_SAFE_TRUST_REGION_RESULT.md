@@ -224,6 +224,11 @@ Git-reviewable compact evidence is under:
 docs/ppo/evidence/b5_safe_trust_region/
 ```
 
+The exact result/evidence content boundary is commit
+`d57d6e9bc4c49fdd9e522f4b4e825277239b405d`. Reviewers can inspect the full
+B5 implementation-through-result diff
+`072e0df..d57d6e9bc4c49fdd9e522f4b4e825277239b405d`.
+
 It contains the full 64-episode selection record, reference audit, complete
 30-iteration learner ledger, training summary, 2,400 paired product rows and
 merged result. Large NPZ/replay/checkpoint artifacts remain outside Git.
@@ -245,4 +250,3 @@ the exact code and evidence diff. If it returns GO, seed0 replication requires
 a separate prospective owner decision. No seed0 run, B5-B/AR(1), threshold or
 optimizer change, GRU unfreeze, residual, sampler/reward change, extra
 iterations, candidate promotion or fresh/final opening is automatic.
-

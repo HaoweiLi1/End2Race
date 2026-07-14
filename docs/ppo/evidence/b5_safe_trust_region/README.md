@@ -34,4 +34,5 @@ fresh/final opened: false
 The learner source commit is
 `482491969b01a632f5726b81316953397c6abd49`; the immutable RunPlan SHA is
 `20e0af679b13f8ab1e3ee296ffe11189a8c584cc2ef363384fddc8e04d16af63`.
-
+The exact Git content boundary for this result packet is
+`d57d6e9bc4c49fdd9e522f4b4e825277239b405d`.

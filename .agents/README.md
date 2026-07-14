@@ -18,7 +18,8 @@
   `dd49ce00bc82095a1cdd832caa485bce01c1991f`）
 - **B5-A safe-reference 单变量实验计划与结果** →
   `.agents/B5_SAFE_TRUST_REGION_PLAN.md`、
-  `.agents/B5_SAFE_TRUST_REGION_RESULT.md`
+  `.agents/B5_SAFE_TRUST_REGION_RESULT.md`（exact result/evidence boundary
+  `d57d6e9bc4c49fdd9e522f4b4e825277239b405d`）
 - B4 外部审计草案（已被 owner decision 取代，仅保留为审计证据）→
   `.agents/B4_DIRECT_HEAD_PPO_EXTERNAL_AUDIT_PLAN.md`
 - 从 End2Race BC 到 B3 的 PPO 开发汇报 → `.agents/PPO_DEVELOPMENT_REPORT.md`
