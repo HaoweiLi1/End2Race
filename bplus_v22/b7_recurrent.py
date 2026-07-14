@@ -792,6 +792,11 @@ def update_policy(
     actor_before = _copy_module_state(policy.actor)
     optimizer_before = copy.deepcopy(actor_optimizer.state_dict())
     lr_before = {str(group["role"]): float(group["lr"]) for group in actor_optimizer.param_groups}
+    # The previous iteration's critic backward leaves gradients populated even
+    # though the actor and critic optimizers are disjoint.  Clear that stale
+    # state before the actor backward so the isolation assertion below detects
+    # only gradients created by the current actor objective.
+    critic_optimizer.zero_grad(set_to_none=True)
     actor_optimizer.zero_grad(set_to_none=True)
     policy.actor.train()
     losses: list[float] = []

@@ -1,0 +1,45 @@
+{
+  "actor_update_performed": false,
+  "candidate_kpi_compared": false,
+  "map_reports": [
+    {
+      "l2_id": "L2:b51a233196ab93039986dd99e297674600f2df72fa3b45c17dbdbcc4015ef551",
+      "map_name": "Austin",
+      "max_abs_bc_mean_delta": 0.0,
+      "max_abs_old_replay_mean_delta": 0.0,
+      "outcome": "follow",
+      "steps": 801,
+      "trajectory_array_count": 22
+    },
+    {
+      "l2_id": "L2:61fc760c64e96f9065e10ad904137869711984c70371edf78964500af1e733d1",
+      "map_name": "Hockenheim",
+      "max_abs_bc_mean_delta": 0.0,
+      "max_abs_old_replay_mean_delta": 0.0,
+      "outcome": "overtake",
+      "steps": 801,
+      "trajectory_array_count": 22
+    },
+    {
+      "l2_id": "L2:521f6e1619019b13456b040e78201328d6a893ac2f20e9b9ed0832d5d6f9e2b5",
+      "map_name": "MoscowRaceway",
+      "max_abs_bc_mean_delta": 0.0,
+      "max_abs_old_replay_mean_delta": 0.0,
+      "outcome": "overtake",
+      "steps": 801,
+      "trajectory_array_count": 22
+    },
+    {
+      "l2_id": "L2:0eee284e07e3476bd56e20abc829cc51fed7fcb976fd79dce5ec9ad5132f379c",
+      "map_name": "Nuerburgring",
+      "max_abs_bc_mean_delta": 0.0,
+      "max_abs_old_replay_mean_delta": 0.0,
+      "outcome": "follow",
+      "steps": 801,
+      "trajectory_array_count": 22
+    }
+  ],
+  "passed": true,
+  "plan_sha256": "360063d4289d2db18f0bd74a49a6ed967527635cd30feab2aefa9736a2a109b1",
+  "schema": "end2race-b7-production-smoke-1"
+}

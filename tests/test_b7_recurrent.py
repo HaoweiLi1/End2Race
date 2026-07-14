@@ -199,6 +199,34 @@ def test_one_recurrent_actor_step_and_isolated_weighted_critic():
     )
 
 
+def test_consecutive_iterations_clear_stale_critic_gradients():
+    config = replace(FROZEN_B7_CONFIG, head_lr=1e-6, gru_lr=1e-7)
+    policy = _policy(config)
+    actor_optimizer, critic_optimizer = build_optimizers(policy)
+    first = update_policy(
+        policy,
+        _synthetic_batch(policy, config),
+        actor_optimizer,
+        critic_optimizer,
+        seed=1,
+        iteration=1,
+        consecutive_rejections=0,
+    )
+    assert first["critic_epochs_completed"] == 3
+    assert any(parameter.grad is not None for parameter in policy.critic.parameters())
+    second = update_policy(
+        policy,
+        _synthetic_batch(policy, config),
+        actor_optimizer,
+        critic_optimizer,
+        seed=1,
+        iteration=2,
+        consecutive_rejections=0,
+    )
+    assert second["critic_epochs_completed"] == 3
+    assert second["actor_optimizer_steps_attempted"] == 1
+
+
 def test_rejected_step_restores_actor_and_adam_then_halves_lrs():
     config = replace(
         FROZEN_B7_CONFIG,
@@ -255,6 +283,7 @@ if __name__ == "__main__":
     test_reward_redistribution_discount_equivalence()
     test_sampler_counts_uniqueness_and_hard_priority()
     test_one_recurrent_actor_step_and_isolated_weighted_critic()
+    test_consecutive_iterations_clear_stale_critic_gradients()
     test_rejected_step_restores_actor_and_adam_then_halves_lrs()
     test_exact_l4_cluster_signflip()
     print("B7 recurrent PPO contracts passed")

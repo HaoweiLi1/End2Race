@@ -113,3 +113,10 @@ scenario mining and current-rollout BC-safe rollback. Read
 Only remote seed1 through iteration 10 and one iteration-10 288-panel
 evaluation are authorized initially. No duplicate learner, seed0, Austin 600
 or sealed/final access is authorized unless the prospective seed1 gate passes.
+
+The first clean staged B7 attempt exposed a stale critic-gradient cleanup bug
+after iteration 1 and failed closed before any candidate existed. The compact
+record and remediation are in
+[evidence/b7_stale_critic_gradient_20260714/README.md](evidence/b7_stale_critic_gradient_20260714/README.md).
+The authoritative run must restart from iteration 0 using the superseding
+source/RunPlan boundary; the incomplete attempt is never resumed or merged.

@@ -3035,3 +3035,20 @@ execution-source commit, including the input-archive and immutable BC-row
 RunPlan freeze, is `1c096c235e8c1a664ee2782cd8dd2f41c6988b11`.
 The following documentation-only boundary commit must not replace that source
 identity in the B7 RunPlan.
+
+## 34. B7 first staged attempt failed closed and was remediated (2026-07-14)
+
+The first clean staged seed1 attempt used source `1c096c2` and passed its
+production smoke. Iteration 1 completed and was accepted at safe KL `0.001707`
+and rollout KL `0.001748`. Before iteration 2 could be committed, the actor
+isolation assertion stopped the process because critic gradients from the
+previous iteration's last critic minibatch were still populated. This was
+stale gradient state, not an actor-to-critic computation path.
+
+The implementation now clears critic gradients before each actor backward and
+keeps the isolation assertion. A new two-consecutive-iteration regression
+reproduces the relevant state boundary and passes, as do the two B7 programs
+and all nine compatibility programs. No candidate/evaluation was produced.
+The failed partial run is not resumed; a new source archive and RunPlan must
+restart seed1 from iteration 0. Compact evidence is under
+`docs/ppo/evidence/b7_stale_critic_gradient_20260714/`.

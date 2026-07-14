@@ -101,3 +101,22 @@ source archive.
 Before RunPlan creation, staging review added one infrastructure-only fix: the
 RunPlan now freezes the inputs-archive digest and the immutable 288 BC-row file
 digest in addition to Task-8, metadata, BC and source identities.
+
+## First staged-attempt remediation
+
+The first clean staged attempt passed the four-map production smoke and
+accepted iteration 1 (`safe_kl=0.001707`, `rollout_kl=0.001748`). It then
+failed closed during the iteration-2 actor backward because the isolation
+assertion observed critic gradients left populated by iteration 1's final
+critic minibatch. The actor loss had no critic path; the stale gradients had
+not been cleared before the next actor-isolation check.
+
+The fix calls `critic_optimizer.zero_grad(set_to_none=True)` before every actor
+backward and retains the original assertion. A consecutive-iteration regression
+now deliberately starts iteration 2 with populated critic gradients and proves
+that one actor step plus all three critic epochs complete. Both B7 programs and
+all nine legacy compatibility programs passed after the fix. No candidate or
+evaluation was produced by the failed attempt, and it is not resumed.
+
+Compact evidence is retained at
+`docs/ppo/evidence/b7_stale_critic_gradient_20260714/`.
