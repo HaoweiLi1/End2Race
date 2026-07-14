@@ -79,6 +79,9 @@ Any next experiment requires a new prospective owner decision.
    retained and how historical material was archived.
 7. `.agents/HANDOFF.md` — full historical authority ledger; newest numbered
    section wins when older sections conflict.
+8. `.agents/COMPUTE_CAPACITY_AND_EXECUTION_GUIDE.md` — measured local/remote
+   training/evaluation capacity, saturation points, CPU affinity and the
+   managed-runner changes required before concurrent jobs are authoritative.
 
 For exhaustive lookup, use `AUTHORITY_INDEX.md`,
 `ANALYSIS_AND_REPORT_INDEX.md`, `DOCUMENT_INDEX.tsv`, and
@@ -92,3 +95,8 @@ For exhaustive lookup, use `AUTHORITY_INDEX.md`,
 - Do not open the D2 test or a fresh/final pool during development.
 - Do not claim generalization from Task 6, Task 9, Task 10, or the 288-scenario
   development population.
+- Low GPU utilization from one current PPO learner is expected: collection is
+  one environment, batch-1 recurrent inference and synchronous CPU/GPU ledger
+  transfer. Do not duplicate a job to fill the device. Use the measured
+  profiles in `.agents/COMPUTE_CAPACITY_AND_EXECUTION_GUIDE.md` only after the
+  resource topology is frozen in a new RunPlan.

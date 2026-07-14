@@ -212,6 +212,13 @@ GPU lock 内重新哈希 staged tree；即使直接调用 `ppo-pilot` CLI，缺�
 
 **新增托管工作 → 在 `runner.py` 里加 Job，不要写成 shell 单行命令。** 一个 job 应该在烧 GPU 之前就能被审阅、被 dry-run。
 
+双机容量与并发合同见 `.agents/COMPUTE_CAPACITY_AND_EXECUTION_GUIDE.md`。
+实测推荐值是：独立 learner 远端默认 4、吞吐模式最多 6，本地默认 2、
+吞吐模式最多 4；eval-only 优先 CPU，远端 12 workers、本地 6–8 workers。
+单 learner 的 batch-1、100 Hz 串行 collector 天然不会拉满 GPU，禁止复制同一
+seed/job 或绕过 runner 的 GPU lock 来制造利用率。未来并发必须先把 slot、CPU
+affinity、thread limit 和独立输出/cache/RNG 固定进 RunPlan。
+
 > **B2 首轮 pilot 与冻结评估已完成：** 训练 RunPlan 是
 > `b2_direct_20260713_081422`，评估 EvalPlan 是
 > `b2_eval_20260713_165800`。六个 candidate 全部 integrity PASS，但全部因

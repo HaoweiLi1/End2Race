@@ -2934,3 +2934,55 @@ reused. Both remote roots are preserved with failure suffixes.
 The exact B6 code-and-evidence content boundary is
 `081092987877619e9b84f108f80cbebe3bda847c`; review
 `9aeddcc3ecd4d7f896e5a00660c545d6176fba17..081092987877619e9b84f108f80cbebe3bda847c`.
+
+## 32. Local/remote compute-capacity audit (2026-07-14)
+
+The complete infrastructure guide is
+`.agents/COMPUTE_CAPACITY_AND_EXECUTION_GUIDE.md`. This audit used only opened
+Task-8 training `follow` scenarios, did not compare outcomes, and did not use
+Austin, seed0 or sealed data.
+
+### 32.1 What was measured
+
+- Local: i9-11950H (8C/16T), 47 GiB, RTX 3080 Laptop 16 GiB at about 90 W,
+  WSL2.
+- Remote: i5-14600KF (14C/20T), 94 GiB, RTX 4080 SUPER 16 GiB at 320 W,
+  native Ubuntu/NVMe.
+- One current learner is serial at the episode level and performs batch-1
+  recurrent CUDA inference with per-step `.item()`/`.cpu()` synchronization.
+  Low single-learner GPU use is expected, not a CUDA failure.
+- Remote CUDA collector throughput for 1/2/4/6/8 processes was
+  `0.329/0.585/1.026/1.323/1.227` episode/s. Six is the measured throughput
+  maximum; eight oversubscribes.
+- Local CUDA throughput for 1/2/4/6/8 was
+  `0.140/0.269/0.447/0.529/0.578` episode/s, but per-job latency rose from
+  7.15 to 12.87 seconds. Use two by default and four only in throughput mode.
+- Evaluation-shaped CPU+NPZ+SHA throughput peaked at 12 remote workers
+  (`1.429` episode/s); local reached `0.691` at 8 workers and `0.628` at 6.
+
+### 32.2 Recommended topology
+
+- One learner: remote CUDA only; do not duplicate the same job.
+- Independent learners: remote default 4 / maximum 6; local default 2 /
+  maximum 4.
+- Eval-only: CPU, remote 12 workers and local 6-8 workers, with device/worker
+  count frozen in the EvalPlan.
+- Minimum learner latency: remote learners plus local CPU evaluation.
+- Maximum total remote throughput: pin six CUDA learner processes to P-core
+  IDs `0,2,4,6,8,10` and one 8-worker CPU evaluator to E-core IDs `12-19`.
+  This measured `1.213 + 0.897 = 2.110` episode/s and reduced isolated learner
+  throughput by about 8%.
+
+Every worker must receive one-thread OMP/MKL/OpenBLAS/NumExpr/Numba limits and
+call both PyTorch thread-limit functions. Keep outputs and caches disjoint.
+
+### 32.3 Current blocker and next implementation step
+
+`Experiments/runner.py` currently holds one exclusive physical-GPU `flock`
+around the entire host controller and invokes all host jobs sequentially. The
+measured concurrency cannot be used authoritatively by adding shell commands.
+The next experiment runner must version and freeze `device`, worker count,
+CPU affinity, GPU slot capacity, thread limits and disjoint output/cache/RNG
+identity, then launch bounded independent queues from inside the locked host
+controller. Until that change is reviewed, keep existing serial managed-run
+semantics.

@@ -124,3 +124,8 @@ B6 的有效 no-learning evidence 位于
 `.agents/B6_TEMPORAL_EXPLORATION_PHASE0_RESULT.md`。不得启动 AR(1) learner、
 调 rho/std 或把 partial v1/v2 行混入有效结果。当前 frozen-feature
 direct-head 调参线已按 owner 规则关闭；新实验需要独立前瞻性决策。
+
+双机计算容量、training/eval 并发上限、远端 P/E 核 affinity 与监控方式见
+`.agents/COMPUTE_CAPACITY_AND_EXECUTION_GUIDE.md`。当前 runner 仍以单个物理 GPU
+`flock` 串行执行 host jobs；文档中的 4/6 learner slots 与 CPU evaluator profile
+是下一版 runner 的资源合同要求，不授权手工 SSH 绕过 RunPlan/READY/COMPLETE。
