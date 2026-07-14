@@ -14,6 +14,7 @@ import csv
 import hashlib
 import json
 import math
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,6 +90,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--bc-checkpoint", type=Path, default=Path("pretrained/end2race.pth"))
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--source-commit", required=True)
     parser.add_argument("--device", default="cuda:0" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--gradient-iterations", type=int, default=GRADIENT_ITERATIONS)
     return parser.parse_args()
@@ -99,6 +101,23 @@ def sha256_file(path: Path) -> str:
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(1 << 20), b""):
             digest.update(block)
+    return digest.hexdigest()
+
+
+def aggregate_file_digest(paths: Sequence[Path]) -> str:
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update(path.name.encode("utf-8") + b"\0")
+        digest.update(sha256_file(path).encode("ascii") + b"\0")
+    return digest.hexdigest()
+
+
+def product_history_inventory_digest(rows: Sequence[Mapping[str, Any]]) -> str:
+    digest = hashlib.sha256()
+    for row in rows:
+        digest.update(str(row["case_id"]).encode("utf-8") + b"\0")
+        digest.update(str(row["npz_sha256"]).encode("ascii") + b"\0")
+        digest.update(str(row["model_sha256"]).encode("ascii") + b"\0")
     return digest.hexdigest()
 
 
@@ -524,6 +543,8 @@ def scalar_mean(values: Sequence[float]) -> float:
 
 def main() -> None:
     args = parse_args()
+    if re.fullmatch(r"[0-9a-f]{40}", args.source_commit) is None:
+        raise ValueError("analysis source commit must be an exact lowercase SHA")
     if not 1 <= args.gradient_iterations <= 30:
         raise ValueError("gradient iteration range must be within B5-A")
     device = torch.device(args.device)
@@ -533,9 +554,8 @@ def main() -> None:
     backbone = End2Race(mask_prob=0.0, hidden_scale=4)
     backbone.load_state_dict(bc_state, strict=True)
     backbone.eval().to(device)
-    probes, replay_validation = product_probe(
-        build_metric_index(args.b4_evaluation_root), backbone, device
-    )
+    product_rows = build_metric_index(args.b4_evaluation_root)
+    probes, replay_validation = product_probe(product_rows, backbone, device)
     probes["safe_reference"] = safe_probe(args.safe_reference)
 
     b4_head = load_head(args.b4_evaluation_root / "models/seed1_iter30.pth", device)
@@ -837,12 +857,29 @@ def main() -> None:
         "analysis_status": "read-only post-hoc opened-development mechanism audit",
         "device": str(device),
         "input": {
+            "source_commit": args.source_commit,
             "b4_evaluation_root": str(args.b4_evaluation_root),
             "b5_training_root": str(args.b5_training_root),
             "safe_reference": str(args.safe_reference),
             "safe_reference_sha256": sha256_file(args.safe_reference),
             "b5_curriculum_sha256": sha256_file(args.b5_training_root / "curriculum.json"),
             "gradient_iterations": args.gradient_iterations,
+            "bc_checkpoint_sha256": sha256_file(args.bc_checkpoint),
+            "b4_iter30_actor_sha256": sha256_file(
+                args.b4_evaluation_root / "models/seed1_iter30.pth"
+            ),
+            "b4_bc_product_history_inventory_sha256": product_history_inventory_digest(
+                product_rows
+            ),
+            "b5_checkpoint_inventory_sha256": aggregate_file_digest(
+                [checkpoint_paths[iteration] for iteration in range(31)]
+            ),
+            "b5_gradient_replay_inventory_sha256": aggregate_file_digest(
+                [
+                    args.b5_training_root / f"replay/iter_{iteration:04d}.npz"
+                    for iteration in range(1, args.gradient_iterations + 1)
+                ]
+            ),
         },
         "probe": {
             "groups": {

@@ -13,6 +13,7 @@ import csv
 import hashlib
 import json
 import math
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -30,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--paired-rows", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--source-commit", required=True)
     parser.add_argument("--bootstrap-replicates", type=int, default=BOOTSTRAP_REPLICATES)
     return parser.parse_args()
 
@@ -219,6 +221,8 @@ def occurrence_counts(
 
 def main() -> None:
     args = parse_args()
+    if re.fullmatch(r"[0-9a-f]{40}", args.source_commit) is None:
+        raise ValueError("analysis source commit must be an exact lowercase SHA")
     rows = read_rows(args.paired_rows)
     index, cases_by_startpoint = validate_and_index(rows)
     all_cases = tuple(sorted(case for case, variant in index if variant == "BC"))
@@ -307,6 +311,7 @@ def main() -> None:
         "schema": SCHEMA,
         "analysis_status": "read-only post-hoc qualification of an opened-development panel",
         "input": {
+            "source_commit": args.source_commit,
             "paired_rows": str(args.paired_rows),
             "paired_rows_sha256": sha256_file(args.paired_rows),
             "rows": len(rows),
