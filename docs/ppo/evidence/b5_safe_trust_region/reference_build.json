@@ -1,0 +1,590 @@
+{
+  "bc_checkpoint_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "episode_count": 64,
+  "frame_count": 51264,
+  "max_abs_stored_bc_speed_error": 0.0,
+  "max_abs_stored_bc_steer_error": 0.0,
+  "passed": true,
+  "path": "/home/haowei/end2race_b5_ref_20260714_015710/artifacts/safe_reference.npz",
+  "schema": "end2race-b5-safe-reference-1",
+  "selection": [
+    {
+      "episode_index": 0,
+      "l2_id": "L2:335b69abb8b99e650d739799bfc0655d9f7136795604878cba855eb59563ec06",
+      "l4_id": "L4:c22820ee765947b2988475f4b9dc8e0e26e8824462f34f33e9e26e5a4b0b5b00",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "7e935de4ba8c1afa989fdc6d0ec8d0133e4d6267a084001d8fe4d6c8b0ed1f66"
+    },
+    {
+      "episode_index": 1,
+      "l2_id": "L2:2f2fb1629314b630e55cc819bc00cf36e4458ab6723798b13b0894a33c5bf341",
+      "l4_id": "L4:15f3dd20bfe9eda679ce6bef0ffb5d3795903c515b58cef4c7eb222426b2f438",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "141259cf58f096413a5b2d0b40a75684b7fb3a4c1f1340251ab73e022cc9a849"
+    },
+    {
+      "episode_index": 2,
+      "l2_id": "L2:f0d9be0e7fb7e3ae330d15fb0a4481be48f849b7ccdbafa2070e08daa5a7aacd",
+      "l4_id": "L4:19232bc3bb0e5909f9fcedaa056f29e56580a3245cf0bfd9127a9d9a933693e9",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "89137801d3c9cc3fb519959aa625cedacedba4f7f2ef0c79311e1a3a722bafdb"
+    },
+    {
+      "episode_index": 3,
+      "l2_id": "L2:a4c2042b587cd3910a9fb1bc5d10c3a826aa7236504403790b24f294b7f4dfda",
+      "l4_id": "L4:05d435b2734ee9f4fd2edc15efc891e93045d7535638136c43fc313aa99ea021",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "98e32cfd3b81b6d89f87ef9814aa2153b19bc5cc9eb50fefd32f27ed7d2969fb"
+    },
+    {
+      "episode_index": 4,
+      "l2_id": "L2:5d444740db09f8911cb3dced96901960392d2b044e94a58db60492303dad1518",
+      "l4_id": "L4:bd76ed46cc6e91563987fa78bdc0b286628b6465430c4e2b3e15bdf541b9f8c8",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "976d4e5b2816d29a1e5d3b57a1e189f341cc878f5918b5ab2a8e8c5d95b098ec"
+    },
+    {
+      "episode_index": 5,
+      "l2_id": "L2:523024bb2de021bd900670d6d085aaab5c1485de65467248472c852831c53036",
+      "l4_id": "L4:720f9555b2245b585f36efe76a6864efd083c7bce71301d36ca6fb4ec77e9ef7",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "1cfdd0e334fecb55736fe90b009fe6039cd818a256cb12ce1de22c8d7829fad7"
+    },
+    {
+      "episode_index": 6,
+      "l2_id": "L2:8bd6782bdb3030cd2203dde565961a465af459661c73a54ec45c8b558dc749c7",
+      "l4_id": "L4:b27bac32e7439e50d3b62647edf264bfdea4c803a8fcd64ce54084bf08842731",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "028945ed62e822c3df7edc77f85d490b0c80963378297dacecab2714a4aa6887"
+    },
+    {
+      "episode_index": 7,
+      "l2_id": "L2:9126c7d4862c1588fb2d8ef9f590281ba74e617c17aa9976f428cc97057ea9cf",
+      "l4_id": "L4:67ac9801b24d8d06d611cd507ea9c18290c077380e3c0fe878747abb3d4db73a",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "follow",
+      "source_npz_sha256": "ffa577ec3381396cba3bda5a97b4f2286ddb55a00155f5fab787075ac38dd9b8"
+    },
+    {
+      "episode_index": 8,
+      "l2_id": "L2:7a5540fe37d18b6cebac8484e05bb1ae781be067d38683c6b0b09c998a2469c5",
+      "l4_id": "L4:fb14f6ce0d86b674eba1b60cde5e7720b66a044d38efddb5d9d12160093bdfd8",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "5b72065bc36c868e41dc0c540b92f85b893116e2b61bcdf020e356e0ff3fbf60"
+    },
+    {
+      "episode_index": 9,
+      "l2_id": "L2:61cbc5eab82d4a43865d2435c21b71f1c074a22d9506fdcfedbb010ff2527b4c",
+      "l4_id": "L4:61962c06fdbd1e5ba6caecb22cc09ad896449230d090d86f0e812007beb62a96",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "a7de971e015389d6851939750c4eb93396dff3b53aea4696d0e34236b82168b8"
+    },
+    {
+      "episode_index": 10,
+      "l2_id": "L2:312318b65c29f3c70e89c2ee7c4da42763a699db4c97f54835b1a51bc674de37",
+      "l4_id": "L4:720f9555b2245b585f36efe76a6864efd083c7bce71301d36ca6fb4ec77e9ef7",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "ed719045a86e69b9cf1e9f9010c9d329953592d1dad03bf97bbdbc3c9d4131c9"
+    },
+    {
+      "episode_index": 11,
+      "l2_id": "L2:2e92ab4beb9c5d45a66457724b6f6d611f5c2c8796283d25f035ebfa98f0abac",
+      "l4_id": "L4:495fd3f20c092a5df51c456cdc1bae19e341c9cdeffaecf686cb59f678966226",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "5f4fee4cdd0e95709370127d2962bb1795db8ddda71228f301770ff64e18abe2"
+    },
+    {
+      "episode_index": 12,
+      "l2_id": "L2:d08f8f0cea66ecbeb291fd46d2b8df42826d4efc576021862d0231485bb16804",
+      "l4_id": "L4:b896442cebadd776c14d4756e2a95a71c928de7d1d5b44c7d81c2524ad764c75",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "c28924a4516c6b4d1a0ddc1b38200467baa6953288d74f16bb8317888e3f3849"
+    },
+    {
+      "episode_index": 13,
+      "l2_id": "L2:31a9c90985c54dbb3eaed0b4525635a82aea24ffc6f0323c9bea7c50ecab94c3",
+      "l4_id": "L4:8be3adac08de0412b8008529af158a758a0dafd28296c40dc0360377609b5f33",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "be838859b25237c0fec83e33382e0775a96e2b8f90bb41c4e127295c5ea9439c"
+    },
+    {
+      "episode_index": 14,
+      "l2_id": "L2:8ac217520bdf13f7631e3e39899cedd14c41c8857dfcfd7ad6dd80fc8f96a566",
+      "l4_id": "L4:e153c287c5492308fc50d009ceeeebaa13b0e5f25fdc3997766622f8da0c5d65",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "91c17bde4327360b5cd7a87984bd26e5f5b4b99ccb97b703a6abd06ace50ff8b"
+    },
+    {
+      "episode_index": 15,
+      "l2_id": "L2:59d3013f74d5304825adc818f7ff4f7c128a1bf23e9814f3cb3bfda4d125c09d",
+      "l4_id": "L4:6e840202bddfec3a2c80a6ef39c21ea1faa9b5568deeb8c86a78450ff599a306",
+      "length": 801,
+      "map_name": "Austin",
+      "outcome": "overtake",
+      "source_npz_sha256": "da26124ad048c0eb65622b9149a4e6d62f891f3374c6f7e293012da703038fbc"
+    },
+    {
+      "episode_index": 16,
+      "l2_id": "L2:1015a899a02b359177c89453a420694fda167447b64494c1904fa0b2fcc23b63",
+      "l4_id": "L4:878471a75b06d9ef99e94722b351632d2f124854ea4d8620c35d23529fd69041",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "5024e723b6414c4dfbf4d673105cbba6c079906c563decb3599bdc7648440071"
+    },
+    {
+      "episode_index": 17,
+      "l2_id": "L2:7c2c311e42f9877b0f0a12f183e6554321d85fea5be3802ad077b12e31a4e298",
+      "l4_id": "L4:873e5d4501ebb8ea8ef5e72fb591e51a47adf51e1f7db78631ca84b473538dde",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "bf5aed8536bc3101db2792f3312f1c8bb8ba183944690d5a7ccb43b5c9e2d452"
+    },
+    {
+      "episode_index": 18,
+      "l2_id": "L2:acb5f6fd93e5da5a8c28f259b8ccd5a5e6bf3dd0ae31a03775df3524d4817fd1",
+      "l4_id": "L4:cf0ad714eeb90af7fcb232d38675cd6f700ab2e417bd1e0bd5078e24dc9a52ad",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "84537d7b3916756e396bd32318523db334e27e796b9dafcf99e16bd1882dd2da"
+    },
+    {
+      "episode_index": 19,
+      "l2_id": "L2:263db4f50a02bccbd660eac0861d645e489d1ad4e3d0ed38a36a06dcc19df6c8",
+      "l4_id": "L4:fbc2e97f9766149bdce0b8c2d723a23c16fd8db00b9269d5a63ab1556880f20e",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "efce5bd42434fb37d4e5a9a611ca5fac5ec0f1df3a7ce470f8ae7cad7f864917"
+    },
+    {
+      "episode_index": 20,
+      "l2_id": "L2:36cc0dd51409c8253581cf5bf0e9ca337e0adf6484f8dfdd29a988fe31b0d25e",
+      "l4_id": "L4:aa61a5a340957f1c86fde8c2cf473f73b6ce329d993039a3f92d495126731373",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "54610dbf765b0e5f9735e64f92b6eb86ac4d2b8cf7cc88b20a807387050c2e19"
+    },
+    {
+      "episode_index": 21,
+      "l2_id": "L2:6bcabcddf4e540eccc1fc321ac2a79a9aba3299a2ffffb388a90e61eea443020",
+      "l4_id": "L4:4a5d7fafe614d05a19dd47610042246c2d615dccabb9be0d6545db82c326be27",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "d7808b4637aad86a0bcc1daa69d35e6cb45fa04cfab18e7d0ae614a4734458bf"
+    },
+    {
+      "episode_index": 22,
+      "l2_id": "L2:2b0522075bdd44281039eb61d366a11a8aa013786211b12397056b57199f2609",
+      "l4_id": "L4:8281882a8889f31c19dfd1c05301014c8f199ca6ff9a406d310cd4e37e471b49",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "91ba76ebd6069292338de276c6a1797ca0e969fa517740e8bbec7af51177fa7d"
+    },
+    {
+      "episode_index": 23,
+      "l2_id": "L2:89143dbaace8cde5bd6c37d5af88ed0844f4e0aa2d1983efbba137dfc8ec17f3",
+      "l4_id": "L4:56540e0a09b870efabc9d38c33cdd0611758667b0cafbcacc475e9f07849c511",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "follow",
+      "source_npz_sha256": "8b02a52609e8fb8fc71d68ea24d73dfeef6dc3d4200cb3eb816240e14f5d448b"
+    },
+    {
+      "episode_index": 24,
+      "l2_id": "L2:2e0a5bd65b319d43cae30a6acbfb8c7855e497c4ee707b2c61bda4712ea56651",
+      "l4_id": "L4:6becb83ea4dbd67332028cac3c82be28a8e9b9cc577f7e23189651548a518b29",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "20fef073d657fec28284279a6e656e7ff12746d4017d33561052348abdb8c77d"
+    },
+    {
+      "episode_index": 25,
+      "l2_id": "L2:267ea346cb1c4180cbf98df114af03ca0b64573ce7ff3acd340159c933c0ea7b",
+      "l4_id": "L4:cb401abcba764e36bc2dbaedef0ee764a64a84247a77ce0caaac158118e1cb79",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "35e7af3cd4cdb8e3193003bab7df43779980f8ee03d0fd1e1e9b35b0510799cf"
+    },
+    {
+      "episode_index": 26,
+      "l2_id": "L2:811709fd7da93fe0c94c1635e1e5a3ea38f913f1059cbe1e66c2d084f8bf4010",
+      "l4_id": "L4:a4d9680e765b655a0be16291fb9f7036ac85664eebb840946e3d7bdf274f5488",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "252af5cffebc3c24c33d273a9e04fcf8ad2e436d56081ad6a8e37954570479b0"
+    },
+    {
+      "episode_index": 27,
+      "l2_id": "L2:7a948b83da39b7620a3ffb2ef933ebccffb7fed0139d3dd2c7817fbe65eafd1d",
+      "l4_id": "L4:3b595910ad7828aad015125878280a713dbe815fbe2cf35fc64057dc14ddc8d6",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "b14457d765f0d4a1d841e588b639d4947c10c7a98d94166570cd03f81ba791ba"
+    },
+    {
+      "episode_index": 28,
+      "l2_id": "L2:d074dfbc1009a7ab11bfc2bc91010a74331f668b5056f64d9b880a3cdd91dfa2",
+      "l4_id": "L4:585cd82ac095a3f1ef539b22165c0023a9c6e0e4e30a5f67b1ccac34f19b7e74",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "6317f1f508bd142e32e45d1d5cc74d3f250b85bfbf5cdf5e894c7b51fa835127"
+    },
+    {
+      "episode_index": 29,
+      "l2_id": "L2:1675cee414b0de6db549ffcd0822084ec1058b188cfa8ca099c3fe71e64d85a3",
+      "l4_id": "L4:7710ddbeee8decf22ca2afd5571af1780222f65f42d9605b3b730c1bd5406265",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "f98ba737d95f7b8c1577f691c34bc55cc3f8c0e02ab7f2f660504adcd6d3bdbf"
+    },
+    {
+      "episode_index": 30,
+      "l2_id": "L2:034f46412e8d44a619e13f70bf3a8bfa71a739cceb22d8145be45b431d7754b5",
+      "l4_id": "L4:bfeb966c179c2dc0b591dd613608f0d8720188024c43405076e16a358fbd1a73",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "e7d029211d23c075965a5e0c847c8975e1e3084cd2e891e5d8d90588a9f38007"
+    },
+    {
+      "episode_index": 31,
+      "l2_id": "L2:66ad28e8cdc1bfbf4132f2d271496112e408e8092db5e66121caa3e3c5d9c89e",
+      "l4_id": "L4:de8fec8cf561545c769dc67d8c28d14646fe54dc5c35d082ae96ce355817a421",
+      "length": 801,
+      "map_name": "Hockenheim",
+      "outcome": "overtake",
+      "source_npz_sha256": "b7848c74b2ead0ffec39abe6a857344f074cca94d036d1255ec578d7e03d3111"
+    },
+    {
+      "episode_index": 32,
+      "l2_id": "L2:467cfb12a19005c0c8eb858b41caa03bd78a5112cf6f578850ce1bbe773549ab",
+      "l4_id": "L4:2f6b987ed7e97781dc34c3b4968b436cf87c080e3db8d4d92e779e360f76acbc",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "11a8d9889f9aba6b22767ec987949a57885916a8937657468a0c1da154592b03"
+    },
+    {
+      "episode_index": 33,
+      "l2_id": "L2:613aad2e5ec2872923372eb76096a266806c8859d10408e0922816a4272aaf7a",
+      "l4_id": "L4:f2fe3fe6eb15f1bf1020a26fb304cd224db5f6ac05e83fbefff449f7bffd43b9",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "b9ee575a02f82c6f00214096d47cf8ca8619366dd93c02add49195322b161b90"
+    },
+    {
+      "episode_index": 34,
+      "l2_id": "L2:72d692a4fb8b0195e74a19ec658c2b09b7b36c1d4b7629cc670935194aa4fd37",
+      "l4_id": "L4:afe03ea128366871ce6dfe568f5fa287c76bfacee019ad7905d7e58b174f66e7",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "97bb51beafa7036fdc8132bcdf40d4a43abb1690d8fc495b6caa03db62ef5af7"
+    },
+    {
+      "episode_index": 35,
+      "l2_id": "L2:27e3cad19bd03a215dba98b91dc6c6302ab6f7144781158a1de94050fb5931d4",
+      "l4_id": "L4:1809f7d05e5427b7660cd41fbdf055b83c48b340b5291d015a29f0b9d7192d47",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "b0d92de55377448308739f4586eaa68288a2f07ec8e12f8a77665615c9a48650"
+    },
+    {
+      "episode_index": 36,
+      "l2_id": "L2:0041572a8f40c26f0b9b702721561231751730f399e675875ec6a4ed76884ad8",
+      "l4_id": "L4:02c0afa8ba3910d18a807de601b5277d3539486820cd5a45476d648e20371695",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "9fd926946cd07fa9ca13671ba2088a47a5860c2f3b5966b1aea576af5b06c77c"
+    },
+    {
+      "episode_index": 37,
+      "l2_id": "L2:b6a8ffd937d57fa00b1dd64b06dc663ffce988c0743843385356c44c70cf9021",
+      "l4_id": "L4:d55f3621b8ddfa95e2a7825b5d0f0bc4e43833510e0df2e1e5ad219a2e221b28",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "29ad52f246835f458a6a5deeddae36cd491de0affb892b7e226433c714083fbf"
+    },
+    {
+      "episode_index": 38,
+      "l2_id": "L2:601960e22e6f3d56e01e1533604ca0adffff946e13c331a619fa04773343bfee",
+      "l4_id": "L4:325d9d2863da48d46d43c672e2b267e66039a1aab52ed69b041f8fcc6fa2df68",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "f45ad675f0a551d38212b8e362fed8b81a3968345d0aebf6f67c7322b3abfa63"
+    },
+    {
+      "episode_index": 39,
+      "l2_id": "L2:099673302055664ba18588e7fe7b0603be226a47f535543c4961d9ee7db5a435",
+      "l4_id": "L4:a304be83662ab0573788c6ee6ae1219aa9c9b2ebc8cc2cc34b33ac33f5414f1d",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "follow",
+      "source_npz_sha256": "81a40d170db4de103d4107712ae1f35d7ad33b3952c0520edffe26061a032c9e"
+    },
+    {
+      "episode_index": 40,
+      "l2_id": "L2:ba0a6b74e49b69309aaf73ff5eb4650bc5d7b52a4a85bacf6b2de47adbf1e47c",
+      "l4_id": "L4:02c0afa8ba3910d18a807de601b5277d3539486820cd5a45476d648e20371695",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "625b2f0aa5c1d171aacc989e31fafdaac9f3ae9f59f43900207c5cb2124d7625"
+    },
+    {
+      "episode_index": 41,
+      "l2_id": "L2:f5abfe62dc64398cf831baec515d29f0f0f1a89760c963eaa2ec46ce3a303797",
+      "l4_id": "L4:2f6b987ed7e97781dc34c3b4968b436cf87c080e3db8d4d92e779e360f76acbc",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "0fb2dff28905923b6601f8628c5b7370cac23cc2bf393b9578d0321f75cb4a14"
+    },
+    {
+      "episode_index": 42,
+      "l2_id": "L2:92ec6433b0b75545566cd605aa641a27b8d721f13a3c0666e564ab7684d12fce",
+      "l4_id": "L4:f5885acee48108703f05695b8c351353aa1cad4fdd26d21cc5d1d10ff34787b5",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "3401b384562b78b4e99266d5db0fc7879c68a0bce33f073a66454d3449687322"
+    },
+    {
+      "episode_index": 43,
+      "l2_id": "L2:c5b7af3ad56cb73c9ea4c5298494afbb25830584c2f0509f20599110a48d2012",
+      "l4_id": "L4:ec86e1c7a18679dfdad8d305994b261a98f9cb24132785fc35987a3995f0d346",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "61842aebef48e954d814bf56ebf8b3a0c4194ae800a36ccf133ad0ba75c1e7db"
+    },
+    {
+      "episode_index": 44,
+      "l2_id": "L2:37a828721b2f45ff3116d2c74370736a79f153ee3670f509b17d67e2141001ed",
+      "l4_id": "L4:0208a61cb9015f7651654298fed9c5d3f52b0fa13e5f161ec006e397aef9c5d4",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "f92c4c1ca3e30457ffb8cb0962c572053b08bf8a6f496ac0dbd62de14f2a1e09"
+    },
+    {
+      "episode_index": 45,
+      "l2_id": "L2:b832c95b7212885f295dc556b9e99f58a05817e165a2774e11eb7dd581f4c794",
+      "l4_id": "L4:360742b0ad6b7996047f5b2e6c0f25125d54c2816dd41b1dbe4bea18b9dec38d",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "3d4a34dd9d9517fb565a1e8d70f58709df353afac5d0669311541368edb52076"
+    },
+    {
+      "episode_index": 46,
+      "l2_id": "L2:70c08060b9ca115b6f6667925fee681e7cac9097b60a678346506c9d76ca2340",
+      "l4_id": "L4:6e8ea26f91fee570ff3078b0eb7dc51fcc55769b57c2c4c39f7f74689611c5a1",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "f82f31f54844696fdd37a034ac9f541d3ddc1278ce5ceab12a0ad31671cb97af"
+    },
+    {
+      "episode_index": 47,
+      "l2_id": "L2:37cd798259acb9ace69b9aad5093864e3b52c76ef93c1b9094f482085559943d",
+      "l4_id": "L4:bcc031b9bc3c6872b023491e76ff7376c59d7dccb77ab69f4810d68af279662c",
+      "length": 801,
+      "map_name": "MoscowRaceway",
+      "outcome": "overtake",
+      "source_npz_sha256": "38699e0664bc9b829dc7fc47fc20d56bf739d51a9557ad6b23645649d76292f4"
+    },
+    {
+      "episode_index": 48,
+      "l2_id": "L2:7efffbcebb7f151e9907ed0bdb489dfaa2a19c791d93a5da90a955675b2f781f",
+      "l4_id": "L4:a0e6e270cc5d700ab815a81d4df2c098af83e790f82fb5155e9ef72f0a2e8c2a",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "07f69f84148c4927dc7c2b0dbd1bd059ce80369b3f9c19d4c3f11a9f0a1bb215"
+    },
+    {
+      "episode_index": 49,
+      "l2_id": "L2:77e16c106658d7eabbd2d85478db773599937438888c662e40f61fe2741e56f6",
+      "l4_id": "L4:6c12dd8f303928fbb7bb741c13d605ef43915b3c817e0d11c0eaab80befa800f",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "0ddfe5a511d8c57dd1695ccf6fdf7341266f8b8f5b037ea4bdd2d8a5e5038070"
+    },
+    {
+      "episode_index": 50,
+      "l2_id": "L2:7efe3cf0f4341bfa777423fdb8c602d78f82e839b9b12f55f7c31b3917a444e3",
+      "l4_id": "L4:0ea7233203132f3bb3f656c3c16a6aa4afa7fcb7163cac311f4ac2986ff4d1d1",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "3090b3b2fb8efda4951375a767a3f7cd52db9d9af07121c973d5f45aa5c3ed04"
+    },
+    {
+      "episode_index": 51,
+      "l2_id": "L2:2bec0be2f452c1551bed4f990f45950c70a12a66ff59c879b71378d954d93a1f",
+      "l4_id": "L4:117478dae228fa3c75caf5b363bc0beaa46c13c797bc08735fbb8d8222584444",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "08dcadbf55494305275ea7800ca7de157f06dd92f3880f4b0b0c7ea05f914318"
+    },
+    {
+      "episode_index": 52,
+      "l2_id": "L2:c438e2eedfb74d41146195d1cabbf9f23ddfcb9b1da7acbe6ccbec4e52cb2324",
+      "l4_id": "L4:c284d6eb9f0dd5991ac1202088d89bc8beb88adb7d83faff05f2489bd8ae383d",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "3ab00ee639e6a3b60de3fe1f67d665f6bedf704132f72faa58c4762f78a6befe"
+    },
+    {
+      "episode_index": 53,
+      "l2_id": "L2:5df3ec27fe3035b9630589605a82d7fa08899c0a25fac1f8acdde2b687f6fac1",
+      "l4_id": "L4:ceec1e53567472e06f6a4e59aaafde6174408849ed02e7430d6f625aa823bb34",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "ac441ecb94b525a436d7ad8c110a691babaf9031355bbfffe8cb6c10b9e77f4c"
+    },
+    {
+      "episode_index": 54,
+      "l2_id": "L2:e403cf3d8ee7d31aa45fc11d61a3b14a6f074bc3ce0ac8d74af506948d3a8234",
+      "l4_id": "L4:454e65e0eb8cde720ef81d148f2339f190daa19ca31c2e439379fc3613c83d2b",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "664b914325b05a9f5e4cb423ab8575f6422e12080fe7cd3ea053ff4e82914644"
+    },
+    {
+      "episode_index": 55,
+      "l2_id": "L2:8d5bc6ba7f7c067eda18fe017388ca3a24f84f363d0cfebb4133703cc08ca6b1",
+      "l4_id": "L4:3631c9d9b1a58d1b515536ac8e9ecb1dbd80e2251c409e214090cd561c4ac5fc",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "follow",
+      "source_npz_sha256": "fec318ca89004edb648369a5c37fb9c660cdcbcf60337ce6ccc34646d5a620f9"
+    },
+    {
+      "episode_index": 56,
+      "l2_id": "L2:8383b0ddea910128bb2c3c5958d2c50beaf4a2c78f927515b094e55aa23ce212",
+      "l4_id": "L4:a422312b65d4587eb059c096137c72e4c0375bcfd83e44357dd313d0be61c656",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "6f4fa9765d332f66a23c0dd55316669b3c67e595f22fedac96a145f3c249c676"
+    },
+    {
+      "episode_index": 57,
+      "l2_id": "L2:fda49c506eeeed57dfc309f1904f1f23c3208235fd88cf6e2b0b8bc588e1182f",
+      "l4_id": "L4:e9f0217c7571c96b54a3550293d952cf1f34830e241928b816a3b5ae4bb2dfac",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "546966aecbff58ee22fbbf1aec094c93c7202358563c305d96ea138295cfc6f8"
+    },
+    {
+      "episode_index": 58,
+      "l2_id": "L2:e0fb82753691ccd75b37a61ed9a9ff1729d2a90ac70f463f35d753a359203f17",
+      "l4_id": "L4:ceec1e53567472e06f6a4e59aaafde6174408849ed02e7430d6f625aa823bb34",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "92e0d604e9dd4716ff449313d14d41ddbb4029649d0fa1ff84ffa1eed8a03dfe"
+    },
+    {
+      "episode_index": 59,
+      "l2_id": "L2:66e46d7ad716334dde0fc46962c45810c47c7e9382f07685fcec84454ba65914",
+      "l4_id": "L4:8e560273f6d75ad46682ce6faa7bba23e306c33466d95f0a59c73ecbb9d92cac",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "55facff24418f6bdea4c1bc3a195409f891ba0507931d8a86a53aea3f90cf80f"
+    },
+    {
+      "episode_index": 60,
+      "l2_id": "L2:635fa8e3020ade46a4ed453aee0207700946d62f49d309d916a66258e832db92",
+      "l4_id": "L4:8e40f7e7d54e0b19876afd0348072f579fef8a3a930c8cd35175204991bcf594",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "5390636b015a308c468614e06dc77e97cf999684991b9c99b9b7b0c92a7af105"
+    },
+    {
+      "episode_index": 61,
+      "l2_id": "L2:ae1587e5ee6a78708ea290cdebfe33d1a9fade05e18138689a9008c24283f2d2",
+      "l4_id": "L4:24e6a0cd1ff6c44a8c22789e18e2d94bd4c96ff8242907ad225d10ff11ab956f",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "5584a80918d51a8ab5e112e2dd01b72de2f5992cdbaf2463533878c01bb39b45"
+    },
+    {
+      "episode_index": 62,
+      "l2_id": "L2:25b2fb225c939881e646707662b3da0aa1b63d92ca4e5d3942bb69e88683b9d3",
+      "l4_id": "L4:d5a3518b23f6f7f7d6bc135aecaf748964822ac06db6a4c3984dafcde3cee09b",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "f6673275bc11c36f5a505c14fd8a33a2794e28b5a8a7139cfa4a6fc891e83bef"
+    },
+    {
+      "episode_index": 63,
+      "l2_id": "L2:a35112060f12cea56f36ff2a18ff1f104fc362372fc6099c9569e0f8a8686137",
+      "l4_id": "L4:cfee6bf68fb6abf3cbf7ec6383196e621f2ef3eba36e572e9fc20bdddbbdda0b",
+      "length": 801,
+      "map_name": "Nuerburgring",
+      "outcome": "overtake",
+      "source_npz_sha256": "320a8093d4d1eb3cc54ca9e6436f734bab9326a30662481beeacf6a63135d369"
+    }
+  ],
+  "sha256": "6b0e69417ff4e127f3959b5c3506115d5e4420cbb551a1a7bf2abea758b0fe4c",
+  "training_manifest_sha256": "2e70d274853a2b5ed5518fdd926d45ab96a81943e80069a6ecc90160b7cc91ba"
+}

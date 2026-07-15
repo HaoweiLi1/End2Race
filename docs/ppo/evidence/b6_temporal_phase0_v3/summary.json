@@ -1,0 +1,383 @@
+{
+  "episode_count": 1440,
+  "execution_source_commit": "677ab3a75070f7ef5d685ad34e987f65c99893b3",
+  "gates": {
+    "all_conjunctive": false,
+    "collision_repair": false,
+    "integrity": true,
+    "overtake_preservation": false,
+    "safe_collision_noninferiority": false
+  },
+  "innovation_seeds": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "learner_started": false,
+  "matched_l4_count": 60,
+  "max_abs_batched_pre_update_ratio_minus_one": {
+    "ar1": 0.00014710426330566406,
+    "iid": 3.4809112548828125e-05
+  },
+  "max_abs_conditional_log_prob_replay_error": 0.0,
+  "max_abs_framewise_pre_update_ratio_minus_one": 0.0,
+  "noise": {
+    "ar1": {
+      "lag1_correlation": [
+        0.9498687783052027,
+        0.9489647634827014
+      ],
+      "mean": [
+        0.0005487781742275597,
+        -0.0020843629810109636
+      ],
+      "std": [
+        0.029934320578468777,
+        0.19791958344158223
+      ],
+      "transition_count": 512494,
+      "window_mean_rms": {
+        "10": [
+          0.02760326217042564,
+          0.1821931240422578
+        ],
+        "30": [
+          0.023891930295974757,
+          0.1571975956950082
+        ],
+        "50": [
+          0.02115377933125428,
+          0.1388881999797659
+        ]
+      }
+    },
+    "iid": {
+      "lag1_correlation": [
+        -0.00046891919439384156,
+        -0.00030968815887789074
+      ],
+      "mean": [
+        9.863476426758308e-05,
+        -0.0003068018230500967
+      ],
+      "std": [
+        0.02998275561507775,
+        0.19982185562237728
+      ],
+      "transition_count": 531391,
+      "window_mean_rms": {
+        "10": [
+          0.009473798219806696,
+          0.06299315116867678
+        ],
+        "30": [
+          0.005458590975406635,
+          0.0360869088795934
+        ],
+        "50": [
+          0.004229550687127747,
+          0.02784448305844625
+        ]
+      }
+    }
+  },
+  "occurrence_mcnemar": {
+    "overtake_loss": {
+      "mcnemar_two_sided": 0.0015137195587158203,
+      "negative": 5,
+      "positive": 22
+    },
+    "repair": {
+      "mcnemar_two_sided": 0.4397054291858219,
+      "negative": 37,
+      "positive": 45
+    },
+    "safe_harm": {
+      "mcnemar_two_sided": 1.1008055578187737e-11,
+      "negative": 4,
+      "positive": 52
+    }
+  },
+  "outcome_counts": {
+    "ar1": {
+      "collision": {
+        "collision": 116,
+        "follow": 52,
+        "overtake": 72
+      },
+      "follow": {
+        "collision": 40,
+        "follow": 191,
+        "overtake": 9
+      },
+      "overtake": {
+        "collision": 23,
+        "follow": 4,
+        "overtake": 213
+      }
+    },
+    "iid": {
+      "collision": {
+        "collision": 124,
+        "follow": 54,
+        "overtake": 62
+      },
+      "follow": {
+        "collision": 10,
+        "follow": 228,
+        "overtake": 2
+      },
+      "overtake": {
+        "collision": 5,
+        "follow": 5,
+        "overtake": 230
+      }
+    }
+  },
+  "overtake_loss_ar1_minus_iid": {
+    "cluster_bootstrap": {
+      "lower_95": 0.03333333333333333,
+      "upper_95": 0.1125,
+      "upper_one_sided_90": 0.09583333333333334
+    },
+    "cluster_integer_effects": [
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      2,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      -1,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+    ],
+    "cluster_signflip_one_sided": 0.0004730224609375,
+    "net_pair_count": 17,
+    "rate_difference": 0.07083333333333333
+  },
+  "pair_count": 720,
+  "phase0_decision": "NO_GO",
+  "projection_counts": {
+    "ar1": {
+      "projection_transitions": 687,
+      "speed_projections": 0,
+      "steer_projections": 687,
+      "transitions": 512494
+    },
+    "iid": {
+      "projection_transitions": 679,
+      "speed_projections": 0,
+      "steer_projections": 679,
+      "transitions": 531391
+    }
+  },
+  "relative_std_errors": {
+    "ar1": [
+      0.002189314051040725,
+      0.010402082792088874
+    ],
+    "iid": [
+      0.0005748128307416778,
+      0.0008907218881136769
+    ]
+  },
+  "repair_ar1_minus_iid": {
+    "cluster_bootstrap": {
+      "lower_95": -0.05416666666666667,
+      "upper_95": 0.12083333333333333,
+      "upper_one_sided_90": 0.09166666666666666
+    },
+    "cluster_integer_effects": [
+      0,
+      2,
+      1,
+      0,
+      -1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      2,
+      -2,
+      0,
+      1,
+      -1,
+      0,
+      -1,
+      -1,
+      3,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+      -2,
+      0,
+      2,
+      0,
+      -3,
+      -2,
+      0,
+      1,
+      1,
+      1,
+      0,
+      2,
+      2,
+      0,
+      0,
+      -1,
+      2,
+      2,
+      4,
+      -3,
+      0,
+      -1,
+      0,
+      1,
+      2,
+      -3,
+      -1,
+      0,
+      -1,
+      0,
+      -2
+    ],
+    "cluster_signflip_one_sided": 0.26203474510111846,
+    "net_pair_count": 8,
+    "rate_difference": 0.03333333333333333
+  },
+  "run_plan_sha256": "4a3923dbe2cf87073aa0aadb0bc59d8d8222882c107cb3d31c5e50f275dbbe7f",
+  "safe_collision_harm_ar1_minus_iid": {
+    "cluster_bootstrap": {
+      "lower_95": 0.07083333333333333,
+      "upper_95": 0.13125,
+      "upper_one_sided_90": 0.12083333333333333
+    },
+    "cluster_integer_effects": [
+      0,
+      2,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      2,
+      0,
+      0,
+      3,
+      1,
+      0,
+      0,
+      0,
+      2,
+      3,
+      1,
+      1,
+      -1,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      3,
+      0,
+      2,
+      0,
+      1,
+      0,
+      2,
+      0,
+      0,
+      2,
+      1,
+      1,
+      0,
+      2,
+      2,
+      0,
+      1,
+      1,
+      1,
+      1,
+      2,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      2,
+      1
+    ],
+    "cluster_signflip_one_sided": 4.190951585769653e-09,
+    "net_pair_count": 48,
+    "rate_difference": 0.1
+  },
+  "schema": "end2race-b6-temporal-phase0-summary-1",
+  "scope": "training-only matched-L4 common-random-number mechanism audit; not product evaluation and not evidence that PPO can learn the behavior"
+}

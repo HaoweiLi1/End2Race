@@ -1,0 +1,31 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/f110_gym/envs/base_classes.py:93: UserWarning: Chosen integrator is RK4. This is different from previous versions of the gym.
+  warnings.warn(f"Chosen integrator is RK4. This is different from previous versions of the gym.")
+/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/f110_gym/envs/base_classes.py:93: UserWarning: Chosen integrator is RK4. This is different from previous versions of the gym.
+  warnings.warn(f"Chosen integrator is RK4. This is different from previous versions of the gym.")
+B7_ITERATION {"accepted": true, "consecutive_rejections": 0, "episodes": 32, "iteration": 1, "rollout_kl": 0.0017476871234845958, "safe_kl": 0.0017073695509414648, "transitions": 23513}
+B7_ITERATION {"accepted": true, "consecutive_rejections": 0, "episodes": 32, "iteration": 2, "rollout_kl": 0.0014666931574785864, "safe_kl": 0.006384081892033169, "transitions": 21301}
+B7_ITERATION {"accepted": true, "consecutive_rejections": 0, "episodes": 32, "iteration": 3, "rollout_kl": 0.00032128678070808114, "safe_kl": 0.008798612779076061, "transitions": 22661}
+B7_ITERATION {"accepted": false, "consecutive_rejections": 1, "episodes": 32, "iteration": 4, "rollout_kl": 0.00032550106838858414, "safe_kl": 0.010651650233738793, "transitions": 23883}
+B7_ITERATION {"accepted": false, "consecutive_rejections": 2, "episodes": 32, "iteration": 5, "rollout_kl": 0.00014854401196696016, "safe_kl": 0.0111975278946491, "transitions": 23027}
+B7_ITERATION {"accepted": true, "consecutive_rejections": 0, "episodes": 32, "iteration": 6, "rollout_kl": 2.985673822490427e-05, "safe_kl": 0.009609828160351145, "transitions": 23056}
+B7_ITERATION {"accepted": false, "consecutive_rejections": 1, "episodes": 32, "iteration": 7, "rollout_kl": 1.5948904732961472e-05, "safe_kl": 0.010376400710690783, "transitions": 22428}
+B7_ITERATION {"accepted": false, "consecutive_rejections": 2, "episodes": 32, "iteration": 8, "rollout_kl": 9.155026321423915e-06, "safe_kl": 0.010711492575207319, "transitions": 21340}
+B7_ITERATION {"accepted": false, "consecutive_rejections": 3, "episodes": 32, "iteration": 9, "rollout_kl": 7.162028257709522e-07, "safe_kl": 0.011441425722462347, "transitions": 22080}
+{
+  "candidate_actor_file_sha256": null,
+  "candidate_actor_tensor_sha256": null,
+  "candidate_iteration": null,
+  "completed_iterations": 9,
+  "evaluation_performed": false,
+  "integrity_passed": true,
+  "plan_sha256": "3cd0f801f59609fcf6ab02a674851f49678de6b0fb04dc6a27201ff08c2672ad",
+  "schema": "end2race-b7-plain-recurrent-result-1",
+  "sealed_pool_opened": false,
+  "seed": 1,
+  "seed0_started": false,
+  "status": "EARLY_STOP_NO_CANDIDATE",
+  "stopped_after_three_consecutive_actor_rejections": true
+}

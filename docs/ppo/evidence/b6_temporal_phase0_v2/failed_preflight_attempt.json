@@ -1,0 +1,15 @@
+{
+  "attempt_execution_source": "5ad2f60f3b930c27b062c558bf53897ca127b745",
+  "by_mode": {
+    "ar1": 37,
+    "iid": 38
+  },
+  "complete": false,
+  "episode_count": 75,
+  "learner_started": false,
+  "max_abs_batched_ratio_minus_one": 0.00013494491577148438,
+  "outcomes_analyzed": false,
+  "reason": "unscaled B4 batched replay tolerance did not account for smaller AR1 conditional standard deviation",
+  "remote_preserved_path": "/home/haowei/end2race_analysis/b6_temporal_phase0_v2_5ad2f60.failed_batched_ratio_tolerance",
+  "status": "STOPPED_NUMERICAL_INTEGRITY_CONTRACT"
+}

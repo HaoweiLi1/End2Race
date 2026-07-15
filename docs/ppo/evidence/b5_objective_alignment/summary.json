@@ -1,0 +1,72 @@
+{
+  "aggregate_comparison": {
+    "candidate_corrected_safe_cap_pass_count": 5,
+    "candidate_epochs_with_lower_b4_global_cosine": 4,
+    "candidate_epochs_with_lower_safe_cap_cosine": 3,
+    "candidate_raw_safe_cap_pass_count": 7,
+    "finite_safe_cap_comparison_iterations": 9,
+    "iterations_with_lower_b4_global_cosine": 6,
+    "iterations_with_lower_safe_cap_cosine": 1,
+    "median_collision_component_functional_norm_ratio": 0.19518099848192244,
+    "median_corrected_minus_raw_b4_cosine": -0.04324088602365933,
+    "median_corrected_minus_raw_candidate_b4_cosine": 0.06149691812575323,
+    "median_corrected_minus_raw_candidate_cap_cosine": 0.010813714218041781,
+    "median_corrected_minus_raw_cap_cosine": 0.011148041365683536
+  },
+  "analysis_status": "read-only post-hoc opened-development mechanism audit",
+  "device": "cuda:0",
+  "input": {
+    "b4_bc_product_history_inventory_sha256": "e3a64acdbad2a3951cd7f7d0992e792a3af9095619f54c19f976c740d616b0c4",
+    "b4_evaluation_root": "/home/haowei/end2race_analysis/b5_objective_20260714_05701c1/inputs/b4",
+    "b4_iter30_actor_sha256": "cfbac4c045f58a30ef3199f83929adba7c0e2677bc5c830e5c666a7509e75f32",
+    "b5_checkpoint_inventory_sha256": "11b4ed43586b3f457cc9512f54bd1693bd743f8c855e9510df55e0cb9066cf42",
+    "b5_curriculum_sha256": "0affdb264e541d78e2a9d3691b384df8f6058aac26e03fdcde4221e5f6bca6a1",
+    "b5_gradient_replay_inventory_sha256": "014576514855c5be01d831aedcd6f043571b21ec67699e902f25f301e3dfe26b",
+    "b5_training_root": "/home/haowei/end2race_analysis/b5_objective_20260714_05701c1/inputs/b5_training",
+    "bc_checkpoint_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "gradient_iterations": 10,
+    "safe_reference": "/home/haowei/end2race_analysis/b5_objective_20260714_05701c1/inputs/safe_reference.npz",
+    "safe_reference_sha256": "6b0e69417ff4e127f3959b5c3506115d5e4420cbb551a1a7bf2abea758b0fe4c",
+    "source_commit": "05701c1a804b0bb79b47ddcc1386898c7ad8e547"
+  },
+  "interpretation_contract": {
+    "candidate_epoch": "one counterfactual base-LR epoch restores the historical actor Adam state and minibatch order; it is closer to the learner than the full-batch gradient but does not execute the safe-cap retry ladder or later actor epochs",
+    "causal_boundary": "alignment can support or weaken the objective-mismatch hypothesis but cannot by itself prove that a weighted PPO run will improve collision",
+    "function_space": "J times negative loss-gradient on fixed canonical-BC probes; product probes use 32 deterministic frames per episode and safe-reference uses every frame",
+    "gradient": "full-rollout first-order loss gradient at the pre-update checkpoint, decomposed with one shared globally normalized advantage; it is not the executed Adam epoch",
+    "regularizer_weight": "prevalence weights affect advantage normalization and PPO surrogate only; the mean-bound regularizer retains the historical episode-equal trust weight",
+    "weight_status": "weights are tuned from the already-open Austin development panel, not a fresh or universal product prevalence estimate"
+  },
+  "opened_austin_prevalence_weights": {
+    "collision": 0.10666666666666667,
+    "follow": 1.56,
+    "overtake": 1.5199999999999998
+  },
+  "probe": {
+    "groups": {
+      "bc_collision": {
+        "frames": 768,
+        "weight_sum": 0.9999999999999998
+      },
+      "bc_follow": {
+        "frames": 7488,
+        "weight_sum": 0.9999999999999999
+      },
+      "bc_overtake": {
+        "frames": 10944,
+        "weight_sum": 1.0
+      },
+      "safe_reference": {
+        "frames": 51264,
+        "weight_sum": 0.9999999999999998
+      }
+    },
+    "product_frames_per_episode": 32,
+    "product_replay_validation": {
+      "max_abs_bc_speed_error": 1.9073486328125e-06,
+      "max_abs_bc_steer_error": 2.682209014892578e-07
+    },
+    "safe_reference_bc_mean_max_abs_error": 2.86102294921875e-06
+  },
+  "schema": "end2race-b5-objective-alignment-audit-1"
+}

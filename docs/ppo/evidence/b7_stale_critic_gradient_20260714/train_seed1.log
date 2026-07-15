@@ -1,0 +1,19 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/f110_gym/envs/base_classes.py:93: UserWarning: Chosen integrator is RK4. This is different from previous versions of the gym.
+  warnings.warn(f"Chosen integrator is RK4. This is different from previous versions of the gym.")
+/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/f110_gym/envs/base_classes.py:93: UserWarning: Chosen integrator is RK4. This is different from previous versions of the gym.
+  warnings.warn(f"Chosen integrator is RK4. This is different from previous versions of the gym.")
+B7_ITERATION {"accepted": true, "consecutive_rejections": 0, "episodes": 32, "iteration": 1, "rollout_kl": 0.0017476871234845958, "safe_kl": 0.0017073695509414648, "transitions": 23513}
+Traceback (most recent call last):
+  File "/home/haowei/Experiments/staging/b7_seed1_20260714_111918/repo/scripts/run_b7_recurrent.py", line 704, in <module>
+    sys.exit(main())
+  File "/home/haowei/Experiments/staging/b7_seed1_20260714_111918/repo/scripts/run_b7_recurrent.py", line 700, in main
+    return int(args.func(args))
+  File "/home/haowei/Experiments/staging/b7_seed1_20260714_111918/repo/scripts/run_b7_recurrent.py", line 551, in run_train
+    update = update_policy(
+  File "/home/haowei/Experiments/staging/b7_seed1_20260714_111918/repo/bplus_v22/b7_recurrent.py", line 817, in update_policy
+    raise AssertionError("B7 critic received an actor gradient")
+AssertionError: B7 critic received an actor gradient
+ERROR conda.cli.main_run:execute(127): `conda run python scripts/run_b7_recurrent.py train --repo . --plan ../control/run_plan.json --output ../outputs/train/seed1 --seed 1 --device cuda:0` failed. (See above for error)

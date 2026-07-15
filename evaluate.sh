@@ -4,7 +4,7 @@
 MODEL_PATH="pretrained/end2race.pth"
 HIDDEN_SCALE=4
 NOISE=0.0
-NUM_WORKERS=4
+NUM_WORKERS=8
 MAP_NAME="Austin"
 RENDER=true
 SIM_DURATION=8.0
@@ -36,6 +36,17 @@ start_time=$(date +%s)
 
 # Temporary directory to store individual results
 temp_dir=$(mktemp -d)
+trap 'rm -rf "$temp_dir"' EXIT
+
+pct() {
+    awk -v count="$1" -v total="$total_segments" 'BEGIN {
+        if (total == 0) {
+            printf "0.0"
+        } else {
+            printf "%.1f", count * 100 / total
+        }
+    }'
+}
 
 # Generate parameter combinations and run evaluations
 job_id=0
@@ -43,17 +54,33 @@ job_id=0
 for ego_idx in "${ego_idx_range[@]}"; do
     for opp_raceline in "${OPP_RACELINES[@]}"; do
         for speed_scale in "${OPP_SPEED_SCALES[@]}"; do
-            cmd="python eval_multiagent.py --model_path $MODEL_PATH --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE"
-            
+            exit_result_path="$temp_dir/$job_id.exit"
+            log_result_path="$temp_dir/$job_id.log"
+            json_result_path="$temp_dir/$job_id.json"
+            cmd=(
+                python eval_multiagent.py
+                --model_path "$MODEL_PATH"
+                --map_name "$MAP_NAME"
+                --ego_idx "$ego_idx"
+                --interval_idx "$INTERVAL_IDX"
+                --ego_raceline "$EGO_RACELINE"
+                --opp_raceline "$opp_raceline"
+                --opp_speedscale "$speed_scale"
+                --sim_duration "$SIM_DURATION"
+                --hidden_scale "$HIDDEN_SCALE"
+                --noise "$NOISE"
+                --metrics_out "$json_result_path"
+            )
+
             if [ "$RENDER" = true ]; then
-                cmd="$cmd --render"
+                cmd+=(--render)
             fi
-            
+
             while [ $(jobs -r | wc -l) -ge $NUM_WORKERS ]; do
                 sleep 0.1
             done
-            
-            (eval "$cmd" >/dev/null 2>&1; echo $? > "$temp_dir/$job_id") &
+
+            ("${cmd[@]}" > "$log_result_path" 2>&1; echo $? > "$exit_result_path") &
             ((job_id++))
         done
     done
@@ -67,34 +94,16 @@ elapsed=$((end_time - start_time))
 echo ""
 echo "Evaluation complete in ${elapsed} seconds"
 
-# Count results by exit code
-following_count=0
-overtaking_count=0
-collision_count=0
-error_count=0
-
-for result_file in "$temp_dir"/*; do
-    if [ -f "$result_file" ]; then
-        exit_code=$(cat "$result_file")
-        case $exit_code in
-            1) ((following_count++)) ;;
-            2) ((overtaking_count++)) ;;
-            3) ((collision_count++)) ;;
-            *) ((error_count++)) ;;
-        esac
-    fi
-done
-
-rm -rf "$temp_dir"
-
-success_count=$((following_count + overtaking_count))
-success_rate=$(echo "scale=1; $success_count * 100 / $total_segments" | bc)
-collision_rate=$(echo "scale=1; $collision_count * 100 / $total_segments" | bc)
-
-echo ""
-echo "Results by category:"
-echo "  following: $following_count ($(echo "scale=1; $following_count * 100 / $total_segments" | bc)%)"
-echo "  overtaking: $overtaking_count ($(echo "scale=1; $overtaking_count * 100 / $total_segments" | bc)%)"
-echo "  success: $success_count ($(echo "scale=1; $success_count * 100 / $total_segments" | bc)%)"
-echo "  collision: $collision_count ($(echo "scale=1; $collision_count * 100 / $total_segments" | bc)%)"
-echo "  error: $error_count ($(echo "scale=1; $error_count * 100 / $total_segments" | bc)%)"
+# Aggregate from metrics JSONs with strict completeness validation.
+# Worker exit code 0 = success; outcomes are read from the JSON files only.
+if ! result_line=$(python aggregate_eval.py \
+    --tmp_dir "$temp_dir" \
+    --expected_total "$total_segments" \
+    --model_path "$MODEL_PATH" \
+    --map_name "$MAP_NAME" \
+    --noise "$NOISE" \
+    --require_npz); then
+    echo "ERROR: evaluation incomplete; aggregation rejected" >&2
+    exit 1
+fi
+echo "$result_line"

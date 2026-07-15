@@ -1,0 +1,165 @@
+{
+  "claim_boundary": {
+    "established": [
+      "B4 is an integrity-valid substantive negative on the frozen 600-case product grid",
+      "the output head changed behavior materially at iter10 and later snapshots",
+      "all frozen actor tensors remained exact"
+    ],
+    "supported_not_proven": [
+      "cumulative BC-relative drift and absent BC-preserving constraints contributed to case swapping",
+      "100 Hz iid exploration and collision-heavy curriculum increased optimization variance/nonselectivity"
+    ],
+    "unresolved": [
+      "frozen GRU representation sufficiency",
+      "causal benefit of a BC anchor, temporally coherent exploration, or sampler change",
+      "seed variance because only seed1 was authorized"
+    ]
+  },
+  "closed_experiment": "B4",
+  "device": "cuda:0",
+  "distribution": {
+    "collision_fraction_amplification": 9.375,
+    "product_bc_episode_count": 600,
+    "product_bc_outcomes": {
+      "collision": 24,
+      "following": 234,
+      "overtaking": 342
+    },
+    "product_collision_fraction": 0.04,
+    "training_by_map": {
+      "Austin": {
+        "collision": 60,
+        "follow": 57,
+        "overtake": 78
+      },
+      "Hockenheim": {
+        "collision": 47,
+        "follow": 19,
+        "overtake": 24
+      },
+      "MoscowRaceway": {
+        "collision": 41,
+        "follow": 25,
+        "overtake": 38
+      },
+      "Nuerburgring": {
+        "collision": 32,
+        "follow": 19,
+        "overtake": 40
+      }
+    },
+    "training_collision_fraction": 0.375,
+    "training_episode_count": 480,
+    "training_outcomes": {
+      "collision": 180,
+      "follow": 120,
+      "overtake": 180
+    },
+    "training_unique_l2_count": 381
+  },
+  "exploration_noise": {
+    "max_abs_reconstructed_log_prob_error": 6.341909904072907e-05,
+    "speed_50step_mean_std_ratio": 0.1430956745810701,
+    "speed_lag1_autocorrelation": 0.0011825074359314506,
+    "speed_noise_mean": 0.00011726894739488123,
+    "speed_noise_std": 0.19971097456232614,
+    "speed_projection_count": 0,
+    "steer_50step_mean_std_ratio": 0.14113338392475136,
+    "steer_lag1_autocorrelation": 0.0006770579414944412,
+    "steer_noise_mean": 9.080141396586482e-05,
+    "steer_noise_std": 0.02999059996647449,
+    "steer_projection_count": 306,
+    "theoretical_iid_50step_ratio": 0.1414213562373095,
+    "transition_count": 351946
+  },
+  "feature_overlap": {
+    "centroid_cosine_distance": 0.0904171337957731,
+    "cross_distance_median": 0.40021493779843886,
+    "fixed_count": 11,
+    "limitation": "descriptive n=11+11 comparison on policy-induced trajectories; not a representation sufficiency test",
+    "method": "cosine distance of mean frozen-GRU feature over final 0.5 s of collision trajectory",
+    "nearest_neighbor_opposite_label_fraction": 0.45454545454545453,
+    "new_count": 11,
+    "within_fixed_distance_median": 0.39440056462002915,
+    "within_new_distance_median": 0.3352650100932514
+  },
+  "frozen_actor_validation": {
+    "frozen_exact_by_variant": {
+      "seed1_iter10": true,
+      "seed1_iter20": true,
+      "seed1_iter30": true
+    },
+    "frozen_key_count": 8
+  },
+  "input_provenance": {
+    "final_paired_rows_sha256": "d1d89d17e82311638742aade04600a1afe517360f809f051f2c99e5965dc1458",
+    "final_product_summary_sha256": "2f98df4627e87d4e13ae0f415ceda91fb6104ca1d5ee3fde9eb03a56752f6159",
+    "run_id": "b4_seed1_20260714_003027",
+    "run_plan_sha256": "08f0fe4275ae60928a6d5a6ce9704679bc91a624258bf5aef7f7a268b2c5e381",
+    "training_curriculum_sha256": "0affdb264e541d78e2a9d3691b384df8f6058aac26e03fdcde4221e5f6bca6a1",
+    "training_iterations_sha256": "be5d2b4129bca796a06dcc743e59c1258e42d19443be799d5a93fbf347dc616b",
+    "training_source_commit": "9e5afdc9584343a163c4704597dad87487bd750a",
+    "training_summary_sha256": "286b1de828bf20d2fa9775812660098cf89e1c396d4a3062e098ed9fe5ea4e16"
+  },
+  "product": {
+    "BC": {
+      "collision": 24,
+      "following": 234,
+      "overtaking": 342
+    },
+    "seed1_iter10": {
+      "collision": 24,
+      "fixed_collision": 11,
+      "following": 244,
+      "gained_overtake": 8,
+      "lost_overtake": 18,
+      "new_collision": 11,
+      "overtaking": 332,
+      "persistent_collision": 13
+    },
+    "seed1_iter20": {
+      "collision": 36,
+      "fixed_collision": 14,
+      "following": 270,
+      "gained_overtake": 10,
+      "lost_overtake": 58,
+      "new_collision": 26,
+      "overtaking": 294,
+      "persistent_collision": 10
+    },
+    "seed1_iter30": {
+      "collision": 39,
+      "fixed_collision": 14,
+      "following": 265,
+      "gained_overtake": 12,
+      "lost_overtake": 58,
+      "new_collision": 29,
+      "overtaking": 296,
+      "persistent_collision": 10
+    }
+  },
+  "schema": "end2race-b4-substantive-negative-analysis-1",
+  "teacher_forcing_validation": {
+    "max_abs_stored_bc_speed_error": 2.86102294921875e-06,
+    "max_abs_stored_bc_speed_error_case": "sp03_ol1_s0.6",
+    "max_abs_stored_bc_steer_error": 2.980232238769531e-07,
+    "max_abs_stored_bc_steer_error_case": "sp29_ol0_s0.6"
+  },
+  "training_update": {
+    "actor_epochs_completed_histogram": {
+      "1": 3,
+      "2": 1,
+      "3": 26
+    },
+    "all_actor_epoch_weighted_kl_max": 0.08285533636808395,
+    "critic_epoch_failures": 0,
+    "final_epoch_weighted_kl_max": 0.08285533636808395,
+    "final_epoch_weighted_kl_mean": 0.01141576667287154,
+    "iterations": 30,
+    "iterations_final_weighted_kl_above_target": 5,
+    "max_target_multiple": 5.523689091205597,
+    "target_weighted_kl": 0.015,
+    "terminal_label_count": 480,
+    "transition_count": 351946
+  }
+}

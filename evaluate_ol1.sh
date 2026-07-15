@@ -1,0 +1,148 @@
+#!/bin/bash
+# ol1-focused batch evaluation: opponent on raceline1 only (200 segments).
+# Usage: bash evaluate_ol1.sh [model_path] [speed_model_path] [result_tag] [start_offset]
+# When speed_model_path is given, steering comes from model_path and speed
+# from speed_model_path (composite policy).
+# start_offset shifts every ego start waypoint, giving a disjoint segment grid
+# for statistical reinforcement runs (0 = the canonical grid).
+
+# Parameters (converted from argparse defaults)
+MODEL_PATH="${1:-pretrained/end2race.pth}"
+SPEED_MODEL_PATH="${2:-}"
+RESULT_TAG="${3:-}"
+START_OFFSET="${4:-0}"
+HIDDEN_SCALE=4
+NOISE=0.0
+NUM_WORKERS=8
+MAP_NAME="Austin"
+RENDER=false
+SIM_DURATION=8.0
+EGO_RACELINE="raceline1"
+OPP_RACELINES=("raceline1")
+OPP_SPEED_SCALES=(0.5 0.6 0.7 0.8)
+INTERVAL_IDX=15
+NUM_STARTPOINTS=50
+
+# Generate ego_idx_range
+raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
+max_waypoints=$(tail -n +3 "$raceline_path" | wc -l)
+ego_idx_range=()
+for ((i=0; i<NUM_STARTPOINTS; i++)); do
+    # Keep the canonical grid bit-identical when offset is 0. Offset grids use
+    # open-interval spacing: the historical closed-loop formula made i=0 and
+    # i=N-1 coincide after the offset wrap, silently duplicating episode keys.
+    if [ "$START_OFFSET" != "0" ]; then
+        idx=$(( (i * max_waypoints / NUM_STARTPOINTS + START_OFFSET) % max_waypoints ))
+    else
+        idx=$(( i * max_waypoints / (NUM_STARTPOINTS - 1) ))
+    fi
+    ego_idx_range+=($idx)
+done
+
+# Calculate total segments
+total_segments=$((${#ego_idx_range[@]} * ${#OPP_RACELINES[@]} * ${#OPP_SPEED_SCALES[@]}))
+
+echo "Starting batch evaluation of $total_segments segments"
+echo "Model: $MODEL_PATH"
+if [ -n "$SPEED_MODEL_PATH" ]; then
+    echo "Speed model: $SPEED_MODEL_PATH"
+fi
+if [ -n "$RESULT_TAG" ]; then
+    echo "Result tag: $RESULT_TAG"
+fi
+if [ "$START_OFFSET" != "0" ]; then
+    echo "Start offset: $START_OFFSET"
+fi
+echo "Map: $MAP_NAME"
+echo "Workers: $NUM_WORKERS"
+echo "Noise level: $NOISE"
+
+start_time=$(date +%s)
+
+# Temporary directory to store individual results
+temp_dir=$(mktemp -d)
+trap 'rm -rf "$temp_dir"' EXIT
+
+pct() {
+    awk -v count="$1" -v total="$total_segments" 'BEGIN {
+        if (total == 0) {
+            printf "0.0"
+        } else {
+            printf "%.1f", count * 100 / total
+        }
+    }'
+}
+
+# Generate parameter combinations and run evaluations
+job_id=0
+
+for ego_idx in "${ego_idx_range[@]}"; do
+    for opp_raceline in "${OPP_RACELINES[@]}"; do
+        for speed_scale in "${OPP_SPEED_SCALES[@]}"; do
+            exit_result_path="$temp_dir/$job_id.exit"
+            log_result_path="$temp_dir/$job_id.log"
+            json_result_path="$temp_dir/$job_id.json"
+            cmd=(
+                python eval_multiagent.py
+                --model_path "$MODEL_PATH"
+                --map_name "$MAP_NAME"
+                --ego_idx "$ego_idx"
+                --interval_idx "$INTERVAL_IDX"
+                --ego_raceline "$EGO_RACELINE"
+                --opp_raceline "$opp_raceline"
+                --opp_speedscale "$speed_scale"
+                --sim_duration "$SIM_DURATION"
+                --hidden_scale "$HIDDEN_SCALE"
+                --noise "$NOISE"
+                --metrics_out "$json_result_path"
+            )
+
+            if [ -n "$SPEED_MODEL_PATH" ]; then
+                cmd+=(--speed_model_path "$SPEED_MODEL_PATH")
+            fi
+            if [ -n "$RESULT_TAG" ]; then
+                cmd+=(--result_tag "$RESULT_TAG")
+            fi
+
+            if [ "$RENDER" = true ]; then
+                cmd+=(--render)
+            fi
+
+            while [ $(jobs -r | wc -l) -ge $NUM_WORKERS ]; do
+                sleep 0.1
+            done
+
+            ("${cmd[@]}" > "$log_result_path" 2>&1; echo $? > "$exit_result_path") &
+            ((job_id++))
+        done
+    done
+done
+
+wait
+
+end_time=$(date +%s)
+elapsed=$((end_time - start_time))
+
+echo ""
+echo "Evaluation complete in ${elapsed} seconds"
+
+# Aggregate from metrics JSONs with strict completeness validation.
+# Worker exit code 0 = success; outcomes are read from the JSON files only.
+agg_cmd=(
+    python aggregate_eval.py
+    --tmp_dir "$temp_dir"
+    --expected_total "$total_segments"
+    --model_path "$MODEL_PATH"
+    --map_name "$MAP_NAME"
+    --noise "$NOISE"
+    --offset "$START_OFFSET"
+    --require_npz
+)
+if [ -n "$RESULT_TAG" ]; then
+    agg_cmd+=(--result_tag "$RESULT_TAG")
+fi
+if ! result_line=$("${agg_cmd[@]}"); then
+    echo "ERROR: evaluation incomplete; aggregation rejected" >&2
+    exit 1
+fi
+echo "$result_line"

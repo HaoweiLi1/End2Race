@@ -1,0 +1,98 @@
+{
+  "baseline_reused_from_b4": true,
+  "baseline_run_plan_sha256": "08f0fe4275ae60928a6d5a6ce9704679bc91a624258bf5aef7f7a268b2c5e381",
+  "bc": {
+    "collision": 24,
+    "ego_collision": 21,
+    "episodes": 600,
+    "follow": 234,
+    "opp_collision": 23,
+    "overtake": 342,
+    "speed_projection": 0
+  },
+  "candidates": {
+    "seed1_iter10": {
+      "collision": 22,
+      "collision_strict_improve": true,
+      "ego_collision": 19,
+      "episodes": 600,
+      "feasible": true,
+      "fixed_collision": 9,
+      "fixed_gt_new": true,
+      "follow": 231,
+      "gained_overtake": 12,
+      "lost_overtake": 7,
+      "new_collision": 7,
+      "opened_development_target_hit": false,
+      "opp_collision": 21,
+      "overtake": 347,
+      "overtake_floor": 325,
+      "overtake_guardrail_pass": true,
+      "speed_projection": 0
+    },
+    "seed1_iter20": {
+      "collision": 25,
+      "collision_strict_improve": false,
+      "ego_collision": 22,
+      "episodes": 600,
+      "feasible": false,
+      "fixed_collision": 5,
+      "fixed_gt_new": false,
+      "follow": 226,
+      "gained_overtake": 12,
+      "lost_overtake": 5,
+      "new_collision": 6,
+      "opened_development_target_hit": false,
+      "opp_collision": 24,
+      "overtake": 349,
+      "overtake_floor": 325,
+      "overtake_guardrail_pass": true,
+      "speed_projection": 0
+    },
+    "seed1_iter30": {
+      "collision": 27,
+      "collision_strict_improve": false,
+      "ego_collision": 24,
+      "episodes": 600,
+      "feasible": false,
+      "fixed_collision": 5,
+      "fixed_gt_new": false,
+      "follow": 230,
+      "gained_overtake": 11,
+      "lost_overtake": 10,
+      "new_collision": 8,
+      "opened_development_target_hit": false,
+      "opp_collision": 26,
+      "overtake": 343,
+      "overtake_floor": 325,
+      "overtake_guardrail_pass": true,
+      "speed_projection": 0
+    }
+  },
+  "fresh_or_final_confirmation": false,
+  "grid": {
+    "episode_count_per_variant": 600,
+    "map_name": "Austin",
+    "opponent_racelines": [
+      "raceline0",
+      "raceline1",
+      "raceline2"
+    ],
+    "opponent_speed_scales": [
+      0.5,
+      0.6,
+      0.7,
+      0.8
+    ],
+    "startpoint_count": 50
+  },
+  "integrity_passed": true,
+  "outcome_contract": "unchanged original eval_multiagent terminal state_label",
+  "overtake_floor_95pct": 325,
+  "panel_status": "opened-development regression panel",
+  "schema": "end2race-b5-opened-development-product-eval-1",
+  "selected_variant": "seed1_iter10",
+  "training_run_plan_sha256": "20e0af679b13f8ab1e3ee296ffe11189a8c584cc2ef363384fddc8e04d16af63",
+  "training_source_commit": "482491969b01a632f5726b81316953397c6abd49",
+  "verdict": "OPENED_DEVELOPMENT_SURVIVOR"
+}

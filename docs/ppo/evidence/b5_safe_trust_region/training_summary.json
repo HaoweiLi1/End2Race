@@ -1,0 +1,51 @@
+{
+  "actor_snapshot_file_sha256_by_iteration": {
+    "0": "09b8eda3d38a3a13b389d13516ffba6dfe8739500a627d5dc233803d9273a273",
+    "10": "4dde873cb0c81ac9836eeeb3b0b740d82ff1887a23b8e568008abffd27476312",
+    "20": "e3190c2aa3683e6b63371e609efb909c817dc23c6ad43018d09a8749288a72a8",
+    "30": "ce250ee39be7e56d0383e003cf49262d75d3c7fbe0d161ddf010651e7c37065c"
+  },
+  "actor_snapshot_tensor_sha256_by_iteration": {
+    "0": "2883c8ebe86219778f0a34d7fbefe9cb4484e4b22144bee09192617dcf2e5d3f",
+    "10": "5241f04ee745bf61464574986cd2063ca84b5290893bd5e72571a6dcc7af8de0",
+    "20": "b08cfbd2de36982defcd84e6c380d4c6e99d8e73db73d89fb98cb93a2b5ab31a",
+    "30": "89a0d871ff8a7dbcce73249fa8d6ac4ba179d781a22927668dfaed28019f9652"
+  },
+  "bc_actor_tensor_sha256": "2883c8ebe86219778f0a34d7fbefe9cb4484e4b22144bee09192617dcf2e5d3f",
+  "bc_checkpoint_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "curriculum_sha256": "40275f3d928b753fdc683ca20df83ad4097d9e8ac3c92f4a150fba3a50a5afa1",
+  "final_full_checkpoint_sha256": "a79dd43f0e8159d4466ffdeb0368da97cfd869f5ccd6b172a487545b3423e151",
+  "fresh_pool_opened": false,
+  "integrity_passed": true,
+  "iterations": 30,
+  "opened_development_kpi_evaluated": false,
+  "passed": true,
+  "reference_sha256": "6b0e69417ff4e127f3959b5c3506115d5e4420cbb551a1a7bf2abea758b0fe4c",
+  "resumed_from_iteration": null,
+  "run_plan_sha256": "20e0af679b13f8ab1e3ee296ffe11189a8c584cc2ef363384fddc8e04d16af63",
+  "safe_final": {
+    "episode_count": 64,
+    "episode_max": 0.02025079196318046,
+    "episode_p50": 0.009620002841263724,
+    "episode_p95": 0.015546081741802572,
+    "frame_count": 51264,
+    "frame_max": 0.3809957063235976,
+    "frame_p50": 0.005768332286183205,
+    "frame_p95": 0.03155302941425553,
+    "mean": 0.009962557880718594,
+    "stratum_mean": {
+      "Austin/follow": 0.010960611238962697,
+      "Austin/overtake": 0.011162174484901644,
+      "Hockenheim/follow": 0.009218516652583638,
+      "Hockenheim/overtake": 0.012332303865061739,
+      "MoscowRaceway/follow": 0.008263912493231926,
+      "MoscowRaceway/overtake": 0.00934377795099522,
+      "Nuerburgring/follow": 0.010141454120530571,
+      "Nuerburgring/overtake": 0.008277712239481323
+    }
+  },
+  "schema": "end2race-b5-safe-pilot-1",
+  "seed": 1,
+  "source_commit": "482491969b01a632f5726b81316953397c6abd49",
+  "training_manifest_sha256": "2e70d274853a2b5ed5518fdd926d45ab96a81943e80069a6ecc90160b7cc91ba"
+}
