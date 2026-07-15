@@ -42,7 +42,7 @@ from rl.ppo_privileged import oriented_rectangle_clearance
 from rl.ppo_reward import PPOV1TransitionReward, ProgressProjector
 from rl.ppo_scenarios import ScenarioSpec, training_scenarios
 from rl.sb3_end2race_policy import DEFAULT_BC_CHECKPOINT, END2RACE_OBSERVATION_SIZE, End2RaceGRUPolicy, NOOP_SPEED_BOUND
-from train_ppo_sb3 import evaluate_actor_pool
+from train_ppo_sb3 import _evaluate_scenario, _evaluation_worker_init
 from utils import atomic_write_json
 
 
@@ -97,8 +97,12 @@ def _preflight_all(candidates: Sequence[ScenarioSpec], output: Path) -> tuple[li
             "planner_constructed": len(controller.state_snapshot()["planners"]) == 1,
         }
 
+    def progress(completed: int, expected: int) -> None:
+        if completed % 100 == 0 or completed == expected:
+            atomic_write_json(output / "status.json", {"phase": "preflight", "completed": completed, "expected": expected, "last_update": _utc_now()})
+
     try:
-        return validate_candidates(candidates, check)
+        return validate_candidates(candidates, check, progress=progress)
     finally:
         core.close()
 
@@ -213,6 +217,32 @@ def _run_seed_tasks(rows: Sequence[dict[str, Any]], seeds: Sequence[int], path: 
     return completed
 
 
+def _run_deterministic_tasks(rows: Sequence[ScenarioSpec], path: Path, workers: int, status_path: Path) -> list[dict[str, Any]]:
+    completed_by_id: dict[str, dict[str, Any]] = {}
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line:
+                row = json.loads(line)
+                completed_by_id[str(row["scenario_id"])] = row
+    model_path = str(DEFAULT_BC_CHECKPOINT.resolve())
+    tasks = [(row, model_path) for row in rows if row.scenario_id not in completed_by_id]
+    context = mp.get_context("spawn")
+    with ProcessPoolExecutor(
+        max_workers=workers,
+        mp_context=context,
+        initializer=_evaluation_worker_init,
+        initargs=(model_path,),
+    ) as executor:
+        for index, result in enumerate(executor.map(_evaluate_scenario, tasks, chunksize=1), start=1):
+            _append_jsonl(path, result)
+            completed_by_id[str(result["scenario_id"])] = result
+            if index % 100 == 0 or index == len(tasks):
+                atomic_write_json(status_path, {"phase": "H1", "completed": len(completed_by_id), "expected": len(rows), "last_update": _utc_now()})
+    if len(completed_by_id) != len(rows):
+        raise RuntimeError(f"H1 classification incomplete: {len(completed_by_id)} != {len(rows)}")
+    return [completed_by_id[row.scenario_id] for row in rows]
+
+
 def _write_pool(path: Path, document: dict[str, Any]) -> None:
     atomic_write_json(path, document)
 
@@ -257,7 +287,16 @@ def run(root: Path, workers: int, phase: str) -> None:
 
     valid_scenarios = [_scenario(row) for row in valid]
     atomic_write_json(status_path, {"phase": "H1", "completed": 0, "expected": len(valid_scenarios), "last_update": _utc_now()})
-    h1_rows, h1_summary = evaluate_actor_pool(DEFAULT_BC_CHECKPOINT, valid_scenarios, workers=workers)
+    h1_rows = _run_deterministic_tasks(valid_scenarios, root / "H1_rows.jsonl", workers, status_path)
+    outcomes = Counter(row["outcome"] for row in h1_rows)
+    h1_summary = {
+        "ego_collision": int(outcomes["ego_collision"]),
+        "follow": int(outcomes["follow"]),
+        "overtake": int(outcomes["overtake"]),
+        "opponent_only_collision": int(sum(bool(row.get("opponent_only_collision")) for row in h1_rows)),
+        "error": int(outcomes["error"]),
+        "total": len(h1_rows),
+    }
     atomic_write_json(root / "H1_rows.json", h1_rows)
     atomic_write_json(root / "H1_summary.json", h1_summary)
     h1_ids = sorted(str(row["scenario_id"]) for row in h1_rows if row.get("outcome") == "ego_collision")

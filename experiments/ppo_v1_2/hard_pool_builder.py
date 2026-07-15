@@ -106,12 +106,13 @@ def expanded_scenarios(startpoints: Sequence[int] | None = None) -> tuple[Scenar
 def validate_candidates(
     candidates: Sequence[ScenarioSpec],
     preflight: Callable[[ScenarioSpec], dict[str, Any]],
+    progress: Callable[[int, int], None] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """Run every preflight independently; errors are explicit invalid rows."""
 
     valid: list[dict[str, Any]] = []
     invalid: list[dict[str, Any]] = []
-    for scenario in candidates:
+    for index, scenario in enumerate(candidates, start=1):
         try:
             checks = dict(preflight(scenario))
             required = ("reset", "poses_finite", "observation_finite", "initial_collision_free", "rectangles_disjoint", "planner_constructed")
@@ -126,6 +127,8 @@ def validate_candidates(
                 "error": str(error),
             }
         (valid if row["valid"] else invalid).append(row)
+        if progress is not None:
+            progress(index, len(candidates))
     summary = {
         "candidate_count": len(candidates),
         "valid_count": len(valid),
