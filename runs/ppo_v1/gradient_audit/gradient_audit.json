@@ -1,0 +1,332 @@
+{
+  "audit_scope": {
+    "candidate_checkpoint_saved": false,
+    "formal_training_started": false,
+    "read_only": true,
+    "rollouts_collected": 1,
+    "stock_site_packages_modified": false
+  },
+  "canonical_bc_outcomes": {
+    "bc_ego_collision_id_count": 24,
+    "outcomes": {
+      "ego_collision": 24,
+      "follow": 231,
+      "overtake": 345
+    },
+    "path": "runs/ppo_v1/pilot_20_updates/train_bc_outcomes.json",
+    "row_count": 600,
+    "sha256": "3fc7e4fd5effb6e98c1cbbec1c339416c1f138cdb6557d51bc077aebe4b59aa2"
+  },
+  "config": {
+    "batch_size": 800,
+    "bc_checkpoint": "pretrained/end2race.pth",
+    "clip_range": 0.1,
+    "clip_range_vf": null,
+    "collision_sampling_probability": 0.25,
+    "device": "cuda",
+    "ent_coef": 0.0,
+    "gae_lambda": 0.995,
+    "gamma": 0.999,
+    "gamma_times_gae_lambda": 0.994005,
+    "lr_scale": 1.0,
+    "master_seed": 20260715,
+    "max_grad_norm": 0.5,
+    "minibatches_per_update": 16,
+    "n_envs": 16,
+    "n_epochs": 1,
+    "n_steps": 800,
+    "normalize_advantage": true,
+    "optimizer_steps_per_update": 0,
+    "target_kl": null,
+    "total_transitions": 12800,
+    "transitions_per_update": 12800,
+    "updates": 1,
+    "vector_env": "DummyVecEnv",
+    "vf_coef": 0.5
+  },
+  "critic_numeric": {
+    "critic_predictions": {
+      "max": 0.9915258884429932,
+      "mean": 0.04930698366952129,
+      "min": -0.849449634552002,
+      "std": 0.2686540228292057
+    },
+    "current_vs_rollout_value_max_abs_error": 7.748603820800781e-07,
+    "explained_variance": -0.3145831823348999,
+    "first_layer_preactivation": {
+      "abs_gt_3_fraction": 0.2131323218345642,
+      "max": 11.298765182495117,
+      "max_abs": 11.298765182495117,
+      "mean": 0.10735775007579683,
+      "min": -9.728567123413086,
+      "std": 2.4709038160420684
+    },
+    "first_tanh": {
+      "abs_gt_0_99_fraction": 0.2695935070514679
+    },
+    "previous_speed": {
+      "max": 7.671209335327148,
+      "mean": 5.4766891143246905,
+      "min": 0.0,
+      "std": 1.5490585835380226
+    },
+    "raw_lidar": {
+      "max": 30.0484676361084,
+      "mean": 2.7038758071655207,
+      "min": 0.21539679169654846,
+      "std": 3.4354207959703635
+    },
+    "returns": {
+      "max": 0.4339173436164856,
+      "mean": 0.0887235094989228,
+      "min": -1.999481201171875,
+      "std": 0.28851598972554393
+    },
+    "stock_rollout_value_explained_variance": -0.3145831823348999
+  },
+  "fresh_bc_actor": {
+    "actor_key_count": 12,
+    "all_actor_tensors_bitwise_equal": true,
+    "checkpoint": "pretrained/end2race.pth",
+    "checkpoint_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "mismatched_actor_keys": []
+  },
+  "gradient_aggregate": {
+    "actor_significantly_suppressed_by_declared_threshold": true,
+    "clip_active_minibatch_count": 16,
+    "combined_pre_clip_norms": {
+      "critic": {
+        "max": 4.713868370621843,
+        "mean": 1.8979171314332899,
+        "median": 1.8438072930659537,
+        "min": 0.8412296126835961
+      },
+      "global": {
+        "max": 72.96963214893468,
+        "mean": 24.535786879451994,
+        "median": 19.765669799965085,
+        "min": 5.039158214181077
+      },
+      "gru": {
+        "max": 3.236296481511879,
+        "mean": 2.0508645515316744,
+        "median": 1.9602396380538705,
+        "min": 0.9619819558816797
+      },
+      "head": {
+        "max": 72.91168491679542,
+        "mean": 24.295939971947348,
+        "median": 19.449290100809517,
+        "min": 4.755038220732173
+      }
+    },
+    "counterfactual_actor_only_clip_multiplier": {
+      "max": 0.10306363435072866,
+      "mean": 0.03460656450312642,
+      "median": 0.025434441655422312,
+      "min": 0.006852667139422659
+    },
+    "critic_induced_additional_actor_reduction_percent": {
+      "max": 5.767632661674716,
+      "mean": 1.010087059499582,
+      "median": 0.4007292871974433,
+      "min": 0.007320915088993019
+    },
+    "critic_materially_increases_actor_suppression_by_declared_threshold": false,
+    "critic_significantly_dominates_by_declared_threshold": false,
+    "critic_squared_global_norm_fraction": {
+      "max": 0.1120261133921311,
+      "mean": 0.01986960077356906,
+      "median": 0.007998347258003382,
+      "min": 0.00014641294420670277
+    },
+    "critic_to_actor_norm_ratio": {
+      "max": 0.3551890244091396,
+      "mean": 0.11789276914942545,
+      "median": 0.08966922231170882,
+      "min": 0.012101007565323282
+    },
+    "direct_gradient_leakage": {
+      "actor_loss_to_critic": false,
+      "critic_loss_to_gru_or_head": false,
+      "max_policy_loss_only_critic_norm": 0.0,
+      "max_value_loss_only_gru_norm": 0.0,
+      "max_value_loss_only_head_norm": 0.0
+    },
+    "sequence_geometry": {
+      "episode_equivalent_at_800_steps": {
+        "max": 1.0,
+        "mean": 1.0,
+        "median": 1.0,
+        "min": 1.0
+      },
+      "episode_start_count": {
+        "max": 2.0,
+        "mean": 1.125,
+        "median": 1.0,
+        "min": 1.0
+      },
+      "n_seq": {
+        "max": 3.0,
+        "mean": 2.125,
+        "median": 2.0,
+        "min": 2.0
+      },
+      "unique_episode_count": {
+        "max": 3.0,
+        "mean": 2.125,
+        "median": 2.0,
+        "min": 2.0
+      },
+      "valid_sequence_length": {
+        "max": 636.0,
+        "mean": 376.47058823529414,
+        "median": 164.0,
+        "min": 99.0
+      }
+    },
+    "theoretical_actor_norm_reduction_percent": {
+      "max": 99.314783453852,
+      "mean": 96.60966422388562,
+      "median": 97.47035027842811,
+      "min": 90.07770981728633
+    },
+    "theoretical_actor_norm_retained_percent": {
+      "max": 9.922290182713663,
+      "mean": 3.3903357761143784,
+      "median": 2.529649721571878,
+      "min": 0.6852165461480051
+    },
+    "theoretical_clip_multiplier": {
+      "max": 0.09922290182713664,
+      "mean": 0.03390335776114378,
+      "median": 0.025296497215718777,
+      "min": 0.006852165461480051
+    }
+  },
+  "minibatch_replay": {
+    "all_transitions_seen_exactly_once": true,
+    "clip_grad_norm_calls": 0,
+    "gradients_cleared_after_every_backward": true,
+    "minibatch_count": 16,
+    "optimizer_step_calls": 0,
+    "padded_transition_total": 8227,
+    "stock_split_index": 11364,
+    "valid_transition_total": 12800
+  },
+  "parameter_integrity": {
+    "all_torch_equal": true,
+    "changed_parameter_names": [],
+    "max_abs_delta": 0.0,
+    "parameter_tensor_count": 17,
+    "sha256_after": "d392ba1bc5d7a7ed680ed75564423c37ada89bf5867b4d8353a643a83e30813d",
+    "sha256_before": "d392ba1bc5d7a7ed680ed75564423c37ada89bf5867b4d8353a643a83e30813d",
+    "sha256_equal": true
+  },
+  "rollout": {
+    "buffer_shapes": {
+      "actions": [
+        12800,
+        2
+      ],
+      "observations": [
+        800,
+        16,
+        361
+      ]
+    },
+    "callback_rollout_end_count": 1,
+    "callback_rollout_start_count": 1,
+    "completed_outcomes": {
+      "ego_collision": 2,
+      "follow": 5,
+      "overtake": 9
+    },
+    "finite_fields": {
+      "actions": true,
+      "advantages": true,
+      "log_probs": true,
+      "observations": true,
+      "returns": true,
+      "rewards": true,
+      "values": true
+    },
+    "n_envs": 16,
+    "n_steps": 800,
+    "sampler_branch_transitions": {
+      "all_training": 9437,
+      "bc_ego_collision": 3363
+    },
+    "valid_transition_count": 12800
+  },
+  "source_evidence": {
+    "git_head": "fd22c962a4fd62681a9a4fb53e14f277ef8f3418",
+    "packages": {
+      "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+      "sb3_contrib": "2.7.1",
+      "stable_baselines3": "2.7.1",
+      "torch": "2.7.0+cu128"
+    },
+    "repo_files": {
+      "rl/end2race_gymnasium_env.py": {
+        "bytes": 22012,
+        "sha256": "13d75c557aa22af4c968c5996240eacede6f4358a4a33c7d331dfac90460e129"
+      },
+      "rl/end2race_recurrent_ppo.py": {
+        "bytes": 568,
+        "sha256": "79f108f32fe067cf0ae5a53c6676e98488aeeff495a59be2ab2ea48ce0e4706b"
+      },
+      "rl/ppo_reward.py": {
+        "bytes": 10766,
+        "sha256": "f740632cd758d5fdc1828c14c16efb1904669931f29f70ccf465955c897309bc"
+      },
+      "rl/ppo_scenarios.py": {
+        "bytes": 7157,
+        "sha256": "b93ea0bfac67d7b16e6d0c476f703d4cd7148b7210ad03773567812b57104edb"
+      },
+      "rl/sb3_end2race_policy.py": {
+        "bytes": 22530,
+        "sha256": "a2db2154ff2e591fe88dd558f812115e704abe72974043ad66eff108bcafc22a"
+      },
+      "scripts/audit_ppo_v1_gradients.py": {
+        "bytes": 46299,
+        "sha256": "bfa54bdfed6d86c3d926255fa82834297deb9d0331e2854de61654137c7c7382"
+      },
+      "train_ppo_sb3.py": {
+        "bytes": 23424,
+        "sha256": "56e098c36b61173dc406c244442946142f25c89949f8299c29f594de3a4d1724"
+      }
+    },
+    "stock_sources": {
+      "RecurrentPPO.train": {
+        "sha256": "8b4a03011f89321bc54e5b9a61da31eebd4c4c2a14c78aa049f10379bac6ab6d",
+        "source_file": "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/ppo_recurrent/ppo_recurrent.py"
+      },
+      "RecurrentRolloutBuffer._get_samples": {
+        "sha256": "8846414e1723795ee775d1afd0d6f467c3770ddec02796bfc0d2560759a99810",
+        "source_file": "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/common/recurrent/buffers.py"
+      },
+      "RecurrentRolloutBuffer.get": {
+        "sha256": "329ace7c80b751de3b680286608273f265ac40fd34d2cee89cf8032ab3aee4f9",
+        "source_file": "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/common/recurrent/buffers.py"
+      }
+    }
+  },
+  "verdict": {
+    "blocking_issue_before_v1_1": true,
+    "blocking_reasons": [
+      "critic \u7b2c\u4e00\u5c42 Tanh \u660e\u663e\u9971\u548c"
+    ],
+    "critic_materially_increases_actor_clipping": false,
+    "critic_significantly_dominates_global_gradient_norm": false,
+    "critic_tanh_clearly_saturated": true,
+    "declared_interpretation_thresholds": {
+      "clear_tanh_saturation_fraction_gte": 0.1,
+      "critic_dominance_median_squared_norm_fraction_gte": 0.9,
+      "material_critic_induced_additional_actor_reduction_median_gte_percent": 10.0,
+      "significant_actor_suppression_median_clip_multiplier_lte": 0.5
+    },
+    "global_clipping_significantly_suppresses_actor_gradient": true,
+    "incorrect_direct_gradient_leakage": false
+  }
+}

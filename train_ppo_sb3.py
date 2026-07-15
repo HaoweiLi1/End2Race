@@ -60,6 +60,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "lr_scale": 1.0,
     "collision_sampling_probability": 0.25,
 }
+V1_1_EVALUATION_UPDATES = (2, 3, 5, 10, 15, 20)
+
+
+def parse_evaluation_updates(value: str) -> tuple[int, ...]:
+    try:
+        updates = tuple(int(item.strip()) for item in value.split(",") if item.strip())
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("evaluation updates must be comma-separated integers") from error
+    if not updates:
+        raise argparse.ArgumentTypeError("evaluation updates must not be empty")
+    return updates
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -74,8 +85,28 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--master-seed", type=int, default=DEFAULT_CONFIG["master_seed"])
     parser.add_argument("--lr-scale", type=float, default=DEFAULT_CONFIG["lr_scale"])
     parser.add_argument("--evaluation-workers", type=int, default=8)
+    parser.add_argument(
+        "--collision-sampling-probability",
+        type=float,
+        default=DEFAULT_CONFIG["collision_sampling_probability"],
+    )
+    parser.add_argument(
+        "--evaluation-updates",
+        type=parse_evaluation_updates,
+        default=None,
+        help="Comma-separated positive update indices; update 0 BC evaluation remains implicit",
+    )
     parser.add_argument("--bc-outcomes", type=Path, default=None)
-    parser.add_argument("--smoke", choices=("none", "zero_lr", "nonzero"), default="none")
+    parser.add_argument(
+        "--smoke",
+        choices=("none", "zero_lr", "nonzero", "v1_1_zero_lr", "v1_1_nonzero"),
+        default="none",
+    )
+    parser.add_argument(
+        "--dry-run-resolved-config",
+        action="store_true",
+        help="Print the resolved config and exit before creating environments or run artifacts",
+    )
     return parser.parse_args()
 
 
@@ -108,12 +139,31 @@ def resolved_configuration(args: argparse.Namespace) -> dict[str, Any]:
         master_seed=args.master_seed,
         lr_scale=args.lr_scale,
         evaluation_workers=args.evaluation_workers,
+        collision_sampling_probability=args.collision_sampling_probability,
         smoke=args.smoke,
     )
     if args.smoke == "zero_lr":
         config.update(updates=1, n_envs=1, n_steps=100, batch_size=100, lr_scale=0.0)
     elif args.smoke == "nonzero":
         config.update(updates=2, n_envs=1, n_steps=100, batch_size=100, lr_scale=1.0)
+    elif args.smoke == "v1_1_zero_lr":
+        config.update(
+            updates=1,
+            n_envs=16,
+            n_steps=1600,
+            batch_size=1600,
+            lr_scale=0.0,
+            collision_sampling_probability=0.50,
+        )
+    elif args.smoke == "v1_1_nonzero":
+        config.update(
+            updates=2,
+            n_envs=16,
+            n_steps=1600,
+            batch_size=1600,
+            lr_scale=1.0,
+            collision_sampling_probability=0.50,
+        )
     if config["updates"] <= 0 or config["n_envs"] <= 0 or config["n_steps"] <= 0:
         raise ValueError("updates, n_envs, and n_steps must be positive")
     transitions_per_update = config["n_envs"] * config["n_steps"]
@@ -123,14 +173,73 @@ def resolved_configuration(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("Formal PPO V1 runs use n_envs=16, or an explicit n_envs=8 fallback")
     if not np.isfinite(config["lr_scale"]) or config["lr_scale"] < 0.0:
         raise ValueError("lr_scale must be finite and non-negative")
+    if not np.isfinite(config["collision_sampling_probability"]) or not (
+        0.0 <= config["collision_sampling_probability"] <= 1.0
+    ):
+        raise ValueError("collision_sampling_probability must be finite and in [0, 1]")
     if config["device"] == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("PPO V1 resolved device is cuda, but CUDA is unavailable")
+    if args.evaluation_updates is None:
+        evaluation_updates = list(range(5, config["updates"] + 1, 5))
+    else:
+        evaluation_updates = list(args.evaluation_updates)
+    if (
+        evaluation_updates != sorted(set(evaluation_updates))
+        or any(update <= 0 or update > config["updates"] for update in evaluation_updates)
+    ):
+        raise ValueError("evaluation_updates must be unique, increasing, positive, and no greater than updates")
     config["transitions_per_update"] = transitions_per_update
     config["minibatches_per_update"] = transitions_per_update // config["batch_size"]
     config["optimizer_steps_per_update"] = config["minibatches_per_update"] * config["n_epochs"]
     config["total_transitions"] = transitions_per_update * config["updates"]
+    config["total_optimizer_steps"] = config["optimizer_steps_per_update"] * config["updates"]
+    config["evaluation_updates"] = evaluation_updates
     config["gamma_times_gae_lambda"] = config["gamma"] * config["gae_lambda"]
     config["bc_checkpoint"] = str(DEFAULT_BC_CHECKPOINT.relative_to(PROJECT_ROOT))
+
+    is_v1_1 = (
+        config["smoke"] == "none"
+        and config["n_envs"] == 16
+        and config["n_steps"] == 1600
+        and config["batch_size"] == 1600
+        and config["updates"] == 20
+        and config["lr_scale"] == 1.0
+        and config["collision_sampling_probability"] == 0.50
+    )
+    is_v1 = (
+        config["smoke"] == "none"
+        and config["n_envs"] == DEFAULT_CONFIG["n_envs"]
+        and config["n_steps"] == DEFAULT_CONFIG["n_steps"]
+        and config["batch_size"] == DEFAULT_CONFIG["batch_size"]
+        and config["updates"] == DEFAULT_CONFIG["updates"]
+        and config["lr_scale"] == DEFAULT_CONFIG["lr_scale"]
+        and config["collision_sampling_probability"] == DEFAULT_CONFIG["collision_sampling_probability"]
+        and config["evaluation_updates"] == [5, 10, 15, 20]
+    )
+    is_v1_1_smoke = config["smoke"] in {"v1_1_zero_lr", "v1_1_nonzero"}
+    if is_v1_1:
+        if tuple(config["evaluation_updates"]) != V1_1_EVALUATION_UPDATES:
+            raise ValueError(
+                "PPO V1.1 requires --evaluation-updates 2,3,5,10,15,20"
+            )
+        if config["minibatches_per_update"] != 16:
+            raise AssertionError("PPO V1.1 requires exactly 16 minibatches per update")
+        if config["total_optimizer_steps"] != 320:
+            raise AssertionError("PPO V1.1 requires exactly 320 total optimizer steps")
+        if config["transitions_per_update"] != 25_600 or config["total_transitions"] != 512_000:
+            raise AssertionError("PPO V1.1 transition geometry is inconsistent")
+        config["configuration_profile"] = "ppo_v1_1"
+    elif is_v1_1_smoke:
+        if config["transitions_per_update"] != 25_600 or config["minibatches_per_update"] != 16:
+            raise AssertionError("PPO V1.1 smoke rollout geometry is inconsistent")
+        expected_total_steps = 16 if config["smoke"] == "v1_1_zero_lr" else 32
+        if config["total_optimizer_steps"] != expected_total_steps:
+            raise AssertionError("PPO V1.1 smoke optimizer-step geometry is inconsistent")
+        config["configuration_profile"] = config["smoke"]
+    elif is_v1:
+        config["configuration_profile"] = "ppo_v1"
+    else:
+        config["configuration_profile"] = "custom"
     return config
 
 
@@ -332,6 +441,35 @@ def optimizer_group_lrs(model: End2RaceRecurrentPPO) -> dict[str, float]:
     return {str(group["name"]): float(group["lr"]) for group in model.policy.optimizer.param_groups}
 
 
+def optimizer_step_evidence(model: End2RaceRecurrentPPO) -> dict[str, Any]:
+    groups: dict[str, Any] = {}
+    all_steps: list[int] = []
+    for group in model.policy.optimizer.param_groups:
+        steps: list[int] = []
+        for parameter in group["params"]:
+            state = model.policy.optimizer.state.get(parameter, {})
+            if "step" in state:
+                step = state["step"]
+                steps.append(int(step.detach().cpu().item()) if isinstance(step, torch.Tensor) else int(step))
+        all_steps.extend(steps)
+        groups[str(group["name"])] = {
+            "parameter_count": len(group["params"]),
+            "parameter_state_count": len(steps),
+            "unique_steps": sorted(set(steps)),
+        }
+    every_parameter_has_state = all(
+        value["parameter_state_count"] == value["parameter_count"]
+        for value in groups.values()
+    )
+    unique_steps = sorted(set(all_steps))
+    return {
+        "groups": groups,
+        "every_optimizer_parameter_has_state": every_parameter_has_state,
+        "all_parameter_steps_equal": every_parameter_has_state and len(unique_steps) == 1,
+        "observed_cumulative_optimizer_steps": unique_steps[0] if len(unique_steps) == 1 else None,
+    }
+
+
 def train_metrics(model: End2RaceRecurrentPPO) -> dict[str, Any]:
     values = model.logger.name_to_value
     keys = (
@@ -345,10 +483,54 @@ def train_metrics(model: End2RaceRecurrentPPO) -> dict[str, Any]:
     metrics = {key.removeprefix("train/"): float(values[key]) for key in keys if key in values}
     metrics["gradient_norm"] = gradient_norm(model)
     metrics["optimizer_group_lrs"] = optimizer_group_lrs(model)
+    metrics["optimizer_step_evidence"] = optimizer_step_evidence(model)
     metrics["rollout_fields_finite"] = all_rollout_fields_finite(model)
     scalar_values = [value for value in metrics.values() if isinstance(value, float)]
     metrics["all_scalar_metrics_finite"] = bool(np.isfinite(scalar_values).all())
     return metrics
+
+
+def recurrent_replay_metrics(model: End2RaceRecurrentPPO) -> dict[str, Any]:
+    numpy_state = np.random.get_state()
+    valid_count = 0
+    padded_count = 0
+    minibatch_count = 0
+    log_prob_errors: list[np.ndarray] = []
+    ratios: list[np.ndarray] = []
+    model.policy.set_training_mode(False)
+    try:
+        for rollout_data in model.rollout_buffer.get(model.batch_size):
+            mask = rollout_data.mask > 1e-8
+            with torch.no_grad():
+                _values, log_prob, _entropy = model.policy.evaluate_actions(
+                    rollout_data.observations,
+                    rollout_data.actions,
+                    rollout_data.lstm_states,
+                    rollout_data.episode_starts,
+                )
+            error = (log_prob - rollout_data.old_log_prob)[mask]
+            ratio = torch.exp(error)
+            log_prob_errors.append(error.detach().cpu().numpy())
+            ratios.append(ratio.detach().cpu().numpy())
+            valid_count += int(mask.sum().item())
+            padded_count += int((~mask).sum().item())
+            minibatch_count += 1
+    finally:
+        np.random.set_state(numpy_state)
+    errors = np.concatenate(log_prob_errors)
+    ratio_values = np.concatenate(ratios)
+    return {
+        "minibatch_count": minibatch_count,
+        "valid_transition_count": valid_count,
+        "padded_transition_count": padded_count,
+        "max_abs_log_prob_replay_error": float(np.max(np.abs(errors))),
+        "max_abs_ratio_deviation": float(np.max(np.abs(ratio_values - 1.0))),
+        "ratio_mean": float(np.mean(ratio_values)),
+        "ratio_std": float(np.std(ratio_values)),
+        "ratio_min": float(np.min(ratio_values)),
+        "ratio_max": float(np.max(ratio_values)),
+        "all_finite": bool(np.isfinite(errors).all() and np.isfinite(ratio_values).all()),
+    }
 
 
 def export_actor(policy: End2RaceGRUPolicy, destination: Path) -> None:
@@ -394,7 +576,8 @@ def verify_smoke(
         and np.isfinite(list(metrics["optimizer_group_lrs"].values())).all()
         for metrics in update_metrics
     )
-    if config["smoke"] == "zero_lr":
+    zero_lr_smoke = config["smoke"] in {"zero_lr", "v1_1_zero_lr"}
+    if zero_lr_smoke:
         parameter_gate = all(group["max_abs_delta"] == 0.0 for group in deltas.values())
     else:
         parameter_gate = (
@@ -410,16 +593,48 @@ def verify_smoke(
         all(abs(metrics["optimizer_group_lrs"][name] - value) <= 1e-15 for name, value in expected_lrs.items())
         for metrics in update_metrics
     ) and all(abs(reload_lrs[name] - value) <= 1e-15 for name, value in expected_lrs.items())
+    optimizer_step_gate = all(
+        metrics["optimizer_step_evidence"]["all_parameter_steps_equal"]
+        and metrics["optimizer_step_evidence"]["observed_cumulative_optimizer_steps"]
+        == metrics["update"] * config["optimizer_steps_per_update"]
+        for metrics in update_metrics
+    )
+    replay = recurrent_replay_metrics(model)
+    replay_finite_gate = bool(
+        replay["all_finite"]
+        and replay["valid_transition_count"] == config["transitions_per_update"]
+        and replay["minibatch_count"] == config["minibatches_per_update"]
+    )
+    replay_identity_gate = bool(
+        not zero_lr_smoke
+        or (
+            replay["max_abs_log_prob_replay_error"] <= 1e-6
+            and replay["max_abs_ratio_deviation"] <= 1e-6
+        )
+    )
     result = {
         "smoke": config["smoke"],
-        "passed": bool(finite and parameter_gate and lr_gate),
+        "passed": bool(
+            finite
+            and parameter_gate
+            and lr_gate
+            and optimizer_step_gate
+            and replay_finite_gate
+            and replay_identity_gate
+        ),
         "all_required_fields_finite": finite,
         "parameter_delta_gate": parameter_gate,
         "learning_rate_gate": lr_gate,
+        "optimizer_step_gate": optimizer_step_gate,
+        "recurrent_replay_finite_gate": replay_finite_gate,
+        "recurrent_replay_identity_gate": replay_identity_gate,
+        "recurrent_replay": replay,
         "parameter_deltas": deltas,
         "expected_group_lrs": expected_lrs,
         "reloaded_group_lrs": reload_lrs,
         "checkpoint_reload_succeeded": True,
+        "actor_key_count": len(model.policy.actor_checkpoint_state_dict()),
+        "actor_strict_load_succeeded": True,
     }
     if not result["passed"]:
         raise RuntimeError(f"PPO V1 {config['smoke']} smoke failed: {result}")
@@ -478,6 +693,35 @@ def select_checkpoint(bc: dict[str, int], candidates: Sequence[dict[str, Any]]) 
     }
 
 
+def paired_change_metrics(
+    bc_rows: Sequence[dict[str, Any]],
+    candidate_rows: Sequence[dict[str, Any]],
+) -> dict[str, int]:
+    bc_by_id = {str(row["scenario_id"]): row for row in bc_rows}
+    candidate_by_id = {str(row["scenario_id"]): row for row in candidate_rows}
+    if len(bc_by_id) != 600 or set(candidate_by_id) != set(bc_by_id):
+        raise ValueError("Paired evaluation rows must contain the same 600 unique scenario IDs")
+    pairs = [(bc_by_id[scenario_id], candidate_by_id[scenario_id]) for scenario_id in sorted(bc_by_id)]
+    return {
+        "fixed_collision": sum(
+            bc["outcome"] == "ego_collision" and candidate["outcome"] != "ego_collision"
+            for bc, candidate in pairs
+        ),
+        "new_collision": sum(
+            bc["outcome"] != "ego_collision" and candidate["outcome"] == "ego_collision"
+            for bc, candidate in pairs
+        ),
+        "gained_overtake": sum(
+            bc["outcome"] != "overtake" and candidate["outcome"] == "overtake"
+            for bc, candidate in pairs
+        ),
+        "lost_overtake": sum(
+            bc["outcome"] == "overtake" and candidate["outcome"] != "overtake"
+            for bc, candidate in pairs
+        ),
+    }
+
+
 def run(args: argparse.Namespace) -> Path:
     config = resolved_configuration(args)
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -524,6 +768,12 @@ def run(args: argparse.Namespace) -> Path:
             eval_pool,
             workers=config["evaluation_workers"],
         )
+        bc_metrics.update(
+            fixed_collision=0,
+            new_collision=0,
+            gained_overtake=0,
+            lost_overtake=0,
+        )
         atomic_write_json(run_dir / "evaluations" / "update_0000_rows.json", bc_rows)
         atomic_write_json(run_dir / "evaluations" / "update_0000_metrics.json", bc_metrics)
         validate_evaluation(bc_metrics)
@@ -545,13 +795,24 @@ def run(args: argparse.Namespace) -> Path:
                 "num_timesteps": int(model.num_timesteps),
                 **train_metrics(model),
                 "rollout": callback.latest_update_summary,
+                "parameter_deltas_from_fresh_start": parameter_deltas(before, model),
             }
+            step_evidence = metrics["optimizer_step_evidence"]
+            expected_cumulative_steps = update * config["optimizer_steps_per_update"]
+            if (
+                not step_evidence["all_parameter_steps_equal"]
+                or step_evidence["observed_cumulative_optimizer_steps"] != expected_cumulative_steps
+            ):
+                raise RuntimeError(
+                    f"Optimizer step evidence mismatch at update {update}: {step_evidence}"
+                )
+            metrics["optimizer_steps_this_update"] = config["optimizer_steps_per_update"]
             update_metrics.append(metrics)
             append_json(run_dir / "training_metrics.jsonl", metrics)
             if not metrics["rollout_fields_finite"] or not metrics["all_scalar_metrics_finite"]:
                 raise RuntimeError(f"Non-finite PPO V1 training values at update {update}")
 
-            checkpoint_due = evaluate_checkpoints and update % 5 == 0
+            checkpoint_due = evaluate_checkpoints and update in config["evaluation_updates"]
             smoke_final = not evaluate_checkpoints and update == config["updates"]
             if checkpoint_due or smoke_final:
                 final_checkpoint_dir = save_checkpoint(model, run_dir, update)
@@ -561,6 +822,7 @@ def run(args: argparse.Namespace) -> Path:
                         eval_pool,
                         workers=config["evaluation_workers"],
                     )
+                    evaluation.update(paired_change_metrics(bc_rows, rows))
                     atomic_write_json(run_dir / "evaluations" / f"update_{update:04d}_rows.json", rows)
                     atomic_write_json(final_checkpoint_dir / "metrics.json", evaluation)
                     validate_evaluation(evaluation)
@@ -590,6 +852,9 @@ def run(args: argparse.Namespace) -> Path:
 
 def main() -> int:
     args = parse_arguments()
+    if args.dry_run_resolved_config:
+        print(json.dumps(resolved_configuration(args), indent=2, sort_keys=True, default=_json_default))
+        return 0
     run_dir = run(args)
     print(f"PPO_V1_RUN_DIR={run_dir}")
     return 0

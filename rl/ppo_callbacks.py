@@ -23,7 +23,12 @@ class PPOV1MetricsCallback(BaseCallback):
         self._episodes = [self._new_episode() for _ in range(self.n_envs)]
         self._rollout_records: list[dict[str, Any]] = []
         self._component_sums: Counter[str] = Counter()
-        self._branch_counts: Counter[str] = Counter()
+        self._branch_transition_counts: Counter[str] = Counter()
+        self._reset_branch_counts: Counter[str] = Counter()
+        self._unique_scenario_ids: set[str] = set()
+        self._pending_initial_reset_infos: list[dict[str, Any]] = []
+        self._initial_resets_recorded = False
+        self._partial_episodes_carried_in = 0
         self._actions: list[np.ndarray] = []
         self._transition_count = 0
         self.update_index = 0
@@ -45,12 +50,38 @@ class PPOV1MetricsCallback(BaseCallback):
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(value, sort_keys=True, allow_nan=False) + "\n")
 
+    @staticmethod
+    def _sampler_branch(info: dict[str, Any]) -> str:
+        return str(info.get("sampler_branch") or "unknown")
+
+    def _record_reset(self, info: dict[str, Any]) -> None:
+        self._reset_branch_counts[self._sampler_branch(info)] += 1
+
+    def _on_training_start(self) -> None:
+        # The initial vector reset happens in BaseAlgorithm._setup_learn before
+        # on_training_start().  Record it exactly once; later model.learn()
+        # calls continue the same environments and must not recount it.
+        if not self._initial_resets_recorded:
+            reset_infos = list(getattr(self.training_env, "reset_infos", []))
+            if len(reset_infos) != self.n_envs:
+                raise RuntimeError(
+                    f"Expected {self.n_envs} initial reset infos, got {len(reset_infos)}"
+                )
+            self._pending_initial_reset_infos = [dict(info) for info in reset_infos]
+            self._initial_resets_recorded = True
+
     def _on_rollout_start(self) -> None:
         self._rollout_records = []
         self._component_sums = Counter()
-        self._branch_counts = Counter()
+        self._branch_transition_counts = Counter()
+        self._reset_branch_counts = Counter()
+        self._unique_scenario_ids = set()
+        self._partial_episodes_carried_in = sum(episode["steps"] > 0 for episode in self._episodes)
         self._actions = []
         self._transition_count = 0
+        for info in self._pending_initial_reset_infos:
+            self._record_reset(info)
+        self._pending_initial_reset_infos = []
 
     def _on_step(self) -> bool:
         infos = self.locals.get("infos", [])
@@ -67,8 +98,11 @@ class PPOV1MetricsCallback(BaseCallback):
                 episode[key] += value
                 self._component_sums[key] += value
             self._transition_count += 1
-            branch = str(info.get("sampler_branch") or "unknown")
-            self._branch_counts[branch] += 1
+            branch = self._sampler_branch(info)
+            self._branch_transition_counts[branch] += 1
+            scenario_id = info.get("scenario_id")
+            if scenario_id is not None:
+                self._unique_scenario_ids.add(str(scenario_id))
 
             if env_index < dones.size and dones[env_index]:
                 if bool(info.get("ego_collision", False)):
@@ -88,6 +122,12 @@ class PPOV1MetricsCallback(BaseCallback):
                 self._append_json(self.episode_log_path, record)
                 self._rollout_records.append(record)
                 self._episodes[env_index] = self._new_episode()
+                reset_infos = list(getattr(self.training_env, "reset_infos", []))
+                if len(reset_infos) != self.n_envs:
+                    raise RuntimeError(
+                        f"Expected {self.n_envs} auto-reset infos, got {len(reset_infos)}"
+                    )
+                self._record_reset(dict(reset_infos[env_index]))
         return True
 
     def _on_rollout_end(self) -> None:
@@ -108,17 +148,40 @@ class PPOV1MetricsCallback(BaseCallback):
         else:
             action_statistics = {"count": 0}
         outcome_counts = Counter(record["outcome"] for record in self._rollout_records)
+        completed_by_branch = Counter(
+            str(record.get("sampler_branch") or "unknown")
+            for record in self._rollout_records
+        )
+        outcome_by_branch = {
+            outcome: Counter(
+                str(record.get("sampler_branch") or "unknown")
+                for record in self._rollout_records
+                if record["outcome"] == outcome
+            )
+            for outcome in ("ego_collision", "follow", "overtake")
+        }
+        partial_episodes_carried_out = sum(episode["steps"] > 0 for episode in self._episodes)
         denominator = max(self._transition_count, 1)
         summary = {
             "update": self.update_index,
             "transitions": self._transition_count,
             "completed_episodes": len(self._rollout_records),
+            "completed_episodes_by_sampler_branch": dict(sorted(completed_by_branch.items())),
+            "ego_collision_episodes_by_sampler_branch": dict(sorted(outcome_by_branch["ego_collision"].items())),
+            "follow_episodes_by_sampler_branch": dict(sorted(outcome_by_branch["follow"].items())),
+            "overtake_episodes_by_sampler_branch": dict(sorted(outcome_by_branch["overtake"].items())),
             "outcomes": dict(sorted(outcome_counts.items())),
+            "unique_scenario_id_count": len(self._unique_scenario_ids),
+            "unique_scenario_ids": sorted(self._unique_scenario_ids),
+            "reset_count_by_sampler_branch": dict(sorted(self._reset_branch_counts.items())),
+            "partial_episodes_carried_across_rollout_boundary": partial_episodes_carried_out,
+            "partial_episodes_carried_in": self._partial_episodes_carried_in,
+            "partial_episodes_carried_out": partial_episodes_carried_out,
             "reward_component_means": {
                 key: float(self._component_sums[key] / denominator)
                 for key in ("reward_progress", "reward_relative", "reward_collision", "reward_total")
             },
-            "sampler_branch_transitions": dict(sorted(self._branch_counts.items())),
+            "sampler_branch_transitions": dict(sorted(self._branch_transition_counts.items())),
             "action_statistics": action_statistics,
         }
         self.latest_update_summary = summary
@@ -127,3 +190,10 @@ class PPOV1MetricsCallback(BaseCallback):
             self.logger.record(f"ppo_v1/{name}", value)
         for name, value in outcome_counts.items():
             self.logger.record(f"ppo_v1/episodes_{name}", int(value))
+        for branch, value in completed_by_branch.items():
+            self.logger.record(f"ppo_v1/completed_episodes_{branch}", int(value))
+        for branch, value in self._reset_branch_counts.items():
+            self.logger.record(f"ppo_v1/resets_{branch}", int(value))
+        self.logger.record("ppo_v1/unique_scenario_ids", len(self._unique_scenario_ids))
+        self.logger.record("ppo_v1/partial_episodes_carried_in", self._partial_episodes_carried_in)
+        self.logger.record("ppo_v1/partial_episodes_carried_out", partial_episodes_carried_out)

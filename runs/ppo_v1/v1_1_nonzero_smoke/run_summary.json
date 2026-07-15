@@ -1,0 +1,6 @@
+{
+  "completed_transitions": 51200,
+  "completed_updates": 2,
+  "final_checkpoint": "checkpoints/update_0002",
+  "smoke": "v1_1_nonzero"
+}

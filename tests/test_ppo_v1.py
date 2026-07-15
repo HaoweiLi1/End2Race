@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from argparse import Namespace
 from copy import deepcopy
+import tempfile
 import unittest
 
 import gymnasium as gym
@@ -14,6 +16,7 @@ from eval_multiagent import collision_scope_stops_episode
 from model import End2Race
 from rl.end2race_gymnasium_env import End2RaceGymnasiumEnv, EpisodeResetSpec
 from rl.end2race_recurrent_ppo import End2RaceRecurrentPPO
+from rl.ppo_callbacks import PPOV1MetricsCallback
 from rl.ppo_reward import (
     PPOV1TransitionReward,
     ProgressProjector,
@@ -37,6 +40,12 @@ from rl.sb3_end2race_policy import (
     PPO_V1_SPEED_LOG_STD,
     PPO_V1_STEER_LOG_STD,
     End2RaceGRUPolicy,
+)
+from train_ppo_sb3 import (
+    DEFAULT_CONFIG,
+    V1_1_EVALUATION_UPDATES,
+    paired_change_metrics,
+    resolved_configuration,
 )
 
 
@@ -134,6 +143,262 @@ class TinyEnd2RaceEnv(gym.Env):
         return observation, reward, False, self.steps >= 4, {}
 
 
+def configuration_args(**overrides):
+    values = {
+        "updates": DEFAULT_CONFIG["updates"],
+        "n_envs": DEFAULT_CONFIG["n_envs"],
+        "n_steps": DEFAULT_CONFIG["n_steps"],
+        "batch_size": DEFAULT_CONFIG["batch_size"],
+        "device": "cpu",
+        "master_seed": DEFAULT_CONFIG["master_seed"],
+        "lr_scale": DEFAULT_CONFIG["lr_scale"],
+        "evaluation_workers": 1,
+        "collision_sampling_probability": DEFAULT_CONFIG["collision_sampling_probability"],
+        "evaluation_updates": None,
+        "smoke": "none",
+    }
+    values.update(overrides)
+    return Namespace(**values)
+
+
+class CallbackTestLogger:
+    def __init__(self):
+        self.records = {}
+
+    def record(self, name, value):
+        self.records[name] = value
+
+
+class CallbackTestVecEnv:
+    def __init__(self):
+        self.reset_infos = [
+            {"scenario_id": "scenario-a", "sampler_branch": "all_training"},
+            {"scenario_id": "scenario-b", "sampler_branch": "bc_ego_collision"},
+        ]
+
+
+class CallbackTestModel:
+    def __init__(self, env):
+        self.env = env
+        self.logger = CallbackTestLogger()
+        self.num_timesteps = 0
+
+    def get_env(self):
+        return self.env
+
+
+def callback_info(scenario_id, branch, *, collision=False, relative_position=-1.0):
+    return {
+        "scenario_id": scenario_id,
+        "sampler_branch": branch,
+        "ego_collision": collision,
+        "relative_position_m": relative_position,
+        "opponent_collision_latched": False,
+        "termination_reason": "ego_collision" if collision else None,
+        "elapsed_time": 1.0,
+        "reward_total": -2.0 if collision else 0.01,
+        "reward_progress": 0.01,
+        "reward_relative": 0.0,
+        "reward_collision": -2.0 if collision else 0.0,
+    }
+
+
+class TestPPOV11Configuration(unittest.TestCase):
+    def test_v1_default_derived_values_remain_unchanged(self):
+        config = resolved_configuration(configuration_args())
+        self.assertEqual(config["configuration_profile"], "ppo_v1")
+        self.assertEqual(config["transitions_per_update"], 12_800)
+        self.assertEqual(config["minibatches_per_update"], 16)
+        self.assertEqual(config["optimizer_steps_per_update"], 16)
+        self.assertEqual(config["total_transitions"], 256_000)
+        self.assertEqual(config["total_optimizer_steps"], 320)
+        self.assertEqual(config["collision_sampling_probability"], 0.25)
+        self.assertEqual(config["evaluation_updates"], [5, 10, 15, 20])
+
+    def test_v1_1_derived_values_and_fixed_evaluation_schedule(self):
+        config = resolved_configuration(
+            configuration_args(
+                n_steps=1600,
+                batch_size=1600,
+                collision_sampling_probability=0.50,
+                evaluation_updates=V1_1_EVALUATION_UPDATES,
+            )
+        )
+        self.assertEqual(config["configuration_profile"], "ppo_v1_1")
+        self.assertEqual(config["transitions_per_update"], 25_600)
+        self.assertEqual(config["minibatches_per_update"], 16)
+        self.assertEqual(config["optimizer_steps_per_update"], 16)
+        self.assertEqual(config["total_transitions"], 512_000)
+        self.assertEqual(config["total_optimizer_steps"], 320)
+        self.assertEqual(config["evaluation_updates"], [2, 3, 5, 10, 15, 20])
+        for name in (
+            "gamma",
+            "gae_lambda",
+            "clip_range",
+            "n_epochs",
+            "vf_coef",
+            "ent_coef",
+            "max_grad_norm",
+            "target_kl",
+        ):
+            self.assertEqual(config[name], DEFAULT_CONFIG[name])
+
+    def test_v1_1_schedule_probability_and_divisibility_fail_closed(self):
+        with self.assertRaisesRegex(ValueError, "PPO V1.1 requires"):
+            resolved_configuration(
+                configuration_args(
+                    n_steps=1600,
+                    batch_size=1600,
+                    collision_sampling_probability=0.50,
+                )
+            )
+        with self.assertRaisesRegex(ValueError, "collision_sampling_probability"):
+            resolved_configuration(configuration_args(collision_sampling_probability=1.01))
+        with self.assertRaisesRegex(ValueError, "evenly divide"):
+            resolved_configuration(configuration_args(batch_size=801))
+
+    def test_v1_1_smoke_profiles_keep_full_rollout_geometry(self):
+        zero_lr = resolved_configuration(configuration_args(smoke="v1_1_zero_lr"))
+        nonzero = resolved_configuration(configuration_args(smoke="v1_1_nonzero"))
+        self.assertEqual(zero_lr["configuration_profile"], "v1_1_zero_lr")
+        self.assertEqual(zero_lr["transitions_per_update"], 25_600)
+        self.assertEqual(zero_lr["minibatches_per_update"], 16)
+        self.assertEqual(zero_lr["total_optimizer_steps"], 16)
+        self.assertEqual(zero_lr["evaluation_updates"], [])
+        self.assertEqual(zero_lr["lr_scale"], 0.0)
+        self.assertEqual(nonzero["configuration_profile"], "v1_1_nonzero")
+        self.assertEqual(nonzero["total_transitions"], 51_200)
+        self.assertEqual(nonzero["total_optimizer_steps"], 32)
+        self.assertEqual(nonzero["evaluation_updates"], [])
+        self.assertEqual(nonzero["lr_scale"], 1.0)
+
+    def test_paired_change_metrics(self):
+        bc_rows = []
+        candidate_rows = []
+        for index in range(600):
+            scenario_id = f"scenario-{index:03d}"
+            if index == 0:
+                bc_outcome, candidate_outcome = "ego_collision", "follow"
+            elif index == 1:
+                bc_outcome, candidate_outcome = "follow", "ego_collision"
+            elif index == 2:
+                bc_outcome, candidate_outcome = "follow", "overtake"
+            elif index == 3:
+                bc_outcome, candidate_outcome = "overtake", "follow"
+            else:
+                bc_outcome = candidate_outcome = "follow"
+            bc_rows.append({"scenario_id": scenario_id, "outcome": bc_outcome})
+            candidate_rows.append({"scenario_id": scenario_id, "outcome": candidate_outcome})
+        self.assertEqual(
+            paired_change_metrics(bc_rows, candidate_rows),
+            {
+                "fixed_collision": 1,
+                "new_collision": 1,
+                "gained_overtake": 1,
+                "lost_overtake": 1,
+            },
+        )
+
+
+class TestPPOV1MetricsCallback(unittest.TestCase):
+    def test_episode_reset_scenario_and_rollout_boundary_statistics(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            env = CallbackTestVecEnv()
+            model = CallbackTestModel(env)
+            callback = PPOV1MetricsCallback(temporary_directory, n_envs=2)
+            callback.init_callback(model)
+            callback.on_training_start({}, {})
+            callback.on_rollout_start()
+
+            steps = [
+                (
+                    [
+                        callback_info("scenario-a", "all_training"),
+                        callback_info("scenario-b", "bc_ego_collision"),
+                    ],
+                    [False, False],
+                ),
+                (
+                    [
+                        callback_info("scenario-a", "all_training", collision=True),
+                        callback_info("scenario-b", "bc_ego_collision"),
+                    ],
+                    [True, False],
+                ),
+                (
+                    [
+                        callback_info("scenario-c", "bc_ego_collision"),
+                        callback_info("scenario-b", "bc_ego_collision", relative_position=-0.5),
+                    ],
+                    [False, True],
+                ),
+            ]
+            for step_index, (infos, dones) in enumerate(steps):
+                if step_index == 1:
+                    env.reset_infos[0] = {
+                        "scenario_id": "scenario-c",
+                        "sampler_branch": "bc_ego_collision",
+                    }
+                if step_index == 2:
+                    env.reset_infos[1] = {
+                        "scenario_id": "scenario-d",
+                        "sampler_branch": "all_training",
+                    }
+                model.num_timesteps += 2
+                callback.update_locals(
+                    {
+                        "infos": infos,
+                        "dones": np.asarray(dones, dtype=bool),
+                        "actions": np.zeros((2, 2), dtype=np.float32),
+                    }
+                )
+                self.assertTrue(callback.on_step())
+            callback.on_rollout_end()
+
+            summary = callback.latest_update_summary
+            self.assertEqual(summary["transitions"], 6)
+            self.assertEqual(summary["sampler_branch_transitions"], {"all_training": 2, "bc_ego_collision": 4})
+            self.assertEqual(summary["completed_episodes"], 2)
+            self.assertEqual(
+                summary["completed_episodes_by_sampler_branch"],
+                {"all_training": 1, "bc_ego_collision": 1},
+            )
+            self.assertEqual(summary["ego_collision_episodes_by_sampler_branch"], {"all_training": 1})
+            self.assertEqual(summary["follow_episodes_by_sampler_branch"], {"bc_ego_collision": 1})
+            self.assertEqual(summary["overtake_episodes_by_sampler_branch"], {})
+            self.assertEqual(
+                summary["reset_count_by_sampler_branch"],
+                {"all_training": 2, "bc_ego_collision": 2},
+            )
+            self.assertEqual(summary["unique_scenario_id_count"], 3)
+            self.assertEqual(
+                summary["unique_scenario_ids"],
+                ["scenario-a", "scenario-b", "scenario-c"],
+            )
+            self.assertEqual(summary["partial_episodes_carried_in"], 0)
+            self.assertEqual(summary["partial_episodes_carried_out"], 1)
+            self.assertEqual(summary["partial_episodes_carried_across_rollout_boundary"], 1)
+
+            callback.on_training_start({}, {})
+            callback.on_rollout_start()
+            model.num_timesteps += 2
+            callback.update_locals(
+                {
+                    "infos": [
+                        callback_info("scenario-c", "bc_ego_collision"),
+                        callback_info("scenario-d", "all_training"),
+                    ],
+                    "dones": np.asarray([False, False], dtype=bool),
+                    "actions": np.zeros((2, 2), dtype=np.float32),
+                }
+            )
+            self.assertTrue(callback.on_step())
+            callback.on_rollout_end()
+            self.assertEqual(callback.latest_update_summary["partial_episodes_carried_in"], 1)
+            self.assertEqual(callback.latest_update_summary["partial_episodes_carried_out"], 2)
+            self.assertEqual(callback.latest_update_summary["reset_count_by_sampler_branch"], {})
+
+
 class TestPPOV1Reward(unittest.TestCase):
     def test_progress_projection_seam_and_invalid_delta(self):
         projector = square_projector()
@@ -219,12 +484,17 @@ class TestPPOV1Scenarios(unittest.TestCase):
 
     def test_sampler_seed_reproducibility(self):
         collision_ids = [scenario.scenario_id for scenario in self.training[:7]]
-        sampler = FixedMixtureScenarioSampler(self.training, collision_ids)
+        sampler = FixedMixtureScenarioSampler(
+            self.training,
+            collision_ids,
+            collision_probability=0.50,
+        )
         rng_a = np.random.default_rng(20260715)
         rng_b = np.random.default_rng(20260715)
-        sequence_a = [tuple(item.scenario_id for item in [sampler.sample(rng_a)[0]]) for _ in range(100)]
-        sequence_b = [tuple(item.scenario_id for item in [sampler.sample(rng_b)[0]]) for _ in range(100)]
+        sequence_a = [(scenario.scenario_id, branch) for scenario, branch in (sampler.sample(rng_a) for _ in range(100))]
+        sequence_b = [(scenario.scenario_id, branch) for scenario, branch in (sampler.sample(rng_b) for _ in range(100))]
         self.assertEqual(sequence_a, sequence_b)
+        self.assertEqual({branch for _scenario_id, branch in sequence_a}, {"all_training", "bc_ego_collision"})
 
 
 class TestPPOV1Policy(unittest.TestCase):

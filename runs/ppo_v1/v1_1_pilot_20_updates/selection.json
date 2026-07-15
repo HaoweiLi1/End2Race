@@ -1,0 +1,138 @@
+{
+  "best": {
+    "metrics": {
+      "ego_collision": 15,
+      "error": 0,
+      "fixed_collision": 10,
+      "follow": 232,
+      "gained_overtake": 10,
+      "lost_overtake": 3,
+      "new_collision": 4,
+      "opponent_only_collision": 3,
+      "overtake": 353,
+      "total": 600
+    },
+    "update": 2
+  },
+  "best_minus_bc": {
+    "ego_collision": -6,
+    "follow": -1,
+    "opponent_only_collision": 0,
+    "overtake": 7
+  },
+  "candidates": [
+    {
+      "metrics": {
+        "ego_collision": 15,
+        "error": 0,
+        "fixed_collision": 10,
+        "follow": 232,
+        "gained_overtake": 10,
+        "lost_overtake": 3,
+        "new_collision": 4,
+        "opponent_only_collision": 3,
+        "overtake": 353,
+        "total": 600
+      },
+      "update": 2
+    },
+    {
+      "metrics": {
+        "ego_collision": 23,
+        "error": 0,
+        "fixed_collision": 6,
+        "follow": 234,
+        "gained_overtake": 7,
+        "lost_overtake": 10,
+        "new_collision": 8,
+        "opponent_only_collision": 3,
+        "overtake": 343,
+        "total": 600
+      },
+      "update": 3
+    },
+    {
+      "metrics": {
+        "ego_collision": 23,
+        "error": 0,
+        "fixed_collision": 5,
+        "follow": 231,
+        "gained_overtake": 7,
+        "lost_overtake": 7,
+        "new_collision": 7,
+        "opponent_only_collision": 3,
+        "overtake": 346,
+        "total": 600
+      },
+      "update": 5
+    },
+    {
+      "metrics": {
+        "ego_collision": 23,
+        "error": 0,
+        "fixed_collision": 9,
+        "follow": 231,
+        "gained_overtake": 10,
+        "lost_overtake": 10,
+        "new_collision": 11,
+        "opponent_only_collision": 3,
+        "overtake": 346,
+        "total": 600
+      },
+      "update": 10
+    },
+    {
+      "metrics": {
+        "ego_collision": 29,
+        "error": 0,
+        "fixed_collision": 5,
+        "follow": 227,
+        "gained_overtake": 9,
+        "lost_overtake": 11,
+        "new_collision": 13,
+        "opponent_only_collision": 3,
+        "overtake": 344,
+        "total": 600
+      },
+      "update": 15
+    },
+    {
+      "metrics": {
+        "ego_collision": 19,
+        "error": 0,
+        "fixed_collision": 10,
+        "follow": 225,
+        "gained_overtake": 16,
+        "lost_overtake": 6,
+        "new_collision": 8,
+        "opponent_only_collision": 3,
+        "overtake": 356,
+        "total": 600
+      },
+      "update": 20
+    }
+  ],
+  "eligible_updates": [
+    2,
+    3,
+    5,
+    10,
+    15,
+    20
+  ],
+  "overtake_floor": 329,
+  "paired_bc": {
+    "ego_collision": 21,
+    "error": 0,
+    "fixed_collision": 0,
+    "follow": 233,
+    "gained_overtake": 0,
+    "lost_overtake": 0,
+    "new_collision": 0,
+    "opponent_only_collision": 3,
+    "overtake": 346,
+    "total": 600
+  },
+  "result_scope": "V1 development/pilot; evaluation pool was used for checkpoint selection",
+  "status": "improved"
+}

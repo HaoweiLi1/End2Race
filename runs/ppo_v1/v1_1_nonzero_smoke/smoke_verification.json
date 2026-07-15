@@ -1,0 +1,65 @@
+{
+  "actor_key_count": 12,
+  "actor_strict_load_succeeded": true,
+  "all_required_fields_finite": true,
+  "checkpoint_reload_succeeded": true,
+  "expected_group_lrs": {
+    "critic": 0.0003,
+    "gru": 1e-06,
+    "head": 1e-05
+  },
+  "learning_rate_gate": true,
+  "optimizer_step_gate": true,
+  "parameter_delta_gate": true,
+  "parameter_deltas": {
+    "critic": {
+      "max_abs_delta": 0.006112977862358093,
+      "parameter_tensors": 4
+    },
+    "dummy_embedding": {
+      "max_abs_delta": 0.0,
+      "parameter_tensors": 1
+    },
+    "gru": {
+      "max_abs_delta": 1.7218291759490967e-05,
+      "parameter_tensors": 4
+    },
+    "head": {
+      "max_abs_delta": 0.0002138810232281685,
+      "parameter_tensors": 4
+    },
+    "log_std": {
+      "max_abs_delta": 0.0,
+      "parameter_tensors": 1
+    },
+    "perception": {
+      "max_abs_delta": 0.0,
+      "parameter_tensors": 1
+    },
+    "speed_mlp": {
+      "max_abs_delta": 0.0,
+      "parameter_tensors": 2
+    }
+  },
+  "passed": true,
+  "recurrent_replay": {
+    "all_finite": true,
+    "max_abs_log_prob_replay_error": 72.12554168701172,
+    "max_abs_ratio_deviation": 1.080366611480713,
+    "minibatch_count": 16,
+    "padded_transition_count": 24016,
+    "ratio_max": 2.080366611480713,
+    "ratio_mean": 0.9978836178779602,
+    "ratio_min": 4.745426319357831e-32,
+    "ratio_std": 0.06769097596406937,
+    "valid_transition_count": 25600
+  },
+  "recurrent_replay_finite_gate": true,
+  "recurrent_replay_identity_gate": true,
+  "reloaded_group_lrs": {
+    "critic": 0.0003,
+    "gru": 1e-06,
+    "head": 1e-05
+  },
+  "smoke": "v1_1_nonzero"
+}

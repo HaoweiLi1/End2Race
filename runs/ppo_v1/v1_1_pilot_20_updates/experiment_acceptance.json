@@ -1,0 +1,134 @@
+{
+  "canonical_bc": {
+    "path": "pretrained/end2race.pth",
+    "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+  },
+  "fresh_start_bc_outcomes_sha256": "3fc7e4fd5effb6e98c1cbbec1c339416c1f138cdb6557d51bc077aebe4b59aa2",
+  "zero_lr_smoke": {
+    "run_dir": "runs/ppo_v1/v1_1_zero_lr_smoke",
+    "passed": true,
+    "transitions": 25600,
+    "minibatches": 16,
+    "optimizer_steps": 16,
+    "all_parameter_deltas_exact_zero": true,
+    "all_required_fields_finite": true,
+    "recurrent_replay_identity": true,
+    "checkpoint_reload": true,
+    "actor_strict_key_count": 12
+  },
+  "nonzero_smoke": {
+    "run_dir": "runs/ppo_v1/v1_1_nonzero_smoke",
+    "passed": true,
+    "transitions": 51200,
+    "optimizer_steps": 32,
+    "parameter_max_abs_delta": {
+      "gru": 0.000017218291759490967,
+      "head": 0.0002138810232281685,
+      "critic": 0.006112977862358093,
+      "perception": 0,
+      "speed_mlp": 0,
+      "dummy_embedding": 0,
+      "log_std": 0
+    },
+    "all_required_fields_finite": true,
+    "checkpoint_reload": true,
+    "actor_strict_key_count": 12
+  },
+  "pilot": {
+    "run_dir": "runs/ppo_v1/v1_1_pilot_20_updates",
+    "completed_updates": 20,
+    "completed_transitions": 512000,
+    "optimizer_steps": 320,
+    "all_scalar_and_rollout_fields_finite": true,
+    "optimizer_group_lrs_constant": true,
+    "frozen_parameter_deltas_exact_zero": true,
+    "trainable_parameter_deltas_positive_finite": true,
+    "checkpoint_reload": true,
+    "all_actor_exports_strict_12_key": true,
+    "training_totals": {
+      "completed_episodes": 734,
+      "ego_collision_episodes": 207,
+      "follow_episodes": 231,
+      "overtake_episodes": 296,
+      "completed_episodes_by_sampler_branch": {
+        "all_training": 387,
+        "bc_ego_collision": 347
+      },
+      "ego_collision_episodes_by_sampler_branch": {
+        "all_training": 14,
+        "bc_ego_collision": 193
+      }
+    },
+    "paired_bc": {
+      "ego_collision": 21,
+      "follow": 233,
+      "overtake": 346,
+      "opponent_only_collision": 3,
+      "error": 0
+    },
+    "selected_update": 2,
+    "selected_metrics": {
+      "ego_collision": 15,
+      "follow": 232,
+      "overtake": 353,
+      "opponent_only_collision": 3,
+      "fixed_collision": 10,
+      "new_collision": 4,
+      "gained_overtake": 10,
+      "lost_overtake": 3,
+      "error": 0
+    }
+  },
+  "comparison": {
+    "v1_training_totals": {
+      "transitions": 256000,
+      "completed_episodes": 326,
+      "ego_collision_episodes": 35
+    },
+    "v1_best_update5": {
+      "ego_collision": 17,
+      "follow": 236,
+      "overtake": 347,
+      "opponent_only_collision": 3,
+      "fixed_collision": 11,
+      "new_collision": 7,
+      "gained_overtake": 9,
+      "lost_overtake": 8,
+      "error": 0
+    },
+    "common_checkpoint_collision_volatility": {
+      "updates": [5, 10, 15, 20],
+      "v1_values": [17, 18, 27, 21],
+      "v1_population_std": 3.897114317029974,
+      "v1_range": 10,
+      "v1_mean_abs_adjacent_change": 5.333333333333333,
+      "v1_1_values": [23, 23, 29, 19],
+      "v1_1_population_std": 3.570714214271425,
+      "v1_1_range": 10,
+      "v1_1_mean_abs_adjacent_change": 5.333333333333333
+    },
+    "common_checkpoint_overtake_volatility": {
+      "updates": [5, 10, 15, 20],
+      "v1_values": [347, 340, 331, 336],
+      "v1_population_std": 5.852349955359813,
+      "v1_range": 16,
+      "v1_mean_abs_adjacent_change": 7.0,
+      "v1_1_values": [346, 346, 344, 356],
+      "v1_1_population_std": 4.69041575982343,
+      "v1_1_range": 12,
+      "v1_1_mean_abs_adjacent_change": 4.666666666666667
+    }
+  },
+  "verdict": {
+    "collision_decreases_with_training": false,
+    "fixed_stably_exceeds_new": false,
+    "overtake_preserved": true,
+    "critic_explained_variance_improved": true,
+    "checkpoint_variation_reduced": false
+  },
+  "regression": {
+    "command": "python -m unittest tests.test_sb3_gru_integration tests.test_ppo_v1 -v",
+    "tests_run": 27,
+    "passed": true
+  }
+}
