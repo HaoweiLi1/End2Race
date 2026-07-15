@@ -1,0 +1,1842 @@
+===== tianshou.data.collector.Collector.collect /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/data/collector.py:186-409 =====
+    def collect(
+        self,
+        n_step: Optional[int] = None,
+        n_episode: Optional[int] = None,
+        random: bool = False,
+        render: Optional[float] = None,
+        no_grad: bool = True,
+        gym_reset_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Collect a specified number of step or episode.
+
+        To ensure unbiased sampling result with n_episode option, this function will
+        first collect ``n_episode - env_num`` episodes, then for the last ``env_num``
+        episodes, they will be collected evenly from each env.
+
+        :param int n_step: how many steps you want to collect.
+        :param int n_episode: how many episodes you want to collect.
+        :param bool random: whether to use random policy for collecting data. Default
+            to False.
+        :param float render: the sleep time between rendering consecutive frames.
+            Default to None (no rendering).
+        :param bool no_grad: whether to retain gradient in policy.forward(). Default to
+            True (no gradient retaining).
+        :param gym_reset_kwargs: extra keyword arguments to pass into the environment's
+            reset function. Defaults to None (extra keyword arguments)
+
+        .. note::
+
+            One and only one collection number specification is permitted, either
+            ``n_step`` or ``n_episode``.
+
+        :return: A dict including the following keys
+
+            * ``n/ep`` collected number of episodes.
+            * ``n/st`` collected number of steps.
+            * ``rews`` array of episode reward over collected episodes.
+            * ``lens`` array of episode length over collected episodes.
+            * ``idxs`` array of episode start index in buffer over collected episodes.
+            * ``rew`` mean of episodic rewards.
+            * ``len`` mean of episodic lengths.
+            * ``rew_std`` standard error of episodic rewards.
+            * ``len_std`` standard error of episodic lengths.
+        """
+        assert not self.env.is_async, "Please use AsyncCollector if using async venv."
+        if n_step is not None:
+            assert n_episode is None, (
+                f"Only one of n_step or n_episode is allowed in Collector."
+                f"collect, got n_step={n_step}, n_episode={n_episode}."
+            )
+            assert n_step > 0
+            if not n_step % self.env_num == 0:
+                warnings.warn(
+                    f"n_step={n_step} is not a multiple of #env ({self.env_num}), "
+                    "which may cause extra transitions collected into the buffer."
+                )
+            ready_env_ids = np.arange(self.env_num)
+        elif n_episode is not None:
+            assert n_episode > 0
+            ready_env_ids = np.arange(min(self.env_num, n_episode))
+            self.data = self.data[:min(self.env_num, n_episode)]
+        else:
+            raise TypeError(
+                "Please specify at least one (either n_step or n_episode) "
+                "in AsyncCollector.collect()."
+            )
+
+        start_time = time.time()
+
+        step_count = 0
+        episode_count = 0
+        episode_rews = []
+        episode_lens = []
+        episode_start_indices = []
+
+        while True:
+            assert len(self.data) == len(ready_env_ids)
+            # restore the state: if the last state is None, it won't store
+            last_state = self.data.policy.pop("hidden_state", None)
+
+            # get the next action
+            if random:
+                try:
+                    act_sample = [
+                        self._action_space[i].sample() for i in ready_env_ids
+                    ]
+                except TypeError:  # envpool's action space is not for per-env
+                    act_sample = [self._action_space.sample() for _ in ready_env_ids]
+                act_sample = self.policy.map_action_inverse(act_sample)  # type: ignore
+                self.data.update(act=act_sample)
+            else:
+                if no_grad:
+                    with torch.no_grad():  # faster than retain_grad version
+                        # self.data.obs will be used by agent to get result
+                        result = self.policy(self.data, last_state)
+                else:
+                    result = self.policy(self.data, last_state)
+                # update state / act / policy into self.data
+                policy = result.get("policy", Batch())
+                assert isinstance(policy, Batch)
+                state = result.get("state", None)
+                if state is not None:
+                    policy.hidden_state = state  # save state into buffer
+                act = to_numpy(result.act)
+                if self.exploration_noise:
+                    act = self.policy.exploration_noise(act, self.data)
+                self.data.update(policy=policy, act=act)
+
+            # get bounded and remapped actions first (not saved into buffer)
+            action_remap = self.policy.map_action(self.data.act)
+            # step in env
+            obs_next, rew, terminated, truncated, info = self.env.step(
+                action_remap,  # type: ignore
+                ready_env_ids
+            )
+            done = np.logical_or(terminated, truncated)
+
+            self.data.update(
+                obs_next=obs_next,
+                rew=rew,
+                terminated=terminated,
+                truncated=truncated,
+                done=done,
+                info=info
+            )
+            if self.preprocess_fn:
+                self.data.update(
+                    self.preprocess_fn(
+                        obs_next=self.data.obs_next,
+                        rew=self.data.rew,
+                        done=self.data.done,
+                        info=self.data.info,
+                        policy=self.data.policy,
+                        env_id=ready_env_ids,
+                        act=self.data.act,
+                    )
+                )
+
+            if render:
+                self.env.render()
+                if render > 0 and not np.isclose(render, 0):
+                    time.sleep(render)
+
+            # add data into the buffer
+            ptr, ep_rew, ep_len, ep_idx = self.buffer.add(
+                self.data, buffer_ids=ready_env_ids
+            )
+
+            # collect statistics
+            step_count += len(ready_env_ids)
+
+            if np.any(done):
+                env_ind_local = np.where(done)[0]
+                env_ind_global = ready_env_ids[env_ind_local]
+                episode_count += len(env_ind_local)
+                episode_lens.append(ep_len[env_ind_local])
+                episode_rews.append(ep_rew[env_ind_local])
+                episode_start_indices.append(ep_idx[env_ind_local])
+                # now we copy obs_next to obs, but since there might be
+                # finished episodes, we have to reset finished envs first.
+                self._reset_env_with_ids(
+                    env_ind_local, env_ind_global, gym_reset_kwargs
+                )
+                for i in env_ind_local:
+                    self._reset_state(i)
+
+                # remove surplus env id from ready_env_ids
+                # to avoid bias in selecting environments
+                if n_episode:
+                    surplus_env_num = len(ready_env_ids) - (n_episode - episode_count)
+                    if surplus_env_num > 0:
+                        mask = np.ones_like(ready_env_ids, dtype=bool)
+                        mask[env_ind_local[:surplus_env_num]] = False
+                        ready_env_ids = ready_env_ids[mask]
+                        self.data = self.data[mask]
+
+            self.data.obs = self.data.obs_next
+
+            if (n_step and step_count >= n_step) or \
+                    (n_episode and episode_count >= n_episode):
+                break
+
+        # generate statistics
+        self.collect_step += step_count
+        self.collect_episode += episode_count
+        self.collect_time += max(time.time() - start_time, 1e-9)
+
+        if n_episode:
+            self.data = Batch(
+                obs={},
+                act={},
+                rew={},
+                terminated={},
+                truncated={},
+                done={},
+                obs_next={},
+                info={},
+                policy={}
+            )
+            self.reset_env()
+
+        if episode_count > 0:
+            rews, lens, idxs = list(
+                map(
+                    np.concatenate,
+                    [episode_rews, episode_lens, episode_start_indices]
+                )
+            )
+            rew_mean, rew_std = rews.mean(), rews.std()
+            len_mean, len_std = lens.mean(), lens.std()
+        else:
+            rews, lens, idxs = np.array([]), np.array([], int), np.array([], int)
+            rew_mean = rew_std = len_mean = len_std = 0
+
+        return {
+            "n/ep": episode_count,
+            "n/st": step_count,
+            "rews": rews,
+            "lens": lens,
+            "idxs": idxs,
+            "rew": rew_mean,
+            "len": len_mean,
+            "rew_std": rew_std,
+            "len_std": len_std,
+        }
+
+
+===== tianshou.data.collector.Collector._reset_state /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/data/collector.py:157-166 =====
+    def _reset_state(self, id: Union[int, List[int]]) -> None:
+        """Reset the hidden state: self.data.state[id]."""
+        if hasattr(self.data.policy, "hidden_state"):
+            state = self.data.policy.hidden_state  # it is a reference
+            if isinstance(state, torch.Tensor):
+                state[id].zero_()
+            elif isinstance(state, np.ndarray):
+                state[id] = None if state.dtype == object else 0
+            elif isinstance(state, Batch):
+                state.empty_(id)
+
+
+===== tianshou.policy.modelfree.pg.PGPolicy.forward /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/policy/modelfree/pg.py:100-132 =====
+    def forward(
+        self,
+        batch: Batch,
+        state: Optional[Union[dict, Batch, np.ndarray]] = None,
+        **kwargs: Any,
+    ) -> Batch:
+        """Compute action over the given batch data.
+
+        :return: A :class:`~tianshou.data.Batch` which has 4 keys:
+
+            * ``act`` the action.
+            * ``logits`` the network's raw output.
+            * ``dist`` the action distribution.
+            * ``state`` the hidden state.
+
+        .. seealso::
+
+            Please refer to :meth:`~tianshou.policy.BasePolicy.forward` for
+            more detailed explanation.
+        """
+        logits, hidden = self.actor(batch.obs, state=state, info=batch.info)
+        if isinstance(logits, tuple):
+            dist = self.dist_fn(*logits)
+        else:
+            dist = self.dist_fn(logits)
+        if self._deterministic_eval and not self.training:
+            if self.action_type == "discrete":
+                act = logits.argmax(-1)
+            elif self.action_type == "continuous":
+                act = logits[0]
+        else:
+            act = dist.sample()
+        return Batch(logits=logits, act=act, state=hidden, dist=dist)
+
+
+===== tianshou.policy.modelfree.ppo.PPOPolicy.process_fn /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/policy/modelfree/ppo.py:86-96 =====
+    def process_fn(
+        self, batch: Batch, buffer: ReplayBuffer, indices: np.ndarray
+    ) -> Batch:
+        if self._recompute_adv:
+            # buffer input `buffer` and `indices` to be used in `learn()`.
+            self._buffer, self._indices = buffer, indices
+        batch = self._compute_returns(batch, buffer, indices)
+        batch.act = to_torch_as(batch.act, batch.v_s)
+        with torch.no_grad():
+            batch.logp_old = self(batch).dist.log_prob(batch.act)
+        return batch
+
+
+===== tianshou.policy.modelfree.ppo.PPOPolicy.learn /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/policy/modelfree/ppo.py:98-156 =====
+    def learn(  # type: ignore
+        self, batch: Batch, batch_size: int, repeat: int, **kwargs: Any
+    ) -> Dict[str, List[float]]:
+        losses, clip_losses, vf_losses, ent_losses = [], [], [], []
+        for step in range(repeat):
+            if self._recompute_adv and step > 0:
+                batch = self._compute_returns(batch, self._buffer, self._indices)
+            for minibatch in batch.split(batch_size, merge_last=True):
+                # calculate loss for actor
+                dist = self(minibatch).dist
+                if self._norm_adv:
+                    mean, std = minibatch.adv.mean(), minibatch.adv.std()
+                    minibatch.adv = (minibatch.adv -
+                                     mean) / (std + self._eps)  # per-batch norm
+                ratio = (dist.log_prob(minibatch.act) -
+                         minibatch.logp_old).exp().float()
+                ratio = ratio.reshape(ratio.size(0), -1).transpose(0, 1)
+                surr1 = ratio * minibatch.adv
+                surr2 = ratio.clamp(
+                    1.0 - self._eps_clip, 1.0 + self._eps_clip
+                ) * minibatch.adv
+                if self._dual_clip:
+                    clip1 = torch.min(surr1, surr2)
+                    clip2 = torch.max(clip1, self._dual_clip * minibatch.adv)
+                    clip_loss = -torch.where(minibatch.adv < 0, clip2, clip1).mean()
+                else:
+                    clip_loss = -torch.min(surr1, surr2).mean()
+                # calculate loss for critic
+                value = self.critic(minibatch.obs).flatten()
+                if self._value_clip:
+                    v_clip = minibatch.v_s + \
+                        (value - minibatch.v_s).clamp(-self._eps_clip, self._eps_clip)
+                    vf1 = (minibatch.returns - value).pow(2)
+                    vf2 = (minibatch.returns - v_clip).pow(2)
+                    vf_loss = torch.max(vf1, vf2).mean()
+                else:
+                    vf_loss = (minibatch.returns - value).pow(2).mean()
+                # calculate regularization and overall loss
+                ent_loss = dist.entropy().mean()
+                loss = clip_loss + self._weight_vf * vf_loss \
+                    - self._weight_ent * ent_loss
+                self.optim.zero_grad()
+                loss.backward()
+                if self._grad_norm:  # clip large gradient
+                    nn.utils.clip_grad_norm_(
+                        self._actor_critic.parameters(), max_norm=self._grad_norm
+                    )
+                self.optim.step()
+                clip_losses.append(clip_loss.item())
+                vf_losses.append(vf_loss.item())
+                ent_losses.append(ent_loss.item())
+                losses.append(loss.item())
+
+        return {
+            "loss": losses,
+            "loss/clip": clip_losses,
+            "loss/vf": vf_losses,
+            "loss/ent": ent_losses,
+        }
+
+
+===== tianshou.data.buffer.base.ReplayBuffer /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/data/buffer/base.py:11-392 =====
+class ReplayBuffer:
+    """:class:`~tianshou.data.ReplayBuffer` stores data generated from interaction \
+    between the policy and environment.
+
+    ReplayBuffer can be considered as a specialized form (or management) of Batch. It
+    stores all the data in a batch with circular-queue style.
+
+    For the example usage of ReplayBuffer, please check out Section Buffer in
+    :doc:`/tutorials/concepts`.
+
+    :param int size: the maximum size of replay buffer.
+    :param int stack_num: the frame-stack sampling argument, should be greater than or
+        equal to 1. Default to 1 (no stacking).
+    :param bool ignore_obs_next: whether to store obs_next. Default to False.
+    :param bool save_only_last_obs: only save the last obs/obs_next when it has a shape
+        of (timestep, ...) because of temporal stacking. Default to False.
+    :param bool sample_avail: the parameter indicating sampling only available index
+        when using frame-stack sampling method. Default to False.
+    """
+
+    _reserved_keys = (
+        "obs", "act", "rew", "terminated", "truncated", "done", "obs_next", "info",
+        "policy"
+    )
+    _input_keys = (
+        "obs", "act", "rew", "terminated", "truncated", "obs_next", "info", "policy"
+    )
+
+    def __init__(
+        self,
+        size: int,
+        stack_num: int = 1,
+        ignore_obs_next: bool = False,
+        save_only_last_obs: bool = False,
+        sample_avail: bool = False,
+        **kwargs: Any,  # otherwise PrioritizedVectorReplayBuffer will cause TypeError
+    ) -> None:
+        self.options: Dict[str, Any] = {
+            "stack_num": stack_num,
+            "ignore_obs_next": ignore_obs_next,
+            "save_only_last_obs": save_only_last_obs,
+            "sample_avail": sample_avail,
+        }
+        super().__init__()
+        self.maxsize = int(size)
+        assert stack_num > 0, "stack_num should be greater than 0"
+        self.stack_num = stack_num
+        self._indices = np.arange(size)
+        self._save_obs_next = not ignore_obs_next
+        self._save_only_last_obs = save_only_last_obs
+        self._sample_avail = sample_avail
+        self._meta: Batch = Batch()
+        self._ep_rew: Union[float, np.ndarray]
+        self.reset()
+
+    def __len__(self) -> int:
+        """Return len(self)."""
+        return self._size
+
+    def __repr__(self) -> str:
+        """Return str(self)."""
+        return self.__class__.__name__ + self._meta.__repr__()[5:]
+
+    def __getattr__(self, key: str) -> Any:
+        """Return self.key."""
+        try:
+            return self._meta[key]
+        except KeyError as exception:
+            raise AttributeError from exception
+
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """Unpickling interface.
+
+        We need it because pickling buffer does not work out-of-the-box
+        ("buffer.__getattr__" is customized).
+        """
+        self.__dict__.update(state)
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        """Set self.key = value."""
+        assert (key not in self._reserved_keys
+                ), "key '{}' is reserved and cannot be assigned".format(key)
+        super().__setattr__(key, value)
+
+    def save_hdf5(self, path: str, compression: Optional[str] = None) -> None:
+        """Save replay buffer to HDF5 file."""
+        with h5py.File(path, "w") as f:
+            to_hdf5(self.__dict__, f, compression=compression)
+
+    @classmethod
+    def load_hdf5(cls, path: str, device: Optional[str] = None) -> "ReplayBuffer":
+        """Load replay buffer from HDF5 file."""
+        with h5py.File(path, "r") as f:
+            buf = cls.__new__(cls)
+            buf.__setstate__(from_hdf5(f, device=device))  # type: ignore
+        return buf
+
+    @classmethod
+    def from_data(
+        cls, obs: h5py.Dataset, act: h5py.Dataset, rew: h5py.Dataset,
+        terminated: h5py.Dataset, truncated: h5py.Dataset, done: h5py.Dataset,
+        obs_next: h5py.Dataset
+    ) -> "ReplayBuffer":
+        size = len(obs)
+        assert all(len(dset) == size for dset in [obs, act, rew, terminated,
+                                                  truncated, done, obs_next]), \
+            "Lengths of all hdf5 datasets need to be equal."
+        buf = cls(size)
+        if size == 0:
+            return buf
+        batch = Batch(
+            obs=obs,
+            act=act,
+            rew=rew,
+            terminated=terminated,
+            truncated=truncated,
+            done=done,
+            obs_next=obs_next
+        )
+        buf.set_batch(batch)
+        buf._size = size
+        return buf
+
+    def reset(self, keep_statistics: bool = False) -> None:
+        """Clear all the data in replay buffer and episode statistics."""
+        self.last_index = np.array([0])
+        self._index = self._size = 0
+        if not keep_statistics:
+            self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, 0
+
+    def set_batch(self, batch: Batch) -> None:
+        """Manually choose the batch you want the ReplayBuffer to manage."""
+        assert len(batch) == self.maxsize and set(batch.keys()).issubset(
+            self._reserved_keys
+        ), "Input batch doesn't meet ReplayBuffer's data form requirement."
+        self._meta = batch
+
+    def unfinished_index(self) -> np.ndarray:
+        """Return the index of unfinished episode."""
+        last = (self._index - 1) % self._size if self._size else 0
+        return np.array([last] if not self.done[last] and self._size else [], int)
+
+    def prev(self, index: Union[int, np.ndarray]) -> np.ndarray:
+        """Return the index of previous transition.
+
+        The index won't be modified if it is the beginning of an episode.
+        """
+        index = (index - 1) % self._size
+        end_flag = self.done[index] | (index == self.last_index[0])
+        return (index + end_flag) % self._size
+
+    def next(self, index: Union[int, np.ndarray]) -> np.ndarray:
+        """Return the index of next transition.
+
+        The index won't be modified if it is the end of an episode.
+        """
+        end_flag = self.done[index] | (index == self.last_index[0])
+        return (index + (1 - end_flag)) % self._size
+
+    def update(self, buffer: "ReplayBuffer") -> np.ndarray:
+        """Move the data from the given buffer to current buffer.
+
+        Return the updated indices. If update fails, return an empty array.
+        """
+        if len(buffer) == 0 or self.maxsize == 0:
+            return np.array([], int)
+        stack_num, buffer.stack_num = buffer.stack_num, 1
+        from_indices = buffer.sample_indices(0)  # get all available indices
+        buffer.stack_num = stack_num
+        if len(from_indices) == 0:
+            return np.array([], int)
+        to_indices = []
+        for _ in range(len(from_indices)):
+            to_indices.append(self._index)
+            self.last_index[0] = self._index
+            self._index = (self._index + 1) % self.maxsize
+            self._size = min(self._size + 1, self.maxsize)
+        to_indices = np.array(to_indices)
+        if self._meta.is_empty():
+            self._meta = _create_value(  # type: ignore
+                buffer._meta, self.maxsize, stack=False)
+        self._meta[to_indices] = buffer._meta[from_indices]
+        return to_indices
+
+    def _add_index(self, rew: Union[float, np.ndarray],
+                   done: bool) -> Tuple[int, Union[float, np.ndarray], int, int]:
+        """Maintain the buffer's state after adding one data batch.
+
+        Return (index_to_be_modified, episode_reward, episode_length,
+        episode_start_index).
+        """
+        self.last_index[0] = ptr = self._index
+        self._size = min(self._size + 1, self.maxsize)
+        self._index = (self._index + 1) % self.maxsize
+
+        self._ep_rew += rew
+        self._ep_len += 1
+
+        if done:
+            result = ptr, self._ep_rew, self._ep_len, self._ep_idx
+            self._ep_rew, self._ep_len, self._ep_idx = 0.0, 0, self._index
+            return result
+        else:
+            return ptr, self._ep_rew * 0.0, 0, self._ep_idx
+
+    def add(
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Add a batch of data into replay buffer.
+
+        :param Batch batch: the input data batch. "obs", "act", "rew",
+            "terminated", "truncated" are required keys.
+        :param buffer_ids: to make consistent with other buffer's add function; if it
+            is not None, we assume the input batch's first dimension is always 1.
+
+        Return (current_index, episode_reward, episode_length, episode_start_index). If
+        the episode is not finished, the return value of episode_length and
+        episode_reward is 0.
+        """
+        # preprocess batch
+        new_batch = Batch()
+        for key in batch.keys():
+            new_batch.__dict__[key] = batch[key]
+        batch = new_batch
+        batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
+        assert set(["obs", "act", "rew", "terminated", "truncated", "done"]
+                   ).issubset(batch.keys())  # important to do after preprocess batch
+        stacked_batch = buffer_ids is not None
+        if stacked_batch:
+            assert len(batch) == 1
+        if self._save_only_last_obs:
+            batch.obs = batch.obs[:, -1] if stacked_batch else batch.obs[-1]
+        if not self._save_obs_next:
+            batch.pop("obs_next", None)
+        elif self._save_only_last_obs:
+            batch.obs_next = (
+                batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
+            )
+        # get ptr
+        if stacked_batch:
+            rew, done = batch.rew[0], batch.done[0]
+        else:
+            rew, done = batch.rew, batch.done
+        ptr, ep_rew, ep_len, ep_idx = list(
+            map(lambda x: np.array([x]), self._add_index(rew, done))
+        )
+        try:
+            self._meta[ptr] = batch
+        except ValueError:
+            stack = not stacked_batch
+            batch.rew = batch.rew.astype(float)
+            batch.done = batch.done.astype(bool)
+            batch.terminated = batch.terminated.astype(bool)
+            batch.truncated = batch.truncated.astype(bool)
+            if self._meta.is_empty():
+                self._meta = _create_value(  # type: ignore
+                    batch, self.maxsize, stack)
+            else:  # dynamic key pops up in batch
+                _alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
+            self._meta[ptr] = batch
+        return ptr, ep_rew, ep_len, ep_idx
+
+    def sample_indices(self, batch_size: int) -> np.ndarray:
+        """Get a random sample of index with size = batch_size.
+
+        Return all available indices in the buffer if batch_size is 0; return an empty
+        numpy array if batch_size < 0 or no available index can be sampled.
+        """
+        if self.stack_num == 1 or not self._sample_avail:  # most often case
+            if batch_size > 0:
+                return np.random.choice(self._size, batch_size)
+            elif batch_size == 0:  # construct current available indices
+                return np.concatenate(
+                    [np.arange(self._index, self._size),
+                     np.arange(self._index)]
+                )
+            else:
+                return np.array([], int)
+        else:
+            if batch_size < 0:
+                return np.array([], int)
+            all_indices = prev_indices = np.concatenate(
+                [np.arange(self._index, self._size),
+                 np.arange(self._index)]
+            )
+            for _ in range(self.stack_num - 2):
+                prev_indices = self.prev(prev_indices)
+            all_indices = all_indices[prev_indices != self.prev(prev_indices)]
+            if batch_size > 0:
+                return np.random.choice(all_indices, batch_size)
+            else:
+                return all_indices
+
+    def sample(self, batch_size: int) -> Tuple[Batch, np.ndarray]:
+        """Get a random sample from buffer with size = batch_size.
+
+        Return all the data in the buffer if batch_size is 0.
+
+        :return: Sample data and its corresponding index inside the buffer.
+        """
+        indices = self.sample_indices(batch_size)
+        return self[indices], indices
+
+    def get(
+        self,
+        index: Union[int, List[int], np.ndarray],
+        key: str,
+        default_value: Any = None,
+        stack_num: Optional[int] = None,
+    ) -> Union[Batch, np.ndarray]:
+        """Return the stacked result.
+
+        E.g., if you set ``key = "obs", stack_num = 4, index = t``, it returns the
+        stacked result as ``[obs[t-3], obs[t-2], obs[t-1], obs[t]]``.
+
+        :param index: the index for getting stacked data.
+        :param str key: the key to get, should be one of the reserved_keys.
+        :param default_value: if the given key's data is not found and default_value is
+            set, return this default_value.
+        :param int stack_num: Default to self.stack_num.
+        """
+        if key not in self._meta and default_value is not None:
+            return default_value
+        val = self._meta[key]
+        if stack_num is None:
+            stack_num = self.stack_num
+        try:
+            if stack_num == 1:  # the most often case
+                return val[index]
+            stack: List[Any] = []
+            if isinstance(index, list):
+                indices = np.array(index)
+            else:
+                indices = index  # type: ignore
+            for _ in range(stack_num):
+                stack = [val[indices]] + stack
+                indices = self.prev(indices)
+            if isinstance(val, Batch):
+                return Batch.stack(stack, axis=indices.ndim)
+            else:
+                return np.stack(stack, axis=indices.ndim)
+        except IndexError as exception:
+            if not (isinstance(val, Batch) and val.is_empty()):
+                raise exception  # val != Batch()
+            return Batch()
+
+    def __getitem__(self, index: Union[slice, int, List[int], np.ndarray]) -> Batch:
+        """Return a data batch: self[index].
+
+        If stack_num is larger than 1, return the stacked obs and obs_next with shape
+        (batch, len, ...).
+        """
+        if isinstance(index, slice):  # change slice to np array
+            # buffer[:] will get all available data
+            indices = self.sample_indices(0) if index == slice(None) \
+                else self._indices[:len(self)][index]
+        else:
+            indices = index  # type: ignore
+        # raise KeyError first instead of AttributeError,
+        # to support np.array([ReplayBuffer()])
+        obs = self.get(indices, "obs")
+        if self._save_obs_next:
+            obs_next = self.get(indices, "obs_next", Batch())
+        else:
+            obs_next = self.get(self.next(indices), "obs", Batch())
+        batch_dict = {
+            "obs": obs,
+            "act": self.act[indices],
+            "rew": self.rew[indices],
+            "terminated": self.terminated[indices],
+            "truncated": self.truncated[indices],
+            "done": self.done[indices],
+            "obs_next": obs_next,
+            "info": self.get(indices, "info", Batch()),
+            "policy": self.get(indices, "policy", Batch()),
+        }
+        for key in self._meta.__dict__.keys():
+            if key not in self._input_keys:
+                batch_dict[key] = self._meta[key][indices]
+        return Batch(batch_dict)
+
+
+===== tianshou.data.buffer.base.ReplayBuffer.add /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/data/buffer/base.py:216-273 =====
+    def add(
+        self,
+        batch: Batch,
+        buffer_ids: Optional[Union[np.ndarray, List[int]]] = None
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Add a batch of data into replay buffer.
+
+        :param Batch batch: the input data batch. "obs", "act", "rew",
+            "terminated", "truncated" are required keys.
+        :param buffer_ids: to make consistent with other buffer's add function; if it
+            is not None, we assume the input batch's first dimension is always 1.
+
+        Return (current_index, episode_reward, episode_length, episode_start_index). If
+        the episode is not finished, the return value of episode_length and
+        episode_reward is 0.
+        """
+        # preprocess batch
+        new_batch = Batch()
+        for key in batch.keys():
+            new_batch.__dict__[key] = batch[key]
+        batch = new_batch
+        batch.__dict__["done"] = np.logical_or(batch.terminated, batch.truncated)
+        assert set(["obs", "act", "rew", "terminated", "truncated", "done"]
+                   ).issubset(batch.keys())  # important to do after preprocess batch
+        stacked_batch = buffer_ids is not None
+        if stacked_batch:
+            assert len(batch) == 1
+        if self._save_only_last_obs:
+            batch.obs = batch.obs[:, -1] if stacked_batch else batch.obs[-1]
+        if not self._save_obs_next:
+            batch.pop("obs_next", None)
+        elif self._save_only_last_obs:
+            batch.obs_next = (
+                batch.obs_next[:, -1] if stacked_batch else batch.obs_next[-1]
+            )
+        # get ptr
+        if stacked_batch:
+            rew, done = batch.rew[0], batch.done[0]
+        else:
+            rew, done = batch.rew, batch.done
+        ptr, ep_rew, ep_len, ep_idx = list(
+            map(lambda x: np.array([x]), self._add_index(rew, done))
+        )
+        try:
+            self._meta[ptr] = batch
+        except ValueError:
+            stack = not stacked_batch
+            batch.rew = batch.rew.astype(float)
+            batch.done = batch.done.astype(bool)
+            batch.terminated = batch.terminated.astype(bool)
+            batch.truncated = batch.truncated.astype(bool)
+            if self._meta.is_empty():
+                self._meta = _create_value(  # type: ignore
+                    batch, self.maxsize, stack)
+            else:  # dynamic key pops up in batch
+                _alloc_by_keys_diff(self._meta, batch, self.maxsize, stack)
+            self._meta[ptr] = batch
+        return ptr, ep_rew, ep_len, ep_idx
+
+
+===== tianshou.data.buffer.base.ReplayBuffer.get /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/data/buffer/base.py:316-357 =====
+    def get(
+        self,
+        index: Union[int, List[int], np.ndarray],
+        key: str,
+        default_value: Any = None,
+        stack_num: Optional[int] = None,
+    ) -> Union[Batch, np.ndarray]:
+        """Return the stacked result.
+
+        E.g., if you set ``key = "obs", stack_num = 4, index = t``, it returns the
+        stacked result as ``[obs[t-3], obs[t-2], obs[t-1], obs[t]]``.
+
+        :param index: the index for getting stacked data.
+        :param str key: the key to get, should be one of the reserved_keys.
+        :param default_value: if the given key's data is not found and default_value is
+            set, return this default_value.
+        :param int stack_num: Default to self.stack_num.
+        """
+        if key not in self._meta and default_value is not None:
+            return default_value
+        val = self._meta[key]
+        if stack_num is None:
+            stack_num = self.stack_num
+        try:
+            if stack_num == 1:  # the most often case
+                return val[index]
+            stack: List[Any] = []
+            if isinstance(index, list):
+                indices = np.array(index)
+            else:
+                indices = index  # type: ignore
+            for _ in range(stack_num):
+                stack = [val[indices]] + stack
+                indices = self.prev(indices)
+            if isinstance(val, Batch):
+                return Batch.stack(stack, axis=indices.ndim)
+            else:
+                return np.stack(stack, axis=indices.ndim)
+        except IndexError as exception:
+            if not (isinstance(val, Batch) and val.is_empty()):
+                raise exception  # val != Batch()
+            return Batch()
+
+
+===== tianshou.data.batch.Batch.split /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/data/batch.py:746-770 =====
+    def split(self,
+              size: int,
+              shuffle: bool = True,
+              merge_last: bool = False) -> Iterator["Batch"]:
+        """Split whole data into multiple small batches.
+
+        :param int size: divide the data batch with the given size, but one
+            batch if the length of the batch is smaller than "size".
+        :param bool shuffle: randomly shuffle the entire data batch if it is
+            True, otherwise remain in the same. Default to True.
+        :param bool merge_last: merge the last batch into the previous one.
+            Default to False.
+        """
+        length = len(self)
+        assert 1 <= size  # size can be greater than length, return whole batch
+        if shuffle:
+            indices = np.random.permutation(length)
+        else:
+            indices = np.arange(length)
+        merge_last = merge_last and length % size > 0
+        for idx in range(0, length, size):
+            if merge_last and idx + size + size >= length:
+                yield self[indices[idx:]]
+                break
+            yield self[indices[idx:idx + size]]
+
+
+===== tianshou.utils.net.common.Recurrent.forward /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/tianshou/utils/net/common.py:289-329 =====
+    def forward(
+        self,
+        obs: Union[np.ndarray, torch.Tensor],
+        state: Optional[Dict[str, torch.Tensor]] = None,
+        info: Dict[str, Any] = {},
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """Mapping: obs -> flatten -> logits.
+
+        In the evaluation mode, `obs` should be with shape ``[bsz, dim]``; in the
+        training mode, `obs` should be with shape ``[bsz, len, dim]``. See the code
+        and comment for more detail.
+        """
+        obs = torch.as_tensor(
+            obs,
+            device=self.device,
+            dtype=torch.float32,
+        )
+        # obs [bsz, len, dim] (training) or [bsz, dim] (evaluation)
+        # In short, the tensor's shape in training phase is longer than which
+        # in evaluation phase.
+        if len(obs.shape) == 2:
+            obs = obs.unsqueeze(-2)
+        obs = self.fc1(obs)
+        self.nn.flatten_parameters()
+        if state is None:
+            obs, (hidden, cell) = self.nn(obs)
+        else:
+            # we store the stack data in [bsz, len, ...] format
+            # but pytorch rnn needs [len, bsz, ...]
+            obs, (hidden, cell) = self.nn(
+                obs, (
+                    state["hidden"].transpose(0, 1).contiguous(),
+                    state["cell"].transpose(0, 1).contiguous()
+                )
+            )
+        obs = self.fc2(obs[:, -1])
+        # please ensure the first dim is batch size: [bsz, len, ...]
+        return obs, {
+            "hidden": hidden.transpose(0, 1).detach(),
+            "cell": cell.transpose(0, 1).detach()
+        }
+
+
+===== sb3_contrib.ppo_recurrent.ppo_recurrent.RecurrentPPO._setup_model /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/ppo_recurrent/ppo_recurrent.py:139-193 =====
+    def _setup_model(self) -> None:
+        self._setup_lr_schedule()
+        self.set_random_seed(self.seed)
+
+        buffer_cls = RecurrentDictRolloutBuffer if isinstance(self.observation_space, spaces.Dict) else RecurrentRolloutBuffer
+
+        self.policy = self.policy_class(
+            self.observation_space,
+            self.action_space,
+            self.lr_schedule,
+            use_sde=self.use_sde,
+            **self.policy_kwargs,
+        )
+        self.policy = self.policy.to(self.device)
+
+        # We assume that LSTM for the actor and the critic
+        # have the same architecture
+        lstm = self.policy.lstm_actor
+
+        if not isinstance(self.policy, RecurrentActorCriticPolicy):
+            raise ValueError("Policy must subclass RecurrentActorCriticPolicy")
+
+        single_hidden_state_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
+        # hidden and cell states for actor and critic
+        self._last_lstm_states = RNNStates(
+            (
+                th.zeros(single_hidden_state_shape, device=self.device),
+                th.zeros(single_hidden_state_shape, device=self.device),
+            ),
+            (
+                th.zeros(single_hidden_state_shape, device=self.device),
+                th.zeros(single_hidden_state_shape, device=self.device),
+            ),
+        )
+
+        hidden_state_buffer_shape = (self.n_steps, lstm.num_layers, self.n_envs, lstm.hidden_size)
+
+        self.rollout_buffer = buffer_cls(
+            self.n_steps,
+            self.observation_space,
+            self.action_space,
+            hidden_state_buffer_shape,
+            self.device,
+            gamma=self.gamma,
+            gae_lambda=self.gae_lambda,
+            n_envs=self.n_envs,
+        )
+
+        # Initialize schedules for policy/value clipping
+        self.clip_range = FloatSchedule(self.clip_range)
+        if self.clip_range_vf is not None:
+            if isinstance(self.clip_range_vf, (float, int)):
+                assert self.clip_range_vf > 0, "`clip_range_vf` must be positive, pass `None` to deactivate vf clipping"
+
+            self.clip_range_vf = FloatSchedule(self.clip_range_vf)
+
+
+===== sb3_contrib.ppo_recurrent.ppo_recurrent.RecurrentPPO.collect_rollouts /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/ppo_recurrent/ppo_recurrent.py:195-310 =====
+    def collect_rollouts(
+        self,
+        env: VecEnv,
+        callback: BaseCallback,
+        rollout_buffer: RolloutBuffer,
+        n_rollout_steps: int,
+    ) -> bool:
+        """
+        Collect experiences using the current policy and fill a ``RolloutBuffer``.
+        The term rollout here refers to the model-free notion and should not
+        be used with the concept of rollout used in model-based RL or planning.
+
+        :param env: The training environment
+        :param callback: Callback that will be called at each step
+            (and at the beginning and end of the rollout)
+        :param rollout_buffer: Buffer to fill with rollouts
+        :param n_steps: Number of experiences to collect per environment
+        :return: True if function returned with at least `n_rollout_steps`
+            collected, False if callback terminated rollout prematurely.
+        """
+        assert isinstance(
+            rollout_buffer, (RecurrentRolloutBuffer, RecurrentDictRolloutBuffer)
+        ), f"{rollout_buffer} doesn't support recurrent policy"
+
+        assert self._last_obs is not None, "No previous observation was provided"
+        # Switch to eval mode (this affects batch norm / dropout)
+        self.policy.set_training_mode(False)
+
+        n_steps = 0
+        rollout_buffer.reset()
+        # Sample new weights for the state dependent exploration
+        if self.use_sde:
+            self.policy.reset_noise(env.num_envs)
+
+        callback.on_rollout_start()
+
+        lstm_states = deepcopy(self._last_lstm_states)
+
+        while n_steps < n_rollout_steps:
+            if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
+                # Sample a new noise matrix
+                self.policy.reset_noise(env.num_envs)
+
+            with th.no_grad():
+                # Convert to pytorch tensor or to TensorDict
+                obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                episode_starts = th.tensor(self._last_episode_starts, dtype=th.float32, device=self.device)
+                actions, values, log_probs, lstm_states = self.policy.forward(obs_tensor, lstm_states, episode_starts)
+
+            actions = actions.cpu().numpy()
+
+            # Rescale and perform action
+            clipped_actions = actions
+            # Clip the actions to avoid out of bound error
+            if isinstance(self.action_space, spaces.Box):
+                clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+
+            new_obs, rewards, dones, infos = env.step(clipped_actions)
+
+            self.num_timesteps += env.num_envs
+
+            # Give access to local variables
+            callback.update_locals(locals())
+            if not callback.on_step():
+                return False
+
+            self._update_info_buffer(infos, dones)
+            n_steps += 1
+
+            if isinstance(self.action_space, spaces.Discrete):
+                # Reshape in case of discrete action
+                actions = actions.reshape(-1, 1)
+
+            # Handle timeout by bootstraping with value function
+            # see GitHub issue #633
+            for idx, done_ in enumerate(dones):
+                if (
+                    done_
+                    and infos[idx].get("terminal_observation") is not None
+                    and infos[idx].get("TimeLimit.truncated", False)
+                ):
+                    terminal_obs = self.policy.obs_to_tensor(infos[idx]["terminal_observation"])[0]
+                    with th.no_grad():
+                        terminal_lstm_state = (
+                            lstm_states.vf[0][:, idx : idx + 1, :].contiguous(),
+                            lstm_states.vf[1][:, idx : idx + 1, :].contiguous(),
+                        )
+                        # terminal_lstm_state = None
+                        episode_starts = th.tensor([False], dtype=th.float32, device=self.device)
+                        terminal_value = self.policy.predict_values(terminal_obs, terminal_lstm_state, episode_starts)[0]
+                    rewards[idx] += self.gamma * terminal_value
+
+            rollout_buffer.add(
+                self._last_obs,
+                actions,
+                rewards,
+                self._last_episode_starts,
+                values,
+                log_probs,
+                lstm_states=self._last_lstm_states,
+            )
+
+            self._last_obs = new_obs
+            self._last_episode_starts = dones
+            self._last_lstm_states = lstm_states
+
+        with th.no_grad():
+            # Compute value for the last timestep
+            episode_starts = th.tensor(dones, dtype=th.float32, device=self.device)
+            values = self.policy.predict_values(obs_as_tensor(new_obs, self.device), lstm_states.vf, episode_starts)
+
+        rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
+
+        callback.on_rollout_end()
+
+        return True
+
+
+===== sb3_contrib.ppo_recurrent.ppo_recurrent.RecurrentPPO.train /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/ppo_recurrent/ppo_recurrent.py:312-439 =====
+    def train(self) -> None:
+        """
+        Update policy using the currently gathered rollout buffer.
+        """
+        # Switch to train mode (this affects batch norm / dropout)
+        self.policy.set_training_mode(True)
+        # Update optimizer learning rate
+        self._update_learning_rate(self.policy.optimizer)
+        # Compute current clip range
+        clip_range = self.clip_range(self._current_progress_remaining)
+        # Optional: clip range for the value function
+        if self.clip_range_vf is not None:
+            clip_range_vf = self.clip_range_vf(self._current_progress_remaining)
+
+        entropy_losses = []
+        pg_losses, value_losses = [], []
+        clip_fractions = []
+
+        continue_training = True
+
+        # train for n_epochs epochs
+        for epoch in range(self.n_epochs):
+            approx_kl_divs = []
+            # Do a complete pass on the rollout buffer
+            for rollout_data in self.rollout_buffer.get(self.batch_size):
+                actions = rollout_data.actions
+                if isinstance(self.action_space, spaces.Discrete):
+                    # Convert discrete action from float to long
+                    actions = rollout_data.actions.long().flatten()
+
+                # Convert mask from float to bool
+                mask = rollout_data.mask > 1e-8
+
+                values, log_prob, entropy = self.policy.evaluate_actions(
+                    rollout_data.observations,
+                    actions,
+                    rollout_data.lstm_states,
+                    rollout_data.episode_starts,
+                )
+
+                values = values.flatten()
+                # Normalize advantage
+                advantages = rollout_data.advantages
+                if self.normalize_advantage:
+                    advantages = (advantages - advantages[mask].mean()) / (advantages[mask].std() + 1e-8)
+
+                # ratio between old and new policy, should be one at the first iteration
+                ratio = th.exp(log_prob - rollout_data.old_log_prob)
+
+                # clipped surrogate loss
+                policy_loss_1 = advantages * ratio
+                policy_loss_2 = advantages * th.clamp(ratio, 1 - clip_range, 1 + clip_range)
+                policy_loss = -th.mean(th.min(policy_loss_1, policy_loss_2)[mask])
+
+                # Logging
+                pg_losses.append(policy_loss.item())
+                clip_fraction = th.mean((th.abs(ratio - 1) > clip_range).float()[mask]).item()
+                clip_fractions.append(clip_fraction)
+
+                if self.clip_range_vf is None:
+                    # No clipping
+                    values_pred = values
+                else:
+                    # Clip the different between old and new value
+                    # NOTE: this depends on the reward scaling
+                    values_pred = rollout_data.old_values + th.clamp(
+                        values - rollout_data.old_values, -clip_range_vf, clip_range_vf
+                    )
+                # Value loss using the TD(gae_lambda) target
+                # Mask padded sequences
+                value_loss = th.mean(((rollout_data.returns - values_pred) ** 2)[mask])
+
+                value_losses.append(value_loss.item())
+
+                # Entropy loss favor exploration
+                if entropy is None:
+                    # Approximate entropy when no analytical form
+                    entropy_loss = -th.mean(-log_prob[mask])
+                else:
+                    entropy_loss = -th.mean(entropy[mask])
+
+                entropy_losses.append(entropy_loss.item())
+
+                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+
+                # Calculate approximate form of reverse KL Divergence for early stopping
+                # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
+                # and discussion in PR #419: https://github.com/DLR-RM/stable-baselines3/pull/419
+                # and Schulman blog: http://joschu.net/blog/kl-approx.html
+                with th.no_grad():
+                    log_ratio = log_prob - rollout_data.old_log_prob
+                    approx_kl_div = th.mean(((th.exp(log_ratio) - 1) - log_ratio)[mask]).cpu().numpy()
+                    approx_kl_divs.append(approx_kl_div)
+
+                if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
+                    continue_training = False
+                    if self.verbose >= 1:
+                        print(f"Early stopping at step {epoch} due to reaching max kl: {approx_kl_div:.2f}")
+                    break
+
+                # Optimization step
+                self.policy.optimizer.zero_grad()
+                loss.backward()
+                # Clip grad norm
+                th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
+                self.policy.optimizer.step()
+
+            if not continue_training:
+                break
+
+        self._n_updates += self.n_epochs
+        explained_var = explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten())
+
+        # Logs
+        self.logger.record("train/entropy_loss", np.mean(entropy_losses))
+        self.logger.record("train/policy_gradient_loss", np.mean(pg_losses))
+        self.logger.record("train/value_loss", np.mean(value_losses))
+        self.logger.record("train/approx_kl", np.mean(approx_kl_divs))
+        self.logger.record("train/clip_fraction", np.mean(clip_fractions))
+        self.logger.record("train/loss", loss.item())
+        self.logger.record("train/explained_variance", explained_var)
+        if hasattr(self.policy, "log_std"):
+            self.logger.record("train/std", th.exp(self.policy.log_std).mean().item())
+
+        self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
+        self.logger.record("train/clip_range", clip_range)
+        if self.clip_range_vf is not None:
+            self.logger.record("train/clip_range_vf", clip_range_vf)
+
+
+===== sb3_contrib.common.recurrent.buffers.RecurrentRolloutBuffer /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/common/recurrent/buffers.py:98-242 =====
+class RecurrentRolloutBuffer(RolloutBuffer):
+    """
+    Rollout buffer that also stores the LSTM cell and hidden states.
+
+    :param buffer_size: Max number of element in the buffer
+    :param observation_space: Observation space
+    :param action_space: Action space
+    :param hidden_state_shape: Shape of the buffer that will collect lstm states
+        (n_steps, lstm.num_layers, n_envs, lstm.hidden_size)
+    :param device: PyTorch device
+    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator
+        Equivalent to classic advantage when set to 1.
+    :param gamma: Discount factor
+    :param n_envs: Number of parallel environments
+    """
+
+    def __init__(
+        self,
+        buffer_size: int,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        hidden_state_shape: tuple[int, int, int, int],
+        device: Union[th.device, str] = "auto",
+        gae_lambda: float = 1,
+        gamma: float = 0.99,
+        n_envs: int = 1,
+    ):
+        self.hidden_state_shape = hidden_state_shape
+        self.seq_start_indices, self.seq_end_indices = None, None
+        super().__init__(buffer_size, observation_space, action_space, device, gae_lambda, gamma, n_envs)
+
+    def reset(self):
+        super().reset()
+        self.hidden_states_pi = np.zeros(self.hidden_state_shape, dtype=np.float32)
+        self.cell_states_pi = np.zeros(self.hidden_state_shape, dtype=np.float32)
+        self.hidden_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
+        self.cell_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
+
+    def add(self, *args, lstm_states: RNNStates, **kwargs) -> None:
+        """
+        :param hidden_states: LSTM cell and hidden state
+        """
+        self.hidden_states_pi[self.pos] = np.array(lstm_states.pi[0].cpu().numpy())
+        self.cell_states_pi[self.pos] = np.array(lstm_states.pi[1].cpu().numpy())
+        self.hidden_states_vf[self.pos] = np.array(lstm_states.vf[0].cpu().numpy())
+        self.cell_states_vf[self.pos] = np.array(lstm_states.vf[1].cpu().numpy())
+
+        super().add(*args, **kwargs)
+
+    def get(self, batch_size: Optional[int] = None) -> Generator[RecurrentRolloutBufferSamples, None, None]:
+        assert self.full, "Rollout buffer must be full before sampling from it"
+
+        # Prepare the data
+        if not self.generator_ready:
+            # hidden_state_shape = (self.n_steps, lstm.num_layers, self.n_envs, lstm.hidden_size)
+            # swap first to (self.n_steps, self.n_envs, lstm.num_layers, lstm.hidden_size)
+            for tensor in ["hidden_states_pi", "cell_states_pi", "hidden_states_vf", "cell_states_vf"]:
+                self.__dict__[tensor] = self.__dict__[tensor].swapaxes(1, 2)
+
+            # flatten but keep the sequence order
+            # 1. (n_steps, n_envs, *tensor_shape) -> (n_envs, n_steps, *tensor_shape)
+            # 2. (n_envs, n_steps, *tensor_shape) -> (n_envs * n_steps, *tensor_shape)
+            for tensor in [
+                "observations",
+                "actions",
+                "values",
+                "log_probs",
+                "advantages",
+                "returns",
+                "hidden_states_pi",
+                "cell_states_pi",
+                "hidden_states_vf",
+                "cell_states_vf",
+                "episode_starts",
+            ]:
+                self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
+            self.generator_ready = True
+
+        # Return everything, don't create minibatches
+        if batch_size is None:
+            batch_size = self.buffer_size * self.n_envs
+
+        # Sampling strategy that allows any mini batch size but requires
+        # more complexity and use of padding
+        # Trick to shuffle a bit: keep the sequence order
+        # but split the indices in two
+        split_index = np.random.randint(self.buffer_size * self.n_envs)
+        indices = np.arange(self.buffer_size * self.n_envs)
+        indices = np.concatenate((indices[split_index:], indices[:split_index]))
+
+        env_change = np.zeros(self.buffer_size * self.n_envs).reshape(self.buffer_size, self.n_envs)
+        # Flag first timestep as change of environment
+        env_change[0, :] = 1.0
+        env_change = self.swap_and_flatten(env_change)
+
+        start_idx = 0
+        while start_idx < self.buffer_size * self.n_envs:
+            batch_inds = indices[start_idx : start_idx + batch_size]
+            yield self._get_samples(batch_inds, env_change)
+            start_idx += batch_size
+
+    def _get_samples(
+        self,
+        batch_inds: np.ndarray,
+        env_change: np.ndarray,
+        env: Optional[VecNormalize] = None,
+    ) -> RecurrentRolloutBufferSamples:
+        # Retrieve sequence starts and utility function
+        self.seq_start_indices, self.pad, self.pad_and_flatten = create_sequencers(
+            self.episode_starts[batch_inds], env_change[batch_inds], self.device
+        )
+
+        # Number of sequences
+        n_seq = len(self.seq_start_indices)
+        max_length = self.pad(self.actions[batch_inds]).shape[1]
+        padded_batch_size = n_seq * max_length
+        # We retrieve the lstm hidden states that will allow
+        # to properly initialize the LSTM at the beginning of each sequence
+        lstm_states_pi = (
+            # 1. (n_envs * n_steps, n_layers, dim) -> (batch_size, n_layers, dim)
+            # 2. (batch_size, n_layers, dim)  -> (n_seq, n_layers, dim)
+            # 3. (n_seq, n_layers, dim) -> (n_layers, n_seq, dim)
+            self.hidden_states_pi[batch_inds][self.seq_start_indices].swapaxes(0, 1),
+            self.cell_states_pi[batch_inds][self.seq_start_indices].swapaxes(0, 1),
+        )
+        lstm_states_vf = (
+            # (n_envs * n_steps, n_layers, dim) -> (n_layers, n_seq, dim)
+            self.hidden_states_vf[batch_inds][self.seq_start_indices].swapaxes(0, 1),
+            self.cell_states_vf[batch_inds][self.seq_start_indices].swapaxes(0, 1),
+        )
+        lstm_states_pi = (self.to_torch(lstm_states_pi[0]).contiguous(), self.to_torch(lstm_states_pi[1]).contiguous())
+        lstm_states_vf = (self.to_torch(lstm_states_vf[0]).contiguous(), self.to_torch(lstm_states_vf[1]).contiguous())
+
+        return RecurrentRolloutBufferSamples(
+            # (batch_size, obs_dim) -> (n_seq, max_length, obs_dim) -> (n_seq * max_length, obs_dim)
+            observations=self.pad(self.observations[batch_inds]).reshape((padded_batch_size, *self.obs_shape)),
+            actions=self.pad(self.actions[batch_inds]).reshape((padded_batch_size, *self.actions.shape[1:])),
+            old_values=self.pad_and_flatten(self.values[batch_inds]),
+            old_log_prob=self.pad_and_flatten(self.log_probs[batch_inds]),
+            advantages=self.pad_and_flatten(self.advantages[batch_inds]),
+            returns=self.pad_and_flatten(self.returns[batch_inds]),
+            lstm_states=RNNStates(lstm_states_pi, lstm_states_vf),
+            episode_starts=self.pad_and_flatten(self.episode_starts[batch_inds]),
+            mask=self.pad_and_flatten(np.ones_like(self.returns[batch_inds])),
+        )
+
+
+===== sb3_contrib.common.recurrent.buffers.create_sequencers /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/common/recurrent/buffers.py:64-95 =====
+def create_sequencers(
+    episode_starts: np.ndarray,
+    env_change: np.ndarray,
+    device: th.device,
+) -> tuple[np.ndarray, Callable, Callable]:
+    """
+    Create the utility function to chunk data into
+    sequences and pad them to create fixed size tensors.
+
+    :param episode_starts: Indices where an episode starts
+    :param env_change: Indices where the data collected
+        come from a different env (when using multiple env for data collection)
+    :param device: PyTorch device
+    :return: Indices of the transitions that start a sequence,
+        pad and pad_and_flatten utilities tailored for this batch
+        (sequence starts and ends indices are fixed)
+    """
+    # Create sequence if env changes too
+    seq_start = np.logical_or(episode_starts, env_change).flatten()
+    # First index is always the beginning of a sequence
+    seq_start[0] = True
+    # Retrieve indices of sequence starts
+    seq_start_indices = np.where(seq_start == True)[0]  # noqa: E712
+    # End of sequence are just before sequence starts
+    # Last index is also always end of a sequence
+    seq_end_indices = np.concatenate([(seq_start_indices - 1)[1:], np.array([len(episode_starts)])])
+
+    # Create padding method for this minibatch
+    # to avoid repeating arguments (seq_start_indices, seq_end_indices)
+    local_pad = partial(pad, seq_start_indices, seq_end_indices, device)
+    local_pad_and_flatten = partial(pad_and_flatten, seq_start_indices, seq_end_indices, device)
+    return seq_start_indices, local_pad, local_pad_and_flatten
+
+
+===== sb3_contrib.common.recurrent.buffers.pad /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/common/recurrent/buffers.py:18-38 =====
+def pad(
+    seq_start_indices: np.ndarray,
+    seq_end_indices: np.ndarray,
+    device: th.device,
+    tensor: np.ndarray,
+    padding_value: float = 0.0,
+) -> th.Tensor:
+    """
+    Chunk sequences and pad them to have constant dimensions.
+
+    :param seq_start_indices: Indices of the transitions that start a sequence
+    :param seq_end_indices: Indices of the transitions that end a sequence
+    :param device: PyTorch device
+    :param tensor: Tensor of shape (batch_size, *tensor_shape)
+    :param padding_value: Value used to pad sequence to the same length
+        (zero padding by default)
+    :return: (n_seq, max_length, *tensor_shape)
+    """
+    # Create sequences given start and end
+    seq = [th.tensor(tensor[start : end + 1], device=device) for start, end in zip(seq_start_indices, seq_end_indices)]
+    return th.nn.utils.rnn.pad_sequence(seq, batch_first=True, padding_value=padding_value)
+
+
+===== sb3_contrib.common.recurrent.policies.RecurrentActorCriticPolicy /home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/common/recurrent/policies.py:22-431 =====
+class RecurrentActorCriticPolicy(ActorCriticPolicy):
+    """
+    Recurrent policy class for actor-critic algorithms (has both policy and value prediction).
+    To be used with A2C, PPO and the likes.
+    It assumes that both the actor and the critic LSTM
+    have the same architecture.
+
+    :param observation_space: Observation space
+    :param action_space: Action space
+    :param lr_schedule: Learning rate schedule (could be constant)
+    :param net_arch: The specification of the policy and value networks.
+    :param activation_fn: Activation function
+    :param ortho_init: Whether to use or not orthogonal initialization
+    :param use_sde: Whether to use State Dependent Exploration or not
+    :param log_std_init: Initial value for the log standard deviation
+    :param full_std: Whether to use (n_features x n_actions) parameters
+        for the std instead of only (n_features,) when using gSDE
+    :param use_expln: Use ``expln()`` function instead of ``exp()`` to ensure
+        a positive standard deviation (cf paper). It allows to keep variance
+        above zero and prevent it from growing too fast. In practice, ``exp()`` is usually enough.
+    :param squash_output: Whether to squash the output using a tanh function,
+        this allows to ensure boundaries when using gSDE.
+    :param features_extractor_class: Features extractor to use.
+    :param features_extractor_kwargs: Keyword arguments
+        to pass to the features extractor.
+    :param share_features_extractor: If True, the features extractor is shared between the policy and value networks.
+    :param normalize_images: Whether to normalize images or not,
+         dividing by 255.0 (True by default)
+    :param optimizer_class: The optimizer to use,
+        ``th.optim.Adam`` by default
+    :param optimizer_kwargs: Additional keyword arguments,
+        excluding the learning rate, to pass to the optimizer
+    :param lstm_hidden_size: Number of hidden units for each LSTM layer.
+    :param n_lstm_layers: Number of LSTM layers.
+    :param shared_lstm: Whether the LSTM is shared between the actor and the critic
+        (in that case, only the actor gradient is used)
+        By default, the actor and the critic have two separate LSTM.
+    :param enable_critic_lstm: Use a seperate LSTM for the critic.
+    :param lstm_kwargs: Additional keyword arguments to pass the the LSTM
+        constructor.
+    """
+
+    def __init__(
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        lr_schedule: Schedule,
+        net_arch: Optional[Union[list[int], dict[str, list[int]]]] = None,
+        activation_fn: type[nn.Module] = nn.Tanh,
+        ortho_init: bool = True,
+        use_sde: bool = False,
+        log_std_init: float = 0.0,
+        full_std: bool = True,
+        use_expln: bool = False,
+        squash_output: bool = False,
+        features_extractor_class: type[BaseFeaturesExtractor] = FlattenExtractor,
+        features_extractor_kwargs: Optional[dict[str, Any]] = None,
+        share_features_extractor: bool = True,
+        normalize_images: bool = True,
+        optimizer_class: type[th.optim.Optimizer] = th.optim.Adam,
+        optimizer_kwargs: Optional[dict[str, Any]] = None,
+        lstm_hidden_size: int = 256,
+        n_lstm_layers: int = 1,
+        shared_lstm: bool = False,
+        enable_critic_lstm: bool = True,
+        lstm_kwargs: Optional[dict[str, Any]] = None,
+    ):
+        self.lstm_output_dim = lstm_hidden_size
+        super().__init__(
+            observation_space,
+            action_space,
+            lr_schedule,
+            net_arch,
+            activation_fn,
+            ortho_init,
+            use_sde,
+            log_std_init,
+            full_std,
+            use_expln,
+            squash_output,
+            features_extractor_class,
+            features_extractor_kwargs,
+            share_features_extractor,
+            normalize_images,
+            optimizer_class,
+            optimizer_kwargs,
+        )
+
+        self.lstm_kwargs = lstm_kwargs or {}
+        self.shared_lstm = shared_lstm
+        self.enable_critic_lstm = enable_critic_lstm
+        self.lstm_actor = nn.LSTM(
+            self.features_dim,
+            lstm_hidden_size,
+            num_layers=n_lstm_layers,
+            **self.lstm_kwargs,
+        )
+        # For the predict() method, to initialize hidden states
+        # (n_lstm_layers, batch_size, lstm_hidden_size)
+        self.lstm_hidden_state_shape = (n_lstm_layers, 1, lstm_hidden_size)
+        self.critic = None
+        self.lstm_critic = None
+        assert not (
+            self.shared_lstm and self.enable_critic_lstm
+        ), "You must choose between shared LSTM, seperate or no LSTM for the critic."
+
+        assert not (
+            self.shared_lstm and not self.share_features_extractor
+        ), "If the features extractor is not shared, the LSTM cannot be shared."
+
+        # No LSTM for the critic, we still need to convert
+        # output of features extractor to the correct size
+        # (size of the output of the actor lstm)
+        if not (self.shared_lstm or self.enable_critic_lstm):
+            self.critic = nn.Linear(self.features_dim, lstm_hidden_size)
+
+        # Use a separate LSTM for the critic
+        if self.enable_critic_lstm:
+            self.lstm_critic = nn.LSTM(
+                self.features_dim,
+                lstm_hidden_size,
+                num_layers=n_lstm_layers,
+                **self.lstm_kwargs,
+            )
+
+        # Setup optimizer with initial learning rate
+        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
+
+    def _build_mlp_extractor(self) -> None:
+        """
+        Create the policy and value networks.
+        Part of the layers can be shared.
+        """
+        self.mlp_extractor = MlpExtractor(
+            self.lstm_output_dim,
+            net_arch=self.net_arch,
+            activation_fn=self.activation_fn,
+            device=self.device,
+        )
+
+    @staticmethod
+    def _process_sequence(
+        features: th.Tensor,
+        lstm_states: tuple[th.Tensor, th.Tensor],
+        episode_starts: th.Tensor,
+        lstm: nn.LSTM,
+    ) -> tuple[th.Tensor, th.Tensor]:
+        """
+        Do a forward pass in the LSTM network.
+
+        :param features: Input tensor
+        :param lstm_states: previous hidden and cell states of the LSTM, respectively
+        :param episode_starts: Indicates when a new episode starts,
+            in that case, we need to reset LSTM states.
+        :param lstm: LSTM object.
+        :return: LSTM output and updated LSTM states.
+        """
+        # LSTM logic
+        # (sequence length, batch size, features dim)
+        # (batch size = n_envs for data collection or n_seq when doing gradient update)
+        n_seq = lstm_states[0].shape[1]
+        # Batch to sequence
+        # (padded batch size, features_dim) -> (n_seq, max length, features_dim) -> (max length, n_seq, features_dim)
+        # note: max length (max sequence length) is always 1 during data collection
+        features_sequence = features.reshape((n_seq, -1, lstm.input_size)).swapaxes(0, 1)
+        episode_starts = episode_starts.reshape((n_seq, -1)).swapaxes(0, 1)
+
+        # If we don't have to reset the state in the middle of a sequence
+        # we can avoid the for loop, which speeds up things
+        if th.all(episode_starts == 0.0):
+            lstm_output, lstm_states = lstm(features_sequence, lstm_states)
+            lstm_output = th.flatten(lstm_output.transpose(0, 1), start_dim=0, end_dim=1)
+            return lstm_output, lstm_states
+
+        lstm_output = []
+        # Iterate over the sequence
+        for features, episode_start in zip_strict(features_sequence, episode_starts):
+            hidden, lstm_states = lstm(
+                features.unsqueeze(dim=0),
+                (
+                    # Reset the states at the beginning of a new episode
+                    (1.0 - episode_start).view(1, n_seq, 1) * lstm_states[0],
+                    (1.0 - episode_start).view(1, n_seq, 1) * lstm_states[1],
+                ),
+            )
+            lstm_output += [hidden]
+        # Sequence to batch
+        # (sequence length, n_seq, lstm_out_dim) -> (batch_size, lstm_out_dim)
+        lstm_output = th.flatten(th.cat(lstm_output).transpose(0, 1), start_dim=0, end_dim=1)
+        return lstm_output, lstm_states
+
+    def forward(
+        self,
+        obs: th.Tensor,
+        lstm_states: RNNStates,
+        episode_starts: th.Tensor,
+        deterministic: bool = False,
+    ) -> tuple[th.Tensor, th.Tensor, th.Tensor, RNNStates]:
+        """
+        Forward pass in all the networks (actor and critic)
+
+        :param obs: Observation. Observation
+        :param lstm_states: The last hidden and memory states for the LSTM.
+        :param episode_starts: Whether the observations correspond to new episodes
+            or not (we reset the lstm states in that case).
+        :param deterministic: Whether to sample or use deterministic actions
+        :return: action, value and log probability of the action
+        """
+        # Preprocess the observation if needed
+        features = self.extract_features(obs)
+        if self.share_features_extractor:
+            pi_features = vf_features = features  # alis
+        else:
+            pi_features, vf_features = features
+        # latent_pi, latent_vf = self.mlp_extractor(features)
+        latent_pi, lstm_states_pi = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.lstm_actor)
+        if self.lstm_critic is not None:
+            latent_vf, lstm_states_vf = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
+        elif self.shared_lstm:
+            # Re-use LSTM features but do not backpropagate
+            latent_vf = latent_pi.detach()
+            lstm_states_vf = (lstm_states_pi[0].detach(), lstm_states_pi[1].detach())
+        else:
+            # Critic only has a feedforward network
+            latent_vf = self.critic(vf_features)
+            lstm_states_vf = lstm_states_pi
+
+        latent_pi = self.mlp_extractor.forward_actor(latent_pi)
+        latent_vf = self.mlp_extractor.forward_critic(latent_vf)
+
+        # Evaluate the values for the given observations
+        values = self.value_net(latent_vf)
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        actions = distribution.get_actions(deterministic=deterministic)
+        log_prob = distribution.log_prob(actions)
+        return actions, values, log_prob, RNNStates(lstm_states_pi, lstm_states_vf)
+
+    def get_distribution(
+        self,
+        obs: th.Tensor,
+        lstm_states: tuple[th.Tensor, th.Tensor],
+        episode_starts: th.Tensor,
+    ) -> tuple[Distribution, tuple[th.Tensor, ...]]:
+        """
+        Get the current policy distribution given the observations.
+
+        :param obs: Observation.
+        :param lstm_states: The last hidden and memory states for the LSTM.
+        :param episode_starts: Whether the observations correspond to new episodes
+            or not (we reset the lstm states in that case).
+        :return: the action distribution and new hidden states.
+        """
+        # Call the method from the parent of the parent class
+        features = super(ActorCriticPolicy, self).extract_features(obs, self.pi_features_extractor)
+        latent_pi, lstm_states = self._process_sequence(features, lstm_states, episode_starts, self.lstm_actor)
+        latent_pi = self.mlp_extractor.forward_actor(latent_pi)
+        return self._get_action_dist_from_latent(latent_pi), lstm_states
+
+    def predict_values(
+        self,
+        obs: th.Tensor,
+        lstm_states: tuple[th.Tensor, th.Tensor],
+        episode_starts: th.Tensor,
+    ) -> th.Tensor:
+        """
+        Get the estimated values according to the current policy given the observations.
+
+        :param obs: Observation.
+        :param lstm_states: The last hidden and memory states for the LSTM.
+        :param episode_starts: Whether the observations correspond to new episodes
+            or not (we reset the lstm states in that case).
+        :return: the estimated values.
+        """
+        # Call the method from the parent of the parent class
+        features = super(ActorCriticPolicy, self).extract_features(obs, self.vf_features_extractor)
+
+        if self.lstm_critic is not None:
+            latent_vf, _ = self._process_sequence(features, lstm_states, episode_starts, self.lstm_critic)
+        elif self.shared_lstm:
+            # Use LSTM from the actor
+            latent_pi, _ = self._process_sequence(features, lstm_states, episode_starts, self.lstm_actor)
+            latent_vf = latent_pi.detach()
+        else:
+            latent_vf = self.critic(features)
+
+        latent_vf = self.mlp_extractor.forward_critic(latent_vf)
+        return self.value_net(latent_vf)
+
+    def evaluate_actions(
+        self, obs: th.Tensor, actions: th.Tensor, lstm_states: RNNStates, episode_starts: th.Tensor
+    ) -> tuple[th.Tensor, th.Tensor, th.Tensor]:
+        """
+        Evaluate actions according to the current policy,
+        given the observations.
+
+        :param obs: Observation.
+        :param actions:
+        :param lstm_states: The last hidden and memory states for the LSTM.
+        :param episode_starts: Whether the observations correspond to new episodes
+            or not (we reset the lstm states in that case).
+        :return: estimated value, log likelihood of taking those actions
+            and entropy of the action distribution.
+        """
+        # Preprocess the observation if needed
+        features = self.extract_features(obs)
+        if self.share_features_extractor:
+            pi_features = vf_features = features  # alias
+        else:
+            pi_features, vf_features = features
+        latent_pi, _ = self._process_sequence(pi_features, lstm_states.pi, episode_starts, self.lstm_actor)
+        if self.lstm_critic is not None:
+            latent_vf, _ = self._process_sequence(vf_features, lstm_states.vf, episode_starts, self.lstm_critic)
+        elif self.shared_lstm:
+            latent_vf = latent_pi.detach()
+        else:
+            latent_vf = self.critic(vf_features)
+
+        latent_pi = self.mlp_extractor.forward_actor(latent_pi)
+        latent_vf = self.mlp_extractor.forward_critic(latent_vf)
+
+        distribution = self._get_action_dist_from_latent(latent_pi)
+        log_prob = distribution.log_prob(actions)
+        values = self.value_net(latent_vf)
+        return values, log_prob, distribution.entropy()
+
+    def _predict(
+        self,
+        observation: th.Tensor,
+        lstm_states: tuple[th.Tensor, th.Tensor],
+        episode_starts: th.Tensor,
+        deterministic: bool = False,
+    ) -> tuple[th.Tensor, tuple[th.Tensor, ...]]:
+        """
+        Get the action according to the policy for a given observation.
+
+        :param observation:
+        :param lstm_states: The last hidden and memory states for the LSTM.
+        :param episode_starts: Whether the observations correspond to new episodes
+            or not (we reset the lstm states in that case).
+        :param deterministic: Whether to use stochastic or deterministic actions
+        :return: Taken action according to the policy and hidden states of the RNN
+        """
+        distribution, lstm_states = self.get_distribution(observation, lstm_states, episode_starts)
+        return distribution.get_actions(deterministic=deterministic), lstm_states
+
+    def predict(
+        self,
+        observation: Union[np.ndarray, dict[str, np.ndarray]],
+        state: Optional[tuple[np.ndarray, ...]] = None,
+        episode_start: Optional[np.ndarray] = None,
+        deterministic: bool = False,
+    ) -> tuple[np.ndarray, Optional[tuple[np.ndarray, ...]]]:
+        """
+        Get the policy action from an observation (and optional hidden state).
+        Includes sugar-coating to handle different observations (e.g. normalizing images).
+
+        :param observation: the input observation
+        :param lstm_states: The last hidden and memory states for the LSTM.
+        :param episode_starts: Whether the observations correspond to new episodes
+            or not (we reset the lstm states in that case).
+        :param deterministic: Whether or not to return deterministic actions.
+        :return: the model's action and the next hidden state
+            (used in recurrent policies)
+        """
+        # Switch to eval mode (this affects batch norm / dropout)
+        self.set_training_mode(False)
+
+        observation, vectorized_env = self.obs_to_tensor(observation)
+
+        if isinstance(observation, dict):
+            n_envs = observation[next(iter(observation.keys()))].shape[0]
+        else:
+            n_envs = observation.shape[0]
+        # state : (n_layers, n_envs, dim)
+        if state is None:
+            # Initialize hidden states to zeros
+            state = np.concatenate([np.zeros(self.lstm_hidden_state_shape) for _ in range(n_envs)], axis=1)
+            state = (state, state)
+
+        if episode_start is None:
+            episode_start = np.array([False for _ in range(n_envs)])
+
+        with th.no_grad():
+            # Convert to PyTorch tensors
+            states = th.tensor(state[0], dtype=th.float32, device=self.device), th.tensor(
+                state[1], dtype=th.float32, device=self.device
+            )
+            episode_starts = th.tensor(episode_start, dtype=th.float32, device=self.device)
+            actions, states = self._predict(
+                observation, lstm_states=states, episode_starts=episode_starts, deterministic=deterministic
+            )
+            states = (states[0].cpu().numpy(), states[1].cpu().numpy())
+
+        # Convert to numpy
+        actions = actions.cpu().numpy()
+
+        if isinstance(self.action_space, spaces.Box):
+            if self.squash_output:
+                # Rescale to proper domain when using squashing
+                actions = self.unscale_action(actions)
+            else:
+                # Actions could be on arbitrary scale, so clip the actions to avoid
+                # out of bound error (e.g. if sampling from a Gaussian distribution)
+                actions = np.clip(actions, self.action_space.low, self.action_space.high)
+
+        # Remove batch dimension if needed
+        if not vectorized_env:
+            actions = actions.squeeze(axis=0)
+
+        return actions, states
+
