@@ -4,8 +4,9 @@ build/
 install/
 .vscode/
 .claude/
+.codex/
+.agents/
 Dataset_*/
 /artifacts/sb3_nonzero_smoke/
-HANDOFF*
-*Prompt*
-*Guide*
+eval_results/
+

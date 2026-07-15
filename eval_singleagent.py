@@ -1,5 +1,4 @@
 import argparse
-import warnings
 import gym
 import numpy as np
 import torch
@@ -7,7 +6,6 @@ import os
 import gc
 import imageio
 from f110_gym.envs.base_classes import Integrator
-import f110_gym.envs.f110_env as f110_env
 from model import End2Race
 from latticeplanner.utils import project_point_to_centerline
 from utils import *
@@ -25,10 +23,20 @@ def parse_arguments():
     parser.add_argument("--map_name", type=str, default="Austin")
     parser.add_argument("--lap_num", type=int, default=1)
     parser.add_argument("--render", action='store_true')
+    parser.add_argument("--save_trace", action="store_true")
     
     return parser.parse_args()
 
-def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
+def evaluate_laps(
+    model,
+    device,
+    noise_level,
+    map_name,
+    render,
+    lap_num,
+    save_trace=False,
+    model_path="pretrained/end2race.pth",
+):
     """Evaluate model's ability to complete laps independently"""
     
     np.random.seed(42)
@@ -37,20 +45,13 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     raceline = f'{map_name}_raceline.csv'
     env = gym.make("f110-v0", map=f"f1tenth_racetracks/{map_name}/{map_name}_map", map_ext=".png", num_agents=1, timestep=0.01, integrator=Integrator.RK4)
 
+    output_paths = singleagent_paths(model_path, map_name, noise_level, lap_num)
+
     # Generate video path if rendering
     video_path = None
     if render:
-        model_name = os.path.splitext(os.path.basename(args.model_path))[0]
-        noise_str = f"_noise{int(noise_level*100)}" if noise_level > 0 else ""
-        lap_str = f"_lap{lap_num}"
-        
-        # Create the desired directory structure: eval_results/model_name+noise+lapnum/
-        video_dir = os.path.join("eval_results", f"{model_name}{noise_str}{lap_str}")
-        
-        # Create directory if it doesn't exist
-        os.makedirs(video_dir, exist_ok=True)
-        
-        video_path = os.path.join(video_dir, f"{model_name}_{map_name}{noise_str}{lap_str}.mp4")
+        video_path = str(output_paths["video"])
+        os.makedirs(os.path.dirname(video_path), exist_ok=True)
     
     # Initialize visualization
     render_info = {"speed": 0.0, "steer": 0.0, "lap_time": 0.0, "laps": 0}
@@ -86,13 +87,26 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     collision_occurred = False
     trajectory = []
     speeds = []
-    last_progress = initial_progress
     lap_count = 0
     lap_times = []
     video_frames = []
     near_start_flag = True
     min_lap_time = 10.0
     lap_start_time = 0.0
+    desired_speeds = []
+    executed_steering = []
+    lidar_minima = []
+    trace = None
+    if save_trace:
+        trace = {
+            "time_s": [],
+            "lidar_360": [],
+            "raw_action": [],
+            "executed_action": [],
+            "measured_speed_mps": [],
+            "pose": [],
+            "collision": [],
+        }
     
     if render:
         env.render('human')
@@ -101,10 +115,11 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     # Main simulation loop
     while not done and lap_count < lap_num:
         # Model inference
-        lidar = np.array(obs["scans"][0]).flatten()
-        if len(lidar) > num_features:
-            indices = np.linspace(0, len(lidar)-1, num_features, dtype=int)
-            lidar = lidar[indices]
+        raw_lidar_360 = np.array(obs["scans"][0]).flatten()
+        if len(raw_lidar_360) > num_features:
+            indices = np.linspace(0, len(raw_lidar_360)-1, num_features, dtype=int)
+            raw_lidar_360 = raw_lidar_360[indices]
+        lidar = raw_lidar_360.copy()
         
         # Apply noise if specified
         if noise_level > 0:
@@ -121,8 +136,21 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
             action_tensor = action_sequence[:, -1, :]
             ego_steer = action_tensor[0, 0].item()
             ego_speed = action_tensor[0, 1].item()
-        
+
+        raw_action = np.array([ego_steer, ego_speed], dtype=np.float32)
         ego_steer = np.clip(ego_steer, -0.52, 0.52)
+        executed_action = np.array([ego_steer, ego_speed], dtype=np.float32)
+        desired_speeds.append(float(ego_speed))
+        executed_steering.append(float(ego_steer))
+        lidar_minima.append(float(np.min(raw_lidar_360)))
+        if trace is not None:
+            trace["time_s"].append(float(lap_time))
+            trace["lidar_360"].append(lidar)
+            trace["raw_action"].append(raw_action)
+            trace["executed_action"].append(executed_action)
+            trace["measured_speed_mps"].append(float(obs['linear_vels_x'][0]))
+            trace["pose"].append([obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0]])
+            trace["collision"].append(bool(obs['collisions'][0]))
         prev_speed = obs['linear_vels_x'][0]
         
         # Update render info
@@ -159,16 +187,7 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
             near_start_flag = True
         else:
             near_start_flag = False
-        
-        # Progress tracking for failure detection
-        ego_progress, _ = project_point_to_centerline(current_position, centerline)
-        
-        # Handle lap wrapping
-        if ego_progress < last_progress - centerline_total_length/2:
-            ego_progress += centerline_total_length
-        
-        last_progress = ego_progress
-        
+
         # Check collision
         if obs['collisions'][0]:
             collision_occurred = True
@@ -210,10 +229,7 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
             batch_obj.delete()
         env.render_callbacks = []
         
-        if len(video_frames) > 0:
-            video_dir = os.path.dirname(video_path)
-            if video_dir and not os.path.exists(video_dir):
-                os.makedirs(video_dir, exist_ok=True)
+        if video_frames:
             imageio.mimwrite(video_path, video_frames, fps=100, macro_block_size=1)
             print(f"Video saved to {video_path}")
     
@@ -222,6 +238,34 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     
     # Calculate final metrics
     avg_speed, speed_variance, total_distance = calculate_metrics(trajectory, speeds)
+
+    if trace is not None:
+        dtypes = {"time_s": np.float64, "pose": np.float64, "collision": np.bool_}
+        save_numeric_npz(
+            output_paths["trace"],
+            {name: np.asarray(values, dtype=dtypes.get(name, np.float32)) for name, values in trace.items()},
+        )
+
+    result = {
+        "lap_progress": float(total_lap_progress),
+        "collision_occurred": bool(collision_occurred),
+        "time_elapsed": float(lap_time),
+        "lap_times": [float(value) for value in lap_times],
+        "mean_lap_time": float(mean_lap_time),
+        "lap_time_variance": float(lap_time_variance),
+        "avg_speed": float(avg_speed),
+        "speed_variance": float(speed_variance),
+        "total_distance": float(total_distance),
+        "avg_desired_speed": scalar_mean(desired_speeds),
+        "max_abs_steer": scalar_max_abs(executed_steering),
+        "max_steer_delta": scalar_max_delta(executed_steering),
+        "min_lidar": scalar_min(lidar_minima),
+    }
+    update_singleagent_results(
+        output_paths["results"],
+        f"lap{lap_num}",
+        result,
+    )
     
     # Print results directly
     print("\n" + "="*50)
@@ -249,6 +293,8 @@ def evaluate_laps(model, device, noise_level, map_name, render, lap_num):
     else:
         print(f"\nStatus: Incomplete - stopped before completing all laps")
 
+    return result
+
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -262,7 +308,4 @@ if __name__ == "__main__":
     model.eval()
     
     # Run evaluation
-    evaluate_laps(model, device, args.noise, args.map_name, args.render, args.lap_num)
-
-
-
+    evaluate_laps(model, device, args.noise, args.map_name, args.render, args.lap_num, args.save_trace, args.model_path)
