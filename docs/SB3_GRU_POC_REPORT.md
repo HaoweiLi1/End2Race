@@ -1,10 +1,17 @@
-# SB3-Contrib GRU RecurrentPPO proof of concept
+# SB3-Contrib GRU RecurrentPPO proof of concept（历史记录）
 
 日期：2026-07-15（Asia/Singapore）
 
 ## 结论
 
-**PASS。** 当前 POC 证明：无需 fork SB3、无需修改 site-packages、无需把 End2Race GRU 改成 LSTM，即可使用 SB3-Contrib 2.7.1 的 stock `RecurrentPPO`、stock `RecurrentRolloutBuffer` 和 stock PPO update。
+```text
+Historical recurrent-core POC: PARTIAL PASS
+Real integration before repairs: FAIL
+```
+
+历史 POC 证明了：无需 fork SB3、无需修改 site-packages、无需把 End2Race GRU 改成 LSTM，即可使用 SB3-Contrib 2.7.1 的 stock `RecurrentPPO`、stock `RecurrentRolloutBuffer` 和 stock PPO update 正确重放 pre-action GRU hidden。
+
+但严格审查后，该版本的真实 F1Tenth reset、speed feature 时序和 raw/executed action 合同均不合格，因此不是完整 integration PASS。修复后的实现与新验收数据见 `docs/SB3_GRU_REPAIR_REPORT.md`。下文的数据保留为 repair 前的历史记录。
 
 本次只运行两个短合成 F1Tenth legacy-API env、一个 20-transition rollout 和一次 `learning_rate=0` 的 PPO train。没有执行正式 End2Race learner 训练，没有 reward shaping，没有运行大规模评估，也没有写入或覆盖 `pretrained/end2race.pth`。
 

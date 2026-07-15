@@ -5,3 +5,4 @@ install/
 .vscode/
 .claude/
 Dataset_*/
+/artifacts/sb3_nonzero_smoke/

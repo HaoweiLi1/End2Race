@@ -18,7 +18,7 @@ from torch import nn
 from model import End2Race
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
-from stable_baselines3.common.distributions import DiagGaussianDistribution, Distribution
+from stable_baselines3.common.distributions import Distribution
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +26,129 @@ DEFAULT_BC_CHECKPOINT = PROJECT_ROOT / "pretrained" / "end2race.pth"
 END2RACE_OBSERVATION_SIZE = 361
 END2RACE_LIDAR_SIZE = 360
 END2RACE_ACTION_SIZE = 2
+EVALUATOR_STEER_BOUND = 0.52
+NOOP_SPEED_BOUND = float(np.finfo(np.float32).max)
+
+
+class EvaluatorCompatibleJointDistribution(Distribution):
+    """Physical ``[steering, speed]`` distribution matching deployment.
+
+    Steering is a scaled tanh transform of a Gaussian latent.  Speed remains a
+    Gaussian in physical m/s.  The supplied means are the unchanged raw
+    End2Race outputs; the deterministic steering mode matches evaluator
+    clipping up to ``steer_bound * inverse_tanh_epsilon``.
+    """
+
+    def __init__(self, steer_bound: float = EVALUATOR_STEER_BOUND, inverse_tanh_epsilon: float = 1e-6):
+        super().__init__()
+        if steer_bound <= 0:
+            raise ValueError("steer_bound must be positive")
+        if not 0 < inverse_tanh_epsilon < 1e-3:
+            raise ValueError("inverse_tanh_epsilon must be in (0, 1e-3)")
+        self.steer_bound = float(steer_bound)
+        self.inverse_tanh_epsilon = float(inverse_tanh_epsilon)
+        self.raw_mean_actions: torch.Tensor | None = None
+        self.latent_steer_mean: torch.Tensor | None = None
+        self.steer_distribution: torch.distributions.Normal | None = None
+        self.speed_distribution: torch.distributions.Normal | None = None
+
+    def proba_distribution_net(self, *args: Any, **kwargs: Any) -> nn.Module:
+        del args, kwargs
+        return nn.Identity()
+
+    @staticmethod
+    def _atanh(value: torch.Tensor) -> torch.Tensor:
+        return 0.5 * (torch.log1p(value) - torch.log1p(-value))
+
+    def proba_distribution(
+        self,
+        raw_mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
+    ) -> "EvaluatorCompatibleJointDistribution":
+        if raw_mean_actions.shape[-1] != END2RACE_ACTION_SIZE:
+            raise ValueError(f"Expected two raw action means, got {tuple(raw_mean_actions.shape)}")
+        if tuple(log_std.shape) != (END2RACE_ACTION_SIZE,):
+            raise ValueError(f"Expected two log standard deviations, got {tuple(log_std.shape)}")
+        normalized_mode = (raw_mean_actions[:, 0] / self.steer_bound).clamp(
+            -1.0 + self.inverse_tanh_epsilon,
+            1.0 - self.inverse_tanh_epsilon,
+        )
+        latent_steer_mean = self._atanh(normalized_mode)
+        std = log_std.exp()
+        self.raw_mean_actions = raw_mean_actions
+        self.latent_steer_mean = latent_steer_mean
+        self.steer_distribution = torch.distributions.Normal(latent_steer_mean, std[0])
+        self.speed_distribution = torch.distributions.Normal(raw_mean_actions[:, 1], std[1])
+        self.distribution = (self.steer_distribution, self.speed_distribution)
+        return self
+
+    def _require_parameters(
+        self,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.distributions.Normal, torch.distributions.Normal]:
+        if (
+            self.raw_mean_actions is None
+            or self.latent_steer_mean is None
+            or self.steer_distribution is None
+            or self.speed_distribution is None
+        ):
+            raise RuntimeError("proba_distribution() must be called first")
+        return (
+            self.raw_mean_actions,
+            self.latent_steer_mean,
+            self.steer_distribution,
+            self.speed_distribution,
+        )
+
+    def log_prob(self, actions: torch.Tensor) -> torch.Tensor:
+        _raw_means, _latent_mean, steer_distribution, speed_distribution = self._require_parameters()
+        if actions.shape[-1] != END2RACE_ACTION_SIZE:
+            raise ValueError(f"Expected physical [steering, speed] actions, got {tuple(actions.shape)}")
+        # The larger configured epsilon is only for constructing a finite
+        # deterministic latent mean at evaluator clipping boundaries.  Replay
+        # inversion must retain every representable interior physical action.
+        action_epsilon = torch.finfo(actions.dtype).eps
+        normalized_steer = (actions[:, 0] / self.steer_bound).clamp(
+            -1.0 + action_epsilon,
+            1.0 - action_epsilon,
+        )
+        latent_steer = self._atanh(normalized_steer)
+        # y = steer_bound * tanh(z), so log|dy/dz| is the sum below.
+        log_abs_det_jacobian = torch.log(
+            torch.as_tensor(self.steer_bound, dtype=actions.dtype, device=actions.device)
+        ) + torch.log1p(-normalized_steer.square())
+        steer_log_prob = steer_distribution.log_prob(latent_steer) - log_abs_det_jacobian
+        speed_log_prob = speed_distribution.log_prob(actions[:, 1])
+        return steer_log_prob + speed_log_prob
+
+    def entropy(self) -> None:
+        return None
+
+    def sample(self) -> torch.Tensor:
+        _raw_means, _latent_mean, steer_distribution, speed_distribution = self._require_parameters()
+        steering = self.steer_bound * torch.tanh(steer_distribution.rsample())
+        speed = speed_distribution.rsample()
+        return torch.stack((steering, speed), dim=1)
+
+    def mode(self) -> torch.Tensor:
+        raw_means, latent_mean, _steer_distribution, _speed_distribution = self._require_parameters()
+        steering = self.steer_bound * torch.tanh(latent_mean)
+        return torch.stack((steering, raw_means[:, 1]), dim=1)
+
+    def actions_from_params(
+        self,
+        raw_mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
+        deterministic: bool = False,
+    ) -> torch.Tensor:
+        return self.proba_distribution(raw_mean_actions, log_std).get_actions(deterministic=deterministic)
+
+    def log_prob_from_params(
+        self,
+        raw_mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        actions = self.actions_from_params(raw_mean_actions, log_std)
+        return actions, self.log_prob(actions)
 
 
 class GRUWithLSTMStateInterface(nn.Module):
@@ -77,15 +200,22 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         checkpoint_path: str | Path = DEFAULT_BC_CHECKPOINT,
         hidden_scale: int = 4,
         critic_hidden_size: int = 64,
-        log_std_init: float = 0.0,
+        steer_log_std_init: float = -2.0,
+        speed_log_std_init: float = 0.0,
+        steer_bound: float = EVALUATOR_STEER_BOUND,
+        inverse_tanh_epsilon: float = 1e-6,
         **kwargs: Any,
     ) -> None:
         if not isinstance(observation_space, spaces.Box) or observation_space.shape != (END2RACE_OBSERVATION_SIZE,):
             raise ValueError(f"Expected Box observation shape ({END2RACE_OBSERVATION_SIZE},), got {observation_space}")
         if not isinstance(action_space, spaces.Box) or action_space.shape != (END2RACE_ACTION_SIZE,):
             raise ValueError(f"Expected Box action shape ({END2RACE_ACTION_SIZE},), got {action_space}")
+        if not np.allclose(action_space.low[0], -steer_bound) or not np.allclose(action_space.high[0], steer_bound):
+            raise ValueError(f"Steering action bounds must be [-{steer_bound}, {steer_bound}]")
+        if action_space.low[1] > -0.99 * NOOP_SPEED_BOUND or action_space.high[1] < 0.99 * NOOP_SPEED_BOUND:
+            raise ValueError("Speed action bounds must use the float32 no-op range required by stock SB3")
         if kwargs.pop("use_sde", False):
-            raise ValueError("This POC uses a diagonal Gaussian distribution, not gSDE")
+            raise ValueError("This POC uses a repo-local transformed joint distribution, not gSDE")
 
         # The parent's tiny placeholder recurrent module is replaced below.  A
         # size of one avoids allocating an unused 1680-wide LSTM during setup.
@@ -96,7 +226,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             net_arch=[],
             ortho_init=False,
             use_sde=False,
-            log_std_init=log_std_init,
+            log_std_init=0.0,
             lstm_hidden_size=1,
             n_lstm_layers=1,
             shared_lstm=False,
@@ -132,16 +262,36 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             nn.Linear(critic_hidden_size, 1),
         )
 
-        if not isinstance(self.action_dist, DiagGaussianDistribution):
-            raise TypeError(f"Expected DiagGaussianDistribution, got {type(self.action_dist).__name__}")
         if tuple(self.log_std.shape) != (END2RACE_ACTION_SIZE,):
             raise ValueError(f"Unexpected log_std shape: {tuple(self.log_std.shape)}")
+        self.log_std.data.copy_(
+            torch.tensor(
+                [steer_log_std_init, speed_log_std_init],
+                dtype=self.log_std.dtype,
+                device=self.log_std.device,
+            )
+        )
         self.log_std.requires_grad_(True)
+        self.action_dist = EvaluatorCompatibleJointDistribution(
+            steer_bound=steer_bound,
+            inverse_tanh_epsilon=inverse_tanh_epsilon,
+        )
+        # The parent head is not used by any custom actor path.  Replacing it
+        # with a parameter-free module prevents dead parameters in the optimizer.
+        self.action_net = nn.Identity()
+        self.last_raw_actor_mean: torch.Tensor | None = None
 
-        # Rebuild because the parent created its optimizer before the original
-        # End2Race actor and replacement critic were attached.
+        # Rebuild with an explicit, auditable partition.  The shared GRU module
+        # exposed by lstm_actor is already present in end2race_actor parameters.
+        optimizer_parameters = [
+            *self.end2race_actor.parameters(),
+            *self.value_net.parameters(),
+            self.log_std,
+        ]
+        if len({id(parameter) for parameter in optimizer_parameters}) != len(optimizer_parameters):
+            raise RuntimeError("Optimizer parameter identities must be unique")
         self.optimizer = self.optimizer_class(
-            self.parameters(),
+            optimizer_parameters,
             lr=lr_schedule(1),
             **self.optimizer_kwargs,
         )
@@ -207,7 +357,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         mean_actions = torch.stack(means).transpose(0, 1).reshape(-1, END2RACE_ACTION_SIZE)
         return mean_actions, (hidden, torch.zeros_like(hidden))
 
-    def _distribution(self, mean_actions: torch.Tensor) -> DiagGaussianDistribution:
+    def _distribution(self, mean_actions: torch.Tensor) -> EvaluatorCompatibleJointDistribution:
         return self.action_dist.proba_distribution(mean_actions, self.log_std)
 
     def _critic_values(self, obs: torch.Tensor) -> torch.Tensor:
@@ -230,6 +380,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         deterministic: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, RNNStates]:
         mean_actions, actor_states = self.actor_mean(obs, lstm_states.pi, episode_starts)
+        self.last_raw_actor_mean = mean_actions.detach().clone()
         distribution = self._distribution(mean_actions)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
