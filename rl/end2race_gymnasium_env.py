@@ -19,6 +19,7 @@ from rl.sb3_end2race_policy import (
     NOOP_SPEED_BOUND,
     end2race_observation,
 )
+from rl.ppo_privileged import AustinPrivilegedFeatureExtractor
 
 
 @dataclass
@@ -172,7 +173,7 @@ class LatticePlannerOpponentController:
         return {"reset_count": self.reset_count, "planners": planners}
 
 
-class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
+class End2RaceGymnasiumEnv(gym.Env):
     """Convert legacy F1Tenth results to the exact ego deployment contract."""
 
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -185,6 +186,8 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
         ego_index: int = 0,
         opponent_controller: OpponentController | None = None,
         transition_reward: Any | None = None,
+        privileged_critic: bool = False,
+        privileged_feature_extractor: AustinPrivilegedFeatureExtractor | None = None,
     ) -> None:
         super().__init__()
         if sim_duration <= 0:
@@ -197,14 +200,30 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
         self.reset_provider = reset_provider
         self.opponent_controller = opponent_controller
         self.transition_reward = transition_reward
+        self.privileged_critic = bool(privileged_critic)
+        self.privileged_feature_extractor = (
+            privileged_feature_extractor
+            if privileged_feature_extractor is not None
+            else (AustinPrivilegedFeatureExtractor() if self.privileged_critic else None)
+        )
         if transition_reward is not None and not all(
             callable(getattr(transition_reward, name, None)) for name in ("reset", "step")
         ):
             raise TypeError("transition_reward must provide callable reset() and step() methods")
-        self.observation_space = spaces.Box(
+        actor_space = spaces.Box(
             low=np.full((END2RACE_LIDAR_SIZE + 1,), -np.inf, dtype=np.float32),
             high=np.full((END2RACE_LIDAR_SIZE + 1,), np.inf, dtype=np.float32),
             dtype=np.float32,
+        )
+        self.observation_space = (
+            spaces.Dict(
+                {
+                    "actor": actor_space,
+                    "critic": spaces.Box(low=-1.0, high=1.0, shape=(12,), dtype=np.float32),
+                }
+            )
+            if self.privileged_critic
+            else actor_space
         )
         self.action_space = spaces.Box(
             low=np.asarray((-EVALUATOR_STEER_BOUND, -NOOP_SPEED_BOUND), dtype=np.float32),
@@ -271,6 +290,14 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
         if not np.isfinite(self._previous_ego_speed):
             raise ValueError("Previous ego speed feature must be finite")
         return end2race_observation(self._ego_lidar(raw_observation), self._previous_ego_speed)
+
+    def _observation(self, raw_observation: dict[str, Any]) -> np.ndarray | dict[str, np.ndarray]:
+        actor = self._actor_observation(raw_observation)
+        if not self.privileged_critic:
+            return actor
+        if self.privileged_feature_extractor is None:
+            raise RuntimeError("Privileged critic mode has no physical feature extractor")
+        return {"actor": actor, "critic": self.privileged_feature_extractor(raw_observation, self.ego_index)}
 
     def _resolve_reset_spec(self, options: dict[str, Any] | None) -> EpisodeResetSpec:
         provided = self.reset_provider(self._reset_rng)
@@ -345,9 +372,11 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
             "scenario": dict(spec.scenario),
             "scenario_id": scenario_id,
             "sampler_branch": spec.scenario.get("sampler_branch"),
+            "hard_pool_id": spec.scenario.get("hard_pool_id"),
+            "hard_sampling_mode": spec.scenario.get("hard_sampling_mode"),
             "base_info": base_info,
         }
-        return self._actor_observation(raw_observation), info
+        return self._observation(raw_observation), info
 
     def _joint_action(self, ego_action: np.ndarray) -> np.ndarray:
         ego_action = np.asarray(ego_action, dtype=np.float32).reshape(2)
@@ -426,7 +455,8 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
 
         self._raw_observation = raw_observation
         self._previous_ego_speed = pre_step_ego_speed
-        actor_observation = self._actor_observation(raw_observation)
+        observation = self._observation(raw_observation)
+        actor_observation = observation["actor"] if isinstance(observation, dict) else observation
 
         info = {
             "ego_collision": ego_collision,
@@ -439,6 +469,8 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
             "scenario": scenario,
             "scenario_id": scenario_id,
             "sampler_branch": scenario.get("sampler_branch"),
+            "hard_pool_id": scenario.get("hard_pool_id"),
+            "hard_sampling_mode": scenario.get("hard_sampling_mode"),
             "simulator_reward": float(simulator_reward),
             "base_info": base_info,
             **reward_info,
@@ -467,7 +499,7 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
                 "opponent_actions": np.delete(joint_action, self.ego_index, axis=0),
             }
         )
-        return actor_observation, float(reward), terminated, truncated, info
+        return observation, float(reward), terminated, truncated, info
 
     def render(self) -> Any:
         return self.f110_env.render()

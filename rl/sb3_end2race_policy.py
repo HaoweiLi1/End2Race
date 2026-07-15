@@ -19,6 +19,7 @@ from model import End2Race
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution
+from stable_baselines3.common.torch_layers import CombinedExtractor
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +34,12 @@ PPO_V1_SPEED_LOG_STD = -1.8971199848858813
 PPO_V1_GRU_LR = 1e-6
 PPO_V1_HEAD_LR = 1e-5
 PPO_V1_CRITIC_LR = 3e-4
+CRITIC_PROFILES = (
+    "C0_RAW_SINGLE_FRAME",
+    "C1_FROZEN_BC_FEATURE",
+    "C2_DETACHED_ACTOR_HIDDEN",
+    "C3_PRIVILEGED_PHYSICAL",
+)
 
 
 class EvaluatorCompatibleJointDistribution(Distribution):
@@ -210,9 +217,28 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         steer_bound: float = EVALUATOR_STEER_BOUND,
         inverse_tanh_epsilon: float = 1e-6,
         optimizer_profile: str = "default",
+        critic_profile: str = "C0_RAW_SINGLE_FRAME",
+        gru_lr: float = PPO_V1_GRU_LR,
+        head_lr: float = PPO_V1_HEAD_LR,
+        critic_lr: float = PPO_V1_CRITIC_LR,
+        steering_latent_std: float | None = None,
+        speed_physical_std: float | None = None,
         **kwargs: Any,
     ) -> None:
-        if not isinstance(observation_space, spaces.Box) or observation_space.shape != (END2RACE_OBSERVATION_SIZE,):
+        self.critic_profile = str(critic_profile)
+        if self.critic_profile not in CRITIC_PROFILES:
+            raise ValueError(f"Unknown PPO V1.2 critic profile: {self.critic_profile}")
+        if self.critic_profile == "C3_PRIVILEGED_PHYSICAL":
+            valid_observation = (
+                isinstance(observation_space, spaces.Dict)
+                and set(observation_space.spaces) == {"actor", "critic"}
+                and observation_space["actor"].shape == (END2RACE_OBSERVATION_SIZE,)
+                and observation_space["critic"].shape == (12,)
+            )
+            if not valid_observation:
+                raise ValueError("C3 requires Dict(actor=361D, critic=12D) observation space")
+            kwargs.setdefault("features_extractor_class", CombinedExtractor)
+        elif not isinstance(observation_space, spaces.Box) or observation_space.shape != (END2RACE_OBSERVATION_SIZE,):
             raise ValueError(f"Expected Box observation shape ({END2RACE_OBSERVATION_SIZE},), got {observation_space}")
         if not isinstance(action_space, spaces.Box) or action_space.shape != (END2RACE_ACTION_SIZE,):
             raise ValueError(f"Expected Box action shape ({END2RACE_ACTION_SIZE},), got {action_space}")
@@ -262,11 +288,37 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         # entries remain zero transport tensors and never affect actor output.
         self.lstm_critic = None
         self.critic = None
-        self.value_net = nn.Sequential(
-            nn.Linear(END2RACE_OBSERVATION_SIZE, critic_hidden_size),
-            nn.Tanh(),
-            nn.Linear(critic_hidden_size, 1),
-        )
+        if self.critic_profile == "C0_RAW_SINGLE_FRAME":
+            self.value_net = nn.Sequential(
+                nn.Linear(END2RACE_OBSERVATION_SIZE, critic_hidden_size),
+                nn.Tanh(),
+                nn.Linear(critic_hidden_size, 1),
+            )
+        elif self.critic_profile == "C1_FROZEN_BC_FEATURE":
+            self.value_net = nn.Sequential(
+                nn.Linear(420, 128),
+                nn.SiLU(),
+                nn.Linear(128, 128),
+                nn.SiLU(),
+                nn.Linear(128, 1),
+            )
+        elif self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN":
+            self.value_net = nn.Sequential(
+                nn.LayerNorm(self.lstm_output_dim),
+                nn.Linear(self.lstm_output_dim, 256),
+                nn.SiLU(),
+                nn.Linear(256, 128),
+                nn.SiLU(),
+                nn.Linear(128, 1),
+            )
+        else:
+            self.value_net = nn.Sequential(
+                nn.Linear(12, 128),
+                nn.SiLU(),
+                nn.Linear(128, 128),
+                nn.SiLU(),
+                nn.Linear(128, 1),
+            )
 
         if tuple(self.log_std.shape) != (END2RACE_ACTION_SIZE,):
             raise ValueError(f"Unexpected log_std shape: {tuple(self.log_std.shape)}")
@@ -278,6 +330,14 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             )
         )
         self.log_std.requires_grad_(True)
+        if steering_latent_std is not None:
+            if steering_latent_std <= 0.0:
+                raise ValueError("steering_latent_std must be positive")
+            self.log_std.data[0] = float(np.log(steering_latent_std))
+        if speed_physical_std is not None:
+            if speed_physical_std <= 0.0:
+                raise ValueError("speed_physical_std must be positive")
+            self.log_std.data[1] = float(np.log(speed_physical_std))
         self.action_dist = EvaluatorCompatibleJointDistribution(
             steer_bound=steer_bound,
             inverse_tanh_epsilon=inverse_tanh_epsilon,
@@ -287,6 +347,9 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.action_net = nn.Identity()
         self.last_raw_actor_mean: torch.Tensor | None = None
         self.optimizer_profile = str(optimizer_profile)
+        self.gru_lr = float(gru_lr)
+        self.head_lr = float(head_lr)
+        self.critic_lr = float(critic_lr)
 
         # Rebuild with an explicit, auditable partition.  The shared GRU module
         # exposed by lstm_actor is already present in end2race_actor parameters.
@@ -312,13 +375,14 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                 parameter.requires_grad_(True)
             for parameter in self.value_net.parameters():
                 parameter.requires_grad_(True)
-            self.log_std.data.copy_(
-                torch.tensor(
-                    [PPO_V1_STEER_LOG_STD, PPO_V1_SPEED_LOG_STD],
-                    dtype=self.log_std.dtype,
-                    device=self.log_std.device,
+            if steering_latent_std is None and speed_physical_std is None:
+                self.log_std.data.copy_(
+                    torch.tensor(
+                        [PPO_V1_STEER_LOG_STD, PPO_V1_SPEED_LOG_STD],
+                        dtype=self.log_std.dtype,
+                        device=self.log_std.device,
+                    )
                 )
-            )
             self.log_std.requires_grad_(False)
 
             gru_parameters = list(self.end2race_actor.gru.parameters())
@@ -327,21 +391,21 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             groups = [
                 {
                     "params": gru_parameters,
-                    "lr": PPO_V1_GRU_LR,
+                    "lr": self.gru_lr,
                     "name": "gru",
-                    "base_lr": PPO_V1_GRU_LR,
+                    "base_lr": self.gru_lr,
                 },
                 {
                     "params": head_parameters,
-                    "lr": PPO_V1_HEAD_LR,
+                    "lr": self.head_lr,
                     "name": "head",
-                    "base_lr": PPO_V1_HEAD_LR,
+                    "base_lr": self.head_lr,
                 },
                 {
                     "params": critic_parameters,
-                    "lr": PPO_V1_CRITIC_LR,
+                    "lr": self.critic_lr,
                     "name": "critic",
-                    "base_lr": PPO_V1_CRITIC_LR,
+                    "base_lr": self.critic_lr,
                 },
             ]
             group_ids = [id(parameter) for group in groups for parameter in group["params"]]
@@ -376,15 +440,20 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             raise ValueError(f"State shape is incompatible with End2Race GRU: {tuple(hidden.shape)}")
         return hidden, cell
 
-    def actor_mean(
+    @staticmethod
+    def _actor_observation(obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
+        return obs["actor"] if isinstance(obs, dict) else obs
+
+    def _actor_forward(
         self,
-        obs: torch.Tensor,
+        obs: torch.Tensor | dict[str, torch.Tensor],
         states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
-        """Return exact End2Race means and updated ``(real_h, zero_dummy_c)``."""
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
+        """Return actor means, final state, and each timestep's actor hidden."""
 
         hidden, _dummy_cell = self._validate_actor_states(states)
+        obs = self._actor_observation(obs)
         obs = obs.float()
         if obs.ndim == 1:
             obs = obs.unsqueeze(0)
@@ -398,6 +467,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         start_sequence = episode_starts.float().reshape(n_seq, -1).swapaxes(0, 1)
 
         means: list[torch.Tensor] = []
+        timestep_hidden: list[torch.Tensor] = []
         for step_obs, episode_start in zip(obs_sequence, start_sequence):
             # Reset only the env/sequence slots marked as new episodes.
             hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
@@ -418,18 +488,57 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                 slot_hidden.append(next_hidden)
             hidden = torch.cat(slot_hidden, dim=1)
             means.append(torch.cat(slot_means, dim=0))
+            timestep_hidden.append(hidden.squeeze(0))
 
         mean_actions = torch.stack(means).transpose(0, 1).reshape(-1, END2RACE_ACTION_SIZE)
-        return mean_actions, (hidden, torch.zeros_like(hidden))
+        actor_features = torch.stack(timestep_hidden).transpose(0, 1).reshape(-1, self.actor_hidden_size)
+        return mean_actions, (hidden, torch.zeros_like(hidden)), actor_features
+
+    def actor_mean(
+        self,
+        obs: torch.Tensor | dict[str, torch.Tensor],
+        states: tuple[torch.Tensor, torch.Tensor],
+        episode_starts: torch.Tensor,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        """Return exact End2Race means and updated ``(real_h, zero_dummy_c)``."""
+
+        means, next_states, _actor_features = self._actor_forward(obs, states, episode_starts)
+        return means, next_states
 
     def _distribution(self, mean_actions: torch.Tensor) -> EvaluatorCompatibleJointDistribution:
         return self.action_dist.proba_distribution(mean_actions, self.log_std)
 
-    def _critic_values(self, obs: torch.Tensor) -> torch.Tensor:
-        obs = obs.float()
-        if obs.ndim == 1:
-            obs = obs.unsqueeze(0)
-        return self.value_net(obs)
+    def _critic_input(
+        self,
+        obs: torch.Tensor | dict[str, torch.Tensor],
+        actor_features: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        actor_obs = self._actor_observation(obs).float()
+        if actor_obs.ndim == 1:
+            actor_obs = actor_obs.unsqueeze(0)
+        if self.critic_profile == "C0_RAW_SINGLE_FRAME":
+            return actor_obs
+        if self.critic_profile == "C1_FROZEN_BC_FEATURE":
+            lidar = actor_obs[:, :END2RACE_LIDAR_SIZE]
+            speed = actor_obs[:, END2RACE_LIDAR_SIZE:]
+            processed_lidar = (-1.0 / (1.0 + torch.exp(-self.end2race_actor.k * lidar)) + 1.0) * 2.0
+            speed_embedding = self.end2race_actor.speed_mlp(speed)
+            return torch.cat((processed_lidar, speed_embedding), dim=1).detach()
+        if self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN":
+            if actor_features is None:
+                raise ValueError("C2 value prediction requires current actor hidden features")
+            return actor_features.detach()
+        if not isinstance(obs, dict) or set(obs) != {"actor", "critic"}:
+            raise ValueError("C3 value prediction requires isolated actor/critic Dict fields")
+        critic = obs["critic"].float()
+        return critic.unsqueeze(0) if critic.ndim == 1 else critic
+
+    def _critic_values(
+        self,
+        obs: torch.Tensor | dict[str, torch.Tensor],
+        actor_features: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        return self.value_net(self._critic_input(obs, actor_features))
 
     @staticmethod
     def _zero_vf_states(states: tuple[torch.Tensor, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -439,23 +548,27 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
     def forward(
         self,
-        obs: torch.Tensor,
+        obs: torch.Tensor | dict[str, torch.Tensor],
         lstm_states: RNNStates,
         episode_starts: torch.Tensor,
         deterministic: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, RNNStates]:
-        mean_actions, actor_states = self.actor_mean(obs, lstm_states.pi, episode_starts)
+        mean_actions, actor_states, actor_features = self._actor_forward(obs, lstm_states.pi, episode_starts)
         self.last_raw_actor_mean = mean_actions.detach().clone()
         distribution = self._distribution(mean_actions)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
-        values = self._critic_values(obs)
-        vf_states = self._zero_vf_states(lstm_states.vf)
+        values = self._critic_values(obs, actor_features)
+        vf_states = (
+            tuple(state.detach() for state in actor_states)
+            if self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN"
+            else self._zero_vf_states(lstm_states.vf)
+        )
         return actions, values, log_prob, RNNStates(actor_states, vf_states)
 
     def get_distribution(
         self,
-        obs: torch.Tensor,
+        obs: torch.Tensor | dict[str, torch.Tensor],
         lstm_states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
     ) -> tuple[Distribution, tuple[torch.Tensor, torch.Tensor]]:
@@ -464,28 +577,54 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
     def predict_values(
         self,
-        obs: torch.Tensor,
+        obs: torch.Tensor | dict[str, torch.Tensor],
         lstm_states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
     ) -> torch.Tensor:
-        # The value function is feed-forward by design.  Keep the recurrent
-        # arguments for exact compatibility with RecurrentPPO's timeout path.
-        del lstm_states, episode_starts
+        if self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN":
+            _means, _states, actor_features = self._actor_forward(obs, lstm_states, episode_starts)
+            return self._critic_values(obs, actor_features)
         return self._critic_values(obs)
 
     def evaluate_actions(
         self,
-        obs: torch.Tensor,
+        obs: torch.Tensor | dict[str, torch.Tensor],
         actions: torch.Tensor,
         lstm_states: RNNStates,
         episode_starts: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
-        mean_actions, _actor_states = self.actor_mean(obs, lstm_states.pi, episode_starts)
+        mean_actions, _actor_states, actor_features = self._actor_forward(obs, lstm_states.pi, episode_starts)
         distribution = self._distribution(mean_actions)
         log_prob = distribution.log_prob(actions)
         entropy = distribution.entropy()
-        values = self._critic_values(obs)
+        values = self._critic_values(obs, actor_features)
         return values, log_prob, entropy
+
+    def critic_telemetry(self, obs: torch.Tensor | dict[str, torch.Tensor], actor_features: torch.Tensor | None = None) -> dict[str, float]:
+        """Return finite scale/saturation statistics without changing gradients."""
+
+        with torch.no_grad():
+            critic_input = self._critic_input(obs, actor_features)
+            first = self.value_net[0]
+            if isinstance(first, nn.LayerNorm):
+                normalized = first(critic_input)
+                preactivation = self.value_net[1](normalized)
+                activation = self.value_net[2](preactivation)
+            else:
+                preactivation = first(critic_input)
+                activation = self.value_net[1](preactivation)
+            result = {
+                "critic_input_mean": float(critic_input.mean()),
+                "critic_input_std": float(critic_input.std(unbiased=False)),
+                "first_layer_preactivation_mean": float(preactivation.mean()),
+                "first_layer_preactivation_std": float(preactivation.std(unbiased=False)),
+                "first_layer_preactivation_max_abs": float(preactivation.abs().max()),
+                "preactivation_abs_gt_3_fraction": float((preactivation.abs() > 3.0).float().mean()),
+                "activation_saturation_fraction": float((activation.abs() > 0.99).float().mean()) if self.critic_profile == "C0_RAW_SINGLE_FRAME" else 0.0,
+            }
+            if self.critic_profile == "C1_FROZEN_BC_FEATURE":
+                result["frozen_speed_embedding_max_abs"] = float(critic_input[:, 360:].abs().max())
+            return result
 
     def actor_checkpoint_state_dict(self) -> dict[str, torch.Tensor]:
         """Return only the unchanged BC-compatible End2Race actor schema."""

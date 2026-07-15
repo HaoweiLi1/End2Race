@@ -13,6 +13,7 @@ import math
 import multiprocessing as mp
 from pathlib import Path
 import random
+from contextlib import contextmanager
 from typing import Any, Iterable, Sequence
 
 import numpy as np
@@ -30,8 +31,12 @@ from rl.ppo_scenarios import (
     classify_bc_ego_collisions,
     evaluation_scenarios,
     training_scenarios,
+    scenario_from_dict,
 )
 from rl.sb3_end2race_policy import DEFAULT_BC_CHECKPOINT, End2RaceGRUPolicy
+from experiments.ppo_v1_2.config_schema import CRITIC_PROFILES, HARD_POOL_IDS, SAMPLING_MODES, resolve_config as resolve_v1_2_config
+from experiments.ppo_v1_2.experiment_spec import canonical_hash
+from experiments.ppo_v1_2.selectors import checkpoint_flags
 from utils import atomic_write_json
 
 
@@ -73,8 +78,14 @@ def parse_evaluation_updates(value: str) -> tuple[int, ...]:
     return updates
 
 
+def parse_int_list(value: str) -> tuple[int, ...]:
+    return parse_evaluation_updates(value)
+
+
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="End2Race PPO V1 trainer")
+    parser = argparse.ArgumentParser(description="End2Race PPO V1/V1.2 trainer")
+    parser.add_argument("--experiment-profile", choices=("ppo_v1", "ppo_v1_2"), default="ppo_v1")
+    parser.add_argument("--config-json", type=Path, default=None, help="Exact resolved V1.2 config supplied by the sweep runner")
     parser.add_argument("--run-root", type=Path, default=Path("runs/ppo_v1"))
     parser.add_argument("--run-id", type=str, default=None)
     parser.add_argument("--updates", type=int, default=DEFAULT_CONFIG["updates"])
@@ -82,7 +93,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--n-steps", type=int, default=DEFAULT_CONFIG["n_steps"])
     parser.add_argument("--batch-size", type=int, default=DEFAULT_CONFIG["batch_size"])
     parser.add_argument("--device", choices=("cuda", "cpu"), default=DEFAULT_CONFIG["device"])
-    parser.add_argument("--master-seed", type=int, default=DEFAULT_CONFIG["master_seed"])
+    parser.add_argument("--master-seed", "--seed", dest="master_seed", type=int, default=DEFAULT_CONFIG["master_seed"])
     parser.add_argument("--lr-scale", type=float, default=DEFAULT_CONFIG["lr_scale"])
     parser.add_argument("--evaluation-workers", type=int, default=8)
     parser.add_argument(
@@ -90,6 +101,23 @@ def parse_arguments() -> argparse.Namespace:
         type=float,
         default=DEFAULT_CONFIG["collision_sampling_probability"],
     )
+    parser.add_argument("--critic-profile", choices=CRITIC_PROFILES, default="C0_RAW_SINGLE_FRAME")
+    parser.add_argument("--hard-pool-id", choices=HARD_POOL_IDS, default="H0_CURRENT_DET")
+    parser.add_argument("--hard-pool-manifest", type=Path, default=None)
+    parser.add_argument("--hard-sampling-probability", type=float, default=0.50)
+    parser.add_argument("--hard-sampling-mode", choices=SAMPLING_MODES, default="with_replacement")
+    parser.add_argument("--target-kl", type=float, default=None)
+    parser.add_argument("--gru-lr", type=float, default=1.0e-6)
+    parser.add_argument("--head-lr", type=float, default=1.0e-5)
+    parser.add_argument("--critic-lr", type=float, default=3.0e-4)
+    parser.add_argument("--steering-latent-std", type=float, default=0.05)
+    parser.add_argument("--speed-physical-std", type=float, default=0.15)
+    parser.add_argument("--gamma", type=float, default=0.999)
+    parser.add_argument("--gae-lambda", type=float, default=0.995)
+    parser.add_argument("--reward-progress-weight", type=float, default=0.010)
+    parser.add_argument("--reward-relative-weight", type=float, default=0.020)
+    parser.add_argument("--reward-collision", type=float, default=-2.0)
+    parser.add_argument("--evaluation-transition-budgets", type=parse_int_list, default=None)
     parser.add_argument(
         "--evaluation-updates",
         type=parse_evaluation_updates,
@@ -99,7 +127,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--bc-outcomes", type=Path, default=None)
     parser.add_argument(
         "--smoke",
-        choices=("none", "zero_lr", "nonzero", "v1_1_zero_lr", "v1_1_nonzero"),
+        choices=("none", "zero_lr", "nonzero", "v1_1_zero_lr", "v1_1_nonzero", "v1_2_zero_lr", "v1_2_nonzero"),
         default="none",
     )
     parser.add_argument(
@@ -129,6 +157,69 @@ def append_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def resolved_configuration(args: argparse.Namespace) -> dict[str, Any]:
+    if getattr(args, "config_json", None) is not None:
+        with Path(args.config_json).open("r", encoding="utf-8") as handle:
+            raw = json.load(handle)
+        config = resolve_v1_2_config(raw)
+        config.update(
+            experiment_profile="ppo_v1_2",
+            evaluation_workers=int(getattr(args, "evaluation_workers", 8)),
+            smoke=str(getattr(args, "smoke", "none")),
+            bc_checkpoint=str(DEFAULT_BC_CHECKPOINT.relative_to(PROJECT_ROOT)),
+            master_seed=int(config["seed"]),
+        )
+        return config
+    if getattr(args, "experiment_profile", "ppo_v1") == "ppo_v1_2":
+        transitions_per_update = int(args.n_envs) * int(args.n_steps)
+        budgets = (
+            list(args.evaluation_transition_budgets)
+            if args.evaluation_transition_budgets is not None
+            else [2 * transitions_per_update, 4 * transitions_per_update, int(args.updates) * transitions_per_update]
+        )
+        overrides = {
+            "updates": int(args.updates),
+            "n_envs": int(args.n_envs),
+            "n_steps": int(args.n_steps),
+            "batch_size": int(args.batch_size),
+            "device": str(args.device),
+            "seed": int(args.master_seed),
+            "critic_profile": str(args.critic_profile),
+            "hard_pool_id": str(args.hard_pool_id),
+            "hard_sampling_probability": float(args.hard_sampling_probability),
+            "hard_sampling_mode": str(args.hard_sampling_mode),
+            "target_kl": args.target_kl,
+            "gru_lr": float(args.gru_lr),
+            "head_lr": float(args.head_lr),
+            "critic_lr": float(args.critic_lr),
+            "steering_latent_std": float(args.steering_latent_std),
+            "speed_physical_std": float(args.speed_physical_std),
+            "gamma": float(args.gamma),
+            "gae_lambda": float(args.gae_lambda),
+            "reward_progress_weight": float(args.reward_progress_weight),
+            "reward_relative_weight": float(args.reward_relative_weight),
+            "reward_collision": float(args.reward_collision),
+            "evaluation_transition_budgets": budgets,
+        }
+        if args.smoke in {"v1_2_zero_lr", "v1_2_nonzero"}:
+            updates = 1 if args.smoke == "v1_2_zero_lr" else 2
+            overrides.update(
+                updates=updates,
+                n_envs=1,
+                n_steps=100,
+                batch_size=100,
+                evaluation_transition_budgets=[100 * update for update in range(1, updates + 1)],
+            )
+            if args.smoke == "v1_2_zero_lr":
+                overrides.update(gru_lr=0.0, head_lr=0.0, critic_lr=0.0)
+        config = resolve_v1_2_config(overrides)
+        config.update(
+            experiment_profile="ppo_v1_2",
+            evaluation_workers=int(args.evaluation_workers),
+            smoke=str(args.smoke),
+            bc_checkpoint=str(DEFAULT_BC_CHECKPOINT.relative_to(PROJECT_ROOT)),
+            master_seed=int(config["seed"]),
+        )
+        return config
     config = deepcopy(DEFAULT_CONFIG)
     config.update(
         updates=args.updates,
@@ -355,7 +446,13 @@ def make_training_env(rank: int, sampler: FixedMixtureScenarioSampler, config: d
             reset_provider=sampler,
             ego_index=0,
             opponent_controller=LatticePlannerOpponentController(),
-            transition_reward=PPOV1TransitionReward(ProgressProjector.from_csv()),
+            transition_reward=PPOV1TransitionReward(
+                ProgressProjector.from_csv(),
+                progress_weight=float(config.get("reward_progress_weight", 0.01)),
+                relative_weight=float(config.get("reward_relative_weight", 0.02)),
+                collision_penalty=float(config.get("reward_collision", -2.0)),
+            ),
+            privileged_critic=config.get("critic_profile") == "C3_PRIVILEGED_PHYSICAL",
         )
 
     return factory
@@ -385,10 +482,16 @@ def build_model(vector_env: DummyVecEnv, config: dict[str, Any]) -> End2RaceRecu
             "hidden_scale": 4,
             "critic_hidden_size": 64,
             "optimizer_profile": "ppo_v1",
+            "critic_profile": config.get("critic_profile", "C0_RAW_SINGLE_FRAME"),
+            "gru_lr": float(config.get("gru_lr", 1.0e-6)),
+            "head_lr": float(config.get("head_lr", 1.0e-5)),
+            "critic_lr": float(config.get("critic_lr", 3.0e-4)),
+            "steering_latent_std": config.get("steering_latent_std"),
+            "speed_physical_std": config.get("speed_physical_std"),
         },
         verbose=1,
     )
-    model.lr_scale = float(config["lr_scale"])
+    model.lr_scale = float(config.get("lr_scale", 1.0))
     return model
 
 
@@ -426,7 +529,14 @@ def parameter_deltas(
 
 def all_rollout_fields_finite(model: End2RaceRecurrentPPO) -> bool:
     fields = ("observations", "actions", "rewards", "advantages", "returns", "log_probs", "values")
-    return all(np.isfinite(np.asarray(getattr(model.rollout_buffer, name))).all() for name in fields)
+    for name in fields:
+        value = getattr(model.rollout_buffer, name)
+        if isinstance(value, dict):
+            if not all(np.isfinite(np.asarray(part)).all() for part in value.values()):
+                return False
+        elif not np.isfinite(np.asarray(value)).all():
+            return False
+    return True
 
 
 def gradient_norm(model: End2RaceRecurrentPPO) -> float:
@@ -470,7 +580,110 @@ def optimizer_step_evidence(model: End2RaceRecurrentPPO) -> dict[str, Any]:
     }
 
 
-def train_metrics(model: End2RaceRecurrentPPO) -> dict[str, Any]:
+@contextmanager
+def audited_gradient_clipping(model: End2RaceRecurrentPPO):
+    """Observe pre-clip norms while executing the unchanged stock clip call."""
+
+    original = torch.nn.utils.clip_grad_norm_
+    group_by_parameter = {
+        id(parameter): str(group["name"])
+        for group in model.policy.optimizer.param_groups
+        for parameter in group["params"]
+    }
+    samples: list[dict[str, Any]] = []
+
+    def wrapper(parameters, max_norm, *args, **kwargs):
+        parameter_list = list(parameters)
+        squared: dict[str, float] = {name: 0.0 for name in ("gru", "head", "critic")}
+        for parameter in parameter_list:
+            if parameter.grad is not None:
+                name = group_by_parameter.get(id(parameter))
+                if name in squared:
+                    squared[name] += float(parameter.grad.detach().double().square().sum().cpu())
+        group_norms = {name: math.sqrt(value) for name, value in squared.items()}
+        combined = math.sqrt(sum(value * value for value in group_norms.values()))
+        samples.append(
+            {
+                "gru_preclip_norm": group_norms["gru"],
+                "head_preclip_norm": group_norms["head"],
+                "critic_preclip_norm": group_norms["critic"],
+                "combined_preclip_norm": combined,
+                "theoretical_clip_multiplier": min(1.0, float(max_norm) / (combined + 1e-6)),
+            }
+        )
+        return original(parameter_list, max_norm, *args, **kwargs)
+
+    torch.nn.utils.clip_grad_norm_ = wrapper
+    try:
+        yield samples
+    finally:
+        torch.nn.utils.clip_grad_norm_ = original
+
+
+def post_update_minibatch_kl(model: End2RaceRecurrentPPO) -> dict[str, Any]:
+    numpy_state = np.random.get_state()
+    rows: list[float] = []
+    model.policy.set_training_mode(False)
+    try:
+        for rollout_data in model.rollout_buffer.get(model.batch_size):
+            mask = rollout_data.mask > 1e-8
+            with torch.no_grad():
+                _values, log_prob, _entropy = model.policy.evaluate_actions(
+                    rollout_data.observations,
+                    rollout_data.actions,
+                    rollout_data.lstm_states,
+                    rollout_data.episode_starts,
+                )
+                log_ratio = log_prob - rollout_data.old_log_prob
+                value = torch.mean(((torch.exp(log_ratio) - 1.0) - log_ratio)[mask])
+            rows.append(float(value.detach().cpu()))
+    finally:
+        np.random.set_state(numpy_state)
+    return {
+        "per_minibatch": rows,
+        "mean": float(np.mean(rows)),
+        "max": float(np.max(rows)),
+        "all_finite": bool(np.isfinite(rows).all()),
+    }
+
+
+def critic_rollout_telemetry(model: End2RaceRecurrentPPO) -> dict[str, Any]:
+    numpy_state = np.random.get_state()
+    model.policy.set_training_mode(False)
+    try:
+        rollout_data = next(iter(model.rollout_buffer.get(model.batch_size)))
+        with torch.no_grad():
+            _means, _states, actor_features = model.policy._actor_forward(
+                rollout_data.observations,
+                rollout_data.lstm_states.pi,
+                rollout_data.episode_starts,
+            )
+            predictions = model.policy._critic_values(rollout_data.observations, actor_features).flatten()
+            telemetry = model.policy.critic_telemetry(rollout_data.observations, actor_features)
+        mask = rollout_data.mask > 1e-8
+        prediction_values = predictions[mask].detach().cpu().numpy()
+        returns = rollout_data.returns[mask].detach().cpu().numpy()
+        advantages = rollout_data.advantages[mask].detach().cpu().numpy()
+    finally:
+        np.random.set_state(numpy_state)
+    return {
+        **telemetry,
+        "prediction_mean": float(np.mean(prediction_values)),
+        "prediction_std": float(np.std(prediction_values)),
+        "prediction_min": float(np.min(prediction_values)),
+        "prediction_max": float(np.max(prediction_values)),
+        "return_mean": float(np.mean(returns)),
+        "return_std": float(np.std(returns)),
+        "return_min": float(np.min(returns)),
+        "return_max": float(np.max(returns)),
+        "advantage_mean": float(np.mean(advantages)),
+        "advantage_std": float(np.std(advantages)),
+        "advantage_p95": float(np.percentile(advantages, 95)),
+        "advantage_p99": float(np.percentile(advantages, 99)),
+    }
+
+
+def train_metrics(model: End2RaceRecurrentPPO, preclip_samples: Sequence[dict[str, Any]] = ()) -> dict[str, Any]:
     values = model.logger.name_to_value
     keys = (
         "train/loss",
@@ -485,6 +698,9 @@ def train_metrics(model: End2RaceRecurrentPPO) -> dict[str, Any]:
     metrics["optimizer_group_lrs"] = optimizer_group_lrs(model)
     metrics["optimizer_step_evidence"] = optimizer_step_evidence(model)
     metrics["rollout_fields_finite"] = all_rollout_fields_finite(model)
+    metrics["post_update_kl"] = post_update_minibatch_kl(model)
+    metrics["critic_telemetry"] = critic_rollout_telemetry(model)
+    metrics["preclip_gradient_samples"] = list(preclip_samples)
     scalar_values = [value for value in metrics.values() if isinstance(value, float)]
     metrics["all_scalar_metrics_finite"] = bool(np.isfinite(scalar_values).all())
     return metrics
@@ -566,9 +782,9 @@ def verify_smoke(
     reloaded = End2RaceRecurrentPPO.load(checkpoint_dir / "model.zip", device=config["device"])
     reload_lrs = optimizer_group_lrs(reloaded)
     expected_lrs = {
-        "gru": 1e-6 * config["lr_scale"],
-        "head": 1e-5 * config["lr_scale"],
-        "critic": 3e-4 * config["lr_scale"],
+        "gru": float(config.get("gru_lr", 1e-6)) * float(config.get("lr_scale", 1.0)),
+        "head": float(config.get("head_lr", 1e-5)) * float(config.get("lr_scale", 1.0)),
+        "critic": float(config.get("critic_lr", 3e-4)) * float(config.get("lr_scale", 1.0)),
     }
     finite = all(
         bool(metrics["rollout_fields_finite"])
@@ -576,7 +792,7 @@ def verify_smoke(
         and np.isfinite(list(metrics["optimizer_group_lrs"].values())).all()
         for metrics in update_metrics
     )
-    zero_lr_smoke = config["smoke"] in {"zero_lr", "v1_1_zero_lr"}
+    zero_lr_smoke = config["smoke"] in {"zero_lr", "v1_1_zero_lr", "v1_2_zero_lr"}
     if zero_lr_smoke:
         parameter_gate = all(group["max_abs_delta"] == 0.0 for group in deltas.values())
     else:
@@ -660,6 +876,24 @@ def load_or_classify_training_bc(
     return rows, collision_ids
 
 
+def load_hard_pool_manifest(path: Path, expected_pool_id: str) -> tuple[tuple[ScenarioSpec, ...], tuple[str, ...], dict[str, Any]]:
+    with path.open("r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    if manifest.get("pool_id") != expected_pool_id:
+        raise ValueError(f"Hard pool ID mismatch: expected {expected_pool_id}, got {manifest.get('pool_id')}")
+    expected_hash = canonical_hash({key: value for key, value in manifest.items() if key != "manifest_hash"})
+    if manifest.get("manifest_hash") != expected_hash:
+        raise ValueError(f"Hard pool manifest hash mismatch: {path}")
+    scenarios = tuple(scenario_from_dict(row) for row in manifest.get("scenarios", []))
+    by_id = {scenario.scenario_id: scenario for scenario in scenarios}
+    ids = tuple(map(str, manifest.get("scenario_ids", [])))
+    if not ids or tuple(sorted(ids)) != ids or len(ids) != len(set(ids)):
+        raise ValueError(f"Hard pool must be non-empty, unique and canonically sorted: {path}")
+    if set(ids) != set(by_id):
+        raise ValueError(f"Hard pool scenario rows and IDs differ: {path}")
+    return scenarios, ids, manifest
+
+
 def select_checkpoint(bc: dict[str, int], candidates: Sequence[dict[str, Any]]) -> dict[str, Any]:
     overtake_floor = math.ceil(0.95 * bc["overtake"])
     eligible = [candidate for candidate in candidates if candidate["metrics"]["overtake"] >= overtake_floor]
@@ -726,7 +960,9 @@ def run(args: argparse.Namespace) -> Path:
     config = resolved_configuration(args)
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = (PROJECT_ROOT / args.run_root / run_id).resolve()
-    run_dir.mkdir(parents=True, exist_ok=False)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    if (run_dir / "training_metrics.jsonl").exists() or (run_dir / "run_summary.json").exists():
+        raise FileExistsError(f"Run directory already contains training state: {run_dir}")
     atomic_write_json(run_dir / "resolved_config.json", config)
 
     random.seed(config["master_seed"])
@@ -746,10 +982,28 @@ def run(args: argparse.Namespace) -> Path:
         train_pool,
         workers=config["evaluation_workers"],
     )
+    if config.get("experiment_profile") == "ppo_v1_2" and args.hard_pool_manifest is not None:
+        hard_scenarios, hard_ids, hard_manifest = load_hard_pool_manifest(
+            args.hard_pool_manifest,
+            config["hard_pool_id"],
+        )
+        if config.get("hard_pool_hash") not in (None, hard_manifest["manifest_hash"]):
+            raise ValueError("Resolved config hard pool hash differs from the supplied manifest")
+    else:
+        hard_scenarios = train_pool
+        hard_ids = collision_ids
+        hard_manifest = None
     sampler = FixedMixtureScenarioSampler(
         train_pool,
-        collision_ids,
-        collision_probability=config["collision_sampling_probability"],
+        hard_ids,
+        collision_probability=float(
+            config["hard_sampling_probability"]
+            if "hard_sampling_probability" in config
+            else config["collision_sampling_probability"]
+        ),
+        hard_scenarios=hard_scenarios,
+        hard_pool_id=str(config.get("hard_pool_id", "H0_CURRENT_DET")),
+        hard_sampling_mode=str(config.get("hard_sampling_mode", "with_replacement")),
     )
     vector_env = DummyVecEnv(
         [make_training_env(rank, sampler, config) for rank in range(config["n_envs"])]
@@ -782,31 +1036,38 @@ def run(args: argparse.Namespace) -> Path:
 
     final_checkpoint_dir: Path | None = None
     try:
+        previous_optimizer_steps = 0
         for update in range(1, config["updates"] + 1):
-            model.learn(
-                total_timesteps=config["transitions_per_update"],
-                callback=callback,
-                log_interval=None,
-                reset_num_timesteps=(update == 1),
-                progress_bar=False,
-            )
+            with audited_gradient_clipping(model) as preclip_samples:
+                model.learn(
+                    total_timesteps=config["transitions_per_update"],
+                    callback=callback,
+                    log_interval=None,
+                    reset_num_timesteps=(update == 1),
+                    progress_bar=False,
+                )
             metrics = {
                 "update": update,
                 "num_timesteps": int(model.num_timesteps),
-                **train_metrics(model),
+                **train_metrics(model, preclip_samples),
                 "rollout": callback.latest_update_summary,
                 "parameter_deltas_from_fresh_start": parameter_deltas(before, model),
             }
             step_evidence = metrics["optimizer_step_evidence"]
-            expected_cumulative_steps = update * config["optimizer_steps_per_update"]
-            if (
-                not step_evidence["all_parameter_steps_equal"]
-                or step_evidence["observed_cumulative_optimizer_steps"] != expected_cumulative_steps
-            ):
-                raise RuntimeError(
-                    f"Optimizer step evidence mismatch at update {update}: {step_evidence}"
-                )
-            metrics["optimizer_steps_this_update"] = config["optimizer_steps_per_update"]
+            observed = step_evidence["observed_cumulative_optimizer_steps"]
+            observed = previous_optimizer_steps if observed is None else int(observed)
+            actual_steps = observed - previous_optimizer_steps
+            planned_steps = int(config["optimizer_steps_per_update"])
+            if not step_evidence["all_parameter_steps_equal"] and observed != 0:
+                raise RuntimeError(f"Optimizer parameters disagree on Adam step at update {update}: {step_evidence}")
+            if config.get("target_kl") is None and actual_steps != planned_steps:
+                raise RuntimeError(f"Unexpected optimizer step count at update {update}: actual={actual_steps}, planned={planned_steps}")
+            if actual_steps < 0 or actual_steps > planned_steps:
+                raise RuntimeError(f"Illegal optimizer step count at update {update}: actual={actual_steps}, planned={planned_steps}")
+            metrics["planned_optimizer_steps"] = planned_steps
+            metrics["actual_optimizer_steps"] = actual_steps
+            metrics["early_stopped_by_target_kl"] = bool(actual_steps < planned_steps)
+            previous_optimizer_steps = observed
             update_metrics.append(metrics)
             append_json(run_dir / "training_metrics.jsonl", metrics)
             if not metrics["rollout_fields_finite"] or not metrics["all_scalar_metrics_finite"]:
@@ -823,6 +1084,8 @@ def run(args: argparse.Namespace) -> Path:
                         workers=config["evaluation_workers"],
                     )
                     evaluation.update(paired_change_metrics(bc_rows, rows))
+                    if config.get("experiment_profile") == "ppo_v1_2":
+                        evaluation.update(checkpoint_flags(evaluation))
                     atomic_write_json(run_dir / "evaluations" / f"update_{update:04d}_rows.json", rows)
                     atomic_write_json(final_checkpoint_dir / "metrics.json", evaluation)
                     validate_evaluation(evaluation)
@@ -845,6 +1108,10 @@ def run(args: argparse.Namespace) -> Path:
             "completed_transitions": int(model.num_timesteps),
             "final_checkpoint": str(final_checkpoint_dir.relative_to(run_dir)),
             "smoke": config["smoke"],
+            "hard_pool_id": config.get("hard_pool_id"),
+            "hard_pool_hash": hard_manifest.get("manifest_hash") if hard_manifest is not None else None,
+            "hard_sampling_mode": config.get("hard_sampling_mode"),
+            "hard_pool_visit_counts": dict(sorted(sampler.visit_counts.items())),
         },
     )
     return run_dir

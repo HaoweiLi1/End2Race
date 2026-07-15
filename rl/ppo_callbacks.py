@@ -25,6 +25,7 @@ class PPOV1MetricsCallback(BaseCallback):
         self._component_sums: Counter[str] = Counter()
         self._branch_transition_counts: Counter[str] = Counter()
         self._reset_branch_counts: Counter[str] = Counter()
+        self._reset_scenario_counts: Counter[str] = Counter()
         self._unique_scenario_ids: set[str] = set()
         self._pending_initial_reset_infos: list[dict[str, Any]] = []
         self._initial_resets_recorded = False
@@ -56,6 +57,9 @@ class PPOV1MetricsCallback(BaseCallback):
 
     def _record_reset(self, info: dict[str, Any]) -> None:
         self._reset_branch_counts[self._sampler_branch(info)] += 1
+        scenario_id = info.get("scenario_id")
+        if scenario_id is not None:
+            self._reset_scenario_counts[str(scenario_id)] += 1
 
     def _on_training_start(self) -> None:
         # The initial vector reset happens in BaseAlgorithm._setup_learn before
@@ -75,6 +79,7 @@ class PPOV1MetricsCallback(BaseCallback):
         self._component_sums = Counter()
         self._branch_transition_counts = Counter()
         self._reset_branch_counts = Counter()
+        self._reset_scenario_counts = Counter()
         self._unique_scenario_ids = set()
         self._partial_episodes_carried_in = sum(episode["steps"] > 0 for episode in self._episodes)
         self._actions = []
@@ -114,6 +119,8 @@ class PPOV1MetricsCallback(BaseCallback):
                     "outcome": outcome,
                     "scenario_id": info.get("scenario_id"),
                     "sampler_branch": info.get("sampler_branch"),
+                    "hard_pool_id": info.get("hard_pool_id"),
+                    "hard_sampling_mode": info.get("hard_sampling_mode"),
                     "opponent_collision_latched": bool(info.get("opponent_collision_latched", False)),
                     "final_relative_position_m": float(info.get("relative_position_m", 0.0)),
                     "termination_reason": info.get("termination_reason"),
@@ -174,6 +181,7 @@ class PPOV1MetricsCallback(BaseCallback):
             "unique_scenario_id_count": len(self._unique_scenario_ids),
             "unique_scenario_ids": sorted(self._unique_scenario_ids),
             "reset_count_by_sampler_branch": dict(sorted(self._reset_branch_counts.items())),
+            "scenario_visit_counts": dict(sorted(self._reset_scenario_counts.items())),
             "partial_episodes_carried_across_rollout_boundary": partial_episodes_carried_out,
             "partial_episodes_carried_in": self._partial_episodes_carried_in,
             "partial_episodes_carried_out": partial_episodes_carried_out,

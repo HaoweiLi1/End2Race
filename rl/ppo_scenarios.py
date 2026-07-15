@@ -1,4 +1,4 @@
-"""Fixed PPO V1 scenario pools and reproducible 75/25 reset sampler."""
+"""Fixed PPO scenario pools and reproducible V1/V1.2 reset samplers."""
 
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ EGO_RACELINE = "raceline1"
 OPPONENT_RACELINES = ("raceline0", "raceline1", "raceline2")
 OPPONENT_SPEED_SCALES = (0.5, 0.6, 0.7, 0.8)
 INTERVAL_IDX = 15
+EXPANDED_INTERVAL_IDXS = (8, 10, 12, 15)
+EXPANDED_SPEED_SCALES = (0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85)
 SIM_DURATION = 8.0
 TIMESTEP = 0.01
 
@@ -144,6 +146,9 @@ class FixedMixtureScenarioSampler:
         bc_ego_collision_ids: Sequence[str],
         *,
         collision_probability: float = 0.25,
+        hard_scenarios: Sequence[ScenarioSpec] | None = None,
+        hard_pool_id: str = "H0_CURRENT_DET",
+        hard_sampling_mode: str = "with_replacement",
     ) -> None:
         if len(scenarios) != 600:
             raise ValueError(f"Training sampler requires 600 scenarios, got {len(scenarios)}")
@@ -152,25 +157,63 @@ class FixedMixtureScenarioSampler:
         by_id = {scenario.scenario_id: scenario for scenario in scenarios}
         if len(by_id) != len(scenarios):
             raise ValueError("Training scenario IDs must be unique")
-        missing = sorted(set(bc_ego_collision_ids) - set(by_id))
+        hard_by_id = {
+            scenario.scenario_id: scenario
+            for scenario in (hard_scenarios if hard_scenarios is not None else scenarios)
+        }
+        missing = sorted(set(bc_ego_collision_ids) - set(hard_by_id))
         if missing:
             raise ValueError(f"BC collision IDs are absent from training pool: {missing[:3]}")
-        collision_scenarios = tuple(by_id[scenario_id] for scenario_id in bc_ego_collision_ids)
+        collision_scenarios = tuple(hard_by_id[scenario_id] for scenario_id in bc_ego_collision_ids)
         if not collision_scenarios:
             raise ValueError("bc_ego_collision_ids must be non-empty")
         self.scenarios = tuple(scenarios)
         self.bc_collision_scenarios = collision_scenarios
         self.collision_probability = float(collision_probability)
+        if hard_sampling_mode not in {"with_replacement", "per_env_balanced_cycle"}:
+            raise ValueError(f"Unknown hard sampling mode: {hard_sampling_mode}")
+        self.hard_pool_id = str(hard_pool_id)
+        self.hard_sampling_mode = str(hard_sampling_mode)
+        self._cycles: dict[int, tuple[np.ndarray, int]] = {}
+        self.visit_counts: dict[str, int] = {scenario.scenario_id: 0 for scenario in collision_scenarios}
+
+    def _sample_hard(self, rng: np.random.Generator) -> ScenarioSpec:
+        if self.hard_sampling_mode == "with_replacement":
+            index = int(rng.integers(0, len(self.bc_collision_scenarios)))
+        else:
+            key = id(rng)
+            permutation, offset = self._cycles.get(key, (np.empty(0, dtype=np.int64), 0))
+            if offset >= len(permutation):
+                permutation = np.asarray(rng.permutation(len(self.bc_collision_scenarios)), dtype=np.int64)
+                offset = 0
+            index = int(permutation[offset])
+            self._cycles[key] = (permutation, offset + 1)
+        scenario = self.bc_collision_scenarios[index]
+        self.visit_counts[scenario.scenario_id] += 1
+        return scenario
 
     def sample(self, rng: np.random.Generator) -> tuple[ScenarioSpec, str]:
         if float(rng.random()) < self.collision_probability:
-            pool = self.bc_collision_scenarios
-            branch = "bc_ego_collision"
+            scenario = self._sample_hard(rng)
+            branch = "bc_ego_collision" if self.hard_pool_id == "H0_CURRENT_DET" else "hard_pool"
         else:
-            pool = self.scenarios
+            scenario = self.scenarios[int(rng.integers(0, len(self.scenarios)))]
             branch = "all_training"
-        return pool[int(rng.integers(0, len(pool)))], branch
+        return scenario, branch
 
     def __call__(self, rng: np.random.Generator) -> EpisodeResetSpec:
         scenario, branch = self.sample(rng)
-        return deepcopy(scenario.to_reset_spec(sampler_branch=branch))
+        spec = deepcopy(scenario.to_reset_spec(sampler_branch=branch))
+        spec.scenario["hard_pool_id"] = self.hard_pool_id
+        spec.scenario["hard_sampling_mode"] = self.hard_sampling_mode
+        return spec
+
+
+def scenario_from_dict(row: dict[str, Any]) -> ScenarioSpec:
+    """Strictly reconstruct a ScenarioSpec from a persisted manifest row."""
+
+    names = {field.name for field in ScenarioSpec.__dataclass_fields__.values()}
+    unknown = set(row) - names
+    if unknown:
+        raise ValueError(f"Unknown scenario fields: {sorted(unknown)}")
+    return ScenarioSpec(**row)
