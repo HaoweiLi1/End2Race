@@ -137,7 +137,10 @@ class TestSB3NonzeroUpdateArtifacts(unittest.TestCase):
         self.assertEqual(checkpoint["pretrained_sha256_before"], checkpoint["pretrained_sha256_after"])
         self.assertEqual(sha256_file(pretrained), checkpoint["pretrained_sha256_before"])
 
-    def test_14_no_nan_or_inf_and_final_verdict(self):
+    def test_14_historical_numeric_checks_and_generated_verdict(self):
+        # This preserves the machine-generated result of the original run.
+        # Post-audit interaction-video semantics are enforced separately by
+        # test_sb3_interaction_video.py and documented as an erratum.
         self.assertTrue(self.results["rollout"]["all_rollout_fields_finite"])
         self.assertTrue(self.results["train"]["gradients_finite_before_clipping"])
         self.assertTrue(self.results["train"]["gradients_finite_after_clipping"])

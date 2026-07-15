@@ -2,7 +2,26 @@
 
 ## Verdict
 
-**PASS_FOR_TRAINING_PIPELINE_IMPLEMENTATION**
+**历史非零实验严格总 verdict：FAIL**
+
+**数值与 optimizer 管线子结论：PASS**
+
+**修正后 snapshot visual replay：PASS_VISUAL_REPLAY**
+
+### Post-audit 勘误
+
+原始 `training_rollout.mp4` 虽然有 100 个可解码帧，但未注册 evaluator 的跟车相机 callback。车辆坐标经 renderer 的 `x50` 缩放后位于默认原点相机范围之外，所以画面只有赛道，ego 和 opponent 不可见。此前只验证容器、帧数、FPS 和可解码性，错误地把它标记为交互视频 PASS。
+
+最初验收要求把“training rollout 视频成功”列为总 PASS 的必要条件，因此不能用后续 replay 追认历史 training rollout：原始严格总 verdict 修正为 **FAIL**。原始 `results.json` 和 MP4 保留作为未通过语义检查的历史证据，没有事后改写。
+
+修复内容：
+
+- future training recorder 在每次 render 前把相机中心设置为 ego；
+- overlay 显示 step、ego/opponent steering 与 speed、collision 和 timeout；
+- 原始 RGB 帧与 MP4 解码帧都必须逐帧检测到中央黄色 ego 和红色 opponent；
+- 仅“文件存在且可解码”不再能通过视频门禁。
+
+修复后使用原实验的 pre-update policy/RNG snapshot 做了独立、零 optimizer 的 visual replay。它验证相机和动作可视化设置，但明确不是原始 training rollout。
 
 本次实验仅验证真实 F1Tenth 交互、stock recurrent rollout、stock PPO update、梯度、参数更新、动作合同和 actor-only checkpoint 的训练管线。诊断 reward 不是正式 reward；本结论不表示 PPO 驾驶性能、避碰或超车能力有效，也不授权开始长时训练。
 
@@ -260,8 +279,45 @@ Update 后 ratio 不再要求等于 1。虽然单个 timestep 的 ratio deviatio
 | file size | 19,956 bytes |
 | SHA256 | `7187df088b6c692cea3f0d40d34a6491a6a1aad45a7af5492a21b65937f678d6` |
 | first/last frame readable | PASS / PASS |
+| ego/opponent 可见 | **FAIL / FAIL** |
+| interaction-video semantic gate | **FAIL** |
 
 帧在 diagnostic wrapper 的 `step()` 内、真实 F1Tenth step 之后且 DummyVecEnv auto-reset 之前获取。因此第 100 帧是 timeout terminal frame，没有混入 reset 后的新 episode，也没有为了录像额外调用 `env.step()`。
+
+但车辆不在默认相机 viewport 内。这个文件只能证明历史 capture/encoding 调用发生，不能作为双车交互的视觉证据。
+
+## 修正后的 interaction visual replay
+
+输出：[interaction_replay.mp4](../artifacts/sb3_nonzero_smoke/interaction_replay.mp4)
+
+Provenance：
+
+- 加载历史实验在 rollout 前保存的完整 policy 和 RNG snapshot；
+- 固定相同 Austin scenario；
+- 首个随机 action 与历史 training rollout 的误差为 `0.0`；
+- `collect_rollouts()` 调用 0 次；
+- `train()` / `learn()` / `optimizer.step()` 调用均为 0 次；
+- policy 最大 parameter delta 为 `0.0`；
+- 原始 `training_rollout.mp4` SHA256 前后相同，未被覆盖。
+
+| 项目 | 值 |
+|---|---:|
+| verdict | `PASS_VISUAL_REPLAY` |
+| real F1Tenth steps | 100 |
+| outcome | step 100 timeout，无 ego collision |
+| frames | 100 captured / 100 decoded |
+| fps | 100 |
+| resolution | 1000 x 800 |
+| duration | 1.0 s |
+| file size | 203,495 bytes |
+| SHA256 | `755748bb5e66af801f689dee42214555e3e49c9da424f5c5312b48cc92434e42` |
+| raw ego pixels/frame minimum | 124 |
+| raw opponent pixels/frame minimum | 131 |
+| decoded ego pixels/frame minimum | 116 |
+| decoded opponent pixels/frame minimum | 101 |
+| action → real core max error | 0.0 |
+
+黄色矩形为 ego，红色矩形为 opponent。相机跟随 ego；两辆车在 100/100 个原始帧和解码帧中均可见。
 
 ## 产物与只读验收测试
 
@@ -273,6 +329,8 @@ Artifacts 均位于被 `.gitignore` 排除的 `artifacts/sb3_nonzero_smoke/`：
 - `run.log`；
 - `run_state.json`；
 - `pre_update_snapshot.pth`，包含 rollout 前 policy、actor、critic、log_std、optimizer 和 RNG state。
+- `interaction_replay.mp4`，相机修正后的零 update visual replay；
+- `interaction_replay_results.json`，replay provenance 与逐帧车辆可见性证据。
 
 非零实验完成后只读取 artifacts 运行：
 
@@ -283,6 +341,14 @@ OK
 ```
 
 该 test module 不导入或执行 smoke runner，不会产生第二次 update。
+
+视频修复后额外运行只读语义测试：
+
+```text
+python -m unittest tests.test_sb3_interaction_video tests.test_sb3_nonzero_update -v
+Ran 21 tests in 0.296s
+OK
+```
 
 ## 验收结论
 
@@ -299,7 +365,10 @@ OK
 | update 后 KL finite 且 `< 1e-3` | PASS |
 | 12-key actor-only checkpoint strict load | PASS |
 | pretrained checkpoint 未改变 | PASS |
-| training rollout MP4 | PASS |
+| historical training rollout MP4 容器/帧 | PASS |
+| historical training rollout 双车可见性 | **FAIL** |
+| future recorder 跟车相机与逐帧可见性门禁 | PASS |
+| snapshot visual replay 双车可见性 | PASS |
 | site-packages 未改变 | PASS |
 
-最终结论为 **PASS_FOR_TRAINING_PIPELINE_IMPLEMENTATION**。下一步仍应由 owner 先审阅 reward、正式训练入口、checkpoint 管理和长时运行设计；本次没有自动开始正式 learner。
+历史非零实验因原 training MP4 的语义失败，严格总 verdict 为 **FAIL**；其 PPO replay、唯一 optimizer update、参数 delta、KL、checkpoint 等数值子项仍保持通过。当前 recorder 设置已经修正，并由零 update replay 独立验证为 **PASS_VISUAL_REPLAY**。如需重新取得满足全部原始条件的 `PASS_FOR_TRAINING_PIPELINE_IMPLEMENTATION`，必须以后明确授权一次新的非零 smoke；本次没有执行第二次 optimizer update，也没有开始正式 learner。

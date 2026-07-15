@@ -184,14 +184,85 @@ class JointActionRecordingLegacyEnv:
         return getattr(self.env, name)
 
 
+def vehicle_visibility(frame: np.ndarray) -> dict[str, int]:
+    """Count the renderer's yellow ego and red opponent pixels.
+
+    The ego count is restricted to a box around the frame center.  That keeps
+    yellow score-label text from falsely satisfying the visibility gate when
+    the follow camera is missing and the ego polygon is off-screen.
+    """
+
+    frame = np.asarray(frame)
+    if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
+        raise ValueError(f"Expected uint8 H x W x 3 frame, got {frame.dtype} {frame.shape}")
+    red = (frame[..., 0] >= 180) & (frame[..., 1] <= 120) & (frame[..., 2] <= 120)
+    yellow = (frame[..., 0] >= 180) & (frame[..., 1] >= 180) & (frame[..., 2] <= 140)
+    height, width = frame.shape[:2]
+    half_box = max(40, min(height, width) // 10)
+    center_y, center_x = height // 2, width // 2
+    ego_center = yellow[
+        center_y - half_box : center_y + half_box,
+        center_x - half_box : center_x + half_box,
+    ]
+    return {
+        "ego_center_yellow_pixels": int(ego_center.sum()),
+        "opponent_red_pixels": int(red.sum()),
+    }
+
+
+class TrainingInteractionRenderOverlay:
+    """Center the RGB-array camera on ego and expose current joint actions."""
+
+    def __init__(self, margin: float = 800.0) -> None:
+        self.margin = float(margin)
+        self.transition_index = -1
+        self.ego_action = np.zeros(2, dtype=np.float32)
+        self.opponent_action = np.zeros(2, dtype=np.float32)
+        self.ego_collision = False
+        self.timeout = False
+
+    def update(
+        self,
+        transition_index: int,
+        ego_action: np.ndarray,
+        opponent_action: np.ndarray,
+        info: dict[str, Any],
+    ) -> None:
+        self.transition_index = int(transition_index)
+        self.ego_action = np.asarray(ego_action, dtype=np.float32).reshape(2).copy()
+        self.opponent_action = np.asarray(opponent_action, dtype=np.float32).reshape(2).copy()
+        self.ego_collision = bool(info["ego_collision"])
+        self.timeout = bool(info["timeout"])
+
+    def __call__(self, renderer: Any) -> None:
+        from utils import follow_vehicle_camera, set_score_label
+
+        follow_vehicle_camera(renderer, car_index=0, margin=self.margin)
+        set_score_label(renderer, 800, 100, vertical_anchor="bottom")
+        renderer.score_label.font_size = 16
+        renderer.score_label.text = (
+            f"step={self.transition_index + 1:03d} | "
+            f"ego=({self.ego_action[0]:+.3f}, {self.ego_action[1]:.2f}m/s) | "
+            f"opp=({self.opponent_action[0]:+.3f}, {self.opponent_action[1]:.2f}m/s) | "
+            f"collision={int(self.ego_collision)} timeout={int(self.timeout)}"
+        )
+
+
 class DiagnosticSmokeRewardWrapper(gymnasium.Wrapper):
     """Action-sensitive diagnostic reward plus in-rollout terminal-safe video."""
 
-    def __init__(self, env: End2RaceGymnasiumEnv, video_path: Path) -> None:
+    def __init__(
+        self,
+        env: End2RaceGymnasiumEnv,
+        video_path: Path,
+        render_overlay: TrainingInteractionRenderOverlay,
+    ) -> None:
         super().__init__(env)
         self.video_path = video_path
+        self.render_overlay = render_overlay
         self.reward_records: list[dict[str, Any]] = []
         self.frame_shapes: list[tuple[int, int, int]] = []
+        self.vehicle_visibility_records: list[dict[str, int]] = []
         self.frame_count = 0
         self.recording_step_count = 0
         self.first_episode_done = False
@@ -204,7 +275,11 @@ class DiagnosticSmokeRewardWrapper(gymnasium.Wrapper):
     def render_preflight(self) -> dict[str, Any]:
         frame = np.asarray(self.integration_env.f110_env.render(mode="rgb_array"))
         self._validate_frame(frame)
-        return {"dtype": str(frame.dtype), "shape": list(frame.shape)}
+        return {
+            "dtype": str(frame.dtype),
+            "shape": list(frame.shape),
+            "vehicle_visibility": vehicle_visibility(frame),
+        }
 
     def start_recording(self) -> None:
         if self._writer is not None:
@@ -239,6 +314,13 @@ class DiagnosticSmokeRewardWrapper(gymnasium.Wrapper):
         info = dict(info)
         info["raw_base_reward"] = float(raw_reward)
         info["diagnostic_smoke_reward"] = smoke_reward
+        opponent_action = self.integration_env.action_trace[-1]["opponent_actions"][0]
+        self.render_overlay.update(
+            transition_index=len(self.reward_records),
+            ego_action=executed_action,
+            opponent_action=opponent_action,
+            info=info,
+        )
         self.reward_records.append(
             {
                 "transition_index": len(self.reward_records),
@@ -261,6 +343,7 @@ class DiagnosticSmokeRewardWrapper(gymnasium.Wrapper):
                 raise RuntimeError("Video recording was not started before rollout")
             frame = np.asarray(self.integration_env.f110_env.render(mode="rgb_array"))
             self._validate_frame(frame)
+            self.vehicle_visibility_records.append(vehicle_visibility(frame))
             self._writer.append_data(frame)
             self.frame_shapes.append(tuple(int(value) for value in frame.shape))
             self.frame_count += 1
@@ -340,7 +423,7 @@ def fixed_scenario() -> tuple[dict[str, Any], EpisodeResetSpec]:
     return recorded, spec
 
 
-def make_real_training_env() -> tuple[
+def make_real_training_env(video_path: Path = VIDEO_PATH) -> tuple[
     DummyVecEnv,
     DiagnosticSmokeRewardWrapper,
     End2RaceGymnasiumEnv,
@@ -366,6 +449,8 @@ def make_real_training_env() -> tuple[
         integrator=Integrator.RK4,
         seed=SEED,
     )
+    render_overlay = TrainingInteractionRenderOverlay(margin=800.0)
+    legacy_core.add_render_callback(render_overlay)
     recording_core = JointActionRecordingLegacyEnv(legacy_core)
     opponent = LatticePlannerOpponentController()
     integration_env = End2RaceGymnasiumEnv(
@@ -375,7 +460,7 @@ def make_real_training_env() -> tuple[
         ego_index=0,
         opponent_controller=opponent,
     )
-    diagnostic_env = DiagnosticSmokeRewardWrapper(integration_env, VIDEO_PATH)
+    diagnostic_env = DiagnosticSmokeRewardWrapper(integration_env, video_path, render_overlay)
     vector_env = DummyVecEnv([lambda: diagnostic_env])
     return vector_env, diagnostic_env, integration_env, recording_core, opponent, scenario_record
 
@@ -843,22 +928,33 @@ def export_and_verify_actor(policy: End2RaceGRUPolicy, pretrained_hash_before: s
 
 
 def verify_video(diagnostic_env: DiagnosticSmokeRewardWrapper) -> dict[str, Any]:
-    if not VIDEO_PATH.exists() or VIDEO_PATH.stat().st_size <= 0:
+    video_path = diagnostic_env.video_path
+    if not video_path.exists() or video_path.stat().st_size <= 0:
         raise AssertionError("Training rollout video is missing or empty")
-    reader = imageio.get_reader(VIDEO_PATH)
+    reader = imageio.get_reader(video_path)
     try:
         frame_count = int(reader.count_frames())
-        first = np.asarray(reader.get_data(0))
-        last = np.asarray(reader.get_data(frame_count - 1))
+        decoded_visibility = []
+        first = None
+        last = None
+        for frame_index in range(frame_count):
+            frame = np.asarray(reader.get_data(frame_index))
+            if frame_index == 0:
+                first = frame
+            last = frame
+            decoded_visibility.append(vehicle_visibility(frame))
         metadata = reader.get_meta_data()
     finally:
         reader.close()
+    if first is None or last is None:
+        raise AssertionError("Decoded video contains no frames")
     fps = float(metadata.get("fps", FPS))
+    raw_visibility = diagnostic_env.vehicle_visibility_records
     return {
-        "path": str(VIDEO_PATH.relative_to(ROOT)),
+        "path": str(video_path.relative_to(ROOT)),
         "exists": True,
-        "size_bytes": VIDEO_PATH.stat().st_size,
-        "sha256": sha256_file(VIDEO_PATH),
+        "size_bytes": video_path.stat().st_size,
+        "sha256": sha256_file(video_path),
         "captured_frame_count": diagnostic_env.frame_count,
         "decoded_frame_count": frame_count,
         "fps": fps,
@@ -870,6 +966,24 @@ def verify_video(diagnostic_env: DiagnosticSmokeRewardWrapper) -> dict[str, Any]
         "expected_duration_from_recorded_steps": diagnostic_env.recording_step_count / FPS,
         "recorded_only_first_training_episode": diagnostic_env.first_episode_done,
         "source": "frames captured inside the unique training Env.step before DummyVecEnv auto-reset",
+        "raw_vehicle_visibility": {
+            "ego_center_yellow_pixels_min": min(
+                (record["ego_center_yellow_pixels"] for record in raw_visibility),
+                default=0,
+            ),
+            "opponent_red_pixels_min": min(
+                (record["opponent_red_pixels"] for record in raw_visibility),
+                default=0,
+            ),
+        },
+        "decoded_vehicle_visibility": {
+            "ego_center_yellow_pixels_min": min(
+                record["ego_center_yellow_pixels"] for record in decoded_visibility
+            ),
+            "opponent_red_pixels_min": min(
+                record["opponent_red_pixels"] for record in decoded_visibility
+            ),
+        },
     }
 
 
@@ -1010,6 +1124,12 @@ def execute() -> dict[str, Any]:
             "replay_mean": replay_before_update["mean_logp_absolute_error"] <= 1e-7,
             "replay_ratio": replay_before_update["max_ratio_deviation"] <= 1e-6,
             "video_nonempty": video["decoded_frame_count"] > 0,
+            "render_preflight_ego_visible": (
+                render_preflight["vehicle_visibility"]["ego_center_yellow_pixels"] >= 8
+            ),
+            "render_preflight_opponent_visible": (
+                render_preflight["vehicle_visibility"]["opponent_red_pixels"] >= 8
+            ),
             "learning_rate_exact": all(group["lr"] == LEARNING_RATE for group in model.policy.optimizer.param_groups),
             "one_epoch": model.n_epochs == 1,
             "batch_size_equals_rollout": model.batch_size == N_STEPS,
@@ -1098,6 +1218,18 @@ def execute() -> dict[str, Any]:
                 video["duration_seconds"] - video["expected_duration_from_recorded_steps"]
             ) <= 1.0 / FPS,
             "video.uint8_rgb": video["decoded_dtype"] == "uint8",
+            "video.raw_ego_visible_every_frame": (
+                video["raw_vehicle_visibility"]["ego_center_yellow_pixels_min"] >= 8
+            ),
+            "video.raw_opponent_visible_every_frame": (
+                video["raw_vehicle_visibility"]["opponent_red_pixels_min"] >= 8
+            ),
+            "video.decoded_ego_visible_every_frame": (
+                video["decoded_vehicle_visibility"]["ego_center_yellow_pixels_min"] >= 8
+            ),
+            "video.decoded_opponent_visible_every_frame": (
+                video["decoded_vehicle_visibility"]["opponent_red_pixels_min"] >= 8
+            ),
             "video.stops_at_first_episode_boundary": (
                 rollout["episode"]["first_terminal_transition_index"] is not None
                 and video["captured_frame_count"]
