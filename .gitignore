@@ -6,3 +6,6 @@ install/
 .claude/
 Dataset_*/
 /artifacts/sb3_nonzero_smoke/
+HANDOFF*
+*Prompt*
+*Guide*

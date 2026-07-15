@@ -1,0 +1,3 @@
+scenario_id,baseline_outcome,candidate_outcome,baseline_ego_collision,candidate_ego_collision,fixed_ego_collision,new_ego_collision,gained_overtake,lost_overtake,baseline_final_relative_progress_m,candidate_final_relative_progress_m
+map-Austin__er-raceline1__or-raceline1__e-0000__o-0015__d-15__s-0p5__T-8,follow,follow,False,False,False,False,False,False,-2.059757621189277,-2.059757621189277
+map-Austin__er-raceline1__or-raceline1__e-0100__o-0115__d-15__s-0p5__T-8,follow,follow,False,False,False,False,False,False,-1.3295872593646294,-1.3295872593646294
