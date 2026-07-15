@@ -184,6 +184,7 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
         reset_provider: EpisodeResetProvider,
         ego_index: int = 0,
         opponent_controller: OpponentController | None = None,
+        transition_reward: Any | None = None,
     ) -> None:
         super().__init__()
         if sim_duration <= 0:
@@ -195,6 +196,11 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
         self.ego_index = int(ego_index)
         self.reset_provider = reset_provider
         self.opponent_controller = opponent_controller
+        self.transition_reward = transition_reward
+        if transition_reward is not None and not all(
+            callable(getattr(transition_reward, name, None)) for name in ("reset", "step")
+        ):
+            raise TypeError("transition_reward must provide callable reset() and step() methods")
         self.observation_space = spaces.Box(
             low=np.full((END2RACE_LIDAR_SIZE + 1,), -np.inf, dtype=np.float32),
             high=np.full((END2RACE_LIDAR_SIZE + 1,), np.inf, dtype=np.float32),
@@ -313,6 +319,9 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
         self._episode_index += 1
+        scenario_id = str(spec.scenario.get("scenario_id", f"episode-{self._episode_index}"))
+        if self.transition_reward is not None:
+            self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=self.ego_index)
         if self.num_agents > 1:
             if self.opponent_controller is None:
                 raise RuntimeError("A fixed opponent controller is required for multi-agent F1Tenth")
@@ -334,6 +343,8 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
             "elapsed_time": 0.0,
             "termination_reason": None,
             "scenario": dict(spec.scenario),
+            "scenario_id": scenario_id,
+            "sampler_branch": spec.scenario.get("sampler_branch"),
             "base_info": base_info,
         }
         return self._actor_observation(raw_observation), info
@@ -369,17 +380,17 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self._raw_observation is None:
             raise RuntimeError("Environment must be reset before step")
+        if self._current_spec is None:
+            raise RuntimeError("Environment has no active reset specification")
         # Deployment evaluator updates prev_speed from the decision observation
         # before stepping, then pairs it with the next LiDAR observation.
-        pre_step_ego_speed = self._ego_speed(self._raw_observation)
+        previous_raw_observation = self._raw_observation
+        pre_step_ego_speed = self._ego_speed(previous_raw_observation)
         joint_action = self._joint_action(action)
         result = self.f110_env.step(joint_action)
-        raw_observation, reward, base_terminated, base_truncated, base_info = self._step_result(result)
+        raw_observation, simulator_reward, base_terminated, base_truncated, base_info = self._step_result(result)
         self._lifetime_steps += 1
-        self._elapsed_time += self._step_duration(reward, base_info)
-        self._raw_observation = raw_observation
-        self._previous_ego_speed = pre_step_ego_speed
-        actor_observation = self._actor_observation(raw_observation)
+        self._elapsed_time += self._step_duration(simulator_reward, base_info)
 
         collisions = np.asarray(raw_observation.get("collisions", []), dtype=bool).reshape(-1)
         ego_collision = bool(collisions.size > self.ego_index and collisions[self.ego_index])
@@ -396,6 +407,27 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
         else:
             terminated, truncated, reason = False, False, None
 
+        scenario = dict(self._current_spec.scenario)
+        scenario_id = str(scenario.get("scenario_id", f"episode-{self._episode_index}"))
+        reward_info: dict[str, Any] = {}
+        if self.transition_reward is None:
+            reward = float(simulator_reward)
+        else:
+            reward_result = self.transition_reward.step(
+                previous_raw_observation,
+                raw_observation,
+                ego_collision=ego_collision,
+                opponent_collision=opponent_collision,
+                scenario_id=scenario_id,
+                ego_index=self.ego_index,
+            )
+            reward_info = dict(reward_result.to_info())
+            reward = float(reward_info["reward_total"])
+
+        self._raw_observation = raw_observation
+        self._previous_ego_speed = pre_step_ego_speed
+        actor_observation = self._actor_observation(raw_observation)
+
         info = {
             "ego_collision": ego_collision,
             "opponent_collision": opponent_collision,
@@ -404,14 +436,20 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
             "timeout": timeout,
             "elapsed_time": self._elapsed_time,
             "termination_reason": reason,
+            "scenario": scenario,
+            "scenario_id": scenario_id,
+            "sampler_branch": scenario.get("sampler_branch"),
+            "simulator_reward": float(simulator_reward),
             "base_info": base_info,
+            **reward_info,
         }
         event = {
             "transition_index": self._lifetime_steps - 1,
             "episode_index": self._episode_index,
             "reason": reason,
             "observation": actor_observation.copy(),
-            "raw_reward": reward,
+            "raw_reward": simulator_reward,
+            "reward": reward,
             "elapsed_time": self._elapsed_time,
             "terminated": terminated,
             "truncated": truncated,
@@ -429,7 +467,7 @@ class End2RaceGymnasiumEnv(gym.Env[np.ndarray, np.ndarray]):
                 "opponent_actions": np.delete(joint_action, self.ego_index, axis=0),
             }
         )
-        return actor_observation, reward, terminated, truncated, info
+        return actor_observation, float(reward), terminated, truncated, info
 
     def render(self) -> Any:
         return self.f110_env.render()

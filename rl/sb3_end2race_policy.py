@@ -28,6 +28,11 @@ END2RACE_LIDAR_SIZE = 360
 END2RACE_ACTION_SIZE = 2
 EVALUATOR_STEER_BOUND = 0.52
 NOOP_SPEED_BOUND = float(np.finfo(np.float32).max)
+PPO_V1_STEER_LOG_STD = -2.995732273553991
+PPO_V1_SPEED_LOG_STD = -1.8971199848858813
+PPO_V1_GRU_LR = 1e-6
+PPO_V1_HEAD_LR = 1e-5
+PPO_V1_CRITIC_LR = 3e-4
 
 
 class EvaluatorCompatibleJointDistribution(Distribution):
@@ -204,6 +209,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         speed_log_std_init: float = 0.0,
         steer_bound: float = EVALUATOR_STEER_BOUND,
         inverse_tanh_epsilon: float = 1e-6,
+        optimizer_profile: str = "default",
         **kwargs: Any,
     ) -> None:
         if not isinstance(observation_space, spaces.Box) or observation_space.shape != (END2RACE_OBSERVATION_SIZE,):
@@ -280,21 +286,80 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         # with a parameter-free module prevents dead parameters in the optimizer.
         self.action_net = nn.Identity()
         self.last_raw_actor_mean: torch.Tensor | None = None
+        self.optimizer_profile = str(optimizer_profile)
 
         # Rebuild with an explicit, auditable partition.  The shared GRU module
         # exposed by lstm_actor is already present in end2race_actor parameters.
-        optimizer_parameters = [
-            *self.end2race_actor.parameters(),
-            *self.value_net.parameters(),
-            self.log_std,
-        ]
-        if len({id(parameter) for parameter in optimizer_parameters}) != len(optimizer_parameters):
-            raise RuntimeError("Optimizer parameter identities must be unique")
-        self.optimizer = self.optimizer_class(
-            optimizer_parameters,
-            lr=lr_schedule(1),
-            **self.optimizer_kwargs,
-        )
+        if self.optimizer_profile == "default":
+            optimizer_parameters = [
+                *self.end2race_actor.parameters(),
+                *self.value_net.parameters(),
+                self.log_std,
+            ]
+            if len({id(parameter) for parameter in optimizer_parameters}) != len(optimizer_parameters):
+                raise RuntimeError("Optimizer parameter identities must be unique")
+            self.optimizer = self.optimizer_class(
+                optimizer_parameters,
+                lr=lr_schedule(1),
+                **self.optimizer_kwargs,
+            )
+        elif self.optimizer_profile == "ppo_v1":
+            for parameter in self.end2race_actor.parameters():
+                parameter.requires_grad_(False)
+            for parameter in self.end2race_actor.gru.parameters():
+                parameter.requires_grad_(True)
+            for parameter in self.end2race_actor.output_layer.parameters():
+                parameter.requires_grad_(True)
+            for parameter in self.value_net.parameters():
+                parameter.requires_grad_(True)
+            self.log_std.data.copy_(
+                torch.tensor(
+                    [PPO_V1_STEER_LOG_STD, PPO_V1_SPEED_LOG_STD],
+                    dtype=self.log_std.dtype,
+                    device=self.log_std.device,
+                )
+            )
+            self.log_std.requires_grad_(False)
+
+            gru_parameters = list(self.end2race_actor.gru.parameters())
+            head_parameters = list(self.end2race_actor.output_layer.parameters())
+            critic_parameters = list(self.value_net.parameters())
+            groups = [
+                {
+                    "params": gru_parameters,
+                    "lr": PPO_V1_GRU_LR,
+                    "name": "gru",
+                    "base_lr": PPO_V1_GRU_LR,
+                },
+                {
+                    "params": head_parameters,
+                    "lr": PPO_V1_HEAD_LR,
+                    "name": "head",
+                    "base_lr": PPO_V1_HEAD_LR,
+                },
+                {
+                    "params": critic_parameters,
+                    "lr": PPO_V1_CRITIC_LR,
+                    "name": "critic",
+                    "base_lr": PPO_V1_CRITIC_LR,
+                },
+            ]
+            group_ids = [id(parameter) for group in groups for parameter in group["params"]]
+            expected_ids = {
+                id(parameter)
+                for parameter in (*gru_parameters, *head_parameters, *critic_parameters)
+            }
+            if len(group_ids) != len(set(group_ids)):
+                raise RuntimeError("PPO V1 optimizer groups overlap")
+            if set(group_ids) != expected_ids:
+                raise RuntimeError("PPO V1 optimizer groups do not exactly cover GRU, head, and critic")
+            self.optimizer = self.optimizer_class(
+                groups,
+                lr=lr_schedule(1),
+                **self.optimizer_kwargs,
+            )
+        else:
+            raise ValueError(f"Unknown End2Race optimizer profile: {self.optimizer_profile}")
 
     @property
     def actor_hidden_size(self) -> int:

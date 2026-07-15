@@ -10,7 +10,16 @@ from f110_gym.envs.base_classes import Integrator
 from model import End2Race
 from latticeplanner.utils import project_point_to_centerline, obsDict2oppoArray
 from demonstration import setup_opp_planner
+from rl.ppo_reward import ProgressProjector
 from utils import *
+
+
+def collision_scope_stops_episode(collision_scope, ego_collision, opponent_collision):
+    if collision_scope == "legacy":
+        return bool(ego_collision or opponent_collision)
+    if collision_scope == "ego":
+        return bool(ego_collision)
+    raise ValueError(f"Unknown collision scope: {collision_scope}")
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Evaluate model on segment with opponent')
@@ -31,13 +40,16 @@ def parse_arguments():
     parser.add_argument("--render", action='store_true')
     parser.add_argument("--save_trace", action="store_true")
     parser.add_argument("--metrics_out", type=str, default=None)
+    parser.add_argument("--collision_scope", choices=("legacy", "ego"), default="legacy")
+    parser.add_argument("--scenario_id", type=str, default=None)
     
     return parser.parse_args()
 
 def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx, 
                     ego_raceline, opp_raceline, opp_speed_scale, sim_duration,
                     render=False, save_trace=False,
-                    model_path="pretrained/end2race.pth", metrics_out=None):
+                    model_path="pretrained/end2race.pth", metrics_out=None,
+                    collision_scope="legacy", scenario_id=None):
     """Evaluate a single segment with model against lattice planner opponent"""
     
     np.random.seed(42)
@@ -94,7 +106,20 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     centerline_path = f"f1tenth_racetracks/{map_name}/raceline1.csv"
     centerline_wp = np.loadtxt(centerline_path, delimiter=';', skiprows=1)
     centerline = np.vstack((centerline_wp[:, 1], centerline_wp[:, 2])).T
-    centerline_total_length = sum(np.linalg.norm(centerline[i+1] - centerline[i]) for i in range(len(centerline)-1))
+    if collision_scope == "ego":
+        progress_projector = ProgressProjector.from_csv(centerline_path)
+        centerline_total_length = progress_projector.track_length
+
+        def project_progress(point):
+            return progress_projector.project(point)
+    elif collision_scope == "legacy":
+        centerline_total_length = sum(np.linalg.norm(centerline[i+1] - centerline[i]) for i in range(len(centerline)-1))
+
+        def project_progress(point):
+            progress, _ = project_point_to_centerline(point, centerline)
+            return progress
+    else:
+        raise ValueError(f"Unknown collision scope: {collision_scope}")
     
     # Reset environment
     obs, _, done, _ = env.reset(poses=positions)
@@ -104,8 +129,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         env.render()
     
     # Track initial state
-    initial_ego_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][0], obs['poses_y'][0]]), centerline)
-    initial_opp_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][1], obs['poses_y'][1]]), centerline)
+    initial_ego_progress = project_progress(np.array([obs['poses_x'][0], obs['poses_y'][0]]))
+    initial_opp_progress = project_progress(np.array([obs['poses_x'][1], obs['poses_y'][1]]))
     initial_relative = wrapped_progress_difference(
         initial_ego_progress,
         initial_opp_progress,
@@ -246,8 +271,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         opp_speeds.append(obs['linear_vels_x'][1])
         
         # Update state tracking
-        ego_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][0], obs['poses_y'][0]]), centerline)
-        opp_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][1], obs['poses_y'][1]]), centerline)
+        ego_progress = project_progress(np.array([obs['poses_x'][0], obs['poses_y'][0]]))
+        opp_progress = project_progress(np.array([obs['poses_x'][1], obs['poses_y'][1]]))
         
         current_relative = wrapped_progress_difference(
             ego_progress,
@@ -264,13 +289,11 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         final_state = "overtaking" if relative_unwrapped > 0.0 else "following"
         
         # Check collision
-        ego_collision_occurred = (
-            ego_collision_occurred or bool(obs['collisions'][0])
-        )
-        opp_collision_occurred = (
-            opp_collision_occurred or bool(obs['collisions'][1])
-        )
-        if np.any(obs['collisions']):
+        step_ego_collision = bool(obs['collisions'][0])
+        step_opp_collision = bool(obs['collisions'][1])
+        ego_collision_occurred = ego_collision_occurred or step_ego_collision
+        opp_collision_occurred = opp_collision_occurred or step_opp_collision
+        if collision_scope_stops_episode(collision_scope, step_ego_collision, step_opp_collision):
             collision_occurred = True
             done = True
         
@@ -304,9 +327,18 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         )
 
     # Determine final state
-    if collision_occurred:
-        final_state = "collision"
-    final_state_num = {"following": 1, "overtaking": 2, "collision": 3}[final_state]
+    if collision_scope == "ego":
+        if ego_collision_occurred:
+            final_state = "ego_collision"
+        else:
+            final_state = "overtake" if relative_unwrapped > 0.0 else "follow"
+        final_state_num = {"follow": 1, "overtake": 2, "ego_collision": 3}[final_state]
+        outcome = final_state
+    else:
+        if collision_occurred:
+            final_state = "collision"
+        final_state_num = {"following": 1, "overtaking": 2, "collision": 3}[final_state]
+        outcome = {"following": "follow", "overtaking": "overtake", "collision": "collision"}[final_state]
     proximity_quality = evaluate_proximity_quality(
         np.asarray(ego_raw_lidar_history, dtype=np.float64)
     )
@@ -316,6 +348,9 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     )
     episode_metrics = {
         "episode_key": key,
+        "scenario_id": scenario_id,
+        "collision_scope": collision_scope,
+        "outcome": outcome,
         "state": final_state_num,
         "state_label": final_state,
         "avg_speed": float(avg_speed),
@@ -324,6 +359,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         "collision_occurred": bool(collision_occurred),
         "ego_collision_occurred": bool(ego_collision_occurred),
         "opp_collision_occurred": bool(opp_collision_occurred),
+        "opponent_only_collision": bool(opp_collision_occurred and not ego_collision_occurred),
+        "final_relative_position_m": float(relative_unwrapped),
         **proximity_quality,
         **steering_quality,
         "ego_avg_desired_speed": scalar_mean(ego_desired_speeds),
@@ -362,7 +399,7 @@ if __name__ == "__main__":
         # Set device - prefer CUDA if available, otherwise CPU
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = End2Race(hidden_scale=args.hidden_scale).to(device)
-        model.load_state_dict(torch.load(args.model_path, map_location=device))
+        model.load_state_dict(torch.load(args.model_path, map_location=device, weights_only=True), strict=True)
         model.eval()
 
         # Run evaluation
@@ -372,6 +409,8 @@ if __name__ == "__main__":
             args.ego_raceline, args.opp_raceline, args.opp_speedscale,
             args.sim_duration, args.render, args.save_trace, args.model_path,
             args.metrics_out,
+            args.collision_scope,
+            args.scenario_id,
         )
     except Exception as error:
         print(f"EVALUATION_ERROR={error}", file=sys.stderr)

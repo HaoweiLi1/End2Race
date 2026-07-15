@@ -9,4 +9,4 @@ install/
 Dataset_*/
 /artifacts/sb3_nonzero_smoke/
 eval_results/
-
+/runs/ppo_v1/*/checkpoints/

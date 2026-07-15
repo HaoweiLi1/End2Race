@@ -1,19 +1,21 @@
 #!/bin/bash
 
 # Parameters (converted from argparse defaults)
-MODEL_PATH="pretrained/end2race.pth"
-HIDDEN_SCALE=4
-NOISE=0.0
-NUM_WORKERS=8
-MAP_NAME="Austin"
-RENDER=true
-SAVE_TRACE=true
-SIM_DURATION=8.0
-EGO_RACELINE="raceline1"
+MODEL_PATH="${MODEL_PATH:-pretrained/end2race.pth}"
+HIDDEN_SCALE="${HIDDEN_SCALE:-4}"
+NOISE="${NOISE:-0.0}"
+NUM_WORKERS="${NUM_WORKERS:-8}"
+MAP_NAME="${MAP_NAME:-Austin}"
+RENDER="${RENDER:-true}"
+SAVE_TRACE="${SAVE_TRACE:-true}"
+SIM_DURATION="${SIM_DURATION:-8.0}"
+EGO_RACELINE="${EGO_RACELINE:-raceline1}"
 OPP_RACELINES=("raceline0" "raceline1" "raceline2")
 OPP_SPEED_SCALES=(0.5 0.6 0.7 0.8)
-INTERVAL_IDX=15
-NUM_STARTPOINTS=2
+INTERVAL_IDX="${INTERVAL_IDX:-15}"
+NUM_STARTPOINTS="${NUM_STARTPOINTS:-50}"
+COLLISION_SCOPE="${COLLISION_SCOPE:-legacy}"
+PYTHON="${PYTHON:-python}"
 
 # Generate ego_idx_range
 raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
@@ -41,10 +43,12 @@ temp_dir=$(mktemp -d)
 # Generate parameter combinations and run evaluations
 job_id=0
 
+startpoint_ordinal=0
 for ego_idx in "${ego_idx_range[@]}"; do
     for opp_raceline in "${OPP_RACELINES[@]}"; do
         for speed_scale in "${OPP_SPEED_SCALES[@]}"; do
-            cmd="python eval_multiagent.py --model_path $MODEL_PATH --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE"
+            scenario_id="evaluation-sp${startpoint_ordinal}-ego${ego_idx}-${opp_raceline}-v${speed_scale}"
+            cmd="$PYTHON eval_multiagent.py --model_path $MODEL_PATH --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE --collision_scope $COLLISION_SCOPE --scenario_id $scenario_id"
             metrics_result_path="$temp_dir/$job_id.metrics.json"
             cmd="$cmd --metrics_out \"$metrics_result_path\""
             
@@ -64,6 +68,7 @@ for ego_idx in "${ego_idx_range[@]}"; do
             ((job_id++))
         done
     done
+    ((startpoint_ordinal++))
 done
 
 wait
@@ -92,7 +97,7 @@ for result_file in "$temp_dir"/*.exit; do
     fi
 done
 
-if ! python utils.py \
+if ! "$PYTHON" utils.py \
     --model-path "$MODEL_PATH" \
     --map-name "$MAP_NAME" \
     --noise "$NOISE" \
