@@ -116,6 +116,18 @@ AP_SELECTED_P35 = replace(
     hard_sampling_probability=0.35,
 )
 
+AB_B06400 = replace(
+    AH_H0_P50_WR,
+    name="AB-b06400",
+    batch_size=6400,
+)
+
+AB_B12800 = replace(
+    AH_H0_P50_WR,
+    name="AB-b12800",
+    batch_size=12800,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -128,6 +140,8 @@ CONFIGS = {
         AH_H2CORE_P50_BC,
         AH_H3CORE_P50_BC,
         AP_SELECTED_P35,
+        AB_B06400,
+        AB_B12800,
     )
 }
 
