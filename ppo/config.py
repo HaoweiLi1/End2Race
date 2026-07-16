@@ -110,6 +110,12 @@ AH_H3CORE_P50_BC = replace(
     hard_pool="h3_union_core",
 )
 
+AP_SELECTED_P35 = replace(
+    AH_H0_P50_WR,
+    name="AP-selected-p35",
+    hard_sampling_probability=0.35,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -121,6 +127,7 @@ CONFIGS = {
         AH_H1_P50_BC,
         AH_H2CORE_P50_BC,
         AH_H3CORE_P50_BC,
+        AP_SELECTED_P35,
     )
 }
 

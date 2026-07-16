@@ -1,0 +1,76 @@
+{
+  "plan": "End2Race PPO V1.2 Reduced 22-Arm",
+  "device": "A",
+  "status": "STAGE_P_READY",
+  "formal_started_at": "2026-07-16T23:48:00+08:00",
+  "prepared_core_head": "a0237bdd2ba50dfbe09f7160087a7cc70461e359",
+  "source_start_head": "cc475f6373b891a8db75fb884b02e8986122b3d9",
+  "preflight": {
+    "status": "PASS",
+    "clean_worktree": true,
+    "formal_output_absent_before_start": true,
+    "active_formal_processes_before_start": 0,
+    "targeted_policy_validation": "ppo_experiments/v1_2_targeted_validation.json",
+    "targeted_policy_validation_status": "PASS",
+    "canonical_bc": {
+      "source": "git:16e58b5:runs/ppo_v1_2/baseline",
+      "rows_git_blob": "68f1c96a07d02e2954c647a6c7f746f00ec6fcce",
+      "rows_sha256": "17579067f3309ad75fd71174efd8863da9e2f605be27b3e19e8b6b75bbf50bfa",
+      "summary_git_blob": "877c906757af72929e33ed1e447694950331994d",
+      "summary_sha256": "cc1c86d199a13a714bd1846f9f5b86e57371846452d9595f5f26244bac192c91",
+      "total": 600,
+      "ego_collision": 21,
+      "follow": 233,
+      "overtake": 346,
+      "opponent_only_collision": 3,
+      "error": 0
+    },
+    "required_sha256": {
+      "ppo/config.py": "cc2eede8a5efd9af47ef1e413ceca6f1768b6e7d310c55efa75bdf25d91f11f9",
+      "ppo/policy.py": "578004704f978bdd78ad348758991851761773843170daf620b8855990a233a9",
+      "train_ppo.py": "6dfcd85c863de6b490432ee82daa5dfa2fb5e59c48c435bf4538abeb4953cd85",
+      "ppo/environment.py": "49c484064d4a4c1a95e25128420ed419e73ac36acc6d0661a64bd82e6085bb0c",
+      "ppo/reward.py": "4cdc9f96b84b02d7b92f8d64672370bda5d20948b840fc5019c7bff6cbb2e08a",
+      "ppo/scenarios.py": "8991e6238de9ccd23c10f125568cd2d407b8111f06bca972ef4f9ecb8b0c359c",
+      "eval_multiagent.py": "56cb38aaa6f6b1362ef27bdf5a162410b0d27f9e310c8f9f5c12e13e1e73550e",
+      "evaluate.sh": "eb70eaa2439a28b6aa2db4bfc73507d3a2bca73c03ebc45dd42e43da2ab7ae8a",
+      "utils.py": "77459621bf6af7fa8726ba4182fe28f3c4f4c5ebabf0f876553534dfcb95edfe",
+      "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+    },
+    "hard_pool_manifest_hashes": {
+      "H0_CURRENT_DET": "d022150627ff66af61e0b600699588181d8b06edf78a5723cf9ee503f89edcc9",
+      "H1_EXPANDED_DET": "b760e0ed95bef1694db1955502fdef5b64555080223c6a768db12e4105541df2",
+      "H2_STOCH_CORE": "97b20441984a2305ebbd5b0a2771786029d83b39474c94dbeef9db4d64110a8b",
+      "H3_UNION_CORE": "5705d1874930123555db53076bdc174a3f6e0b6cc597066b8096dd187f20398a"
+    }
+  },
+  "stage_h": {
+    "seed": 20260715,
+    "arms": [
+      "AH-H0-p50-wr",
+      "AH-H0-p50-bc",
+      "AH-H1-p50-bc",
+      "AH-H2core-p50-bc",
+      "AH-H3core-p50-bc"
+    ],
+    "training_complete": true,
+    "evaluation_started": true,
+    "evaluation_complete": true,
+    "evaluated_checkpoints": 15,
+    "selection": "AH-H0-p50-wr",
+    "selected_checkpoint_update": 2,
+    "selected_checkpoint_metrics": {
+      "ego_collision": 15,
+      "follow": 232,
+      "overtake": 353,
+      "error": 0
+    }
+  },
+  "stage_p": {
+    "seed": 20260715,
+    "reused_parent": "AH-H0-p50-wr",
+    "new_arm": "AP-selected-p35",
+    "training_complete": false,
+    "evaluation_started": false
+  }
+}
