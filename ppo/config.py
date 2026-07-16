@@ -128,6 +128,22 @@ AB_B12800 = replace(
     batch_size=12800,
 )
 
+AR_N00800 = replace(
+    AH_H0_P50_WR,
+    name="AR-n00800",
+    n_steps=800,
+    updates=8,
+    checkpoint_updates=(4, 8),
+)
+
+AR_N03200 = replace(
+    AH_H0_P50_WR,
+    name="AR-n03200",
+    n_steps=3200,
+    updates=2,
+    checkpoint_updates=(1, 2),
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -142,6 +158,8 @@ CONFIGS = {
         AP_SELECTED_P35,
         AB_B06400,
         AB_B12800,
+        AR_N00800,
+        AR_N03200,
     )
 }
 
