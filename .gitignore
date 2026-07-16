@@ -10,4 +10,22 @@ Dataset_*/
 /artifacts/sb3_nonzero_smoke/
 eval_results/
 /runs/ppo_v1/*/checkpoints/
-/runs/ppo_v1_2/
+
+# PPO V1.2 lightweight experiment evidence is intentionally reviewable.
+# Keep model/checkpoint payloads and raw files larger than 1 MiB out of Git.
+/runs/ppo_v1_2/**/checkpoints/
+/runs/ppo_v1_2/**/*.pth
+/runs/ppo_v1_2/**/*.pt
+/runs/ppo_v1_2/**/*.ckpt
+/runs/ppo_v1_2/**/*.onnx
+/runs/ppo_v1_2/**/*.zip
+/runs/ppo_v1_2/hard_pools/H2_pass1_rows.jsonl
+/runs/ppo_v1_2/hard_pools/expanded_valid.json
+/runs/ppo_v1_2/hard_pools/H1_rows.json
+/runs/ppo_v1_2/hard_pools/H1_rows.jsonl
+/runs/ppo_v1_2/hard_pools/expanded_candidates.json
+/runs/ppo_v1_2/hard_pools/H2_rows.json
+
+# Transient orchestration files are not experiment results.
+/runs/ppo_v1_2/SWEEP.lock
+/runs/ppo_v1_2/unattended_runner.log

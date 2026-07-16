@@ -1,0 +1,10 @@
+{
+  "completed_arms": 0,
+  "current_arm": "H-H0_CURRENT_DET-p25-bc",
+  "current_stage": "H",
+  "gpu_memory_mib": "432",
+  "last_update": "2026-07-16T00:59:59.821855+00:00",
+  "pid": 1533760,
+  "start_time": "2026-07-16T00:58:59.640744+00:00",
+  "total_arms": 125
+}

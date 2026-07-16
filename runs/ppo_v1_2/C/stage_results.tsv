@@ -1,0 +1,5 @@
+arm_id	stage	status	attempt	config_hash	selected_checkpoint_missing	selected_update	selected_checkpoint	selected_ego_collision	selected_follow	selected_overtake	selected_opponent_only_collision	actual_optimizer_steps
+C-C0_RAW_SINGLE_FRAME	C	COMPLETED	1	89dc9f99b757d3c159f067825df8c244b5ecbed2ffc3dcd8ae44e6e359b317c4	0	2	checkpoints/update_0002/actor_only.pth	15	232	353	3	128
+C-C1_FROZEN_BC_FEATURE	C	COMPLETED	1	fb0f8eaa9fbdcfea6a904b823796093594bbe9c501bf29c94f02b7bea04e3538	0	2	checkpoints/update_0002/actor_only.pth	22	231	347	3	128
+C-C2_DETACHED_ACTOR_HIDDEN	C	COMPLETED	1	0564bb826530f89029da3765a733bdb3f7cf58e158ba705b729c9536ad3fd4cb	0	2	checkpoints/update_0002/actor_only.pth	21	232	347	3	128
+C-C3_PRIVILEGED_PHYSICAL	C	COMPLETED	1	34f49499ce549090b5fb1d497bd8980a06c5e56fda627019085e3aa76a3edee4	0	4	checkpoints/update_0004/actor_only.pth	20	231	349	3	128
