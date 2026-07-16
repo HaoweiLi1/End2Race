@@ -144,6 +144,58 @@ AR_N03200 = replace(
     checkpoint_updates=(1, 2),
 )
 
+AK_L0_KL010 = replace(
+    AH_H0_P50_WR,
+    name="AK-L0-kl010",
+    checkpoint_updates=(2, 4),
+    target_kl=0.010,
+)
+
+AK_L1_KLNONE = replace(
+    AH_H0_P50_WR,
+    name="AK-L1-klnone",
+    checkpoint_updates=(2, 4),
+    gru_lr=5.0e-7,
+    head_lr=5.0e-6,
+)
+
+AK_L1_KL010 = replace(
+    AH_H0_P50_WR,
+    name="AK-L1-kl010",
+    checkpoint_updates=(2, 4),
+    gru_lr=5.0e-7,
+    head_lr=5.0e-6,
+    target_kl=0.010,
+)
+
+BE_E0_CURRENT = replace(
+    AH_H0_P50_WR,
+    name="BE-E0-current",
+    checkpoint_updates=(2, 4),
+)
+
+BE_E1_COUPLED_LOW = replace(
+    AH_H0_P50_WR,
+    name="BE-E1-coupled-low",
+    checkpoint_updates=(2, 4),
+    steering_latent_std=0.03,
+    speed_physical_std=0.10,
+)
+
+BE_E2_STEER_LOW = replace(
+    AH_H0_P50_WR,
+    name="BE-E2-steer-low",
+    checkpoint_updates=(2, 4),
+    steering_latent_std=0.03,
+)
+
+BE_E3_SPEED_LOW = replace(
+    AH_H0_P50_WR,
+    name="BE-E3-speed-low",
+    checkpoint_updates=(2, 4),
+    speed_physical_std=0.10,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -160,6 +212,13 @@ CONFIGS = {
         AB_B12800,
         AR_N00800,
         AR_N03200,
+        AK_L0_KL010,
+        AK_L1_KLNONE,
+        AK_L1_KL010,
+        BE_E0_CURRENT,
+        BE_E1_COUPLED_LOW,
+        BE_E2_STEER_LOW,
+        BE_E3_SPEED_LOW,
     )
 }
 
