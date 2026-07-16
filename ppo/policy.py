@@ -189,6 +189,10 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         steer_bound: float = EVALUATOR_STEER_BOUND,
         inverse_tanh_epsilon: float = 1e-6,
         critic_profile: str = "C0_RAW_SINGLE_FRAME",
+        gru_lr: float = GRU_LR,
+        head_lr: float = HEAD_LR,
+        steering_latent_std: float = STEERING_LATENT_STD,
+        speed_physical_std: float = SPEED_PHYSICAL_STD,
         **kwargs: Any,
     ) -> None:
         self.critic_profile = str(critic_profile)
@@ -271,7 +275,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
         self.log_std.data.copy_(
             torch.tensor(
-                [np.log(STEERING_LATENT_STD), np.log(SPEED_PHYSICAL_STD)],
+                [np.log(steering_latent_std), np.log(speed_physical_std)],
                 dtype=self.log_std.dtype,
                 device=self.log_std.device,
             )
@@ -297,8 +301,8 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         head_parameters = list(self.end2race_actor.output_layer.parameters())
         critic_parameters = list(self.value_net.parameters())
         groups = [
-            {"params": gru_parameters, "lr": GRU_LR, "name": "gru", "base_lr": GRU_LR},
-            {"params": head_parameters, "lr": HEAD_LR, "name": "head", "base_lr": HEAD_LR},
+            {"params": gru_parameters, "lr": gru_lr, "name": "gru", "base_lr": gru_lr},
+            {"params": head_parameters, "lr": head_lr, "name": "head", "base_lr": head_lr},
             {"params": critic_parameters, "lr": CRITIC_LR, "name": "critic", "base_lr": CRITIC_LR},
         ]
         self.optimizer = self.optimizer_class(groups, lr=lr_schedule(1), **self.optimizer_kwargs)

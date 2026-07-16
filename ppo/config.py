@@ -44,6 +44,11 @@ class PPOConfig:
     hard_sampling_probability: float
     hard_sampling_mode: str
     critic_profile: str
+    gru_lr: float = GRU_LR
+    head_lr: float = HEAD_LR
+    target_kl: float | None = TARGET_KL
+    steering_latent_std: float = STEERING_LATENT_STD
+    speed_physical_std: float = SPEED_PHYSICAL_STD
 
 
 V1 = PPOConfig(
@@ -74,12 +79,48 @@ V1_2_H0_CONTROL = replace(
     checkpoint_updates=(2, 4, 8),
 )
 
+AH_H0_P50_WR = replace(
+    V1_2_H0_CONTROL,
+    name="AH-H0-p50-wr",
+    updates=4,
+    checkpoint_updates=(1, 2, 4),
+)
+
+AH_H0_P50_BC = replace(
+    AH_H0_P50_WR,
+    name="AH-H0-p50-bc",
+    hard_sampling_mode="per_env_balanced_cycle",
+)
+
+AH_H1_P50_BC = replace(
+    AH_H0_P50_BC,
+    name="AH-H1-p50-bc",
+    hard_pool="h1_expanded_det",
+)
+
+AH_H2CORE_P50_BC = replace(
+    AH_H0_P50_BC,
+    name="AH-H2core-p50-bc",
+    hard_pool="h2_stoch_core",
+)
+
+AH_H3CORE_P50_BC = replace(
+    AH_H0_P50_BC,
+    name="AH-H3core-p50-bc",
+    hard_pool="h3_union_core",
+)
+
 CONFIGS = {
     config.name: config
     for config in (
         V1,
         V1_1,
         V1_2_H0_CONTROL,
+        AH_H0_P50_WR,
+        AH_H0_P50_BC,
+        AH_H1_P50_BC,
+        AH_H2CORE_P50_BC,
+        AH_H3CORE_P50_BC,
     )
 }
 
@@ -96,7 +137,8 @@ def _validate(config: PPOConfig) -> None:
     if config.name not in CONFIGS or CONFIGS[config.name] != config:
         raise ValueError(f"Unknown PPO config: {config.name}")
     if not config.name or any(
-        character not in "abcdefghijklmnopqrstuvwxyz0123456789_" for character in config.name
+        character not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+        for character in config.name
     ):
         raise ValueError(f"Illegal PPO config name: {config.name}")
     if config.n_steps <= 0 or config.batch_size <= 0 or config.updates <= 0:
@@ -121,6 +163,12 @@ def _validate(config: PPOConfig) -> None:
         raise ValueError(f"Unknown hard sampling mode: {config.hard_sampling_mode}")
     if config.critic_profile not in _CRITIC_PROFILES:
         raise ValueError(f"Unknown critic profile: {config.critic_profile}")
+    if config.gru_lr <= 0.0 or config.head_lr <= 0.0:
+        raise ValueError("gru_lr and head_lr must be positive")
+    if config.target_kl is not None and config.target_kl <= 0.0:
+        raise ValueError("target_kl must be positive or None")
+    if config.steering_latent_std <= 0.0 or config.speed_physical_std <= 0.0:
+        raise ValueError("steering_latent_std and speed_physical_std must be positive")
 
 
 for _config in CONFIGS.values():
