@@ -1,5 +1,7 @@
 # PPO V1.2 IMPLEMENTATION REPORT
 
+> Historical scope: this report verifies the original 125-arm infrastructure at the recorded commit. It does not certify the later compact 28-arm runner or manifests. Compact execution authority is `.agents/COMPACT_SWEEP_PLAN.md`; do not treat the PASS entries below as compact-support readiness.
+
 ## Files
 
 | Path | Status |

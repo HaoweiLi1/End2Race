@@ -29,3 +29,13 @@ eval_results/
 # Transient orchestration files are not experiment results.
 /runs/ppo_v1_2/SWEEP.lock
 /runs/ppo_v1_2/unattended_runner.log
+
+# PPO V1.2 compact two-device evidence follows the same review policy.
+/runs/ppo_v1_2_compact/**/checkpoints/
+/runs/ppo_v1_2_compact/**/*.pth
+/runs/ppo_v1_2_compact/**/*.pt
+/runs/ppo_v1_2_compact/**/*.ckpt
+/runs/ppo_v1_2_compact/**/*.onnx
+/runs/ppo_v1_2_compact/**/*.zip
+/runs/ppo_v1_2_compact/**/SWEEP.lock
+/runs/ppo_v1_2_compact/**/unattended_runner.log

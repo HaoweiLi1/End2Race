@@ -1,5 +1,7 @@
 # PPO V1.2 Implementation Checklist
 
+> Historical 125-arm checklist only. Its unchecked Prompt 2/3/4 boxes are not current compact work items, and its 125-arm counts must not be used by the compact runner. Current completed evidence is recorded in `PPO_V1_2_PROGRESS_REPORT.md`; compact execution authority is `.agents/COMPACT_SWEEP_PLAN.md`.
+
 Authority: `.agents/PPO_V1_2_EXPERIMENT_GUIDE.md` at baseline
 `4fac86858802353e5b0892ff9d3c874bc15d781b`.
 

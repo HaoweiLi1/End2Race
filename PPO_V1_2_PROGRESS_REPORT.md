@@ -1,5 +1,7 @@
 # PPO V1.2 当前实验结果（停止快照）
 
+> 本文件是旧 `runs/ppo_v1_2` 的冻结历史快照，不是 compact 执行指令。“不再续跑”只针对该旧 root 和旧 125-arm manifest。新的 compact 运行使用 `runs/ppo_v1_2_compact/device_a|device_b`，唯一主动执行方案为 `.agents/COMPACT_SWEEP_PLAN.md`。
+
 快照时间：2026-07-16 09:01:11（Asia/Singapore）  
 实验代码 HEAD：`f272f7301e6275bd87775fa3bdcee09ee7e6cc26`  
 当前状态：**已按用户要求终止全部实验，不再续跑**。
