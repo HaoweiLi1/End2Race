@@ -1,7 +1,7 @@
 {
   "plan": "End2Race PPO V1.2 Reduced 22-Arm",
   "device": "A",
-  "status": "BASE_SYNC_READY",
+  "status": "STAGE_K_READY",
   "formal_started_at": "2026-07-16T23:48:00+08:00",
   "prepared_core_head": "a0237bdd2ba50dfbe09f7160087a7cc70461e359",
   "source_start_head": "cc475f6373b891a8db75fb884b02e8986122b3d9",
@@ -143,6 +143,7 @@
       "BE-E2-steer-low",
       "BE-E3-speed-low"
     ],
-    "synchronized": false
+    "synchronized": true,
+    "synchronized_commit": "38d5fcdbe098534f32076c091bdacfa4cf79f849"
   }
 }
