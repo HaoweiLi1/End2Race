@@ -1,7 +1,7 @@
 {
   "plan": "End2Race PPO V1.2 Reduced 22-Arm",
   "device": "A",
-  "status": "STAGE_K_READY",
+  "status": "STAGE_K_TRAINING",
   "formal_started_at": "2026-07-16T23:48:00+08:00",
   "prepared_core_head": "a0237bdd2ba50dfbe09f7160087a7cc70461e359",
   "source_start_head": "cc475f6373b891a8db75fb884b02e8986122b3d9",
@@ -145,5 +145,20 @@
     ],
     "synchronized": true,
     "synchronized_commit": "38d5fcdc52709f0b844155ffd8f7711015500a45"
+  },
+  "stage_k": {
+    "seed": 20260715,
+    "reused_parent": "AH-H0-p50-wr",
+    "new_arms": [
+      "AK-L0-kl010",
+      "AK-L1-klnone",
+      "AK-L1-kl010"
+    ],
+    "common_transition_budgets": [
+      51200,
+      102400
+    ],
+    "training_complete": true,
+    "evaluation_started": true
   }
 }

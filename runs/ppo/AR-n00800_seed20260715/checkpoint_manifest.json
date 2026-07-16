@@ -1,0 +1,16 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_AR-n00800_u0004_s20260715.pth",
+      "sha256": "c666c9b4603b1970077f70485d3659fd602c8b9df1da3c2e30ab6522c6e25114",
+      "update": 4
+    },
+    {
+      "path": "checkpoints/end2race_ppo_AR-n00800_u0008_s20260715.pth",
+      "sha256": "98a73086a273469e025b5d2eef8a9121998c8f52a2377ffa1331245df022f96f",
+      "update": 8
+    }
+  ],
+  "config": "AR-n00800",
+  "seed": 20260715
+}

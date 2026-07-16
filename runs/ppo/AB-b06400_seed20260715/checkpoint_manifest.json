@@ -1,0 +1,21 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_AB-b06400_u0001_s20260715.pth",
+      "sha256": "5af7e88484fd8b865904c3d10fca4b4493942de0bbff5ce06529a992351eb8e8",
+      "update": 1
+    },
+    {
+      "path": "checkpoints/end2race_ppo_AB-b06400_u0002_s20260715.pth",
+      "sha256": "9d6322d17110ab447a8d29f44d5370ed0e132dd8f761cd5d2a9f0df11230ed4b",
+      "update": 2
+    },
+    {
+      "path": "checkpoints/end2race_ppo_AB-b06400_u0004_s20260715.pth",
+      "sha256": "53318c3c95929dd36d5a1d53e5197b8d7294fb8f50bbd1277da818aef0abb384",
+      "update": 4
+    }
+  ],
+  "config": "AB-b06400",
+  "seed": 20260715
+}
