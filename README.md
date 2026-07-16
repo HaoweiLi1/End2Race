@@ -162,12 +162,35 @@ python train.py \
 - `--mask_prob`: Probability of masking speed input during training 
 - `--batch_size`: Training batch size 
 
-### PPO post-training
+### PPO training
 
-Run the current frozen V1.2 base configuration with:
+Run one named PPO configuration. The default run directory is
+`runs/ppo/<config_name>_seed<seed>` and training fails if that directory already
+exists.
 
 ```bash
-python train_ppo.py --version v1_2
+python train_ppo.py --config v1_2_h0_control --seed 20260715
+```
+
+Training writes actor-only checkpoints after the configured updates. Evaluation
+is a separate post-training step and is never run by `train_ppo.py`.
+
+### Post-training PPO checkpoint evaluation
+
+After training has completed, evaluate one checkpoint through the existing
+multi-agent batch evaluation path:
+
+```bash
+MODEL_PATH=<checkpoint> COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NUM_WORKERS=8 bash evaluate.sh
+```
+
+Evaluate every uniquely named checkpoint in one completed run directory with:
+
+```bash
+run_dir=runs/ppo/v1_2_h0_control_seed20260715
+for model in "$run_dir"/checkpoints/*.pth; do
+    MODEL_PATH="$model" COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NUM_WORKERS=8 bash evaluate.sh
+done
 ```
 
 ## Raceline Generation (Optional)

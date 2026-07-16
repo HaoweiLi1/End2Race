@@ -1,54 +1,45 @@
 #!/usr/bin/env python3
-"""Train and evaluate one fixed End2Race PPO profile."""
+"""Train one fixed End2Race PPO experiment profile."""
 
 from __future__ import annotations
 
 import argparse
 from collections import Counter
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict
+import hashlib
 import json
-import math
-import multiprocessing as mp
 from pathlib import Path
 import random
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 import torch
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from eval_multiagent import evaluate_segment
 from model import End2Race
 from ppo import config as ppo_config
 from ppo.environment import End2RaceGymnasiumEnv, LatticePlannerOpponentController
 from ppo.policy import End2RaceGRUPolicy, End2RaceRecurrentPPO
 from ppo.reward import PPOTransitionReward, ProgressProjector
-from ppo.scenarios import FixedMixtureScenarioSampler, ScenarioSpec, evaluation_scenarios, load_hard_pool, training_scenarios
+from ppo.scenarios import FixedMixtureScenarioSampler, load_hard_pool, training_scenarios
 
-EVALUATION_MODEL: End2Race | None = None
-EVALUATION_MODEL_PATH: str | None = None
-EVALUATION_DEVICE = torch.device("cpu")
 
 def parse_arguments() -> argparse.Namespace:
-    """Parse the five supported run arguments."""
+    """Parse the three supported run arguments."""
     parser = argparse.ArgumentParser(description="Train End2Race PPO")
-    parser.add_argument("--version", required=True, choices=ppo_config.VERSIONS)
-    parser.add_argument("--device", default="cuda", choices=("cuda", "cpu"))
+    parser.add_argument("--config", required=True, choices=ppo_config.CONFIGS)
     parser.add_argument("--seed", type=int, default=20260715)
     parser.add_argument("--output_dir", type=Path, default=None)
-    parser.add_argument("--evaluation_workers", type=int, default=8)
     return parser.parse_args()
 
 
-def set_random_seed(seed: int, device: str) -> None:
+def set_random_seed(seed: int) -> None:
     """Seed every RNG used by the formal run."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if device == "cuda":
-        torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -74,15 +65,36 @@ class PPOTrainingCallback(BaseCallback):
     def _on_rollout_start(self) -> None:
         self.transitions = 0
         self.completed = Counter()
+        self.completed_by_branch = Counter()
         self.branches = Counter()
         self.reward_sums = Counter()
+        self.scenario_ids: set[str] = set()
+        self.hard_scenario_ids: set[str] = set()
+        self.action_count = 0
+        self.action_sum = np.zeros(2, dtype=np.float64)
+        self.action_sum_squares = np.zeros(2, dtype=np.float64)
+        self.action_min = np.full(2, np.inf, dtype=np.float64)
+        self.action_max = np.full(2, -np.inf, dtype=np.float64)
 
     def _on_step(self) -> bool:
         infos = list(self.locals["infos"])
         dones = np.asarray(self.locals["dones"], dtype=bool)
+        actions = np.asarray(self.locals["actions"], dtype=np.float64).reshape(len(infos), -1)
+        if actions.shape[1] != 2:
+            raise RuntimeError(f"Expected two PPO action dimensions, got {actions.shape[1]}")
+        self.action_count += actions.shape[0]
+        self.action_sum += actions.sum(axis=0)
+        self.action_sum_squares += np.square(actions).sum(axis=0)
+        self.action_min = np.minimum(self.action_min, actions.min(axis=0))
+        self.action_max = np.maximum(self.action_max, actions.max(axis=0))
         for index, info in enumerate(infos):
             self.transitions += 1
-            self.branches[str(info["sampler_branch"])] += 1
+            branch = str(info["sampler_branch"])
+            scenario_id = str(info["scenario_id"])
+            self.branches[branch] += 1
+            self.scenario_ids.add(scenario_id)
+            if branch in {"bc_ego_collision", "hard_pool"}:
+                self.hard_scenario_ids.add(scenario_id)
             for key in ("reward_progress", "reward_relative", "reward_collision", "reward_total"):
                 self.reward_sums[key] += float(info[key])
             if dones[index]:
@@ -93,15 +105,45 @@ class PPOTrainingCallback(BaseCallback):
                 else:
                     outcome = "follow"
                 self.completed[outcome] += 1
+                self.completed_by_branch[(branch, outcome)] += 1
         return True
+
+    def _action_statistics(self, index: int) -> dict[str, float]:
+        if self.action_count == 0:
+            raise RuntimeError("PPO rollout produced no actions")
+        mean = self.action_sum[index] / self.action_count
+        variance = max(self.action_sum_squares[index] / self.action_count - mean * mean, 0.0)
+        values = {
+            "mean": float(mean),
+            "std": float(np.sqrt(variance)),
+            "min": float(self.action_min[index]),
+            "max": float(self.action_max[index]),
+        }
+        if not all(np.isfinite(value) for value in values.values()):
+            raise RuntimeError(f"Non-finite PPO action statistics: {values}")
+        return values
 
     def _on_rollout_end(self) -> None:
         self.update += 1
+        outcomes = ("ego_collision", "follow", "overtake")
         self.latest = {
             "update": self.update,
             "transitions": self.transitions,
             "completed_episodes": dict(sorted(self.completed.items())),
+            "completed_episodes_by_sampler_branch": {
+                branch: {
+                    outcome: int(self.completed_by_branch[(branch, outcome)])
+                    for outcome in outcomes
+                }
+                for branch in sorted(self.branches)
+            },
             "sampler_branch_transitions": dict(sorted(self.branches.items())),
+            "unique_scenario_count": len(self.scenario_ids),
+            "unique_hard_scenario_count": len(self.hard_scenario_ids),
+            "action_statistics": {
+                "steering": self._action_statistics(0),
+                "speed": self._action_statistics(1),
+            },
             "reward_component_means": {
                 key: float(self.reward_sums[key] / self.transitions)
                 for key in ("reward_progress", "reward_relative", "reward_collision", "reward_total")
@@ -122,7 +164,12 @@ def build_sampler(config: ppo_config.PPOConfig) -> FixedMixtureScenarioSampler:
     )
 
 
-def make_training_env(rank: int, sampler: FixedMixtureScenarioSampler, config: ppo_config.PPOConfig):
+def make_training_env(
+    rank: int,
+    sampler: FixedMixtureScenarioSampler,
+    config: ppo_config.PPOConfig,
+    seed: int,
+):
     """Build one legacy F110 simulator behind the frozen Gymnasium contract."""
     def factory() -> End2RaceGymnasiumEnv:
         import gym
@@ -135,7 +182,7 @@ def make_training_env(rank: int, sampler: FixedMixtureScenarioSampler, config: p
             num_agents=2,
             timestep=0.01,
             integrator=Integrator.RK4,
-            seed=config.seed + rank,
+            seed=seed + rank,
         )
         return End2RaceGymnasiumEnv(
             core,
@@ -150,7 +197,11 @@ def make_training_env(rank: int, sampler: FixedMixtureScenarioSampler, config: p
     return factory
 
 
-def build_model(vector_env: DummyVecEnv, config: ppo_config.PPOConfig) -> End2RaceRecurrentPPO:
+def build_model(
+    vector_env: DummyVecEnv,
+    config: ppo_config.PPOConfig,
+    seed: int,
+) -> End2RaceRecurrentPPO:
     """Build the fixed recurrent PPO algorithm and optimizer groups."""
     return End2RaceRecurrentPPO(
         End2RaceGRUPolicy,
@@ -168,8 +219,8 @@ def build_model(vector_env: DummyVecEnv, config: ppo_config.PPOConfig) -> End2Ra
         ent_coef=ppo_config.ENT_COEF,
         max_grad_norm=ppo_config.MAX_GRAD_NORM,
         target_kl=ppo_config.TARGET_KL,
-        seed=config.seed,
-        device=config.device,
+        seed=seed,
+        device=ppo_config.DEVICE,
         policy_kwargs={
             "checkpoint_path": ppo_config.BC_CHECKPOINT,
             "hidden_scale": 4,
@@ -180,119 +231,113 @@ def build_model(vector_env: DummyVecEnv, config: ppo_config.PPOConfig) -> End2Ra
     )
 
 
-def save_actor(model: End2RaceRecurrentPPO, destination: Path) -> None:
-    """Save the actor checkpoint and confirm it strict-loads into a fresh End2Race."""
-    destination.parent.mkdir(parents=True, exist_ok=False)
+def save_actor(model: End2RaceRecurrentPPO, destination: Path) -> str:
+    """Save, validate, and hash one BC-compatible actor checkpoint."""
+    if destination.exists():
+        raise FileExistsError(f"Checkpoint already exists: {destination}")
     state = {name: tensor.detach().cpu() for name, tensor in model.policy.actor_checkpoint_state_dict().items()}
+    bc_state = torch.load(ppo_config.BC_CHECKPOINT, map_location="cpu", weights_only=True)
+    if set(state) != set(bc_state):
+        raise RuntimeError("Saved actor keys do not match the BC checkpoint schema")
+    for name, tensor in state.items():
+        if tensor.shape != bc_state[name].shape or tensor.dtype != bc_state[name].dtype:
+            raise RuntimeError(f"Saved actor tensor does not match the BC checkpoint schema: {name}")
     torch.save(state, destination)
     fresh = End2Race(mask_prob=0.0, hidden_scale=4)
     fresh.load_state_dict(torch.load(destination, map_location="cpu", weights_only=True), strict=True)
+    digest = hashlib.sha256()
+    with destination.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-def _evaluation_worker_init(model_path: str) -> None:
-    global EVALUATION_MODEL, EVALUATION_MODEL_PATH
-    torch.set_num_threads(1)
-    model = End2Race(mask_prob=0.0, hidden_scale=4).to(EVALUATION_DEVICE)
-    state = torch.load(model_path, map_location=EVALUATION_DEVICE, weights_only=True)
-    model.load_state_dict(state, strict=True)
-    model.eval()
-    EVALUATION_MODEL = model
-    EVALUATION_MODEL_PATH = model_path
-
-
-def _evaluate_scenario(scenario: ScenarioSpec) -> dict[str, Any]:
-    result = evaluate_segment(
-        EVALUATION_MODEL, EVALUATION_DEVICE, 0.0, scenario.map_name, scenario.ego_idx,
-        scenario.interval_idx, scenario.ego_raceline, scenario.opp_raceline,
-        scenario.opp_speedscale, scenario.sim_duration, False, False,
-        EVALUATION_MODEL_PATH, None, "ego", scenario.scenario_id,
-    )
-    metrics = result["episode_metrics"]
-    return {
-        "scenario_id": scenario.scenario_id,
-        "outcome": metrics["outcome"],
-        "opponent_only_collision": bool(metrics["opponent_only_collision"]),
-    }
-
-
-def evaluate_checkpoint(
-    model_path: Path,
-    scenarios: Sequence[ScenarioSpec],
-    workers: int,
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Evaluate all 600 deterministic ego-scope cases, failing on any error."""
-
-    resolved = str(model_path.resolve())
-    if workers == 1:
-        _evaluation_worker_init(resolved)
-        rows = [_evaluate_scenario(scenario) for scenario in scenarios]
-    else:
-        context = mp.get_context("spawn")
-        with ProcessPoolExecutor(
-            max_workers=workers,
-            mp_context=context,
-            initializer=_evaluation_worker_init,
-            initargs=(resolved,),
-        ) as executor:
-            rows = list(executor.map(_evaluate_scenario, scenarios, chunksize=1))
-    outcomes = Counter(row["outcome"] for row in rows)
-    summary = {
-        "ego_collision": int(outcomes["ego_collision"]),
-        "follow": int(outcomes["follow"]),
-        "overtake": int(outcomes["overtake"]),
-        "opponent_only_collision": sum(bool(row["opponent_only_collision"]) for row in rows),
-        "total": len(rows),
-    }
-    classified = summary["ego_collision"] + summary["follow"] + summary["overtake"]
-    if summary["total"] != 600 or classified != 600:
-        raise RuntimeError(f"Invalid 600-case evaluation summary: {summary}")
-    return rows, summary
-
-
-def select_checkpoint(baseline: dict[str, int], candidates: list[dict[str, Any]]) -> dict[str, Any]:
-    floor = math.ceil(0.95 * 346)
-    eligible = [row for row in candidates if row["metrics"]["overtake"] >= floor]
-    ranking = lambda row: (row["metrics"]["ego_collision"], -row["metrics"]["overtake"], row["update"])
-    best = min(eligible, key=ranking) if eligible else None
-    return {
-        "status": "selected" if best is not None else "no_eligible_checkpoint",
-        "overtake_floor": floor,
-        "eligible_updates": [row["update"] for row in eligible],
-        "best": best,
-        "candidates": candidates,
-    }
-
-
-def _resolved_record(config: ppo_config.PPOConfig) -> dict[str, Any]:
+def _resolved_record(
+    config: ppo_config.PPOConfig,
+    seed: int,
+    output_dir: Path,
+) -> dict[str, Any]:
     record = asdict(config)
-    record["output_dir"] = str(config.output_dir)
-    record["n_envs"] = ppo_config.N_ENVS
-    record["n_epochs"] = ppo_config.N_EPOCHS
+    record.update(
+        {
+            "seed": seed,
+            "output_dir": str(output_dir),
+            "device": ppo_config.DEVICE,
+            "n_envs": ppo_config.N_ENVS,
+            "n_epochs": ppo_config.N_EPOCHS,
+            "gamma": ppo_config.GAMMA,
+            "gae_lambda": ppo_config.GAE_LAMBDA,
+            "clip_range": ppo_config.CLIP_RANGE,
+            "clip_range_vf": ppo_config.CLIP_RANGE_VF,
+            "normalize_advantage": ppo_config.NORMALIZE_ADVANTAGE,
+            "vf_coef": ppo_config.VF_COEF,
+            "ent_coef": ppo_config.ENT_COEF,
+            "max_grad_norm": ppo_config.MAX_GRAD_NORM,
+            "target_kl": ppo_config.TARGET_KL,
+            "gru_lr": ppo_config.GRU_LR,
+            "head_lr": ppo_config.HEAD_LR,
+            "critic_lr": ppo_config.CRITIC_LR,
+            "steering_latent_std": ppo_config.STEERING_LATENT_STD,
+            "speed_physical_std": ppo_config.SPEED_PHYSICAL_STD,
+            "sim_duration": ppo_config.SIM_DURATION,
+            "bc_checkpoint": str(ppo_config.BC_CHECKPOINT),
+        }
+    )
     record["transitions_per_update"] = ppo_config.N_ENVS * config.n_steps
     record["minibatches_per_update"] = ppo_config.N_ENVS * config.n_steps // config.batch_size
     record["total_optimizer_steps"] = record["minibatches_per_update"] * ppo_config.N_EPOCHS * config.updates
     return record
 
 
-def train(config: ppo_config.PPOConfig) -> Path:
-    """Run one fresh profile without resume or directory fallback."""
+def _sampler_summary(
+    config: ppo_config.PPOConfig,
+    sampler: FixedMixtureScenarioSampler,
+) -> dict[str, Any]:
+    visit_counts = dict(sorted(sampler.visit_counts.items()))
+    visits = np.asarray(list(visit_counts.values()), dtype=np.float64)
+    visited = int(np.count_nonzero(visits))
+    return {
+        "hard_pool": config.hard_pool,
+        "hard_pool_id": sampler.hard_pool_id,
+        "hard_pool_size": len(visit_counts),
+        "hard_sampling_probability": config.hard_sampling_probability,
+        "hard_sampling_mode": config.hard_sampling_mode,
+        "visited_hard_scenarios": visited,
+        "unvisited_hard_scenarios": len(visit_counts) - visited,
+        "visit_min": int(visits.min()),
+        "visit_max": int(visits.max()),
+        "visit_mean": float(visits.mean()),
+        "visit_std": float(visits.std()),
+        "visit_counts": visit_counts,
+    }
+
+
+def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
+    """Run one fresh profile in a new output directory."""
 
     if not ppo_config.BC_CHECKPOINT.is_file():
         raise FileNotFoundError(f"BC checkpoint does not exist: {ppo_config.BC_CHECKPOINT}")
-    if config.output_dir.exists():
-        raise FileExistsError(f"Output directory already exists: {config.output_dir}")
+    if output_dir.exists():
+        raise FileExistsError(f"Output directory already exists: {output_dir}")
     sampler = build_sampler(config)
-    panel = evaluation_scenarios()
-    config.output_dir.mkdir(parents=True, exist_ok=False)
-    write_json(config.output_dir / "resolved_config.json", _resolved_record(config))
-    set_random_seed(config.seed, config.device)
+    output_dir.mkdir(parents=True, exist_ok=False)
+    checkpoint_dir = output_dir / "checkpoints"
+    checkpoint_dir.mkdir()
+    write_json(output_dir / "resolved_config.json", _resolved_record(config, seed, output_dir))
+    checkpoint_manifest: dict[str, Any] = {
+        "config": config.name,
+        "seed": seed,
+        "checkpoints": [],
+    }
+    write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
+    set_random_seed(seed)
 
-    _baseline_rows, baseline = evaluate_checkpoint(ppo_config.BC_CHECKPOINT, panel, config.evaluation_workers)
-    vector_env = DummyVecEnv([make_training_env(rank, sampler, config) for rank in range(ppo_config.N_ENVS)])
-    vector_env.seed(config.seed)
-    model = build_model(vector_env, config)
+    vector_env = DummyVecEnv(
+        [make_training_env(rank, sampler, config, seed) for rank in range(ppo_config.N_ENVS)]
+    )
+    vector_env.seed(seed)
+    model = build_model(vector_env, config, seed)
     callback = PPOTrainingCallback()
-    candidates: list[dict[str, Any]] = []
     try:
         for update in range(1, config.updates + 1):
             model.learn(
@@ -310,23 +355,30 @@ def train(config: ppo_config.PPOConfig) -> Path:
             scalar_values = [value for value in metrics.values() if isinstance(value, float)]
             if not np.isfinite(scalar_values).all():
                 raise RuntimeError(f"Non-finite PPO metrics at update {update}")
-            append_json(config.output_dir / "training_metrics.jsonl", metrics)
-            if update in config.evaluation_updates:
-                actor_path = config.output_dir / "checkpoints" / f"update_{update:04d}" / "actor_only.pth"
-                save_actor(model, actor_path)
-                _rows, summary = evaluate_checkpoint(actor_path, panel, config.evaluation_workers)
-                candidates.append({"update": update, "metrics": summary})
+            append_json(output_dir / "training_metrics.jsonl", metrics)
+            if update in config.checkpoint_updates:
+                filename = f"end2race_ppo_{config.name}_u{update:04d}_s{seed}.pth"
+                actor_path = checkpoint_dir / filename
+                checkpoint_manifest["checkpoints"].append(
+                    {
+                        "update": update,
+                        "path": actor_path.relative_to(output_dir).as_posix(),
+                        "sha256": save_actor(model, actor_path),
+                    }
+                )
+                write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
     finally:
         vector_env.close()
 
-    write_json(config.output_dir / "evaluations.json", {"baseline": baseline, "candidates": candidates})
-    write_json(config.output_dir / "selection.json", select_checkpoint(baseline, candidates))
-    return config.output_dir
+    write_json(output_dir / "sampler_summary.json", _sampler_summary(config, sampler))
+    return output_dir
 
 
 if __name__ == "__main__":
     args = parse_arguments()
-    output_dir = args.output_dir or ppo_config.PROJECT_ROOT / "runs" / "ppo" / args.version
-    config = ppo_config.get_config(args.version, args.seed, args.device, output_dir, args.evaluation_workers)
-    run_dir = train(config)
+    config = ppo_config.get_config(args.config)
+    output_dir = args.output_dir or (
+        ppo_config.PROJECT_ROOT / "runs" / "ppo" / f"{config.name}_seed{args.seed}"
+    )
+    run_dir = train(config, args.seed, output_dir)
     print(f"PPO_RUN_DIR={run_dir}")
