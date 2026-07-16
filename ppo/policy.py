@@ -51,10 +51,6 @@ class EvaluatorCompatibleJointDistribution(Distribution):
 
     def __init__(self, steer_bound: float = EVALUATOR_STEER_BOUND, inverse_tanh_epsilon: float = 1e-6):
         super().__init__()
-        if steer_bound <= 0:
-            raise ValueError("steer_bound must be positive")
-        if not 0 < inverse_tanh_epsilon < 1e-3:
-            raise ValueError("inverse_tanh_epsilon must be in (0, 1e-3)")
         self.steer_bound = float(steer_bound)
         self.inverse_tanh_epsilon = float(inverse_tanh_epsilon)
         self.raw_mean_actions: torch.Tensor | None = None
@@ -75,10 +71,6 @@ class EvaluatorCompatibleJointDistribution(Distribution):
         raw_mean_actions: torch.Tensor,
         log_std: torch.Tensor,
     ) -> "EvaluatorCompatibleJointDistribution":
-        if raw_mean_actions.shape[-1] != END2RACE_ACTION_SIZE:
-            raise ValueError(f"Expected two raw action means, got {tuple(raw_mean_actions.shape)}")
-        if tuple(log_std.shape) != (END2RACE_ACTION_SIZE,):
-            raise ValueError(f"Expected two log standard deviations, got {tuple(log_std.shape)}")
         normalized_mode = (raw_mean_actions[:, 0] / self.steer_bound).clamp(
             -1.0 + self.inverse_tanh_epsilon,
             1.0 - self.inverse_tanh_epsilon,
@@ -95,13 +87,6 @@ class EvaluatorCompatibleJointDistribution(Distribution):
     def _require_parameters(
         self,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.distributions.Normal, torch.distributions.Normal]:
-        if (
-            self.raw_mean_actions is None
-            or self.latent_steer_mean is None
-            or self.steer_distribution is None
-            or self.speed_distribution is None
-        ):
-            raise RuntimeError("proba_distribution() must be called first")
         return (
             self.raw_mean_actions,
             self.latent_steer_mean,
@@ -111,8 +96,6 @@ class EvaluatorCompatibleJointDistribution(Distribution):
 
     def log_prob(self, actions: torch.Tensor) -> torch.Tensor:
         _raw_means, _latent_mean, steer_distribution, speed_distribution = self._require_parameters()
-        if actions.shape[-1] != END2RACE_ACTION_SIZE:
-            raise ValueError(f"Expected physical [steering, speed] actions, got {tuple(actions.shape)}")
         # The larger configured epsilon is only for constructing a finite
         # deterministic latent mean at evaluator clipping boundaries.  Replay
         # inversion must retain every representable interior physical action.
@@ -170,10 +153,6 @@ class GRUWithLSTMStateInterface(nn.Module):
 
     def __init__(self, gru: nn.GRU):
         super().__init__()
-        if not gru.batch_first:
-            raise ValueError("End2Race GRU must be batch_first=True")
-        if gru.bidirectional:
-            raise ValueError("Bidirectional GRU is not supported by RecurrentPPO")
         self.gru = gru
         self.input_size = gru.input_size
         self.hidden_size = gru.hidden_size
@@ -186,10 +165,7 @@ class GRUWithLSTMStateInterface(nn.Module):
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """Run time-major ``x`` like ``nn.LSTM`` while ignoring dummy ``c``."""
 
-        hidden, cell = states
-        expected = (self.num_layers, x.shape[1], self.hidden_size)
-        if tuple(hidden.shape) != expected or tuple(cell.shape) != expected:
-            raise ValueError(f"Expected recurrent states {expected}, got h={tuple(hidden.shape)}, c={tuple(cell.shape)}")
+        hidden, _cell = states
         batch_first_output, next_hidden = self.gru(x.transpose(0, 1), hidden)
         time_major_output = batch_first_output.transpose(0, 1)
         return time_major_output, (next_hidden, torch.zeros_like(next_hidden))
@@ -219,29 +195,10 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         if self.critic_profile not in CRITIC_PROFILES:
             raise ValueError(f"Unknown critic profile: {self.critic_profile}")
         if self.critic_profile == "C3_PRIVILEGED_PHYSICAL":
-            valid_observation = (
-                isinstance(observation_space, spaces.Dict)
-                and set(observation_space.spaces) == {"actor", "critic"}
-                and observation_space["actor"].shape == (END2RACE_OBSERVATION_SIZE,)
-                and observation_space["critic"].shape == (12,)
-            )
-            if not valid_observation:
-                raise ValueError("C3 requires Dict(actor=361D, critic=12D) observation space")
-            if "features_extractor_class" in kwargs and kwargs["features_extractor_class"] is not CombinedExtractor:
-                raise ValueError("C3 requires CombinedExtractor")
             kwargs["features_extractor_class"] = CombinedExtractor
-        elif not isinstance(observation_space, spaces.Box) or observation_space.shape != (END2RACE_OBSERVATION_SIZE,):
-            raise ValueError(f"Expected Box observation shape ({END2RACE_OBSERVATION_SIZE},), got {observation_space}")
-        if not isinstance(action_space, spaces.Box) or action_space.shape != (END2RACE_ACTION_SIZE,):
-            raise ValueError(f"Expected Box action shape ({END2RACE_ACTION_SIZE},), got {action_space}")
-        if not np.allclose(action_space.low[0], -steer_bound) or not np.allclose(action_space.high[0], steer_bound):
-            raise ValueError(f"Steering action bounds must be [-{steer_bound}, {steer_bound}]")
-        if action_space.low[1] > -0.99 * NOOP_SPEED_BOUND or action_space.high[1] < 0.99 * NOOP_SPEED_BOUND:
-            raise ValueError("Speed action bounds must use the float32 no-op range required by stock SB3")
-        if "use_sde" in kwargs:
-            if kwargs["use_sde"]:
-                raise ValueError("End2Race uses a transformed joint distribution, not gSDE")
-            del kwargs["use_sde"]
+        # SB3 always injects use_sde; End2Race uses its own transformed joint
+        # distribution, so drop the injected copy before the parent constructor.
+        kwargs.pop("use_sde", None)
 
         # The parent's tiny placeholder recurrent module is replaced below.  A
         # size of one avoids allocating an unused 1680-wide LSTM during setup.
@@ -263,8 +220,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.end2race_actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
         checkpoint = Path(checkpoint_path).expanduser().resolve()
         state_dict = torch.load(checkpoint, map_location="cpu", weights_only=True)
-        if not isinstance(state_dict, dict):
-            raise TypeError(f"Expected a raw End2Race state_dict in {checkpoint}")
         self.end2race_actor.load_state_dict(state_dict, strict=True)
         self.bc_checkpoint_path = str(checkpoint)
 
@@ -314,8 +269,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                 nn.Linear(128, 1),
             )
 
-        if tuple(self.log_std.shape) != (END2RACE_ACTION_SIZE,):
-            raise ValueError(f"Unexpected log_std shape: {tuple(self.log_std.shape)}")
         self.log_std.data.copy_(
             torch.tensor(
                 [np.log(STEERING_LATENT_STD), np.log(SPEED_PHYSICAL_STD)],
@@ -348,31 +301,11 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             {"params": head_parameters, "lr": HEAD_LR, "name": "head", "base_lr": HEAD_LR},
             {"params": critic_parameters, "lr": CRITIC_LR, "name": "critic", "base_lr": CRITIC_LR},
         ]
-        group_ids = [id(parameter) for group in groups for parameter in group["params"]]
-        expected_ids = {
-            id(parameter)
-            for parameter in (*gru_parameters, *head_parameters, *critic_parameters)
-        }
-        if len(group_ids) != len(set(group_ids)):
-            raise RuntimeError("PPO optimizer groups overlap")
-        if set(group_ids) != expected_ids:
-            raise RuntimeError("PPO optimizer groups do not exactly cover GRU, head, and critic")
         self.optimizer = self.optimizer_class(groups, lr=lr_schedule(1), **self.optimizer_kwargs)
 
     @property
     def actor_hidden_size(self) -> int:
         return self.end2race_actor.gru.hidden_size
-
-    def _validate_actor_states(
-        self,
-        states: tuple[torch.Tensor, torch.Tensor],
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        hidden, cell = states
-        if hidden.ndim != 3 or cell.shape != hidden.shape:
-            raise ValueError(f"Expected matching [layers, n_seq, hidden] states, got {hidden.shape}, {cell.shape}")
-        if hidden.shape[0] != self.end2race_actor.gru.num_layers or hidden.shape[2] != self.actor_hidden_size:
-            raise ValueError(f"State shape is incompatible with End2Race GRU: {tuple(hidden.shape)}")
-        return hidden, cell
 
     @staticmethod
     def _actor_observation(obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
@@ -386,17 +319,13 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Return actor means, final state, and each timestep's actor hidden."""
 
-        hidden, _dummy_cell = self._validate_actor_states(states)
+        hidden, _dummy_cell = states
         obs = self._actor_observation(obs)
         obs = obs.float()
         if obs.ndim == 1:
             obs = obs.unsqueeze(0)
-        if obs.shape[-1] != END2RACE_OBSERVATION_SIZE:
-            raise ValueError(f"Expected observation width {END2RACE_OBSERVATION_SIZE}, got {obs.shape[-1]}")
 
         n_seq = hidden.shape[1]
-        if obs.shape[0] % n_seq != 0:
-            raise ValueError(f"Flat observation batch {obs.shape[0]} is not divisible by n_seq={n_seq}")
         obs_sequence = obs.reshape(n_seq, -1, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
         start_sequence = episode_starts.float().reshape(n_seq, -1).swapaxes(0, 1)
 
@@ -459,11 +388,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             speed_embedding = self.end2race_actor.speed_mlp(speed)
             return torch.cat((processed_lidar, speed_embedding), dim=1).detach()
         if self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN":
-            if actor_features is None:
-                raise ValueError("C2 value prediction requires current actor hidden features")
             return actor_features.detach()
-        if not isinstance(obs, dict) or set(obs) != {"actor", "critic"}:
-            raise ValueError("C3 value prediction requires isolated actor/critic Dict fields")
         critic = obs["critic"].float()
         return critic.unsqueeze(0) if critic.ndim == 1 else critic
 

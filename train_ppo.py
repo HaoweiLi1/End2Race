@@ -25,16 +25,11 @@ from ppo import config as ppo_config
 from ppo.environment import End2RaceGymnasiumEnv, LatticePlannerOpponentController
 from ppo.policy import End2RaceGRUPolicy, End2RaceRecurrentPPO
 from ppo.reward import PPOTransitionReward, ProgressProjector
-from ppo.scenarios import (
-    FixedMixtureScenarioSampler, ScenarioSpec, evaluation_scenarios,
-    load_hard_pool, training_scenarios,
-)
-
+from ppo.scenarios import FixedMixtureScenarioSampler, ScenarioSpec, evaluation_scenarios, load_hard_pool, training_scenarios
 
 EVALUATION_MODEL: End2Race | None = None
 EVALUATION_MODEL_PATH: str | None = None
 EVALUATION_DEVICE = torch.device("cpu")
-
 
 def parse_arguments() -> argparse.Namespace:
     """Parse the five supported run arguments."""
@@ -186,11 +181,9 @@ def build_model(vector_env: DummyVecEnv, config: ppo_config.PPOConfig) -> End2Ra
 
 
 def save_actor(model: End2RaceRecurrentPPO, destination: Path) -> None:
-    """Save and immediately strict-load the 12-key actor checkpoint."""
+    """Save the actor checkpoint and confirm it strict-loads into a fresh End2Race."""
     destination.parent.mkdir(parents=True, exist_ok=False)
     state = {name: tensor.detach().cpu() for name, tensor in model.policy.actor_checkpoint_state_dict().items()}
-    if len(state) != 12:
-        raise RuntimeError(f"Expected 12 End2Race actor keys, got {len(state)}")
     torch.save(state, destination)
     fresh = End2Race(mask_prob=0.0, hidden_scale=4)
     fresh.load_state_dict(torch.load(destination, map_location="cpu", weights_only=True), strict=True)
@@ -208,8 +201,6 @@ def _evaluation_worker_init(model_path: str) -> None:
 
 
 def _evaluate_scenario(scenario: ScenarioSpec) -> dict[str, Any]:
-    if EVALUATION_MODEL is None or EVALUATION_MODEL_PATH is None:
-        raise RuntimeError("Evaluation worker has no initialized actor")
     result = evaluate_segment(
         EVALUATION_MODEL, EVALUATION_DEVICE, 0.0, scenario.map_name, scenario.ego_idx,
         scenario.interval_idx, scenario.ego_raceline, scenario.opp_raceline,
@@ -286,8 +277,6 @@ def _resolved_record(config: ppo_config.PPOConfig) -> dict[str, Any]:
 def train(config: ppo_config.PPOConfig) -> Path:
     """Run one fresh profile without resume or directory fallback."""
 
-    if config.device == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("CUDA was requested, but CUDA is unavailable")
     if not ppo_config.BC_CHECKPOINT.is_file():
         raise FileNotFoundError(f"BC checkpoint does not exist: {ppo_config.BC_CHECKPOINT}")
     if config.output_dir.exists():
@@ -335,14 +324,9 @@ def train(config: ppo_config.PPOConfig) -> Path:
     return config.output_dir
 
 
-def main() -> int:
+if __name__ == "__main__":
     args = parse_arguments()
     output_dir = args.output_dir or ppo_config.PROJECT_ROOT / "runs" / "ppo" / args.version
     config = ppo_config.get_config(args.version, args.seed, args.device, output_dir, args.evaluation_workers)
     run_dir = train(config)
     print(f"PPO_RUN_DIR={run_dir}")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

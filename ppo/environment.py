@@ -21,6 +21,7 @@ from ppo.policy import (
     end2race_observation,
 )
 from ppo.reward import ProgressProjector, wrapped_progress_delta
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 AUSTIN_DIRECTORY = PROJECT_ROOT / "f1tenth_racetracks" / "Austin"
 VEHICLE_LENGTH_M = 0.58
@@ -109,10 +110,7 @@ class AustinPrivilegedFeatureExtractor:
 
     @staticmethod
     def _array(raw: dict[str, Any], name: str) -> np.ndarray:
-        value = np.asarray(raw[name], dtype=np.float64).reshape(-1)
-        if len(value) < 2 or not np.isfinite(value[:2]).all():
-            raise ValueError(f"Privileged field {name} must contain two finite vehicles")
-        return value
+        return np.asarray(raw[name], dtype=np.float64).reshape(-1)
 
     def __call__(self, raw: dict[str, Any], ego_index: int = 0) -> np.ndarray:
         if ego_index != 0:
@@ -173,8 +171,6 @@ class AustinPrivilegedFeatureExtractor:
             ],
             dtype=np.float32,
         )
-        if features.shape != (12,) or not np.isfinite(features).all():
-            raise ValueError("Privileged physical critic feature must be finite 12D")
         return features
 
 
@@ -201,9 +197,6 @@ class LatticePlannerOpponentController:
         self._speed_scales: dict[int, float] = {}
         self._ego_index = 0
         self._num_agents = 0
-        self.reset_count = 0
-        self.action_history: list[np.ndarray] = []
-        self.reset_snapshots: list[dict[str, Any]] = []
 
     def _create_planner(self, map_name: str, raceline: str) -> Any:
         if self._planner_factory is not None:
@@ -265,8 +258,6 @@ class LatticePlannerOpponentController:
             self._trajectories[opponent_index] = None
             self._tracker_counts[opponent_index] = 0
             self._speed_scales[opponent_index] = speed_scale
-        self.reset_count += 1
-        self.reset_snapshots.append(self.state_snapshot())
 
     def actions(self, raw_observation: dict[str, Any]) -> np.ndarray:
         from latticeplanner.utils import obsDict2oppoArray
@@ -299,23 +290,7 @@ class LatticePlannerOpponentController:
             )
             tracker_steps = int(planner.conf.tracker_steps)
             self._tracker_counts[opponent_index] = (self._tracker_counts[opponent_index] + 1) % tracker_steps
-        self.action_history.append(joint_actions.copy())
         return joint_actions
-
-    def state_snapshot(self) -> dict[str, Any]:
-        planners: dict[int, dict[str, Any]] = {}
-        for opponent_index, planner in self._planners.items():
-            planners[opponent_index] = {
-                "planner_identity": id(planner),
-                "tracker_identity": id(planner.tracker),
-                "tracker_previous_error": float(getattr(planner.tracker, "prev_error", 0.0)),
-                "cached_trajectory": self._trajectories[opponent_index] is not None,
-                "tracker_step_counter": self._tracker_counts[opponent_index],
-                "planner_step_counter": int(getattr(planner, "step", 0)),
-                "previous_opponent_pose_max_abs": float(np.max(np.abs(getattr(planner, "prev_opp_pose", 0.0)))),
-                "previous_local_trajectory_max_abs": float(np.max(np.abs(getattr(planner, "prev_traj_local", 0.0)))),
-            }
-        return {"reset_count": self.reset_count, "planners": planners}
 
 
 class End2RaceGymnasiumEnv(gym.Env):
@@ -335,10 +310,6 @@ class End2RaceGymnasiumEnv(gym.Env):
         privileged_feature_extractor: AustinPrivilegedFeatureExtractor | None = None,
     ) -> None:
         super().__init__()
-        if sim_duration <= 0:
-            raise ValueError("sim_duration must be positive")
-        if not callable(reset_provider):
-            raise TypeError("reset_provider must be callable")
         self.f110_env = f110_env
         self.sim_duration = float(sim_duration)
         self.ego_index = int(ego_index)
@@ -351,10 +322,6 @@ class End2RaceGymnasiumEnv(gym.Env):
             if privileged_feature_extractor is not None
             else (AustinPrivilegedFeatureExtractor() if self.privileged_critic else None)
         )
-        if transition_reward is not None and not all(
-            callable(getattr(transition_reward, name, None)) for name in ("reset", "step")
-        ):
-            raise TypeError("transition_reward must provide callable reset() and step() methods")
         actor_space = spaces.Box(
             low=np.full((END2RACE_LIDAR_SIZE + 1,), -np.inf, dtype=np.float32),
             high=np.full((END2RACE_LIDAR_SIZE + 1,), np.inf, dtype=np.float32),
@@ -379,106 +346,30 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._elapsed_time = 0.0
         self._previous_ego_speed = 0.0
         self._raw_observation: dict[str, Any] | None = None
-        self._lifetime_steps = 0
-        self._episode_index = -1
         self._current_spec: EpisodeResetSpec | None = None
-        self.terminal_events: list[dict[str, Any]] = []
-        self.step_events: list[dict[str, Any]] = []
-        self.action_trace: list[dict[str, Any]] = []
-        self.reset_history: list[dict[str, Any]] = []
 
     @property
     def num_agents(self) -> int:
-        unwrapped = getattr(self.f110_env, "unwrapped", self.f110_env)
-        if not hasattr(unwrapped, "num_agents"):
-            raise ValueError("F1Tenth environment does not expose num_agents")
-        num_agents = int(unwrapped.num_agents)
-        if num_agents <= 0:
-            raise ValueError("F1Tenth num_agents must be positive")
-        return num_agents
-
-    @staticmethod
-    def _legacy_reset_result(result: Any) -> tuple[dict[str, Any], dict[str, Any]]:
-        if not isinstance(result, tuple):
-            raise TypeError("F1Tenth reset must return a tuple")
-        if len(result) == 2 and isinstance(result[1], dict):
-            return result[0], result[1]
-        if len(result) == 4:
-            if not isinstance(result[3], dict):
-                raise TypeError("F1Tenth reset info must be a dictionary")
-            return result[0], result[3]
-        raise ValueError(f"Unsupported F1Tenth reset result with {len(result)} entries")
-
-    @staticmethod
-    def _step_result(result: Any) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
-        if not isinstance(result, tuple):
-            raise TypeError("F1Tenth step must return a tuple")
-        if len(result) == 5:
-            obs, reward, terminated, truncated, info = result
-            return obs, float(reward), bool(terminated), bool(truncated), dict(info)
-        if len(result) == 4:
-            obs, reward, done, info = result
-            return obs, float(reward), bool(done), False, dict(info)
-        raise ValueError(f"Unsupported F1Tenth step result with {len(result)} entries")
+        return int(getattr(self.f110_env, "unwrapped", self.f110_env).num_agents)
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][self.ego_index]).reshape(-1)
-        if scan.size < END2RACE_LIDAR_SIZE:
-            raise ValueError(f"LiDAR scan has {scan.size} beams; at least {END2RACE_LIDAR_SIZE} are required")
-        if not np.isfinite(scan).all():
-            raise ValueError("LiDAR scan contains NaN or Inf")
         if scan.size > END2RACE_LIDAR_SIZE:
             indices = np.linspace(0, scan.size - 1, END2RACE_LIDAR_SIZE, dtype=int)
             scan = scan[indices]
         return np.asarray(scan, dtype=np.float32)
 
     def _ego_speed(self, raw_observation: dict[str, Any]) -> float:
-        speed = float(np.asarray(raw_observation["linear_vels_x"])[self.ego_index])
-        if not np.isfinite(speed):
-            raise ValueError("Ego measured speed must be finite")
-        return speed
+        return float(np.asarray(raw_observation["linear_vels_x"])[self.ego_index])
 
     def _actor_observation(self, raw_observation: dict[str, Any]) -> np.ndarray:
-        if not np.isfinite(self._previous_ego_speed):
-            raise ValueError("Previous ego speed feature must be finite")
         return end2race_observation(self._ego_lidar(raw_observation), self._previous_ego_speed)
 
     def _observation(self, raw_observation: dict[str, Any]) -> np.ndarray | dict[str, np.ndarray]:
         actor = self._actor_observation(raw_observation)
         if not self.privileged_critic:
             return actor
-        if self.privileged_feature_extractor is None:
-            raise RuntimeError("Privileged critic mode has no physical feature extractor")
         return {"actor": actor, "critic": self.privileged_feature_extractor(raw_observation, self.ego_index)}
-
-    def _resolve_reset_spec(self, options: dict[str, Any] | None) -> EpisodeResetSpec:
-        provided = self.reset_provider(self._reset_rng)
-        if not isinstance(provided, EpisodeResetSpec):
-            raise TypeError("reset_provider must return EpisodeResetSpec")
-        poses = np.asarray(provided.poses, dtype=np.float64).copy()
-        initial_speed_feature = float(provided.initial_speed_feature)
-        scenario = dict(provided.scenario)
-        if options:
-            if "reset_spec" in options:
-                explicit = options["reset_spec"]
-                if not isinstance(explicit, EpisodeResetSpec):
-                    raise TypeError("options['reset_spec'] must be EpisodeResetSpec")
-                poses = np.asarray(explicit.poses, dtype=np.float64).copy()
-                initial_speed_feature = float(explicit.initial_speed_feature)
-                scenario = dict(explicit.scenario)
-            else:
-                if "poses" in options:
-                    poses = np.asarray(options["poses"], dtype=np.float64).copy()
-                if "initial_speed_feature" in options:
-                    initial_speed_feature = float(options["initial_speed_feature"])
-                if "scenario" in options:
-                    scenario.update(dict(options["scenario"]))
-        expected_shape = (self.num_agents, 3)
-        if poses.shape != expected_shape:
-            raise ValueError(f"Reset poses must have shape {expected_shape}, got {poses.shape}")
-        if not np.isfinite(poses).all() or not np.isfinite(initial_speed_feature):
-            raise ValueError("Reset poses and initial speed feature must be finite")
-        return EpisodeResetSpec(poses=poses, initial_speed_feature=initial_speed_feature, scenario=scenario)
 
     def reset(
         self,
@@ -489,30 +380,19 @@ class End2RaceGymnasiumEnv(gym.Env):
         super().reset(seed=seed)
         if seed is not None:
             self._reset_rng = np.random.default_rng(seed)
-        spec = self._resolve_reset_spec(options)
-        # Always use the real legacy API.  DummyVecEnv auto-reset therefore does
-        # not need options and cannot accidentally omit poses.
-        raw_observation, base_info = self._legacy_reset_result(self.f110_env.reset(poses=spec.poses.copy()))
+        # The fixed sampler fully specifies every reset, so DummyVecEnv auto-reset
+        # never needs options and cannot accidentally omit poses.
+        spec = self.reset_provider(self._reset_rng)
+        raw_observation, _, _, base_info = self.f110_env.reset(poses=spec.poses.copy())
         self._elapsed_time = 0.0
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
-        self._episode_index += 1
         scenario_id = str(spec.scenario["scenario_id"])
         if self.transition_reward is not None:
             self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=self.ego_index)
         if self.num_agents > 1:
-            if self.opponent_controller is None:
-                raise RuntimeError("A fixed opponent controller is required for multi-agent F1Tenth")
             self.opponent_controller.reset(spec, self.num_agents, self.ego_index)
-        reset_record = {
-            "episode_index": self._episode_index,
-            "poses": spec.poses.copy(),
-            "initial_speed_feature": spec.initial_speed_feature,
-            "scenario": dict(spec.scenario),
-            "opponent_state": self.opponent_controller.state_snapshot() if self.opponent_controller else None,
-        }
-        self.reset_history.append(reset_record)
         info = {
             "ego_collision": False,
             "opponent_collision": False,
@@ -532,50 +412,25 @@ class End2RaceGymnasiumEnv(gym.Env):
 
     def _joint_action(self, ego_action: np.ndarray) -> np.ndarray:
         ego_action = np.asarray(ego_action, dtype=np.float32).reshape(2)
-        if not np.isfinite(ego_action).all():
-            raise ValueError("Ego action must be finite")
-        if abs(float(ego_action[0])) > EVALUATOR_STEER_BOUND + 1e-7:
-            raise ValueError(f"Ego steering {ego_action[0]} is outside evaluator bounds")
         if self.num_agents == 1:
             return ego_action.reshape(1, 2)
-        if self._raw_observation is None or self.opponent_controller is None:
-            raise RuntimeError("Environment and opponent controller must be reset before step")
-        joint_action = np.asarray(self.opponent_controller.actions(self._raw_observation), dtype=np.float32)
-        if joint_action.shape != (self.num_agents, 2):
-            raise ValueError(f"Opponent controller returned {joint_action.shape}, expected {(self.num_agents, 2)}")
-        joint_action = joint_action.copy()
+        joint_action = np.asarray(self.opponent_controller.actions(self._raw_observation), dtype=np.float32).copy()
         joint_action[self.ego_index] = ego_action
         return joint_action
 
-    def _step_duration(self, reward: float, info: dict[str, Any]) -> float:
-        if "timestep" in info:
-            return float(info["timestep"])
-        unwrapped = getattr(self.f110_env, "unwrapped", self.f110_env)
-        configured = getattr(unwrapped, "timestep", getattr(self.f110_env, "timestep", None))
-        if configured is not None:
-            return float(configured)
-        if reward > 0:
-            return float(reward)
-        raise ValueError("Cannot infer simulation timestep; provide info['timestep']")
-
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
-        if self._raw_observation is None:
-            raise RuntimeError("Environment must be reset before step")
-        if self._current_spec is None:
-            raise RuntimeError("Environment has no active reset specification")
         # Deployment evaluator updates prev_speed from the decision observation
         # before stepping, then pairs it with the next LiDAR observation.
         previous_raw_observation = self._raw_observation
         pre_step_ego_speed = self._ego_speed(previous_raw_observation)
         joint_action = self._joint_action(action)
-        result = self.f110_env.step(joint_action)
-        raw_observation, simulator_reward, base_terminated, base_truncated, base_info = self._step_result(result)
-        self._lifetime_steps += 1
-        self._elapsed_time += self._step_duration(simulator_reward, base_info)
+        # The legacy F1Tenth step returns (obs, reward, done, info); its reward is
+        # the physics timestep, so it doubles as the elapsed-time increment.
+        raw_observation, simulator_reward, base_terminated, base_info = self.f110_env.step(joint_action)
+        base_truncated = False
+        self._elapsed_time += float(simulator_reward)
 
         collisions = np.asarray(raw_observation["collisions"], dtype=bool).reshape(-1)
-        if collisions.size != self.num_agents:
-            raise ValueError(f"Collision vector has {collisions.size} entries, expected {self.num_agents}")
         ego_collision = bool(collisions[self.ego_index])
         opponent_collision = bool(
             any(bool(collisions[index]) for index in range(collisions.size) if index != self.ego_index)
@@ -610,7 +465,6 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._raw_observation = raw_observation
         self._previous_ego_speed = pre_step_ego_speed
         observation = self._observation(raw_observation)
-        actor_observation = observation["actor"] if isinstance(observation, dict) else observation
 
         info = {
             "ego_collision": ego_collision,
@@ -629,36 +483,10 @@ class End2RaceGymnasiumEnv(gym.Env):
             "base_info": base_info,
             **reward_info,
         }
-        event = {
-            "transition_index": self._lifetime_steps - 1,
-            "episode_index": self._episode_index,
-            "reason": reason,
-            "observation": actor_observation.copy(),
-            "raw_reward": simulator_reward,
-            "reward": reward,
-            "elapsed_time": self._elapsed_time,
-            "terminated": terminated,
-            "truncated": truncated,
-            **{key: info[key] for key in ("ego_collision", "opponent_collision", "base_terminated", "base_truncated", "timeout")},
-        }
-        self.step_events.append(event)
-        if terminated or truncated:
-            self.terminal_events.append(event.copy())
-        self.action_trace.append(
-            {
-                "transition_index": self._lifetime_steps - 1,
-                "episode_index": self._episode_index,
-                "ego_action": np.asarray(action, dtype=np.float32).reshape(2).copy(),
-                "joint_action": joint_action.copy(),
-                "opponent_actions": np.delete(joint_action, self.ego_index, axis=0),
-            }
-        )
         return observation, float(reward), terminated, truncated, info
 
     def render(self) -> Any:
         return self.f110_env.render()
 
     def close(self) -> None:
-        close = getattr(self.f110_env, "close", None)
-        if close is not None:
-            close()
+        self.f110_env.close()
