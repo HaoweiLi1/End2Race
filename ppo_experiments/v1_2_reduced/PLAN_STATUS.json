@@ -1,7 +1,7 @@
 {
   "plan": "End2Race PPO V1.2 Reduced 22-Arm",
   "device": "A",
-  "status": "STAGE_K_TRAINING",
+  "status": "FAILED_STAGE_K_EVALUATION",
   "formal_started_at": "2026-07-16T23:48:00+08:00",
   "prepared_core_head": "a0237bdd2ba50dfbe09f7160087a7cc70461e359",
   "source_start_head": "cc475f6373b891a8db75fb884b02e8986122b3d9",
@@ -159,6 +159,51 @@
       102400
     ],
     "training_complete": true,
-    "evaluation_started": true
+    "evaluation_started": true,
+    "evaluation_complete": false,
+    "valid_checkpoint_evaluations": 4,
+    "invalid_checkpoint_evaluations": 1,
+    "stopped_checkpoint_evaluations": 1
+  },
+  "failure": {
+    "detected_at": "2026-07-17T07:50:37+08:00",
+    "stage": "K",
+    "phase": "evaluation_validation",
+    "stage_start_head": "01a6fb8deb17674810dd4bc6f3591e55ef92ed4c",
+    "head_at_detection": "843906e67f65b95a5d2a718b643523516245bf35",
+    "head_changed_during_evaluation": true,
+    "head_change_core_files_unchanged": true,
+    "arm_id": "AK-L1-kl010",
+    "checkpoint_update": 4,
+    "transition_budget": 102400,
+    "checkpoint_path": "runs/ppo/AK-L1-kl010_seed20260715/checkpoints/end2race_ppo_AK-L1-kl010_u0004_s20260715.pth",
+    "checkpoint_sha256": "bfa10708b4ba0f6b603216ba1c0d92496aa9888d6a8d5651d3706eb8d1089b34",
+    "resolved_config_path": "runs/ppo/AK-L1-kl010_seed20260715/resolved_config.json",
+    "config_hash": "b8594ae144af306a6f535ee08c2bbb30550b002ea43210d386bef4ea1c56b0c5",
+    "evaluate_exit_status": 0,
+    "validation_exit_status": 98,
+    "evaluation_result_path": "eval_results/end2race_ppo_AK-L1-kl010_u0004_s20260715_Austin/multiagents/results_multi.json",
+    "evaluation_result_sha256": "04dfa94c0cc7121c792dad048246f4fe43612ccdef46b5c2e4b760e510190f90",
+    "reported_total_episodes": 600,
+    "episode_rows": 599,
+    "unique_scenario_ids": 599,
+    "error_count": 1,
+    "ego_collision": 20,
+    "follow": 234,
+    "overtake": 345,
+    "missing_scenario_id": "evaluation-sp16-ego0684-raceline1-v070",
+    "evaluation_log_path": "/tmp/end2race_v1_2_stage_k_eval_logs/end2race_ppo_AK-L1-kl010_u0004_s20260715.log",
+    "evaluation_log_sha256": "f33c4d90f750cd084ab3c4c06f68b19a9617ca2af3bea2b63805118970f28c3b",
+    "stopped_sibling_checkpoint": "runs/ppo/AK-L1-kl010_seed20260715/checkpoints/end2race_ppo_AK-L1-kl010_u0002_s20260715.pth",
+    "stopped_sibling_result_absent": true,
+    "stopped_sibling_worker_artifacts": "/tmp/tmp.ziYAubyMIK",
+    "stopped_sibling_worker_artifact_counts": {
+      "logs": 599,
+      "exit_records": 591,
+      "metrics": 591
+    },
+    "automatic_retry_performed": false,
+    "substitute_config_used": false,
+    "formal_processes_after_stop": 0
   }
 }
