@@ -204,6 +204,23 @@
     },
     "automatic_retry_performed": false,
     "substitute_config_used": false,
-    "formal_processes_after_stop": 0
+    "formal_processes_after_stop": 0,
+    "root_cause_diagnosis": {
+      "status": "CONFIRMED_INFRASTRUCTURE_NATIVE_CRASH",
+      "kernel_timestamp": "2026-07-17T07:42:01+08:00",
+      "worker_pid": 2113440,
+      "signal": "SIGSEGV",
+      "kernel_message": "python[2113440]: segfault at fffffffffffff020 ip 00007b2ad7e37a46 sp 00007ffe60929030 error 5 in libllvmlite.so[7b2ad5cc8000+354f000] likely on CPU 11 (core 20, socket 0)",
+      "native_library_path": "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/llvmlite/binding/libllvmlite.so",
+      "native_library_sha256": "8d5be916c2e4b8d9f7bc6489ab512eaef998f4642feff04c8b85ad207193ce76",
+      "llvmlite_version": "0.44.0",
+      "numba_version": "0.61.0",
+      "matching_native_crashes_in_evaluation_window": 1,
+      "missing_scenario_valid_in_prior_k_checkpoints": 4,
+      "missing_scenario_prior_outcome": "follow",
+      "exact_worker_command_unavailable": true,
+      "exact_worker_command_unavailable_reason": "evaluate.sh removed the completed worker temp directory after aggregation and coredumpctl is not installed",
+      "automatic_reproduction_attempted": false
+    }
   }
 }
