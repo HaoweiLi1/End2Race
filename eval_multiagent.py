@@ -10,7 +10,7 @@ from f110_gym.envs.base_classes import Integrator
 from model import End2Race
 from latticeplanner.utils import project_point_to_centerline, obsDict2oppoArray
 from demonstration import setup_opp_planner
-from rl.ppo_reward import ProgressProjector
+from ppo.reward import ProgressProjector
 from utils import *
 
 

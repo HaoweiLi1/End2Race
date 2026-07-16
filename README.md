@@ -20,6 +20,9 @@ https://github.com/user-attachments/assets/5369f5ea-13fa-44c3-a6aa-5b3c2b59b10c
 end2race/
 ├── pretrained/
 │   └── end2race.pth           # Pretrained model weights
+├── posttrained/               # Selected PPO actor-only checkpoints
+├── ppo/                       # Formal PPO policy, environment, reward, and scenarios
+├── ppo_experiments/           # Concise reproducibility and experiment evidence
 ├── f1tenth_gym/               # F1Tenth simulator environment
 ├── f1tenth_racetracks/        # Track data with pre-generated lanes and racelines
 │   └── generate_raceline.py   # Raceline generation tool
@@ -30,6 +33,7 @@ end2race/
 │   └── utils.py               # Planner utility functions
 ├── model.py                   # GRU network architecture
 ├── train.py                   # Training script
+├── train_ppo.py               # PPO training entry point
 ├── demonstration.py           # Lattice planner expert demonstration
 ├── collect.sh                 # Batch data collection
 ├── evaluate_singleagent.py    # Single-agent lap completion evaluation
@@ -157,6 +161,14 @@ python train.py \
 - `--hidden_scale`: GRU hidden size multiplier
 - `--mask_prob`: Probability of masking speed input during training 
 - `--batch_size`: Training batch size 
+
+### PPO post-training
+
+Run the current frozen V1.2 base configuration with:
+
+```bash
+python train_ppo.py --version v1_2
+```
 
 ## Raceline Generation (Optional)
 
