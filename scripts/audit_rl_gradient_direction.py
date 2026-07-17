@@ -727,7 +727,7 @@ def _aggregate_pool(
     final = _combined(gae_vectors, weights)
     cumulative: dict[str, Any] = {}
     cumulative_levels = [(1, "32"), (2, "64"), (4, "128")]
-    if len(vectors) >= 8:
+    if len(gae_vectors) >= 8:
         cumulative_levels.append((8, "256"))
     for shard_count, label in cumulative_levels:
         partial = _combined(gae_vectors[:shard_count], weights[:shard_count])
