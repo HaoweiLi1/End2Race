@@ -1,0 +1,2775 @@
+{
+  "aggregation_script": {
+    "path": "ppo_experiments/v1_3_d/aggregate_results.py",
+    "sha256": "b6d42d94158464c6072a771d9242347a0ab42a2c4f3497588f8572a3e56b00c2"
+  },
+  "baseline": {
+    "counts": {
+      "collision": 22,
+      "follow": 234,
+      "overtake": 344
+    },
+    "episode_rows": 600,
+    "expected_counts": {
+      "collision": 21,
+      "follow": 233,
+      "overtake": 346
+    },
+    "log": {
+      "path": "runs/ppo/v1_3_d_logs/eval_bc.log",
+      "sha256": "65483fb5b7131cf6ee8ba9f7aab3eef2ac87a2526b5eaecbea91b1f96684d68f"
+    },
+    "mean_avg_speed": 5.302561817967003,
+    "mean_total_distance": 41.937839532897236,
+    "opponent_only_collision": 3,
+    "path": "eval_results/end2race_bc_v1_3_d_Austin/multiagents/results_multi.json",
+    "protocol_match": false,
+    "sha256": "98c6aa9c5fcfa35c87e638c18ca9e67a37b6741807722db75314007bc84302de",
+    "unique_scenario_ids": 600
+  },
+  "final_verdict": "STOP_PROTOCOL_DRIFT",
+  "generated_at": "2026-07-17T11:09:19.349138+00:00",
+  "holdout_performed": false,
+  "implementation_commit": "bc0e04af85c600124d12495c9fd7cc5721764baf",
+  "interpretation": "Canonical BC exact-match gate failed: expected {'collision': 21, 'follow': 233, 'overtake': 346}, observed {'collision': 22, 'follow': 234, 'overtake': 344}. Candidate evaluations were not run.",
+  "not_started_seeds": [],
+  "promotion_performed": false,
+  "record": "PPO_V1_3_D_RESULTS",
+  "schema_version": 1,
+  "selection_performed": false,
+  "training": [
+    {
+      "artifacts": {
+        "checkpoint_manifest": {
+          "path": "runs/ppo/v1_3_d_seed20260735/checkpoint_manifest.json",
+          "sha256": "988ad212f28ffacf9a8936b8be6ec8668010d33954922179cedbbffd1e31cace"
+        },
+        "resolved_config": {
+          "path": "runs/ppo/v1_3_d_seed20260735/resolved_config.json",
+          "sha256": "a9ab6b5b205b86d9aeee998837098df001f6134c7652d6061d17818c72218a21"
+        },
+        "run_status": {
+          "path": "runs/ppo/v1_3_d_seed20260735/run_status.json",
+          "sha256": "77fae0ac6aead0770a0721b5eed402abc69bd49eaa543a1033c6b841ce30c56d"
+        },
+        "sampler_summary": {
+          "path": "runs/ppo/v1_3_d_seed20260735/sampler_summary.json",
+          "sha256": "1f42ef6b7e0616fa11d382c3d54577e384443ed0d3b21bc1cf12ae3cf36c66f9"
+        },
+        "training_metrics": {
+          "path": "runs/ppo/v1_3_d_seed20260735/training_metrics.jsonl",
+          "sha256": "a895c2cd9b06722371bc1f99c836cb5251118ea82c338f81d8b75545ea6d9490"
+        }
+      },
+      "checkpoint": {
+        "actor_key_count": 12,
+        "path": "runs/ppo/v1_3_d_seed20260735/checkpoints/end2race_ppo_v1_3_d_u0008_s20260735.pth",
+        "sha256": "02351fc34fc6010dd0b2507bc11b25b1e1b10e6f0037646c549e968083ab5ce7",
+        "stem": "end2race_ppo_v1_3_d_u0008_s20260735"
+      },
+      "metrics": [
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 2.9802322387695312e-06,
+              "max_abs_delta_from_previous": 2.9802322387695312e-06,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 1.1896096198321362e-05,
+              "relative_rms_delta_from_previous": 1.1896096198321362e-05,
+              "rms_delta_from_bc": 5.817527427078708e-07,
+              "rms_delta_from_previous": 5.817527427078708e-07
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 2.9997900128364563e-05,
+              "max_abs_delta_from_previous": 2.9997900128364563e-05,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00020579816051069524,
+              "relative_rms_delta_from_previous": 0.00020579816051069524,
+              "rms_delta_from_bc": 7.289840236482936e-06,
+              "rms_delta_from_previous": 7.289840236482936e-06
+            }
+          },
+          "actual_optimizer_steps": 1,
+          "approx_kl": 0.007611207664012909,
+          "clip_fraction": 0.2681249976158142,
+          "effective_epoch_fraction": 0.0625,
+          "explained_variance": -0.33209168910980225,
+          "loss": 0.07573368400335312,
+          "num_timesteps": 25600,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 1,
+          "optimizer_step_min": 1,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.012096392475068996,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.090124130249023,
+                "mean": 5.423335384870879,
+                "min": 1.4161969423294067,
+                "std": 1.3594858992066137
+              },
+              "steering": {
+                "max": 0.3997625708580017,
+                "mean": -0.011110884821762283,
+                "min": -0.5725789070129395,
+                "std": 0.08242386447049209
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 11,
+              "follow": 10,
+              "overtake": 12
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 6,
+                "overtake": 9
+              },
+              "bc_ego_collision": {
+                "ego_collision": 11,
+                "follow": 4,
+                "overtake": 3
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000859375,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005124116891970951,
+              "reward_relative": 0.00018410941948222923,
+              "reward_total": -0.00016285389132067514
+            },
+            "sampler_branch_transitions": {
+              "all_training": 15041,
+              "bc_ego_collision": 10559
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 15,
+            "unique_scenario_count": 34,
+            "update": 1
+          },
+          "target_kl_early_stop": true,
+          "update": 1,
+          "value_loss": 0.10235093906521797
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 3.27378511428833e-05,
+              "max_abs_delta_from_previous": 2.9996037483215332e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 5.476005500703692e-05,
+              "relative_rms_delta_from_previous": 4.886875542984115e-05,
+              "rms_delta_from_bc": 2.6779215349378952e-06,
+              "rms_delta_from_previous": 2.389820375080063e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0003677159547805786,
+              "max_abs_delta_from_previous": 0.0003407597541809082,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0007329402745545964,
+              "relative_rms_delta_from_previous": 0.0006334051566212701,
+              "rms_delta_from_bc": 2.5962416238940447e-05,
+              "rms_delta_from_previous": 2.2436732595964422e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.007112689316272736,
+          "clip_fraction": 0.31714842934161425,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": -0.22414827346801758,
+          "loss": 0.024094348773360252,
+          "num_timesteps": 51200,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 17,
+          "optimizer_step_min": 17,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.008776273536495863,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.151832580566406,
+                "mean": 5.3727823086781425,
+                "min": 1.5394303798675537,
+                "std": 1.31495857661818
+              },
+              "steering": {
+                "max": 0.33867207169532776,
+                "mean": -0.005030581182231799,
+                "min": -0.5621735453605652,
+                "std": 0.08864010933288362
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 8,
+              "follow": 12,
+              "overtake": 16
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 6,
+                "overtake": 12
+              },
+              "bc_ego_collision": {
+                "ego_collision": 7,
+                "follow": 6,
+                "overtake": 4
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005097071963370103,
+              "reward_relative": 0.0001691241233756796,
+              "reward_total": 5.383131971269245e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 14568,
+              "bc_ego_collision": 11032
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 14,
+            "unique_scenario_count": 37,
+            "update": 2
+          },
+          "target_kl_early_stop": false,
+          "update": 2,
+          "value_loss": 0.21242182818241417
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 5.1662325859069824e-05,
+              "max_abs_delta_from_previous": 2.4497509002685547e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 7.115179701689012e-05,
+              "relative_rms_delta_from_previous": 3.5853853392256876e-05,
+              "rms_delta_from_bc": 3.479524070174415e-06,
+              "rms_delta_from_previous": 1.7533549249822166e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0005046352744102478,
+              "max_abs_delta_from_previous": 0.0002300553023815155,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0008994410132491328,
+              "relative_rms_delta_from_previous": 0.00040262396486532475,
+              "rms_delta_from_bc": 3.186025216384651e-05,
+              "rms_delta_from_previous": 1.42619096064653e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.006457017734646797,
+          "clip_fraction": 0.3004296813160181,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": -0.07145512104034424,
+          "loss": 0.047922614961862564,
+          "num_timesteps": 76800,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 33,
+          "optimizer_step_min": 33,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0077118301919835985,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.160988807678223,
+                "mean": 5.452090385057963,
+                "min": 1.4140907526016235,
+                "std": 1.3603476232395482
+              },
+              "steering": {
+                "max": 0.39134475588798523,
+                "mean": -0.014450809261772975,
+                "min": -0.5097935199737549,
+                "std": 0.08914212923876128
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 12,
+              "follow": 10,
+              "overtake": 16
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 2,
+                "follow": 7,
+                "overtake": 9
+              },
+              "bc_ego_collision": {
+                "ego_collision": 10,
+                "follow": 3,
+                "overtake": 7
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.0009375,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005168138855613587,
+              "reward_relative": 0.00016808800082785736,
+              "reward_total": -0.0002525981136107827
+            },
+            "sampler_branch_transitions": {
+              "all_training": 13062,
+              "bc_ego_collision": 12538
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 16,
+            "unique_scenario_count": 41,
+            "update": 3
+          },
+          "target_kl_early_stop": false,
+          "update": 3,
+          "value_loss": 0.2134305484360084
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 6.71185553073883e-05,
+              "max_abs_delta_from_previous": 2.9996037483215332e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 8.793339922493882e-05,
+              "relative_rms_delta_from_previous": 3.9589320070706995e-05,
+              "rms_delta_from_bc": 4.300191871510991e-06,
+              "rms_delta_from_previous": 1.936029896778217e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0006564334034919739,
+              "max_abs_delta_from_previous": 0.0002953261137008667,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0010436555305776496,
+              "relative_rms_delta_from_previous": 0.0004614061998104379,
+              "rms_delta_from_bc": 3.6968659296823545e-05,
+              "rms_delta_from_previous": 1.6344108216097248e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.002848573960363865,
+          "clip_fraction": 0.1197265600785613,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": -0.021676063537597656,
+          "loss": 0.23350539803504944,
+          "num_timesteps": 102400,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 49,
+          "optimizer_step_min": 49,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0034120862628332915,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.088251113891602,
+                "mean": 5.240440668868832,
+                "min": 1.414333462715149,
+                "std": 1.3295982226812844
+              },
+              "steering": {
+                "max": 0.40668442845344543,
+                "mean": -0.012732253698407768,
+                "min": -0.4997377395629883,
+                "std": 0.08716287547725042
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 16,
+              "follow": 15,
+              "overtake": 8
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 2,
+                "follow": 9,
+                "overtake": 5
+              },
+              "bc_ego_collision": {
+                "ego_collision": 14,
+                "follow": 6,
+                "overtake": 3
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.00125,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0004928515305113409,
+              "reward_relative": 0.0001500123589781162,
+              "reward_total": -0.000607136110510536
+            },
+            "sampler_branch_transitions": {
+              "all_training": 13103,
+              "bc_ego_collision": 12497
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 18,
+            "unique_scenario_count": 39,
+            "update": 4
+          },
+          "target_kl_early_stop": false,
+          "update": 4,
+          "value_loss": 0.2636409574188292
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 7.920502685010433e-05,
+              "max_abs_delta_from_previous": 3.193318843841553e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0001057083613651179,
+              "relative_rms_delta_from_previous": 4.819816677868099e-05,
+              "rms_delta_from_bc": 5.169437782454187e-06,
+              "rms_delta_from_previous": 2.3570269422445365e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0007695667445659637,
+              "max_abs_delta_from_previous": 0.0003082156181335449,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0011953430783706036,
+              "relative_rms_delta_from_previous": 0.0005201431208847224,
+              "rms_delta_from_bc": 4.234177821358391e-05,
+              "rms_delta_from_previous": 1.8424748374344566e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.0027937148697674274,
+          "clip_fraction": 0.14203124713822035,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": -0.007039308547973633,
+          "loss": 0.03235006704926491,
+          "num_timesteps": 128000,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 65,
+          "optimizer_step_min": 65,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0029391790015506625,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.107513427734375,
+                "mean": 5.195564235313795,
+                "min": 1.3628302812576294,
+                "std": 1.4037593903154284
+              },
+              "steering": {
+                "max": 0.41422730684280396,
+                "mean": -0.00901018742799181,
+                "min": -0.5836091041564941,
+                "std": 0.08760324727994524
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 5,
+              "follow": 16,
+              "overtake": 12
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 8,
+                "overtake": 11
+              },
+              "bc_ego_collision": {
+                "ego_collision": 4,
+                "follow": 8,
+                "overtake": 1
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000390625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0004952189240866138,
+              "reward_relative": 0.00014898894653896856,
+              "reward_total": 0.00025358287062558256
+            },
+            "sampler_branch_transitions": {
+              "all_training": 16262,
+              "bc_ego_collision": 9338
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 13,
+            "unique_scenario_count": 37,
+            "update": 5
+          },
+          "target_kl_early_stop": false,
+          "update": 5,
+          "value_loss": 0.13806405290961266
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 9.047985076904297e-05,
+              "max_abs_delta_from_previous": 3.516301512718201e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00011929856874088266,
+              "relative_rms_delta_from_previous": 4.452810224013888e-05,
+              "rms_delta_from_bc": 5.834037352179885e-06,
+              "rms_delta_from_previous": 2.1775501316297992e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0009275563061237335,
+              "max_abs_delta_from_previous": 0.00030784308910369873,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0013528250922855646,
+              "relative_rms_delta_from_previous": 0.0005472327883568323,
+              "rms_delta_from_bc": 4.7920150336594155e-05,
+              "rms_delta_from_previous": 1.9384325122391787e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.002399022225290537,
+          "clip_fraction": 0.1218749981635483,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.12686395645141602,
+          "loss": 0.11931188404560089,
+          "num_timesteps": 153600,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 81,
+          "optimizer_step_min": 81,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.002608242836504404,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.015931129455566,
+                "mean": 5.378390837810002,
+                "min": 1.2823549509048462,
+                "std": 1.224078616626026
+              },
+              "steering": {
+                "max": 0.37073978781700134,
+                "mean": -0.017396792605552207,
+                "min": -0.5215187668800354,
+                "std": 0.08532916805864421
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 12,
+              "follow": 13,
+              "overtake": 9
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 8,
+                "overtake": 7
+              },
+              "bc_ego_collision": {
+                "ego_collision": 11,
+                "follow": 5,
+                "overtake": 2
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.0009375,
+              "reward_margin": 0.0,
+              "reward_progress": 0.000511529786725424,
+              "reward_relative": 0.00014054719954352066,
+              "reward_total": -0.0002854230137310518
+            },
+            "sampler_branch_transitions": {
+              "all_training": 14140,
+              "bc_ego_collision": 11460
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 16,
+            "unique_scenario_count": 41,
+            "update": 6
+          },
+          "target_kl_early_stop": false,
+          "update": 6,
+          "value_loss": 0.16664388246135786
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 0.00010144500993192196,
+              "max_abs_delta_from_previous": 3.8955360651016235e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00013933524645251262,
+              "relative_rms_delta_from_previous": 6.037976302881194e-05,
+              "rms_delta_from_bc": 6.813887550023713e-06,
+              "rms_delta_from_previous": 2.9527409853687766e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0010770037770271301,
+              "max_abs_delta_from_previous": 0.00037450017407536507,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.001529078732701386,
+              "relative_rms_delta_from_previous": 0.0005616898263910652,
+              "rms_delta_from_bc": 5.416345628520624e-05,
+              "rms_delta_from_previous": 1.989645071861077e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.002597636077553034,
+          "clip_fraction": 0.12957030931283953,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.0990564227104187,
+          "loss": 0.013194671832025051,
+          "num_timesteps": 179200,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 97,
+          "optimizer_step_min": 97,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0027988357872346104,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.193650245666504,
+                "mean": 5.3756889891810715,
+                "min": 1.5569632053375244,
+                "std": 1.3270566340486103
+              },
+              "steering": {
+                "max": 0.37021756172180176,
+                "mean": -0.008711001596331015,
+                "min": -0.5330483913421631,
+                "std": 0.09010526250534066
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 10,
+              "follow": 13,
+              "overtake": 15
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 11,
+                "overtake": 11
+              },
+              "bc_ego_collision": {
+                "ego_collision": 9,
+                "follow": 2,
+                "overtake": 4
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.00078125,
+              "reward_margin": 0.0,
+              "reward_progress": 0.000510124747337747,
+              "reward_relative": 0.00019064293296689033,
+              "reward_total": -8.048231969535976e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 15817,
+              "bc_ego_collision": 9783
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 16,
+            "unique_scenario_count": 45,
+            "update": 7
+          },
+          "target_kl_early_stop": false,
+          "update": 7,
+          "value_loss": 0.16110737656708807
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 0.0001135021448135376,
+              "max_abs_delta_from_previous": 3.8392841815948486e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00015662207584791734,
+              "relative_rms_delta_from_previous": 5.194741085728565e-05,
+              "rms_delta_from_bc": 7.65926238945371e-06,
+              "rms_delta_from_previous": 2.5403750925383052e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0011084526777267456,
+              "max_abs_delta_from_previous": 0.00031597912311553955,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0016333466892209786,
+              "relative_rms_delta_from_previous": 0.00047382798357063907,
+              "rms_delta_from_bc": 5.785686512290515e-05,
+              "rms_delta_from_previous": 1.6784165298539526e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.002450709929689765,
+          "clip_fraction": 0.12492187231691787,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.11708909273147583,
+          "loss": 0.03180036321282387,
+          "num_timesteps": 204800,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 113,
+          "optimizer_step_min": 113,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0020797670692174197,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.088676452636719,
+                "mean": 5.257499776617624,
+                "min": 1.488478660583496,
+                "std": 1.3553463092842142
+              },
+              "steering": {
+                "max": 0.38684791326522827,
+                "mean": -0.009566256992801527,
+                "min": -0.5498948097229004,
+                "std": 0.08750539576265941
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 5,
+              "follow": 13,
+              "overtake": 17
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 5,
+                "overtake": 10
+              },
+              "bc_ego_collision": {
+                "ego_collision": 5,
+                "follow": 8,
+                "overtake": 7
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000390625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005015607107762189,
+              "reward_relative": 0.00018544997837865218,
+              "reward_total": 0.000296385689154874
+            },
+            "sampler_branch_transitions": {
+              "all_training": 11772,
+              "bc_ego_collision": 13828
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 19,
+            "unique_scenario_count": 39,
+            "update": 8
+          },
+          "target_kl_early_stop": false,
+          "update": 8,
+          "value_loss": 0.07381477631861344
+        }
+      ],
+      "process_gate_pass": true,
+      "resolved_config": {
+        "autograd_multithreading": false,
+        "batch_size": 1600,
+        "bc_checkpoint": "/home/haowei/Documents/End2Race/pretrained/end2race.pth",
+        "checkpoint_updates": [
+          8
+        ],
+        "clip_range": 0.1,
+        "clip_range_vf": null,
+        "critic_lr": 0.0003,
+        "critic_profile": "C0_RAW_SINGLE_FRAME",
+        "device": "cuda",
+        "ent_coef": 0.0,
+        "gae_lambda": 0.995,
+        "gamma": 0.999,
+        "gru_lr": 3e-06,
+        "hard_pool": "h0_current_det",
+        "hard_sampling_mode": "with_replacement",
+        "hard_sampling_probability": 0.5,
+        "head_lr": 3e-05,
+        "margin_threshold": 0.0,
+        "margin_weight": 0.0,
+        "max_grad_norm": 0.5,
+        "minibatches_per_epoch": 16,
+        "minibatches_per_update": 16,
+        "n_envs": 16,
+        "n_epochs": 1,
+        "n_steps": 1600,
+        "name": "v1_3_d",
+        "normalize_advantage": true,
+        "output_dir": "runs/ppo/v1_3_d_seed20260735",
+        "planned_optimizer_steps_per_update": 16,
+        "seed": 20260735,
+        "sim_duration": 8.0,
+        "speed_physical_std": 0.15,
+        "steering_distribution": "physical_gaussian",
+        "steering_latent_std": 0.05,
+        "target_kl": 0.01,
+        "total_optimizer_steps": 128,
+        "transitions_per_update": 25600,
+        "update_kl_guardrail": 0.02,
+        "updates": 8,
+        "vf_coef": 0.5
+      },
+      "sampler_summary": {
+        "hard_pool": "h0_current_det",
+        "hard_pool_id": "H0_CURRENT_DET",
+        "hard_pool_size": 24,
+        "hard_sampling_mode": "with_replacement",
+        "hard_sampling_probability": 0.5,
+        "unvisited_hard_scenarios": 0,
+        "visit_counts": {
+          "training-sp00-ego0021-raceline2-v080": 4,
+          "training-sp01-ego0063-raceline2-v080": 10,
+          "training-sp02-ego0110-raceline0-v080": 6,
+          "training-sp02-ego0110-raceline2-v080": 9,
+          "training-sp03-ego0151-raceline1-v050": 5,
+          "training-sp03-ego0151-raceline1-v060": 3,
+          "training-sp03-ego0151-raceline2-v050": 8,
+          "training-sp07-ego0319-raceline0-v080": 6,
+          "training-sp10-ego0440-raceline0-v050": 6,
+          "training-sp10-ego0440-raceline0-v060": 8,
+          "training-sp13-ego0571-raceline1-v050": 7,
+          "training-sp14-ego0613-raceline0-v080": 3,
+          "training-sp15-ego0650-raceline2-v070": 6,
+          "training-sp16-ego0692-raceline2-v070": 5,
+          "training-sp24-ego1032-raceline0-v080": 9,
+          "training-sp24-ego1032-raceline2-v070": 8,
+          "training-sp30-ego1272-raceline0-v070": 5,
+          "training-sp32-ego1356-raceline1-v050": 8,
+          "training-sp33-ego1404-raceline0-v070": 7,
+          "training-sp35-ego1488-raceline1-v060": 5,
+          "training-sp37-ego1567-raceline1-v060": 6,
+          "training-sp46-ego1954-raceline2-v080": 6,
+          "training-sp49-ego2075-raceline1-v050": 7,
+          "training-sp49-ego2075-raceline1-v060": 7
+        },
+        "visit_max": 10,
+        "visit_mean": 6.416666666666667,
+        "visit_min": 3,
+        "visit_std": 1.777560750641795,
+        "visited_hard_scenarios": 24
+      },
+      "seed": 20260735,
+      "status": {
+        "config": "v1_3_d",
+        "experiment": "v1_3_d",
+        "last_completed_update": 8,
+        "schema_version": 1,
+        "seed": 20260735,
+        "status": "COMPLETED",
+        "stop_reason": null
+      },
+      "updates_in_target_kl_window": 8
+    },
+    {
+      "artifacts": {
+        "checkpoint_manifest": {
+          "path": "runs/ppo/v1_3_d_seed20260736/checkpoint_manifest.json",
+          "sha256": "2233c5f2f33f30bd7755b5bfe003b0e9100d237734e7b13c68b94da2bf5954e2"
+        },
+        "resolved_config": {
+          "path": "runs/ppo/v1_3_d_seed20260736/resolved_config.json",
+          "sha256": "242aa290b18e2e466420b80c5e09f4dc92e83b496abbfd8e93e89e2f512dd651"
+        },
+        "run_status": {
+          "path": "runs/ppo/v1_3_d_seed20260736/run_status.json",
+          "sha256": "bfbaea4caacab6b076b62f74ea63f4d2a79ebf95862118e6d1aecf69fcac6485"
+        },
+        "sampler_summary": {
+          "path": "runs/ppo/v1_3_d_seed20260736/sampler_summary.json",
+          "sha256": "f52c94178a76e458138a7c1d04891ba75756d41f69969432841cf44c31a18148"
+        },
+        "training_metrics": {
+          "path": "runs/ppo/v1_3_d_seed20260736/training_metrics.jsonl",
+          "sha256": "f6ea1f7c460ff6a4545550d07d53e59e5c61c2f5241eee57449dec7f41bb81a7"
+        }
+      },
+      "checkpoint": {
+        "actor_key_count": 12,
+        "path": "runs/ppo/v1_3_d_seed20260736/checkpoints/end2race_ppo_v1_3_d_u0008_s20260736.pth",
+        "sha256": "e98976e42e8b55c1bfcfc637b43047efdbdf4c3288675c3040c20f5da91800d0",
+        "stem": "end2race_ppo_v1_3_d_u0008_s20260736"
+      },
+      "metrics": [
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 2.9802322387695312e-06,
+              "max_abs_delta_from_previous": 2.9802322387695312e-06,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 1.241650718763413e-05,
+              "relative_rms_delta_from_previous": 1.241650718763413e-05,
+              "rms_delta_from_bc": 6.072023116522393e-07,
+              "rms_delta_from_previous": 6.072023116522393e-07
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 2.999836578965187e-05,
+              "max_abs_delta_from_previous": 2.999836578965187e-05,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0002043219757126625,
+              "relative_rms_delta_from_previous": 0.0002043219757126625,
+              "rms_delta_from_bc": 7.237550404005914e-06,
+              "rms_delta_from_previous": 7.237550404005914e-06
+            }
+          },
+          "actual_optimizer_steps": 1,
+          "approx_kl": 0.00882698129862547,
+          "clip_fraction": 0.2840625047683716,
+          "effective_epoch_fraction": 0.0625,
+          "explained_variance": -0.3117164373397827,
+          "loss": 0.20488210022449493,
+          "num_timesteps": 25600,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 1,
+          "optimizer_step_min": 1,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.01487755011767078,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.069320678710938,
+                "mean": 5.453341912440956,
+                "min": 1.4849677085876465,
+                "std": 1.3692590820395616
+              },
+              "steering": {
+                "max": 0.36787596344947815,
+                "mean": -0.011153552795272503,
+                "min": -0.5385408997535706,
+                "std": 0.08588201580370235
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 15,
+              "follow": 6,
+              "overtake": 14
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 4,
+                "overtake": 9
+              },
+              "bc_ego_collision": {
+                "ego_collision": 14,
+                "follow": 2,
+                "overtake": 5
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.001171875,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005118562081128171,
+              "reward_relative": 0.00020393919463957148,
+              "reward_total": -0.00045607959724761337
+            },
+            "sampler_branch_transitions": {
+              "all_training": 14626,
+              "bc_ego_collision": 10974
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 14,
+            "unique_scenario_count": 35,
+            "update": 1
+          },
+          "target_kl_early_stop": true,
+          "update": 1,
+          "value_loss": 0.43847018480300903
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 8.36886465549469e-06,
+              "max_abs_delta_from_previous": 5.490146577358246e-06,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 2.64265817879527e-05,
+              "relative_rms_delta_from_previous": 1.733221372189118e-05,
+              "rms_delta_from_bc": 1.2923345759178303e-06,
+              "rms_delta_from_previous": 8.475942803872492e-07
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 8.893013000488281e-05,
+              "max_abs_delta_from_previous": 5.934387445449829e-05,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00042523971298229365,
+              "relative_rms_delta_from_previous": 0.0002661221549313876,
+              "rms_delta_from_bc": 1.5062960534516913e-05,
+              "rms_delta_from_previous": 9.426662759345522e-06
+            }
+          },
+          "actual_optimizer_steps": 2,
+          "approx_kl": 0.015772277489304543,
+          "clip_fraction": 0.4085416595141093,
+          "effective_epoch_fraction": 0.125,
+          "explained_variance": -0.49116528034210205,
+          "loss": 0.12802211940288544,
+          "num_timesteps": 51200,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 3,
+          "optimizer_step_min": 3,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.023384688024719342,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.189047813415527,
+                "mean": 5.511959220394492,
+                "min": 1.736931324005127,
+                "std": 1.2346217061582483
+              },
+              "steering": {
+                "max": 0.3894147276878357,
+                "mean": -0.007867271569251101,
+                "min": -0.5735992789268494,
+                "std": 0.08809246629462719
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 7,
+              "follow": 12,
+              "overtake": 17
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 8,
+                "overtake": 13
+              },
+              "bc_ego_collision": {
+                "ego_collision": 7,
+                "follow": 4,
+                "overtake": 4
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000546875,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005226259030199883,
+              "reward_relative": 0.00017811732489089128,
+              "reward_total": 0.00015386822791087782
+            },
+            "sampler_branch_transitions": {
+              "all_training": 13830,
+              "bc_ego_collision": 11770
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 14,
+            "unique_scenario_count": 36,
+            "update": 2
+          },
+          "target_kl_early_stop": true,
+          "update": 2,
+          "value_loss": 0.12394257634878159
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 3.618025220930576e-05,
+              "max_abs_delta_from_previous": 2.954155206680298e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 7.088457273009468e-05,
+              "relative_rms_delta_from_previous": 5.8067534680871916e-05,
+              "rms_delta_from_bc": 3.466456046919581e-06,
+              "rms_delta_from_previous": 2.8396668259782963e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.00040442124009132385,
+              "max_abs_delta_from_previous": 0.000325067900121212,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0008271785875625965,
+              "relative_rms_delta_from_previous": 0.00062624420618098,
+              "rms_delta_from_bc": 2.9300552227518878e-05,
+              "rms_delta_from_previous": 2.2183048863939e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.004902137443423271,
+          "clip_fraction": 0.19468749541556463,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": -0.2996581792831421,
+          "loss": 0.041631702333688736,
+          "num_timesteps": 76800,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 19,
+          "optimizer_step_min": 19,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0075245327675839135,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.123811721801758,
+                "mean": 5.4691788844857365,
+                "min": 1.1631969213485718,
+                "std": 1.4246116310684753
+              },
+              "steering": {
+                "max": 0.39268434047698975,
+                "mean": -0.013149590834667607,
+                "min": -0.5737575888633728,
+                "std": 0.0858673094190272
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 9,
+              "follow": 11,
+              "overtake": 15
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 3,
+                "follow": 4,
+                "overtake": 7
+              },
+              "bc_ego_collision": {
+                "ego_collision": 6,
+                "follow": 7,
+                "overtake": 8
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000703125,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005178415068536218,
+              "reward_relative": 0.00016752362020432576,
+              "reward_total": -1.7759872942051297e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 12000,
+              "bc_ego_collision": 13600
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 15,
+            "unique_scenario_count": 36,
+            "update": 3
+          },
+          "target_kl_early_stop": false,
+          "update": 3,
+          "value_loss": 0.13752620434388518
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 6.030895747244358e-05,
+              "max_abs_delta_from_previous": 2.7880072593688965e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 9.550563339623783e-05,
+              "relative_rms_delta_from_previous": 5.078471837188614e-05,
+              "rms_delta_from_bc": 4.6704955345060045e-06,
+              "rms_delta_from_previous": 2.4835168668037856e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0005075335502624512,
+              "max_abs_delta_from_previous": 0.00028594769537448883,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0010121604981413906,
+              "relative_rms_delta_from_previous": 0.0004810971042804235,
+              "rms_delta_from_bc": 3.5853033413028316e-05,
+              "rms_delta_from_previous": 1.7041556537127854e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.002918194979429245,
+          "clip_fraction": 0.1462499957997352,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.029217064380645752,
+          "loss": 0.04965321347117424,
+          "num_timesteps": 102400,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 35,
+          "optimizer_step_min": 35,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0033735415073283537,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.086701393127441,
+                "mean": 5.24507303820923,
+                "min": 1.6007651090621948,
+                "std": 1.348158978271805
+              },
+              "steering": {
+                "max": 0.41445282101631165,
+                "mean": -0.009257739867088617,
+                "min": -0.5843715071678162,
+                "std": 0.08238809946487695
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 11,
+              "follow": 13,
+              "overtake": 12
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 4,
+                "follow": 8,
+                "overtake": 6
+              },
+              "bc_ego_collision": {
+                "ego_collision": 7,
+                "follow": 5,
+                "overtake": 6
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000859375,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0004967301816331016,
+              "reward_relative": 0.00016620450994059806,
+              "reward_total": -0.00019644030842630344
+            },
+            "sampler_branch_transitions": {
+              "all_training": 14547,
+              "bc_ego_collision": 11053
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 12,
+            "unique_scenario_count": 38,
+            "update": 4
+          },
+          "target_kl_early_stop": false,
+          "update": 4,
+          "value_loss": 0.10794443974737078
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 6.642565131187439e-05,
+              "max_abs_delta_from_previous": 2.7689151465892792e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00011184536676234682,
+              "relative_rms_delta_from_previous": 4.241863559048748e-05,
+              "rms_delta_from_bc": 5.469554699998509e-06,
+              "rms_delta_from_previous": 2.0743917262341765e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0006366418674588203,
+              "max_abs_delta_from_previous": 0.00031422078609466553,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0011980973030831876,
+              "relative_rms_delta_from_previous": 0.0005477528631535507,
+              "rms_delta_from_bc": 4.24393391348297e-05,
+              "rms_delta_from_previous": 1.940261682542797e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.002811801852658391,
+          "clip_fraction": 0.13789062231080607,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.012035489082336426,
+          "loss": 0.032691024243831635,
+          "num_timesteps": 128000,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 51,
+          "optimizer_step_min": 51,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0031769852859726555,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.009109497070312,
+                "mean": 5.123858796297572,
+                "min": 1.5632779598236084,
+                "std": 1.388816252451959
+              },
+              "steering": {
+                "max": 0.47862178087234497,
+                "mean": -0.014625106750160058,
+                "min": -0.4910973310470581,
+                "std": 0.08923136321163108
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 5,
+              "follow": 15,
+              "overtake": 15
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 11,
+                "overtake": 9
+              },
+              "bc_ego_collision": {
+                "ego_collision": 5,
+                "follow": 4,
+                "overtake": 6
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000390625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0004842689411255454,
+              "reward_relative": 0.00016475140267542616,
+              "reward_total": 0.0002583953438009709
+            },
+            "sampler_branch_transitions": {
+              "all_training": 16930,
+              "bc_ego_collision": 8670
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 14,
+            "unique_scenario_count": 42,
+            "update": 5
+          },
+          "target_kl_early_stop": false,
+          "update": 5,
+          "value_loss": 0.058189400122500956
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 8.026696741580963e-05,
+              "max_abs_delta_from_previous": 2.588704228401184e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.000124666272332052,
+              "relative_rms_delta_from_previous": 3.6201449957223744e-05,
+              "rms_delta_from_bc": 6.096533236051965e-06,
+              "rms_delta_from_previous": 1.770353742830228e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0007218215614557266,
+              "max_abs_delta_from_previous": 0.0002493225038051605,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0013144503112692903,
+              "relative_rms_delta_from_previous": 0.00043470466387300367,
+              "rms_delta_from_bc": 4.6560828066538585e-05,
+              "rms_delta_from_previous": 1.5398154114309053e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.0022382643073797226,
+          "clip_fraction": 0.12070312059950083,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.020040035247802734,
+          "loss": 0.012570678256452084,
+          "num_timesteps": 153600,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 67,
+          "optimizer_step_min": 67,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0012358841835885537,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.012465476989746,
+                "mean": 5.679749018731527,
+                "min": 1.5592325925827026,
+                "std": 1.1440715154839887
+              },
+              "steering": {
+                "max": 0.43120789527893066,
+                "mean": -0.012814975335706151,
+                "min": -0.5305444598197937,
+                "std": 0.08421313101690245
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 3,
+              "follow": 11,
+              "overtake": 18
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 7,
+                "overtake": 14
+              },
+              "bc_ego_collision": {
+                "ego_collision": 3,
+                "follow": 4,
+                "overtake": 4
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000234375,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005407043522084349,
+              "reward_relative": 0.00016939760513302326,
+              "reward_total": 0.00047572695734146196
+            },
+            "sampler_branch_transitions": {
+              "all_training": 14436,
+              "bc_ego_collision": 11164
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 16,
+            "unique_scenario_count": 41,
+            "update": 6
+          },
+          "target_kl_early_stop": false,
+          "update": 6,
+          "value_loss": 0.05045426625292748
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 9.730830788612366e-05,
+              "max_abs_delta_from_previous": 2.1785497665405273e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00013170081373706122,
+              "relative_rms_delta_from_previous": 2.71167159967427e-05,
+              "rms_delta_from_bc": 6.440542202340725e-06,
+              "rms_delta_from_previous": 1.3260845195126436e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0008574314415454865,
+              "max_abs_delta_from_previous": 0.0002548815682530403,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0013913705843986268,
+              "relative_rms_delta_from_previous": 0.00032229031855587556,
+              "rms_delta_from_bc": 4.928551958306141e-05,
+              "rms_delta_from_previous": 1.141622027396365e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.001264513935893774,
+          "clip_fraction": 0.06035156094003469,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": -0.05189311504364014,
+          "loss": 0.057771217077970505,
+          "num_timesteps": 179200,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 83,
+          "optimizer_step_min": 83,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0007897749759240291,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 7.907442092895508,
+                "mean": 5.390770892407745,
+                "min": 1.4473471641540527,
+                "std": 1.3278401080258062
+              },
+              "steering": {
+                "max": 0.3763441741466522,
+                "mean": -0.005032334534311645,
+                "min": -0.6039213538169861,
+                "std": 0.08513777386039798
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 9,
+              "follow": 13,
+              "overtake": 13
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 4,
+                "overtake": 8
+              },
+              "bc_ego_collision": {
+                "ego_collision": 9,
+                "follow": 9,
+                "overtake": 5
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000703125,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005115898292227597,
+              "reward_relative": 0.00017061363909123166,
+              "reward_total": -2.0921531686011917e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 12052,
+              "bc_ego_collision": 13548
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 17,
+            "unique_scenario_count": 38,
+            "update": 7
+          },
+          "target_kl_early_stop": false,
+          "update": 7,
+          "value_loss": 0.0845614856807515
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 0.00010882318019866943,
+              "max_abs_delta_from_previous": 3.280884448031429e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00014227698609278977,
+              "relative_rms_delta_from_previous": 5.166056042270524e-05,
+              "rms_delta_from_bc": 6.957746936795079e-06,
+              "rms_delta_from_previous": 2.5263483698393235e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0009325798600912094,
+              "max_abs_delta_from_previous": 0.000315006822347641,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0014850712777228464,
+              "relative_rms_delta_from_previous": 0.0004484075677603072,
+              "rms_delta_from_bc": 5.260461185621973e-05,
+              "rms_delta_from_previous": 1.588356420185908e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.0023699896410107613,
+          "clip_fraction": 0.11863280906254658,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.009901285171508789,
+          "loss": 0.0971372202038765,
+          "num_timesteps": 204800,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 99,
+          "optimizer_step_min": 99,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.002227881140242971,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.036537170410156,
+                "mean": 5.415408181492239,
+                "min": 1.2920904159545898,
+                "std": 1.2987715562925666
+              },
+              "steering": {
+                "max": 0.4710932672023773,
+                "mean": -0.01085064969526684,
+                "min": -0.5143020153045654,
+                "std": 0.08831784651339446
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 9,
+              "follow": 11,
+              "overtake": 18
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 7,
+                "overtake": 13
+              },
+              "bc_ego_collision": {
+                "ego_collision": 8,
+                "follow": 4,
+                "overtake": 5
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000703125,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005142579498438374,
+              "reward_relative": 0.0001972494278658773,
+              "reward_total": 8.382377709717992e-06
+            },
+            "sampler_branch_transitions": {
+              "all_training": 13475,
+              "bc_ego_collision": 12125
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 15,
+            "unique_scenario_count": 41,
+            "update": 8
+          },
+          "target_kl_early_stop": false,
+          "update": 8,
+          "value_loss": 0.09713466360699385
+        }
+      ],
+      "process_gate_pass": true,
+      "resolved_config": {
+        "autograd_multithreading": false,
+        "batch_size": 1600,
+        "bc_checkpoint": "/home/haowei/Documents/End2Race/pretrained/end2race.pth",
+        "checkpoint_updates": [
+          8
+        ],
+        "clip_range": 0.1,
+        "clip_range_vf": null,
+        "critic_lr": 0.0003,
+        "critic_profile": "C0_RAW_SINGLE_FRAME",
+        "device": "cuda",
+        "ent_coef": 0.0,
+        "gae_lambda": 0.995,
+        "gamma": 0.999,
+        "gru_lr": 3e-06,
+        "hard_pool": "h0_current_det",
+        "hard_sampling_mode": "with_replacement",
+        "hard_sampling_probability": 0.5,
+        "head_lr": 3e-05,
+        "margin_threshold": 0.0,
+        "margin_weight": 0.0,
+        "max_grad_norm": 0.5,
+        "minibatches_per_epoch": 16,
+        "minibatches_per_update": 16,
+        "n_envs": 16,
+        "n_epochs": 1,
+        "n_steps": 1600,
+        "name": "v1_3_d",
+        "normalize_advantage": true,
+        "output_dir": "runs/ppo/v1_3_d_seed20260736",
+        "planned_optimizer_steps_per_update": 16,
+        "seed": 20260736,
+        "sim_duration": 8.0,
+        "speed_physical_std": 0.15,
+        "steering_distribution": "physical_gaussian",
+        "steering_latent_std": 0.05,
+        "target_kl": 0.01,
+        "total_optimizer_steps": 128,
+        "transitions_per_update": 25600,
+        "update_kl_guardrail": 0.02,
+        "updates": 8,
+        "vf_coef": 0.5
+      },
+      "sampler_summary": {
+        "hard_pool": "h0_current_det",
+        "hard_pool_id": "H0_CURRENT_DET",
+        "hard_pool_size": 24,
+        "hard_sampling_mode": "with_replacement",
+        "hard_sampling_probability": 0.5,
+        "unvisited_hard_scenarios": 0,
+        "visit_counts": {
+          "training-sp00-ego0021-raceline2-v080": 4,
+          "training-sp01-ego0063-raceline2-v080": 11,
+          "training-sp02-ego0110-raceline0-v080": 6,
+          "training-sp02-ego0110-raceline2-v080": 10,
+          "training-sp03-ego0151-raceline1-v050": 4,
+          "training-sp03-ego0151-raceline1-v060": 3,
+          "training-sp03-ego0151-raceline2-v050": 8,
+          "training-sp07-ego0319-raceline0-v080": 5,
+          "training-sp10-ego0440-raceline0-v050": 5,
+          "training-sp10-ego0440-raceline0-v060": 8,
+          "training-sp13-ego0571-raceline1-v050": 8,
+          "training-sp14-ego0613-raceline0-v080": 3,
+          "training-sp15-ego0650-raceline2-v070": 5,
+          "training-sp16-ego0692-raceline2-v070": 4,
+          "training-sp24-ego1032-raceline0-v080": 9,
+          "training-sp24-ego1032-raceline2-v070": 9,
+          "training-sp30-ego1272-raceline0-v070": 7,
+          "training-sp32-ego1356-raceline1-v050": 9,
+          "training-sp33-ego1404-raceline0-v070": 7,
+          "training-sp35-ego1488-raceline1-v060": 3,
+          "training-sp37-ego1567-raceline1-v060": 5,
+          "training-sp46-ego1954-raceline2-v080": 6,
+          "training-sp49-ego2075-raceline1-v050": 5,
+          "training-sp49-ego2075-raceline1-v060": 7
+        },
+        "visit_max": 11,
+        "visit_mean": 6.291666666666667,
+        "visit_min": 3,
+        "visit_std": 2.2817969283488444,
+        "visited_hard_scenarios": 24
+      },
+      "seed": 20260736,
+      "status": {
+        "config": "v1_3_d",
+        "experiment": "v1_3_d",
+        "last_completed_update": 8,
+        "schema_version": 1,
+        "seed": 20260736,
+        "status": "COMPLETED",
+        "stop_reason": null
+      },
+      "updates_in_target_kl_window": 6
+    },
+    {
+      "artifacts": {
+        "checkpoint_manifest": {
+          "path": "runs/ppo/v1_3_d_seed20260737/checkpoint_manifest.json",
+          "sha256": "3d8a0047d69bfeb6895b87eb9462e9c9ffd8162b68fb9313f5768b843515d957"
+        },
+        "resolved_config": {
+          "path": "runs/ppo/v1_3_d_seed20260737/resolved_config.json",
+          "sha256": "5bc5c1c930ad0abc0d26adfedd6dbad286fb88fad4efe9e1a52d6955bba10b5d"
+        },
+        "run_status": {
+          "path": "runs/ppo/v1_3_d_seed20260737/run_status.json",
+          "sha256": "1f4fbe0445a7a2bfe9886fe92ca7cecdc62d0fc2f46178c496e0b7e92a4f4dc7"
+        },
+        "sampler_summary": {
+          "path": "runs/ppo/v1_3_d_seed20260737/sampler_summary.json",
+          "sha256": "5c39f64f0e7791ad850cc5e1c5dc882f0f93a7bffd9a910a87476d3ff2586d48"
+        },
+        "training_metrics": {
+          "path": "runs/ppo/v1_3_d_seed20260737/training_metrics.jsonl",
+          "sha256": "8280748f4f99e3f3987308af0a6791957159c5307c35c2d57b1efd8807cd870e"
+        }
+      },
+      "checkpoint": {
+        "actor_key_count": 12,
+        "path": "runs/ppo/v1_3_d_seed20260737/checkpoints/end2race_ppo_v1_3_d_u0008_s20260737.pth",
+        "sha256": "b56f9998e7e2f149fbf19c9cb8eb7657c7f0baed29af1ef837896dfec28f68d5",
+        "stem": "end2race_ppo_v1_3_d_u0008_s20260737"
+      },
+      "metrics": [
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 2.946704626083374e-06,
+              "max_abs_delta_from_previous": 2.946704626083374e-06,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 9.89351666903568e-06,
+              "relative_rms_delta_from_previous": 9.89351666903568e-06,
+              "rms_delta_from_bc": 4.83820941028512e-07,
+              "rms_delta_from_previous": 4.83820941028512e-07
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 2.9998482204973698e-05,
+              "max_abs_delta_from_previous": 2.9998482204973698e-05,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00019220533506220604,
+              "relative_rms_delta_from_previous": 0.00019220533506220604,
+              "rms_delta_from_bc": 6.808351356135358e-06,
+              "rms_delta_from_previous": 6.808351356135358e-06
+            }
+          },
+          "actual_optimizer_steps": 1,
+          "approx_kl": 0.00835360772907734,
+          "clip_fraction": 0.28187498450279236,
+          "effective_epoch_fraction": 0.0625,
+          "explained_variance": -0.36515700817108154,
+          "loss": 0.22711731493473053,
+          "num_timesteps": 25600,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 1,
+          "optimizer_step_min": 1,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.014371199570595294,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.108330726623535,
+                "mean": 5.285680444333702,
+                "min": 1.5006904602050781,
+                "std": 1.4301961017633662
+              },
+              "steering": {
+                "max": 0.40521153807640076,
+                "mean": -0.01145890800914657,
+                "min": -0.5444477200508118,
+                "std": 0.084202414750725
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 8,
+              "follow": 10,
+              "overtake": 15
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 4,
+                "overtake": 8
+              },
+              "bc_ego_collision": {
+                "ego_collision": 7,
+                "follow": 6,
+                "overtake": 7
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005008724679211444,
+              "reward_relative": 0.00019718730630712315,
+              "reward_total": 7.305977422826638e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 11704,
+              "bc_ego_collision": 13896
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 14,
+            "unique_scenario_count": 31,
+            "update": 1
+          },
+          "target_kl_early_stop": true,
+          "update": 1,
+          "value_loss": 0.3643384277820587
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 2.8438866138458252e-05,
+              "max_abs_delta_from_previous": 2.6747584342956543e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 4.327701498384594e-05,
+              "relative_rms_delta_from_previous": 3.9350457569024385e-05,
+              "rms_delta_from_bc": 2.116368407193497e-06,
+              "rms_delta_from_previous": 1.9243486662026345e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0003087855875492096,
+              "max_abs_delta_from_previous": 0.0002820640802383423,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0006437568400054907,
+              "relative_rms_delta_from_previous": 0.0005590837209388948,
+              "rms_delta_from_bc": 2.2803335574708634e-05,
+              "rms_delta_from_previous": 1.980405125077554e-05
+            }
+          },
+          "actual_optimizer_steps": 13,
+          "approx_kl": 0.006893293000757694,
+          "clip_fraction": 0.24392856684114253,
+          "effective_epoch_fraction": 0.8125,
+          "explained_variance": -0.31281375885009766,
+          "loss": 0.04283703491091728,
+          "num_timesteps": 51200,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 14,
+          "optimizer_step_min": 14,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.007637417204345505,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.121387481689453,
+                "mean": 5.436962055317126,
+                "min": 1.5577858686447144,
+                "std": 1.267422011873679
+              },
+              "steering": {
+                "max": 0.3427458107471466,
+                "mean": -0.012555532215533844,
+                "min": -0.5273511409759521,
+                "std": 0.08639516853555658
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 8,
+              "follow": 11,
+              "overtake": 15
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 6,
+                "overtake": 13
+              },
+              "bc_ego_collision": {
+                "ego_collision": 7,
+                "follow": 5,
+                "overtake": 2
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005149093051802511,
+              "reward_relative": 0.00017240382288891042,
+              "reward_total": 6.231312806915759e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 15825,
+              "bc_ego_collision": 9775
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 13,
+            "unique_scenario_count": 37,
+            "update": 2
+          },
+          "target_kl_early_stop": true,
+          "update": 2,
+          "value_loss": 0.16671987356884138
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 4.633516073226929e-05,
+              "max_abs_delta_from_previous": 2.828240394592285e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 6.566160883728192e-05,
+              "relative_rms_delta_from_previous": 4.180979039645878e-05,
+              "rms_delta_from_bc": 3.2110383435778113e-06,
+              "rms_delta_from_previous": 2.044617023848158e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0005513373762369156,
+              "max_abs_delta_from_previous": 0.0003213435411453247,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0008516680078325368,
+              "relative_rms_delta_from_previous": 0.0004792260656141835,
+              "rms_delta_from_bc": 3.0168023349753103e-05,
+              "rms_delta_from_previous": 1.697534801019713e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.0025578965432941914,
+          "clip_fraction": 0.13402343378402293,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": -0.0028268098831176758,
+          "loss": 0.19221951067447662,
+          "num_timesteps": 76800,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 30,
+          "optimizer_step_min": 30,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0035353619316447205,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 7.928872585296631,
+                "mean": 5.288799119875766,
+                "min": 1.22305428981781,
+                "std": 1.3713508174233695
+              },
+              "steering": {
+                "max": 0.36443737149238586,
+                "mean": -0.010368775949258975,
+                "min": -0.5573724508285522,
+                "std": 0.09089092158317387
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 15,
+              "follow": 10,
+              "overtake": 13
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 7,
+                "overtake": 7
+              },
+              "bc_ego_collision": {
+                "ego_collision": 14,
+                "follow": 3,
+                "overtake": 6
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.001171875,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005015506461722038,
+              "reward_relative": 0.0001631155753818089,
+              "reward_total": -0.0005072087784459854
+            },
+            "sampler_branch_transitions": {
+              "all_training": 12358,
+              "bc_ego_collision": 13242
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 17,
+            "unique_scenario_count": 38,
+            "update": 3
+          },
+          "target_kl_early_stop": false,
+          "update": 3,
+          "value_loss": 0.21384906431194395
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 6.483681499958038e-05,
+              "max_abs_delta_from_previous": 2.6598572731018066e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 8.401853344375805e-05,
+              "relative_rms_delta_from_previous": 3.9610502023257406e-05,
+              "rms_delta_from_bc": 4.108743864739116e-06,
+              "rms_delta_from_previous": 1.9370654876078147e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0005657114088535309,
+              "max_abs_delta_from_previous": 0.00027446821331977844,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0010454217599897466,
+              "relative_rms_delta_from_previous": 0.00045123911758048846,
+              "rms_delta_from_bc": 3.7031223171073986e-05,
+              "rms_delta_from_previous": 1.5983936107418085e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.0013456844026222825,
+          "clip_fraction": 0.05863281057099812,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.06833380460739136,
+          "loss": 0.1303786188364029,
+          "num_timesteps": 102400,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 46,
+          "optimizer_step_min": 46,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0022742631153960247,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 7.992859840393066,
+                "mean": 5.373785712253302,
+                "min": 1.661575198173523,
+                "std": 1.327554783159953
+              },
+              "steering": {
+                "max": 0.45208218693733215,
+                "mean": -0.014925928844199347,
+                "min": -0.565229594707489,
+                "std": 0.08824924637849112
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 13,
+              "follow": 11,
+              "overtake": 14
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 6,
+                "overtake": 11
+              },
+              "bc_ego_collision": {
+                "ego_collision": 12,
+                "follow": 5,
+                "overtake": 3
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.001015625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005093623199315879,
+              "reward_relative": 0.0002015049094328305,
+              "reward_total": -0.000304757770635582
+            },
+            "sampler_branch_transitions": {
+              "all_training": 14789,
+              "bc_ego_collision": 10811
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 14,
+            "unique_scenario_count": 40,
+            "update": 4
+          },
+          "target_kl_early_stop": false,
+          "update": 4,
+          "value_loss": 0.19802921870723367
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 7.472746074199677e-05,
+              "max_abs_delta_from_previous": 3.039836883544922e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0001037099544899397,
+              "relative_rms_delta_from_previous": 5.076312276231098e-05,
+              "rms_delta_from_bc": 5.0717100353597046e-06,
+              "rms_delta_from_previous": 2.4824602729540575e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.000670209527015686,
+              "max_abs_delta_from_previous": 0.00030328333377838135,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.001206809604512394,
+              "relative_rms_delta_from_previous": 0.000488587010305386,
+              "rms_delta_from_bc": 4.274794872275503e-05,
+              "rms_delta_from_previous": 1.7306894299993512e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.0034072748385369778,
+          "clip_fraction": 0.18296874617226422,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.06293690204620361,
+          "loss": 0.026638608425855637,
+          "num_timesteps": 128000,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 62,
+          "optimizer_step_min": 62,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.0033167001637048055,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.101325988769531,
+                "mean": 5.089007970723324,
+                "min": 1.4461524486541748,
+                "std": 1.3048478316528678
+              },
+              "steering": {
+                "max": 0.4475647509098053,
+                "mean": -0.007206150375719744,
+                "min": -0.573177695274353,
+                "std": 0.08928449336744496
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 12,
+              "follow": 15,
+              "overtake": 9
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 4,
+                "follow": 11,
+                "overtake": 7
+              },
+              "bc_ego_collision": {
+                "ego_collision": 8,
+                "follow": 4,
+                "overtake": 2
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.0009375,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0004825938473197232,
+              "reward_relative": 0.00013245502168638136,
+              "reward_total": -0.0003224511309938964
+            },
+            "sampler_branch_transitions": {
+              "all_training": 16777,
+              "bc_ego_collision": 8823
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 14,
+            "unique_scenario_count": 42,
+            "update": 5
+          },
+          "target_kl_early_stop": false,
+          "update": 5,
+          "value_loss": 0.18098037410527468
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 8.613243699073792e-05,
+              "max_abs_delta_from_previous": 2.4195760488510132e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00011415467475376568,
+              "relative_rms_delta_from_previous": 3.323254395266403e-05,
+              "rms_delta_from_bc": 5.582486390812735e-06,
+              "rms_delta_from_previous": 1.625165355575486e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0007971897721290588,
+              "max_abs_delta_from_previous": 0.0002525169402360916,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0012929106522163317,
+              "relative_rms_delta_from_previous": 0.00041433888110494697,
+              "rms_delta_from_bc": 4.579784421452198e-05,
+              "rms_delta_from_previous": 1.4676821735260659e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.002174798399209976,
+          "clip_fraction": 0.10703124839346856,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.14738541841506958,
+          "loss": 0.019855890423059464,
+          "num_timesteps": 153600,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 78,
+          "optimizer_step_min": 78,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.002333916156239846,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.174847602844238,
+                "mean": 5.519887454058043,
+                "min": 1.2627589702606201,
+                "std": 1.251836844959598
+              },
+              "steering": {
+                "max": 0.35695695877075195,
+                "mean": -0.011386590379437962,
+                "min": -0.5441388487815857,
+                "std": 0.07999701259318596
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 8,
+              "follow": 10,
+              "overtake": 17
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 6,
+                "overtake": 14
+              },
+              "bc_ego_collision": {
+                "ego_collision": 8,
+                "follow": 4,
+                "overtake": 3
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005256117832752457,
+              "reward_relative": 0.00017033685062853822,
+              "reward_total": 7.094863390377866e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 16813,
+              "bc_ego_collision": 8787
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 15,
+            "unique_scenario_count": 46,
+            "update": 6
+          },
+          "target_kl_early_stop": false,
+          "update": 6,
+          "value_loss": 0.13965866202488542
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 9.373947978019714e-05,
+              "max_abs_delta_from_previous": 2.6553869247436523e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00012128825894961722,
+              "relative_rms_delta_from_previous": 2.7711259314247524e-05,
+              "rms_delta_from_bc": 5.931338829637142e-06,
+              "rms_delta_from_previous": 1.355158923793925e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.0008474364876747131,
+              "max_abs_delta_from_previous": 0.00024051591753959656,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0013600938298375918,
+              "relative_rms_delta_from_previous": 0.00029762299599499936,
+              "rms_delta_from_bc": 4.817762559946196e-05,
+              "rms_delta_from_previous": 1.0542447910762318e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.001987806987017393,
+          "clip_fraction": 0.10132812130177626,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.022662818431854248,
+          "loss": 0.028944021090865135,
+          "num_timesteps": 179200,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 94,
+          "optimizer_step_min": 94,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.001752397166728814,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 8.144750595092773,
+                "mean": 5.412390773179941,
+                "min": 1.377149224281311,
+                "std": 1.2667070960338012
+              },
+              "steering": {
+                "max": 0.3637365698814392,
+                "mean": -0.008029754122210306,
+                "min": -0.5793402194976807,
+                "std": 0.08829686410022548
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 8,
+              "follow": 16,
+              "overtake": 12
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 0,
+                "follow": 11,
+                "overtake": 8
+              },
+              "bc_ego_collision": {
+                "ego_collision": 8,
+                "follow": 5,
+                "overtake": 4
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000625,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005140272194960114,
+              "reward_relative": 0.00020014929783165872,
+              "reward_total": 8.917651732766962e-05
+            },
+            "sampler_branch_transitions": {
+              "all_training": 14983,
+              "bc_ego_collision": 10617
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 16,
+            "unique_scenario_count": 45,
+            "update": 7
+          },
+          "target_kl_early_stop": false,
+          "update": 7,
+          "value_loss": 0.12616756523493677
+        },
+        {
+          "actor_delta_from_bc": {
+            "frozen_actor": {
+              "max_abs_delta_from_bc": 0.0,
+              "max_abs_delta_from_previous": 0.0,
+              "parameter_elements": 540,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0,
+              "relative_rms_delta_from_previous": 0.0,
+              "rms_delta_from_bc": 0.0,
+              "rms_delta_from_previous": 0.0
+            },
+            "gru": {
+              "max_abs_delta_from_bc": 0.00010898709297180176,
+              "max_abs_delta_from_previous": 3.860890865325928e-05,
+              "parameter_elements": 10594080,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.00013744701063120074,
+              "relative_rms_delta_from_previous": 5.2947096086322783e-05,
+              "rms_delta_from_bc": 6.721547478994155e-06,
+              "rms_delta_from_previous": 2.5892627209912376e-06
+            },
+            "log_std_max_abs_delta_from_initial": 0.0,
+            "output_layer": {
+              "max_abs_delta_from_bc": 0.00100737065076828,
+              "max_abs_delta_from_previous": 0.00031354092061519623,
+              "parameter_elements": 706862,
+              "parameter_tensors": 4,
+              "relative_rms_delta_from_bc": 0.0014934970124604026,
+              "relative_rms_delta_from_previous": 0.0005654760358903673,
+              "rms_delta_from_bc": 5.2903070598316105e-05,
+              "rms_delta_from_previous": 2.003036381184516e-05
+            }
+          },
+          "actual_optimizer_steps": 16,
+          "approx_kl": 0.0023648899514228106,
+          "clip_fraction": 0.11253905905323336,
+          "effective_epoch_fraction": 1.0,
+          "explained_variance": 0.139654278755188,
+          "loss": 0.006985010579228401,
+          "num_timesteps": 204800,
+          "optimizer_active_parameters": 12,
+          "optimizer_step_max": 110,
+          "optimizer_step_min": 110,
+          "planned_optimizer_steps": 16,
+          "policy_gradient_loss": 0.002948993662503202,
+          "rollout": {
+            "action_statistics": {
+              "speed": {
+                "max": 7.966333866119385,
+                "mean": 5.270507050799206,
+                "min": 1.423709511756897,
+                "std": 1.3304031617629104
+              },
+              "steering": {
+                "max": 0.4535195529460907,
+                "mean": -0.008169232513579913,
+                "min": -0.5475324392318726,
+                "std": 0.09060813662723137
+              }
+            },
+            "completed_episodes": {
+              "ego_collision": 7,
+              "follow": 9,
+              "overtake": 19
+            },
+            "completed_episodes_by_sampler_branch": {
+              "all_training": {
+                "ego_collision": 1,
+                "follow": 4,
+                "overtake": 13
+              },
+              "bc_ego_collision": {
+                "ego_collision": 6,
+                "follow": 5,
+                "overtake": 6
+              }
+            },
+            "reward_component_means": {
+              "reward_collision": -0.000546875,
+              "reward_margin": 0.0,
+              "reward_progress": 0.0005022105105805197,
+              "reward_relative": 0.00017578871086324044,
+              "reward_total": 0.00013112422144375994
+            },
+            "sampler_branch_transitions": {
+              "all_training": 13269,
+              "bc_ego_collision": 12331
+            },
+            "transitions": 25600,
+            "unique_hard_scenario_count": 16,
+            "unique_scenario_count": 42,
+            "update": 8
+          },
+          "target_kl_early_stop": false,
+          "update": 8,
+          "value_loss": 0.1018486984539777
+        }
+      ],
+      "process_gate_pass": true,
+      "resolved_config": {
+        "autograd_multithreading": false,
+        "batch_size": 1600,
+        "bc_checkpoint": "/home/haowei/Documents/End2Race/pretrained/end2race.pth",
+        "checkpoint_updates": [
+          8
+        ],
+        "clip_range": 0.1,
+        "clip_range_vf": null,
+        "critic_lr": 0.0003,
+        "critic_profile": "C0_RAW_SINGLE_FRAME",
+        "device": "cuda",
+        "ent_coef": 0.0,
+        "gae_lambda": 0.995,
+        "gamma": 0.999,
+        "gru_lr": 3e-06,
+        "hard_pool": "h0_current_det",
+        "hard_sampling_mode": "with_replacement",
+        "hard_sampling_probability": 0.5,
+        "head_lr": 3e-05,
+        "margin_threshold": 0.0,
+        "margin_weight": 0.0,
+        "max_grad_norm": 0.5,
+        "minibatches_per_epoch": 16,
+        "minibatches_per_update": 16,
+        "n_envs": 16,
+        "n_epochs": 1,
+        "n_steps": 1600,
+        "name": "v1_3_d",
+        "normalize_advantage": true,
+        "output_dir": "runs/ppo/v1_3_d_seed20260737",
+        "planned_optimizer_steps_per_update": 16,
+        "seed": 20260737,
+        "sim_duration": 8.0,
+        "speed_physical_std": 0.15,
+        "steering_distribution": "physical_gaussian",
+        "steering_latent_std": 0.05,
+        "target_kl": 0.01,
+        "total_optimizer_steps": 128,
+        "transitions_per_update": 25600,
+        "update_kl_guardrail": 0.02,
+        "updates": 8,
+        "vf_coef": 0.5
+      },
+      "sampler_summary": {
+        "hard_pool": "h0_current_det",
+        "hard_pool_id": "H0_CURRENT_DET",
+        "hard_pool_size": 24,
+        "hard_sampling_mode": "with_replacement",
+        "hard_sampling_probability": 0.5,
+        "unvisited_hard_scenarios": 0,
+        "visit_counts": {
+          "training-sp00-ego0021-raceline2-v080": 4,
+          "training-sp01-ego0063-raceline2-v080": 10,
+          "training-sp02-ego0110-raceline0-v080": 6,
+          "training-sp02-ego0110-raceline2-v080": 10,
+          "training-sp03-ego0151-raceline1-v050": 5,
+          "training-sp03-ego0151-raceline1-v060": 3,
+          "training-sp03-ego0151-raceline2-v050": 8,
+          "training-sp07-ego0319-raceline0-v080": 5,
+          "training-sp10-ego0440-raceline0-v050": 5,
+          "training-sp10-ego0440-raceline0-v060": 7,
+          "training-sp13-ego0571-raceline1-v050": 7,
+          "training-sp14-ego0613-raceline0-v080": 3,
+          "training-sp15-ego0650-raceline2-v070": 3,
+          "training-sp16-ego0692-raceline2-v070": 4,
+          "training-sp24-ego1032-raceline0-v080": 8,
+          "training-sp24-ego1032-raceline2-v070": 9,
+          "training-sp30-ego1272-raceline0-v070": 7,
+          "training-sp32-ego1356-raceline1-v050": 9,
+          "training-sp33-ego1404-raceline0-v070": 9,
+          "training-sp35-ego1488-raceline1-v060": 3,
+          "training-sp37-ego1567-raceline1-v060": 5,
+          "training-sp46-ego1954-raceline2-v080": 5,
+          "training-sp49-ego2075-raceline1-v050": 6,
+          "training-sp49-ego2075-raceline1-v060": 7
+        },
+        "visit_max": 10,
+        "visit_mean": 6.166666666666667,
+        "visit_min": 3,
+        "visit_std": 2.229848026709942,
+        "visited_hard_scenarios": 24
+      },
+      "seed": 20260737,
+      "status": {
+        "config": "v1_3_d",
+        "experiment": "v1_3_d",
+        "last_completed_update": 8,
+        "schema_version": 1,
+        "seed": 20260737,
+        "status": "COMPLETED",
+        "stop_reason": null
+      },
+      "updates_in_target_kl_window": 6
+    }
+  ]
+}

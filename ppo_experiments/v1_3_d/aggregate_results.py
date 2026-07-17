@@ -183,7 +183,26 @@ def build_report(results: dict[str, Any]) -> str:
         )
     lines.append("")
 
-    if "baseline" in results:
+    if results["final_verdict"] == "STOP_PROTOCOL_DRIFT":
+        baseline = results["baseline"]
+        observed = baseline["counts"]
+        expected = baseline["expected_counts"]
+        lines.extend([
+            "## BC protocol check",
+            "",
+            f"Expected BC: `{expected['collision']} collision / {expected['follow']} follow / "
+            f"{expected['overtake']} overtake`.",
+            "",
+            f"Observed BC: `{observed['collision']} collision / {observed['follow']} follow / "
+            f"{observed['overtake']} overtake`.",
+            "",
+            f"Evidence: `{baseline['path']}` (`{baseline['sha256']}`); "
+            f"log: `{baseline['log']['path']}` (`{baseline['log']['sha256']}`).",
+            "",
+            "The exact-match gate failed, so no PPO candidate evaluation was run.",
+            "",
+        ])
+    elif "baseline" in results:
         baseline = results["baseline"]
         lines.extend([
             "## Paired development evaluation",
@@ -286,12 +305,18 @@ def main() -> None:
     else:
         baseline_path = EVAL_ROOT / "end2race_bc_v1_3_d_Austin" / "multiagents" / "results_multi.json"
         baseline = evaluation_summary(baseline_path)
-        if baseline["counts"] != EXPECTED_BASELINE:
+        baseline["log"] = evaluation_log()
+        baseline_record = stripped_evaluation(baseline)
+        baseline_record["expected_counts"] = EXPECTED_BASELINE
+        baseline_record["protocol_match"] = baseline["counts"] == EXPECTED_BASELINE
+        results["baseline"] = baseline_record
+        if not baseline_record["protocol_match"]:
             results["final_verdict"] = "STOP_PROTOCOL_DRIFT"
-            results["interpretation"] = f"Paired BC drifted to {baseline['counts']}."
+            results["interpretation"] = (
+                f"Canonical BC exact-match gate failed: expected {EXPECTED_BASELINE}, "
+                f"observed {baseline['counts']}. Candidate evaluations were not run."
+            )
         else:
-            baseline["log"] = evaluation_log()
-            results["baseline"] = stripped_evaluation(baseline)
             evaluations: list[dict[str, Any]] = []
             for run in training:
                 checkpoint = run["checkpoint"]
@@ -318,13 +343,13 @@ def main() -> None:
             if all(row["product_gate_pass"] for row in evaluations):
                 results["final_verdict"] = "PASS_STABLE_PHYSICAL_GAUSSIAN_DEVELOPMENT"
                 results["interpretation"] = (
-                    "All five fixed U8 actors passed the process and development product gates. "
+                    "All three fixed U8 actors passed the process and development product gates. "
                     "A new preregistered holdout would still be required before promotion."
                 )
             else:
                 results["final_verdict"] = "FAIL_NO_STABLE_IMPROVEMENT"
                 results["interpretation"] = (
-                    "The action-distribution repair produced controlled updates, but the five fixed U8 actors "
+                    "The action-distribution repair produced controlled updates, but the three fixed U8 actors "
                     "did not produce the required cross-seed product improvement."
                 )
 
