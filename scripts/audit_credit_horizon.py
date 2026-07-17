@@ -312,6 +312,7 @@ def _gradient_shard(
             (flat[2 + index] / total_steps).detach().cpu() for index in range(5)
         ]
         candidate_path = shard_dir / f"{candidate.lower()}_gradients.pt"
+        candidate_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
             {
                 "parameter_names": names,
