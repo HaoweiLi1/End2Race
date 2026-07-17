@@ -355,7 +355,8 @@ def _sampled_policy_metrics(policy, episodes, device) -> dict[str, float]:
             observations = data["observations"]
             actions = data["actions"]
             old = data["old_log_prob_components"].sum(axis=1)
-        new = _replay_log_prob_components(policy, observations, actions, device).sum(dim=1)
+        with torch.inference_mode():
+            new = _replay_log_prob_components(policy, observations, actions, device).sum(dim=1)
         log_ratios.append(new.detach().cpu().numpy().astype(np.float64) - old.astype(np.float64))
     log_ratio = np.concatenate(log_ratios)
     ratio = np.exp(log_ratio)
