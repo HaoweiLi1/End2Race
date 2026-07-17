@@ -1,14 +1,14 @@
 {
   "completed_at": null,
-  "current_phase": "b0_feasibility",
+  "current_phase": "b1_taxonomy",
   "execution_scope": "local_only",
-  "next_action": "Run the preregistered 24-scenario H0 planner-ego feasibility replay. Continue to B1 only if at least 17 scenarios finish without either vehicle colliding.",
+  "next_action": "B-F0 passed with 21/24 no-collision completions. Build DR_TAXONOMY.json from the existing Route A Phase 0 H0 traces, then apply the guide's deterministic clustered-versus-scattered demonstration-scope rule.",
   "owner_approved_at": "2026-07-17T14:01:34+08:00",
   "route_a_trigger": {
     "record": "ppo_experiments/signal_repair/SG_P1_RESULTS.json",
     "status": "CLOSED_KL_GUARDRAIL"
   },
   "schema_version": 1,
-  "source_commit": "f5768f3f231edb7bb6a12a00fe4c7c7488728d48",
-  "status": "B0_READY"
+  "source_commit": "066d6fdccc24e6aaa9e1a03613858ccf676cca9e",
+  "status": "B0_PASSED"
 }
