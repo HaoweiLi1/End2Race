@@ -726,7 +726,10 @@ def _aggregate_pool(
     }
     final = _combined(gae_vectors, weights)
     cumulative: dict[str, Any] = {}
-    for shard_count, label in ((1, "32"), (2, "64"), (4, "128")):
+    cumulative_levels = [(1, "32"), (2, "64"), (4, "128")]
+    if len(vectors) >= 8:
+        cumulative_levels.append((8, "256"))
+    for shard_count, label in cumulative_levels:
         partial = _combined(gae_vectors[:shard_count], weights[:shard_count])
         cumulative[label] = {
             group: _cosine(partial[group_slice], final[group_slice])
@@ -778,7 +781,7 @@ def _aggregate_pool(
         "pairwise_gradient_cosine": pairwise,
         "pairwise_combined_median": median_pairwise,
         "bootstrap_95ci": bootstrap,
-        "cumulative_gradient_cosine_to_128": cumulative,
+        "cumulative_gradient_cosine_to_final": cumulative,
         "gae_mc_gradient_cosine_by_shard": gae_mc,
         "median_gae_mc_gradient_cosine": median_gae_mc,
         "probe": probe,
