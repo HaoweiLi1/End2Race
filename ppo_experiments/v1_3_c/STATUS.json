@@ -1,10 +1,10 @@
 {
-  "schema_version": 1,
   "experiment": "v1_3_c",
-  "status": "PREREGISTERED",
-  "phase": "PREPARATION",
-  "source_head": "5ffbfa2a3f45378d7233c1cd37e6b1c4aa5073e6",
+  "failure_reason": "The first formal seed was interrupted after U6 by a host-level SIGSEGV in PyTorch pt_autograd/libc10. Later seeds and all evaluations were not started. This is an infrastructure-invalid result, not a PPO performance failure.",
   "implementation_commit": "26935eb473d208816e68d531226d402ade6c24a2",
-  "updated_at": "2026-07-17T17:57:12+08:00",
-  "failure_reason": null
+  "phase": "TERMINAL",
+  "schema_version": 1,
+  "source_head": "5ffbfa2a3f45378d7233c1cd37e6b1c4aa5073e6",
+  "status": "INVALID_INFRASTRUCTURE",
+  "updated_at": "2026-07-17T10:09:26.341989+00:00"
 }

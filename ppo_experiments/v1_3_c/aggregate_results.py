@@ -47,7 +47,7 @@ def summarize_training(seed: int) -> dict[str, Any]:
     status = read_json(files["run_status"])
     metrics = read_jsonl(files["training_metrics"])
     manifest = read_json(files["checkpoint_manifest"])
-    sampler = read_json(files["sampler_summary"])
+    sampler = read_json(files["sampler_summary"]) if files["sampler_summary"].is_file() else None
     assert_finite({"resolved": resolved, "metrics": metrics, "sampler": sampler}, f"training.seed{seed}")
 
     expected = {
@@ -141,6 +141,7 @@ def summarize_training(seed: int) -> dict[str, Any]:
         "artifacts": {
             name: {"path": relative(path), "sha256": sha256_file(path)}
             for name, path in files.items()
+            if path.is_file()
         },
     }
 
@@ -252,6 +253,13 @@ def main() -> None:
         "promotion_performed": False,
         "aggregation_script": {"path": relative(Path(__file__)), "sha256": sha256_file(Path(__file__))},
     }
+    infrastructure_path = EXPERIMENT_DIR / "INFRASTRUCTURE_FAILURE.json"
+    if infrastructure_path.is_file():
+        results["infrastructure_failure"] = {
+            "path": relative(infrastructure_path),
+            "sha256": sha256_file(infrastructure_path),
+            "record": read_json(infrastructure_path),
+        }
 
     statuses = [run["status"]["status"] for run in training]
     if any(status == "STOPPED_KL_GUARDRAIL" for status in statuses):
@@ -262,7 +270,13 @@ def main() -> None:
         results["interpretation"] = "A formal physical-Gaussian update exceeded the locked KL guardrail."
     elif statuses != ["COMPLETED"] * len(SEEDS) or not_started:
         results["final_verdict"] = "INVALID_INFRASTRUCTURE"
-        results["interpretation"] = "Formal training did not reach a registered terminal layout."
+        results["interpretation"] = (
+            "The first formal seed was interrupted after U6 by a host-level SIGSEGV in PyTorch "
+            "pt_autograd/libc10. Later seeds and all evaluations were not started. This is an "
+            "infrastructure-invalid result, not a PPO performance failure."
+            if "infrastructure_failure" in results
+            else "Formal training did not reach a registered terminal layout."
+        )
     elif not all(run["process_gate_pass"] for run in training):
         results["final_verdict"] = "FAIL_UPDATE_WINDOW_NOT_REACHED"
         results["interpretation"] = (
