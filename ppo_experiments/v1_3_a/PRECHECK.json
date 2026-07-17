@@ -4,8 +4,8 @@
   "status": "PASS",
   "completed_at": "2026-07-17T17:24:08+08:00",
   "source_head": "0ac292e914f561361035dbab87ca4c8419c3c1ee",
-  "implementation_commit": null,
-  "precheck_lock_parent": null,
+  "implementation_commit": "8a14590aa72448ebfa1689723e0bcd4dcbf2393a",
+  "precheck_lock_parent": "8a14590aa72448ebfa1689723e0bcd4dcbf2393a",
   "authority": {
     "path": "ppo_experiments/v1_3_a/IMPLEMENTATION_GUIDE.md",
     "sha256": "86134d35738ccab89afe773ec235d049396262c5ac04bb3663814f92678941fb"

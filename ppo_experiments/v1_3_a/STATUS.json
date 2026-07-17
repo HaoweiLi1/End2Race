@@ -4,7 +4,7 @@
   "status": "PREREGISTERED",
   "phase": "PREPARATION",
   "source_head": "0ac292e914f561361035dbab87ca4c8419c3c1ee",
-  "implementation_commit": null,
+  "implementation_commit": "8a14590aa72448ebfa1689723e0bcd4dcbf2393a",
   "updated_at": "2026-07-17T17:24:08+08:00",
   "failure_reason": null
 }
