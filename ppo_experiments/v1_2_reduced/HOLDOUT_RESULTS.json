@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "record": "HOLDOUT_RESULTS",
+  "preregistration": "ppo_experiments/v1_2_reduced/HOLDOUT_PREREGISTRATION.json",
+  "completed_at": "2026-07-17T14:55:00+08:00",
+  "device": "A",
+  "source_commit": "67d7fef44253d447fc40c5f746ad7273e5aa146f",
+  "held_out_panel": "austin_600_holdout33",
+  "runs": [
+    {
+      "role": "paired_bc",
+      "model_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+      "evaluation_attempt": "original_valid_attempt",
+      "exit_code": 0,
+      "duration_seconds": 782,
+      "evaluation": {"ego_collision": 32, "follow": 236, "overtake": 332, "opponent_only_collision": 4, "error": 0, "total": 600},
+      "evaluation_result_path": "eval_results/bc_end2race_holdout33_Austin/multiagents/results_multi.json",
+      "evaluation_result_sha256": "ecfc9d40d4422b6bd6eb9ecce10ad71754fc2114f246c124139ddc66b3dda672"
+    },
+    {
+      "role": "candidate",
+      "model_sha256": "0aaba3ba7a58cea70afd2ac5a6428666fef2401f72d4f0e730a9e6115880ddfd",
+      "development_panel_result": {"ego_collision": 15, "follow": 232, "overtake": 353},
+      "evaluation_attempt": "original_valid_attempt",
+      "exit_code": 0,
+      "duration_seconds": 695,
+      "evaluation": {"ego_collision": 37, "follow": 234, "overtake": 329, "opponent_only_collision": 4, "error": 0, "total": 600},
+      "evaluation_result_path": "eval_results/ppo_v1_1_u0002_holdout33_Austin/multiagents/results_multi.json",
+      "evaluation_result_sha256": "6f11f4ecf708ab20ce2c9cbf0e6447aedd6a4579e95ebf3ee9bddd4a17d17d33"
+    }
+  ],
+  "paired_comparison_on_holdout": {
+    "delta_ego_collision": 5,
+    "delta_overtake": -3,
+    "paired_churn": {"fixed_collision": 5, "new_collision": 10, "gained_overtake": 5, "lost_overtake": 8},
+    "note": "The development-panel effect (-6 collision, +7 overtake vs paired BC) not only failed to transfer, it reversed sign. The per-scenario flip counts (5 fixed / 10 new) have the same magnitude and symmetry as the churn measured on all 46 development-panel checkpoints (mean 6.96 fixed / 6.67 new)."
+  },
+  "validity": {
+    "both_runs_valid": true,
+    "rule": "error == 0 and ego_collision + follow + overtake == 600",
+    "bc": "32 + 236 + 332 = 600, error 0",
+    "candidate": "37 + 234 + 329 = 600, error 0"
+  },
+  "preregistered_decision": {
+    "real_improvement_criterion": "candidate_ego_collision <= 28 (bc 32 - 4) AND candidate_overtake >= 316 (ceil(0.95 * 332))",
+    "observed": "candidate_ego_collision = 37, candidate_overtake = 329",
+    "verdict": "CONSISTENT_WITH_CHURN"
+  },
+  "binding_conclusion": [
+    "The best confirmed development actor (V1.1 U2, 15/353) carries no transferable improvement over paired BC. Its development-panel advantage is a selection artifact, as predicted by the churn hypothesis and by CHECKPOINT_DISTRIBUTION_ANALYSIS.json (observed minimum 15 vs expected minimum 14.5 of 46 noise draws).",
+    "Per the preregistered rule this verdict is final for the V1.x micro-LR line: the reduced 22-arm study produced no real improvement, and the line is closed. The two-week exploration outcome is a validated negative result, not a validated actor.",
+    "The austin_600_holdout33 panel is now spent for V1.x: no other V1.x checkpoint may be evaluated on it (one-shot discipline, global across devices A and B).",
+    "Deployment recommendation unchanged from BC: pretrained/end2race.pth remains the best-evidenced actor. posttrained V1.1 checkpoints must not be represented as improvements.",
+    "Consequence for in-flight work: the three running ALS-final seeds (16-update repeats of AH-H0-p50-wr) belong to the closed line; their continuation is a budget decision for the owner, but their results cannot be selected against the development panel under the analysis record's no-further-selection rule."
+  ]
+}

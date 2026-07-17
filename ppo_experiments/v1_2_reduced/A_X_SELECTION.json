@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "stage": "X",
+  "device": "A",
+  "status": "COMPLETED",
+  "source_commit": "910bcc4c3307bb0636987aec6f695eea0569ec62",
+  "source_results": "ppo_experiments/v1_2_reduced/A_X_RESULTS.json",
+  "completed_at": "2026-07-17T03:58:53Z",
+  "common_transition_budgets": [
+    51200,
+    102400
+  ],
+  "checkpoint_rule": [
+    "eligible iff overtake >= 329",
+    "minimize ego_collision",
+    "maximize overtake",
+    "minimize transition_budget"
+  ],
+  "arm_rule": [
+    "selected_checkpoint_missing",
+    "selected_ego_collision",
+    "negative selected_overtake",
+    "median_common_budget_collision",
+    "negative median_common_budget_overtake",
+    "arm_id"
+  ],
+  "deduplication": [
+    {
+      "semantic_key": "current_lr_kl__current_std",
+      "representative_arm_id": "AH-H0-p50-wr",
+      "role_members": [
+        "X0_base",
+        "X1_stage_k_winner"
+      ],
+      "arm_members": [
+        "AH-H0-p50-wr"
+      ],
+      "reason": "Stage K winner is the Stage R base"
+    },
+    {
+      "semantic_key": "current_lr_kl__steer_003_speed_015",
+      "representative_arm_id": "AX-E-transfer",
+      "role_members": [
+        "E_transfer",
+        "K_plus_E"
+      ],
+      "arm_members": [
+        "AX-E-transfer",
+        "AX-K-E"
+      ],
+      "reason": "Stage K winner uses current LR/KL, so both preregistered new arms are semantically identical",
+      "independent_training_runs_completed": 2,
+      "tensor_identical_at_common_checkpoints": true
+    }
+  ],
+  "ranking": [
+    {
+      "rank": 1,
+      "arm_id": "AH-H0-p50-wr",
+      "representative_roles": [
+        "X0_base",
+        "X1_stage_k_winner"
+      ],
+      "deduplicated_arm_ids": [
+        "AH-H0-p50-wr"
+      ],
+      "reused": true,
+      "median_common_budget_collision": 20,
+      "median_common_budget_overtake": 348,
+      "selected_checkpoint": {
+        "checkpoint_path": "runs/ppo/AH-H0-p50-wr_seed20260715/checkpoints/end2race_ppo_AH-H0-p50-wr_u0002_s20260715.pth",
+        "checkpoint_sha256": "e21c31f749bc6eb989cee1e79867b9dd3d053de85cfcfd7f2c0e41822decdce0",
+        "eligible": true,
+        "evaluation": {
+          "ego_collision": 15,
+          "error": 0,
+          "follow": 232,
+          "overtake": 353,
+          "total": 600
+        },
+        "evaluation_attempt": "reused_from_stage_r",
+        "evaluation_result_path": "eval_results/end2race_ppo_AH-H0-p50-wr_u0002_s20260715_Austin/multiagents/results_multi.json",
+        "evaluation_result_sha256": "d579314811a1fb290c1d88034ccaa68f9b31a03805705af6bf67340e73e203a1",
+        "num_workers": 8,
+        "paired_churn": {
+          "fixed_collision": 9,
+          "gained_overtake": 10,
+          "lost_overtake": 3,
+          "new_collision": 3
+        },
+        "transition_budget": 51200,
+        "update": 2
+      }
+    },
+    {
+      "rank": 2,
+      "arm_id": "AX-E-transfer",
+      "representative_roles": [
+        "E_transfer",
+        "K_plus_E"
+      ],
+      "deduplicated_arm_ids": [
+        "AX-E-transfer",
+        "AX-K-E"
+      ],
+      "reused": false,
+      "median_common_budget_collision": 20,
+      "median_common_budget_overtake": 344.5,
+      "selected_checkpoint": {
+        "checkpoint_path": "runs/ppo/AX-E-transfer_seed20260715/checkpoints/end2race_ppo_AX-E-transfer_u0004_s20260715.pth",
+        "checkpoint_sha256": "c0ee904189d3f2e11b2ab3aa80570c459d4ad66a6f1217c7b471d19ee92660a0",
+        "eligible": true,
+        "evaluation": {
+          "ego_collision": 18,
+          "error": 0,
+          "follow": 237,
+          "overtake": 345,
+          "total": 600
+        },
+        "evaluation_attempt": "original_valid_attempt",
+        "evaluation_result_path": "eval_results/end2race_ppo_AX-E-transfer_u0004_s20260715_Austin/multiagents/results_multi.json",
+        "evaluation_result_sha256": "d63b94607831c72db61e906f1903813eef43ea870cb6f3c4d1b02954591c0591",
+        "num_workers": 8,
+        "paired_churn": {
+          "fixed_collision": 8,
+          "gained_overtake": 6,
+          "lost_overtake": 7,
+          "new_collision": 5
+        },
+        "transition_budget": 102400,
+        "update": 4
+      }
+    }
+  ],
+  "winner": {
+    "arm_id": "AH-H0-p50-wr",
+    "config_hash": "85e9ff2fd4981a52e0062b0b464a46e76aada7b4bf21d90b4a62fa114b96e841",
+    "hard_pool_manifest_hash": "d022150627ff66af61e0b600699588181d8b06edf78a5723cf9ee503f89edcc9",
+    "parent_chain": [
+      "AH-H0-p50-wr"
+    ],
+    "resolved_config": {
+      "batch_size": 1600,
+      "bc_checkpoint": "/home/haowei/Documents/End2Race/pretrained/end2race.pth",
+      "checkpoint_updates": [
+        1,
+        2,
+        4
+      ],
+      "clip_range": 0.1,
+      "clip_range_vf": null,
+      "critic_lr": 0.0003,
+      "critic_profile": "C0_RAW_SINGLE_FRAME",
+      "device": "cuda",
+      "ent_coef": 0,
+      "gae_lambda": 0.995,
+      "gamma": 0.999,
+      "gru_lr": 1e-06,
+      "hard_pool": "h0_current_det",
+      "hard_sampling_mode": "with_replacement",
+      "hard_sampling_probability": 0.5,
+      "head_lr": 1e-05,
+      "max_grad_norm": 0.5,
+      "minibatches_per_update": 16,
+      "n_envs": 16,
+      "n_epochs": 1,
+      "n_steps": 1600,
+      "name": "AH-H0-p50-wr",
+      "normalize_advantage": true,
+      "output_dir": "runs/ppo/AH-H0-p50-wr_seed20260715",
+      "seed": 20260715,
+      "sim_duration": 8,
+      "speed_physical_std": 0.15,
+      "steering_latent_std": 0.05,
+      "target_kl": null,
+      "total_optimizer_steps": 64,
+      "transitions_per_update": 25600,
+      "updates": 4,
+      "vf_coef": 0.5
+    },
+    "reused": true,
+    "selected_checkpoint": {
+      "checkpoint_path": "runs/ppo/AH-H0-p50-wr_seed20260715/checkpoints/end2race_ppo_AH-H0-p50-wr_u0002_s20260715.pth",
+      "checkpoint_sha256": "e21c31f749bc6eb989cee1e79867b9dd3d053de85cfcfd7f2c0e41822decdce0",
+      "eligible": true,
+      "evaluation": {
+        "ego_collision": 15,
+        "error": 0,
+        "follow": 232,
+        "overtake": 353,
+        "total": 600
+      },
+      "evaluation_attempt": "reused_from_stage_r",
+      "evaluation_result_path": "eval_results/end2race_ppo_AH-H0-p50-wr_u0002_s20260715_Austin/multiagents/results_multi.json",
+      "evaluation_result_sha256": "d579314811a1fb290c1d88034ccaa68f9b31a03805705af6bf67340e73e203a1",
+      "num_workers": 8,
+      "paired_churn": {
+        "fixed_collision": 9,
+        "gained_overtake": 10,
+        "lost_overtake": 3,
+        "new_collision": 3
+      },
+      "transition_budget": 51200,
+      "update": 2
+    },
+    "selected_parameters": {
+      "hard_pool": "h0_current_det",
+      "hard_sampling_probability": 0.5,
+      "hard_sampling_mode": "with_replacement",
+      "batch_size": 1600,
+      "n_steps": 1600,
+      "gru_lr": 1e-06,
+      "head_lr": 1e-05,
+      "target_kl": null,
+      "steering_latent_std": 0.05,
+      "speed_physical_std": 0.15
+    }
+  }
+}
