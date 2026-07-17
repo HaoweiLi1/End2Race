@@ -1,14 +1,14 @@
 {
   "completed_at": null,
-  "current_phase": "b1_taxonomy",
+  "current_phase": "b2_demonstration_generation",
   "execution_scope": "local_only",
-  "next_action": "B-F0 passed with 21/24 no-collision completions. Build DR_TAXONOMY.json from the existing Route A Phase 0 H0 traces, then apply the guide's deterministic clustered-versus-scattered demonstration-scope rule.",
+  "next_action": "B1 found six clear track clusters covering 16/24 H0 cases. Lock the original-BC-compatible demonstration schema and run planner-ego generation on the selected 24 H0 plus 162 H1 training-side scenarios; discard ego-collision episodes.",
   "owner_approved_at": "2026-07-17T14:01:34+08:00",
   "route_a_trigger": {
     "record": "ppo_experiments/signal_repair/SG_P1_RESULTS.json",
     "status": "CLOSED_KL_GUARDRAIL"
   },
   "schema_version": 1,
-  "source_commit": "066d6fdccc24e6aaa9e1a03613858ccf676cca9e",
-  "status": "B0_PASSED"
+  "source_commit": "51a70ea333b962c4508b895fc311d5ac49112e7d",
+  "status": "B1_CLEAR_CLUSTERED"
 }

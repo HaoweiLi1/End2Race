@@ -1,0 +1,228 @@
+{
+  "artifacts": {
+    "raw_taxonomy": {
+      "path": "runs/ppo/DR_B1_20260717/raw_taxonomy.json",
+      "sha256": "7131a2b495198cfd2b3a797e8ca0185fefdaacdd9f7898e555d0659c0d7cf47d"
+    },
+    "selected_scenarios": {
+      "path": "runs/ppo/DR_B1_20260717/selected_scenarios.json",
+      "sha256": "fe01f648af7f942a793bd1ba390931c93b6e54126ee0251b2881b881fe6ecbbe"
+    }
+  },
+  "clusters": [
+    {
+      "case_count": 3,
+      "cluster_id": "C00",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_range_m": [
+        3.391021200750562,
+        10.22455260151063
+      ],
+      "opp_raceline_distribution": {
+        "raceline1": 2,
+        "raceline2": 1
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 1,
+        "0.6": 1,
+        "0.8": 1
+      },
+      "scenario_ids": [
+        "training-sp46-ego1954-raceline2-v080",
+        "training-sp49-ego2075-raceline1-v050",
+        "training-sp49-ego2075-raceline1-v060"
+      ]
+    },
+    {
+      "case_count": 2,
+      "cluster_id": "C01",
+      "collision_classification_distribution": {
+        "opponent_proximity": 1,
+        "wall_other_or_not_reproduced": 1
+      },
+      "collision_progress_range_m": [
+        35.66250044641785,
+        36.29304328274337
+      ],
+      "opp_raceline_distribution": {
+        "raceline1": 1,
+        "raceline2": 1
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 2
+      },
+      "scenario_ids": [
+        "training-sp03-ego0151-raceline1-v050",
+        "training-sp03-ego0151-raceline2-v050"
+      ]
+    },
+    {
+      "case_count": 3,
+      "cluster_id": "C02",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_range_m": [
+        46.607723491943204,
+        49.05822049209336
+      ],
+      "opp_raceline_distribution": {
+        "raceline1": 1,
+        "raceline2": 2
+      },
+      "opp_speedscale_distribution": {
+        "0.6": 1,
+        "0.8": 2
+      },
+      "scenario_ids": [
+        "training-sp00-ego0021-raceline2-v080",
+        "training-sp02-ego0110-raceline2-v080",
+        "training-sp03-ego0151-raceline1-v060"
+      ]
+    },
+    {
+      "case_count": 3,
+      "cluster_id": "C03",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_range_m": [
+        97.03852450287903,
+        102.51668440906236
+      ],
+      "opp_raceline_distribution": {
+        "raceline0": 3
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 1,
+        "0.6": 1,
+        "0.8": 1
+      },
+      "scenario_ids": [
+        "training-sp07-ego0319-raceline0-v080",
+        "training-sp10-ego0440-raceline0-v050",
+        "training-sp10-ego0440-raceline0-v060"
+      ]
+    },
+    {
+      "case_count": 3,
+      "cluster_id": "C04",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_range_m": [
+        148.09619092770913,
+        148.83185259066266
+      ],
+      "opp_raceline_distribution": {
+        "raceline0": 1,
+        "raceline2": 2
+      },
+      "opp_speedscale_distribution": {
+        "0.7": 2,
+        "0.8": 1
+      },
+      "scenario_ids": [
+        "training-sp14-ego0613-raceline0-v080",
+        "training-sp15-ego0650-raceline2-v070",
+        "training-sp16-ego0692-raceline2-v070"
+      ]
+    },
+    {
+      "case_count": 2,
+      "cluster_id": "C05",
+      "collision_classification_distribution": {
+        "opponent_proximity": 2
+      },
+      "collision_progress_range_m": [
+        293.127765760195,
+        298.77594390183987
+      ],
+      "opp_raceline_distribution": {
+        "raceline0": 1,
+        "raceline1": 1
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 1,
+        "0.7": 1
+      },
+      "scenario_ids": [
+        "training-sp32-ego1356-raceline1-v050",
+        "training-sp33-ego1404-raceline0-v070"
+      ]
+    }
+  ],
+  "completed_at": "2026-07-17T14:31:27+08:00",
+  "decision": {
+    "cluster_count": 6,
+    "clustered_case_count": 16,
+    "minimum_clustered_case_count": 12,
+    "not_reproduced_count": 2,
+    "reproduced_collision_count": 22,
+    "result": "CLEAR_CLUSTERED",
+    "scatter_case_count": 8,
+    "total_case_count": 24
+  },
+  "execution_scope": "local_only",
+  "focused_scope": {
+    "h0_count": 24,
+    "h1_count": 162,
+    "h1_distributions": {
+      "interval_idx": {
+        "8": 46,
+        "10": 36,
+        "12": 31,
+        "15": 49
+      },
+      "opp_raceline": {
+        "raceline0": 78,
+        "raceline1": 36,
+        "raceline2": 48
+      },
+      "opp_speedscale": {
+        "0.45": 23,
+        "0.5": 17,
+        "0.55": 11,
+        "0.6": 10,
+        "0.65": 7,
+        "0.7": 13,
+        "0.75": 22,
+        "0.8": 35,
+        "0.85": 24
+      }
+    },
+    "source_startpoint_ordinals": [
+      0,
+      2,
+      3,
+      7,
+      10,
+      14,
+      15,
+      16,
+      32,
+      33,
+      46,
+      49
+    ],
+    "total_count": 186
+  },
+  "preregistration": {
+    "commit": "51a70ea333b962c4508b895fc311d5ac49112e7d",
+    "path": "ppo_experiments/demo_repair/DR_PREREGISTRATION.json"
+  },
+  "scatter_cases": [
+    "training-sp01-ego0063-raceline2-v080",
+    "training-sp02-ego0110-raceline0-v080",
+    "training-sp13-ego0571-raceline1-v050",
+    "training-sp24-ego1032-raceline0-v080",
+    "training-sp24-ego1032-raceline2-v070",
+    "training-sp30-ego1272-raceline0-v070",
+    "training-sp35-ego1488-raceline1-v060",
+    "training-sp37-ego1567-raceline1-v060"
+  ],
+  "schema_version": 1,
+  "source_commit": "51a70ea333b962c4508b895fc311d5ac49112e7d"
+}
