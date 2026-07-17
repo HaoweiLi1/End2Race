@@ -1,0 +1,10 @@
+{
+  "completed_at": null,
+  "current_phase": "phase0",
+  "execution_scope": "local_only",
+  "next_action": "Run the preregistered 24 H0 and 30 safe canonical-BC trace replays.",
+  "owner_approved_at": "2026-07-17T14:01:34+08:00",
+  "schema_version": 1,
+  "source_commit": "dcccc33f83f9b25fbd9b18a975f45da2126a74aa",
+  "status": "P0_PREREGISTERED"
+}
