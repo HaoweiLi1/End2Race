@@ -338,10 +338,16 @@ def _gradient_shard(
         }
         if candidate == "C0_CURRENT":
             p1_gae = p1_source["gae_combined"]
-            records[candidate]["exact_p1_reproduction"] = {
+            reproduction = {
                 "gradient_cosine": _cosine(combined.double(), p1_gae.double()),
                 "max_abs_difference": float(torch.max(torch.abs(combined - p1_gae)).item()),
             }
+            records[candidate]["exact_p1_reproduction"] = reproduction
+            if (
+                float(reproduction["gradient_cosine"]) < 0.999999
+                or float(reproduction["max_abs_difference"]) > 1.0e-5
+            ):
+                raise RuntimeError(f"P3 C0 failed to reproduce the P1 shard gradient: {reproduction}")
     del flat_by_candidate, accumulators
     torch.cuda.empty_cache()
     torch.backends.cudnn.enabled = True
