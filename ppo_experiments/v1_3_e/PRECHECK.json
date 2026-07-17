@@ -2,13 +2,14 @@
   "schema_version": 1,
   "record": "PPO_V1_3_E_PRECHECK",
   "status": "PASS",
-  "completed_at": "2026-07-17T19:17:38+08:00",
+  "protocol_revision": 2,
+  "completed_at": "2026-07-17T19:51:37+08:00",
   "source_v1_3_d_terminal_commit": "cc258b663f22aee5f24d58537bb20b396140211b",
-  "implementation_commit": "12a8a2a849045c67a173eacb337b88eedfe40343",
-  "precheck_lock_parent": "12a8a2a849045c67a173eacb337b88eedfe40343",
+  "implementation_commit": "ba696ddcea02cf0ae05648f414f50f53ef9e1f5f",
+  "precheck_lock_parent": "ba696ddcea02cf0ae05648f414f50f53ef9e1f5f",
   "authority": {
     "path": "ppo_experiments/v1_3_e/IMPLEMENTATION_GUIDE.md",
-    "sha256": "1ecbf9f5acfb1d326305eb482ea20a4465d2df0f0eccc0a56abe4e9b4b71c352"
+    "sha256": "f1c9424e3950bc94a2092cf9f7aaefe732de2a75b7a8606220399941f6e49802"
   },
   "v1_3_d_terminal_evidence": {
     "path": "ppo_experiments/v1_3_d/RESULTS.json",
@@ -39,15 +40,36 @@
     "torch_cuda_device_count": 0,
     "status": "PASS"
   },
+  "revision_1_preflight": {
+    "record_path": "ppo_experiments/v1_3_e/ABORTED_PREFLIGHT.json",
+    "sha256": "dd3c511f08df2742274b2e6494e90c16e57d33033abe1f0e7446946840ec6271",
+    "status": "ABORTED_BEFORE_AGGREGATION",
+    "completed_bc_rows": 200,
+    "candidate_evaluations": 0,
+    "scientific_result_consumed": false
+  },
+  "persistent_pool_smoke": {
+    "formal": false,
+    "scenarios": 4,
+    "workers": 2,
+    "elapsed_seconds": 17,
+    "error": 0,
+    "torch_num_threads_per_worker": 1,
+    "outcomes_exactly_match_historical_cpu_rows": true,
+    "final_relative_position_bitwise_equal_rows": 4,
+    "status": "PASS"
+  },
   "hashes": {
     "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
     "evaluate.sh": "be774b398d63725a4ac9329816c79c68f673e3d60f11793b53cfff5fcfceee4a",
     "eval_multiagent.py": "56cb38aaa6f6b1362ef27bdf5a162410b0d27f9e310c8f9f5c12e13e1e73550e",
     "utils.py": "77459621bf6af7fa8726ba4182fe28f3c4f4c5ebabf0f876553534dfcb95edfe",
-    "ppo_experiments/v1_3_e/IMPLEMENTATION_GUIDE.md": "1ecbf9f5acfb1d326305eb482ea20a4465d2df0f0eccc0a56abe4e9b4b71c352",
+    "ppo_experiments/v1_3_e/IMPLEMENTATION_GUIDE.md": "f1c9424e3950bc94a2092cf9f7aaefe732de2a75b7a8606220399941f6e49802",
     "ppo_experiments/v1_3_e/PROTOCOL_DIAGNOSIS.json": "ec4250bbe86a43207de14636c64a9c621e6fd3b567adda4e845cd7e0d103c72f",
-    "ppo_experiments/v1_3_e/PREREGISTRATION.json": "6da756532e015fec2c3d906f84480f0d6ceefb77bac3afac071acdd48491bd62",
-    "ppo_experiments/v1_3_e/aggregate_results.py": "de2100c4c70d104f8a13db4cff1a665132347ae4b5158092cb5367ec3a687d23"
+    "ppo_experiments/v1_3_e/PREREGISTRATION.json": "50416bf1a074147285f63699a0c747f76df24172b19eaa8b5582f26c742ecfc1",
+    "ppo_experiments/v1_3_e/ABORTED_PREFLIGHT.json": "dd3c511f08df2742274b2e6494e90c16e57d33033abe1f0e7446946840ec6271",
+    "ppo_experiments/v1_3_e/evaluate_cpu_pool.py": "b4d15e29b6f27727ffe985bd51d90d7c8ef3f0e409b5f00551830cd636225901",
+    "ppo_experiments/v1_3_e/aggregate_results.py": "ee7b683f000c23fd6b3749c9410a49ec5deffad4489715896399636e890ba3f0"
   },
   "historical_cpu_reference": {
     "commit": "228ff08f3210bc54cbd107216ba9b9a2646cd022",
@@ -59,6 +81,8 @@
   "static_validation": {
     "json_parse": "PASS",
     "python_compile": "PASS",
+    "persistent_pool_smoke": "PASS",
+    "historical_row_exactness_smoke": "4/4 PASS",
     "git_diff_check": "PASS",
     "formal_output_paths_absent": true,
     "worktree_clean_before_precheck_creation": true
