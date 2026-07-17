@@ -228,125 +228,158 @@ def _quantile_summary(values: list[float]) -> dict[str, float] | None:
     }
 
 
+def _pulse_template(row: dict[str, Any]) -> tuple[str, float]:
+    """A pulse template includes both its physical offset and fixed duration."""
+
+    return str(row["pulse_id"]), float(row["duration_seconds"])
+
+
+def _pulse_template_id(template: tuple[str, float]) -> str:
+    pulse_id, duration_seconds = template
+    return f"{pulse_id}__D{int(round(duration_seconds * 1000)):03d}MS"
+
+
 def main() -> None:
     started = time.monotonic()
     frozen_hashes = assert_frozen_contract()
     preregistration = read_json(PREREGISTRATION_PATH)
     safe_reference = read_json(EXPERIMENT_DIR / "SAFE_REFERENCE.json")
-    device = torch.device("cuda")
-    if not torch.cuda.is_available():
-        raise RuntimeError("P2 requires CUDA")
-    set_determinism(SEED)
-    actor = load_actor(device)
-    provider = FixedScenarioProvider()
-    env = make_env(provider, SEED)
-    h0_scenarios, _h0_ids, _h0_manifest = load_hard_pool("h0_current_det")
-    baseline_rows: dict[str, dict[str, Any]] = {}
-    collision_rows: list[dict[str, Any]] = []
-    safe_rows: list[dict[str, Any]] = []
-    try:
-        for index, scenario in enumerate(h0_scenarios, start=1):
-            baseline = _run_episode(
-                env,
-                provider,
-                actor,
-                scenario,
-                device,
-                branch_start_step=None,
-                duration_steps=0,
-                pulse_id="NO_OP",
-                steering_offset=0.0,
-                speed_offset=0.0,
-            )
-            baseline_rows[scenario.scenario_id] = baseline
-            print(f"P2_H0_BASELINE {index}/24 outcome={baseline['outcome']}", flush=True)
-            if not baseline["ego_collision"]:
-                continue
-            collision_steps = int(baseline["steps"])
-            for branch_seconds in BRANCH_SECONDS:
-                branch_start_step = collision_steps - int(round(branch_seconds / TIMESTEP))
-                if branch_start_step < 0:
-                    collision_rows.append(
-                        {
-                            "scenario_id": scenario.scenario_id,
-                            "branch_seconds_before_collision": branch_seconds,
-                            "status": "BRANCH_BEFORE_EPISODE_START",
-                        }
-                    )
-                    continue
-                for duration_seconds in DURATION_SECONDS:
-                    duration_steps = int(round(duration_seconds / TIMESTEP))
-                    for pulse_id, steering_offset, speed_offset in PULSES:
-                        row = _run_episode(
-                            env,
-                            provider,
-                            actor,
-                            scenario,
-                            device,
-                            branch_start_step=branch_start_step,
-                            duration_steps=duration_steps,
-                            pulse_id=pulse_id,
-                            steering_offset=steering_offset,
-                            speed_offset=speed_offset,
-                        )
-                        row["branch_seconds_before_collision"] = branch_seconds
-                        row["duration_seconds"] = duration_seconds
-                        row["status"] = "COMPLETED"
-                        collision_rows.append(row)
-                print(
-                    f"P2_COLLISION_BRANCH scenario={scenario.scenario_id} "
-                    f"branch_seconds={branch_seconds}",
-                    flush=True,
-                )
-
-        harm_scenarios = _safe_harm_scenarios(safe_reference)
-        for scenario_index, scenario in enumerate(harm_scenarios, start=1):
-            for branch_seconds in BRANCH_SECONDS:
-                branch_start_step = int(round((8.0 - branch_seconds) / TIMESTEP))
-                for duration_seconds in DURATION_SECONDS:
-                    duration_steps = int(round(duration_seconds / TIMESTEP))
-                    for pulse_id, steering_offset, speed_offset in PULSES:
-                        row = _run_episode(
-                            env,
-                            provider,
-                            actor,
-                            scenario,
-                            device,
-                            branch_start_step=branch_start_step,
-                            duration_steps=duration_steps,
-                            pulse_id=pulse_id,
-                            steering_offset=steering_offset,
-                            speed_offset=speed_offset,
-                        )
-                        row["branch_seconds_before_timeout"] = branch_seconds
-                        row["duration_seconds"] = duration_seconds
-                        safe_rows.append(row)
-            print(f"P2_SAFE_HARM scenario={scenario_index}/24 id={scenario.scenario_id}", flush=True)
-    finally:
-        env.close()
-
-    raw_record = {
-        "schema_version": 1,
-        "record": "P2_COUNTERFACTUAL_RAW_BRANCHES",
-        "h0_baselines": baseline_rows,
-        "collision_branches": collision_rows,
-        "safe_harm_branches": safe_rows,
-    }
     raw_path = RUN_DIR / "p2" / "counterfactual_branches.json"
-    write_json_atomic(raw_path, raw_record)
+    result_path = EXPERIMENT_DIR / "P2_COUNTERFACTUAL_ACTIONABILITY.json"
+    previous_result = read_json(result_path) if result_path.is_file() else None
+    previous_result_sha256 = sha256_file(result_path) if result_path.is_file() else None
+    if raw_path.is_file():
+        if (
+            previous_result is not None
+            and sha256_file(raw_path) != previous_result["raw_branches"]["sha256"]
+        ):
+            raise RuntimeError("P2 resumable raw record hash does not match the previous result")
+        raw_record = read_json(raw_path)
+        baseline_rows = raw_record["h0_baselines"]
+        collision_rows = raw_record["collision_branches"]
+        safe_rows = raw_record["safe_harm_branches"]
+        if len(baseline_rows) != 24 or len(safe_rows) != 2592:
+            raise RuntimeError("P2 resumable raw record has invalid panel counts")
+        print(
+            f"P2_RAW_RESUME collision_rows={len(collision_rows)} safe_rows={len(safe_rows)}",
+            flush=True,
+        )
+    else:
+        device = torch.device("cuda")
+        if not torch.cuda.is_available():
+            raise RuntimeError("P2 requires CUDA")
+        set_determinism(SEED)
+        actor = load_actor(device)
+        provider = FixedScenarioProvider()
+        env = make_env(provider, SEED)
+        h0_scenarios, _h0_ids, _h0_manifest = load_hard_pool("h0_current_det")
+        baseline_rows = {}
+        collision_rows = []
+        safe_rows = []
+        try:
+            for index, scenario in enumerate(h0_scenarios, start=1):
+                baseline = _run_episode(
+                    env,
+                    provider,
+                    actor,
+                    scenario,
+                    device,
+                    branch_start_step=None,
+                    duration_steps=0,
+                    pulse_id="NO_OP",
+                    steering_offset=0.0,
+                    speed_offset=0.0,
+                )
+                baseline_rows[scenario.scenario_id] = baseline
+                print(f"P2_H0_BASELINE {index}/24 outcome={baseline['outcome']}", flush=True)
+                if not baseline["ego_collision"]:
+                    continue
+                collision_steps = int(baseline["steps"])
+                for branch_seconds in BRANCH_SECONDS:
+                    branch_start_step = collision_steps - int(round(branch_seconds / TIMESTEP))
+                    if branch_start_step < 0:
+                        collision_rows.append(
+                            {
+                                "scenario_id": scenario.scenario_id,
+                                "branch_seconds_before_collision": branch_seconds,
+                                "status": "BRANCH_BEFORE_EPISODE_START",
+                            }
+                        )
+                        continue
+                    for duration_seconds in DURATION_SECONDS:
+                        duration_steps = int(round(duration_seconds / TIMESTEP))
+                        for pulse_id, steering_offset, speed_offset in PULSES:
+                            row = _run_episode(
+                                env,
+                                provider,
+                                actor,
+                                scenario,
+                                device,
+                                branch_start_step=branch_start_step,
+                                duration_steps=duration_steps,
+                                pulse_id=pulse_id,
+                                steering_offset=steering_offset,
+                                speed_offset=speed_offset,
+                            )
+                            row["branch_seconds_before_collision"] = branch_seconds
+                            row["duration_seconds"] = duration_seconds
+                            row["status"] = "COMPLETED"
+                            collision_rows.append(row)
+                    print(
+                        f"P2_COLLISION_BRANCH scenario={scenario.scenario_id} "
+                        f"branch_seconds={branch_seconds}",
+                        flush=True,
+                    )
 
-    safe_by_template: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            harm_scenarios = _safe_harm_scenarios(safe_reference)
+            for scenario_index, scenario in enumerate(harm_scenarios, start=1):
+                for branch_seconds in BRANCH_SECONDS:
+                    branch_start_step = int(round((8.0 - branch_seconds) / TIMESTEP))
+                    for duration_seconds in DURATION_SECONDS:
+                        duration_steps = int(round(duration_seconds / TIMESTEP))
+                        for pulse_id, steering_offset, speed_offset in PULSES:
+                            row = _run_episode(
+                                env,
+                                provider,
+                                actor,
+                                scenario,
+                                device,
+                                branch_start_step=branch_start_step,
+                                duration_steps=duration_steps,
+                                pulse_id=pulse_id,
+                                steering_offset=steering_offset,
+                                speed_offset=speed_offset,
+                            )
+                            row["branch_seconds_before_timeout"] = branch_seconds
+                            row["duration_seconds"] = duration_seconds
+                            safe_rows.append(row)
+                print(f"P2_SAFE_HARM scenario={scenario_index}/24 id={scenario.scenario_id}", flush=True)
+        finally:
+            env.close()
+        raw_record = {
+            "schema_version": 1,
+            "record": "P2_COUNTERFACTUAL_RAW_BRANCHES",
+            "h0_baselines": baseline_rows,
+            "collision_branches": collision_rows,
+            "safe_harm_branches": safe_rows,
+        }
+        write_json_atomic(raw_path, raw_record)
+
+    safe_by_template: dict[tuple[str, float], list[dict[str, Any]]] = defaultdict(list)
     for row in safe_rows:
-        safe_by_template[row["pulse_id"]].append(row)
+        safe_by_template[_pulse_template(row)].append(row)
     template_harm: dict[str, Any] = {}
-    usable_pulses: set[str] = set()
-    for pulse_id, rows in sorted(safe_by_template.items()):
+    usable_templates: set[tuple[str, float]] = set()
+    for template, rows in sorted(safe_by_template.items()):
+        pulse_id, duration_seconds = template
         harmed_scenarios = sorted({row["scenario_id"] for row in rows if row["ego_collision"]})
         harm_rate = len(harmed_scenarios) / 24.0
         usable = harm_rate < 0.05
         if usable:
-            usable_pulses.add(pulse_id)
-        template_harm[pulse_id] = {
+            usable_templates.add(template)
+        template_harm[_pulse_template_id(template)] = {
+            "pulse_id": pulse_id,
+            "duration_seconds": duration_seconds,
             "trials": len(rows),
             "harmed_scenario_count": len(harmed_scenarios),
             "harmed_scenario_ids": harmed_scenarios,
@@ -371,7 +404,7 @@ def main() -> None:
         usable_safe = [
             row
             for row in by_collision_case[scenario_id]
-            if row["pulse_id"] in usable_pulses and not row["ego_collision"]
+            if _pulse_template(row) in usable_templates and not row["ego_collision"]
         ]
         repairs = bool(usable_safe)
         if repairs:
@@ -443,8 +476,19 @@ def main() -> None:
         "h0_not_reproduced_ids": sorted(set(baseline_rows) - set(reproduced_ids)),
         "safe_harm_panel_ids": [scenario.scenario_id for scenario in _safe_harm_scenarios(safe_reference)],
         "safe_harm_panel_contract": "first 12 preregistered safe_overtake plus first 12 preregistered safe_follow rows",
+        "pulse_template_definition": (
+            "physical offset identity plus fixed duration; branch placement is a repeated trial of the same template"
+        ),
         "safe_template_harm": template_harm,
-        "usable_pulse_ids": sorted(usable_pulses),
+        "usable_pulse_ids": sorted({pulse_id for pulse_id, _duration in usable_templates}),
+        "usable_pulse_templates": [
+            {
+                "template_id": _pulse_template_id(template),
+                "pulse_id": template[0],
+                "duration_seconds": template[1],
+            }
+            for template in sorted(usable_templates)
+        ],
         "repairable_case_count": repairable_count,
         "repairable_fraction": repairable_fraction,
         "best_safe_return_above_noop_count": best_return_above_noop_count,
@@ -473,8 +517,29 @@ def main() -> None:
             "safe_harm_branch_rows": len(safe_rows),
         },
         "probability_definition": "For each nonzero pulse dimension, use the one-sided Gaussian tail at the achieved signed latent/physical z magnitude; multiply dimensions and iid pulse steps. This is an at-least-as-extreme directional occurrence probability, not a continuous-action point probability.",
-        "elapsed_seconds": float(time.monotonic() - started),
+        "aggregation_revision": {
+            "revision": 2,
+            "superseded_result_sha256": previous_result_sha256,
+            "superseded_verdict": None if previous_result is None else previous_result.get("verdict"),
+            "reason": (
+                "Completion audit found that revision 1 collapsed 0.25 s and 0.50 s pulses into one "
+                "family, although duration is part of the guide's pulse specification. Revision 2 "
+                "uses offset plus duration as the template; raw branches and all thresholds are unchanged."
+            ),
+            "raw_branches_reused": previous_result is not None,
+        },
+        "collection_elapsed_seconds": (
+            float(previous_result["elapsed_seconds"])
+            if previous_result is not None
+            else float(time.monotonic() - started)
+        ),
+        "aggregation_elapsed_seconds": float(time.monotonic() - started),
     }
+    result["elapsed_seconds"] = (
+        result["collection_elapsed_seconds"] + result["aggregation_elapsed_seconds"]
+        if previous_result is not None
+        else result["collection_elapsed_seconds"]
+    )
     write_json_atomic(EXPERIMENT_DIR / "P2_COUNTERFACTUAL_ACTIONABILITY.json", result)
     print(
         f"P2_COMPLETE verdict={verdict} reproduced={reproduced_count} "
