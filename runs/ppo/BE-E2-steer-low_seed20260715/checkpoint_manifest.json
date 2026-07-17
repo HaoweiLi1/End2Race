@@ -1,0 +1,16 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_BE-E2-steer-low_u0002_s20260715.pth",
+      "sha256": "b4eccee68b7c8c15e641ec329e75aac06d4c037f54d97d676653f737e217ddfb",
+      "update": 2
+    },
+    {
+      "path": "checkpoints/end2race_ppo_BE-E2-steer-low_u0004_s20260715.pth",
+      "sha256": "98fa34850cff1f710a57434841602cbea3ed958aa438657f9179bb251ccdad40",
+      "update": 4
+    }
+  ],
+  "config": "BE-E2-steer-low",
+  "seed": 20260715
+}

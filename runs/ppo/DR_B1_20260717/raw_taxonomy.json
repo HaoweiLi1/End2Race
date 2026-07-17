@@ -1,0 +1,454 @@
+{
+  "case_count": 24,
+  "cases": [
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 49.05822049209336,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e21_o42_s0.8.npz",
+      "scenario_id": "training-sp00-ego0021-raceline2-v080",
+      "source_ego_idx": 21,
+      "source_startpoint_ordinal": 0,
+      "track_cluster": "C02"
+    },
+    {
+      "collision_classification": "not_reproduced",
+      "collision_progress_m": null,
+      "ego_collision_reproduced": false,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e63_o84_s0.8.npz",
+      "scenario_id": "training-sp01-ego0063-raceline2-v080",
+      "source_ego_idx": 63,
+      "source_startpoint_ordinal": 1,
+      "track_cluster": "NOT_REPRODUCED_06"
+    },
+    {
+      "collision_classification": "not_reproduced",
+      "collision_progress_m": null,
+      "ego_collision_reproduced": false,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e110_o119_s0.8.npz",
+      "scenario_id": "training-sp02-ego0110-raceline0-v080",
+      "source_ego_idx": 110,
+      "source_startpoint_ordinal": 2,
+      "track_cluster": "NOT_REPRODUCED_07"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 48.9630136404702,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e110_o131_s0.8.npz",
+      "scenario_id": "training-sp02-ego0110-raceline2-v080",
+      "source_ego_idx": 110,
+      "source_startpoint_ordinal": 2,
+      "track_cluster": "C02"
+    },
+    {
+      "collision_classification": "wall_other_or_not_reproduced",
+      "collision_progress_m": 35.66250044641785,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.5,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e151_o166_s0.5.npz",
+      "scenario_id": "training-sp03-ego0151-raceline1-v050",
+      "source_ego_idx": 151,
+      "source_startpoint_ordinal": 3,
+      "track_cluster": "C01"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 46.607723491943204,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.6,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e151_o166_s0.6.npz",
+      "scenario_id": "training-sp03-ego0151-raceline1-v060",
+      "source_ego_idx": 151,
+      "source_startpoint_ordinal": 3,
+      "track_cluster": "C02"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 36.29304328274337,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.5,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e151_o172_s0.5.npz",
+      "scenario_id": "training-sp03-ego0151-raceline2-v050",
+      "source_ego_idx": 151,
+      "source_startpoint_ordinal": 3,
+      "track_cluster": "C01"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 97.03852450287903,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e319_o328_s0.8.npz",
+      "scenario_id": "training-sp07-ego0319-raceline0-v080",
+      "source_ego_idx": 319,
+      "source_startpoint_ordinal": 7,
+      "track_cluster": "C03"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 101.4023896660566,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.5,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e440_o450_s0.5.npz",
+      "scenario_id": "training-sp10-ego0440-raceline0-v050",
+      "source_ego_idx": 440,
+      "source_startpoint_ordinal": 10,
+      "track_cluster": "C03"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 102.51668440906236,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.6,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e440_o450_s0.6.npz",
+      "scenario_id": "training-sp10-ego0440-raceline0-v060",
+      "source_ego_idx": 440,
+      "source_startpoint_ordinal": 10,
+      "track_cluster": "C03"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 135.58649492040303,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.5,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e571_o586_s0.5.npz",
+      "scenario_id": "training-sp13-ego0571-raceline1-v050",
+      "source_ego_idx": 571,
+      "source_startpoint_ordinal": 13,
+      "track_cluster": "SCATTER_00"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 148.09619092770913,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e613_o622_s0.8.npz",
+      "scenario_id": "training-sp14-ego0613-raceline0-v080",
+      "source_ego_idx": 613,
+      "source_startpoint_ordinal": 14,
+      "track_cluster": "C04"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 148.4791208884269,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.7,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e650_o670_s0.7.npz",
+      "scenario_id": "training-sp15-ego0650-raceline2-v070",
+      "source_ego_idx": 650,
+      "source_startpoint_ordinal": 15,
+      "track_cluster": "C04"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 148.83185259066266,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.7,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e692_o710_s0.7.npz",
+      "scenario_id": "training-sp16-ego0692-raceline2-v070",
+      "source_ego_idx": 692,
+      "source_startpoint_ordinal": 16,
+      "track_cluster": "C04"
+    },
+    {
+      "collision_classification": "wall_other_or_not_reproduced",
+      "collision_progress_m": 238.80525795883466,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e1032_o1036_s0.8.npz",
+      "scenario_id": "training-sp24-ego1032-raceline0-v080",
+      "source_ego_idx": 1032,
+      "source_startpoint_ordinal": 24,
+      "track_cluster": "SCATTER_02"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 219.44672373577217,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.7,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e1032_o1059_s0.7.npz",
+      "scenario_id": "training-sp24-ego1032-raceline2-v070",
+      "source_ego_idx": 1032,
+      "source_startpoint_ordinal": 24,
+      "track_cluster": "SCATTER_01"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 277.2307999051016,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.7,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e1272_o1268_s0.7.npz",
+      "scenario_id": "training-sp30-ego1272-raceline0-v070",
+      "source_ego_idx": 1272,
+      "source_startpoint_ordinal": 30,
+      "track_cluster": "SCATTER_03"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 293.127765760195,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.5,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e1356_o1371_s0.5.npz",
+      "scenario_id": "training-sp32-ego1356-raceline1-v050",
+      "source_ego_idx": 1356,
+      "source_startpoint_ordinal": 32,
+      "track_cluster": "C05"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 298.77594390183987,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.7,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol0_e1404_o1407_s0.7.npz",
+      "scenario_id": "training-sp33-ego1404-raceline0-v070",
+      "source_ego_idx": 1404,
+      "source_startpoint_ordinal": 33,
+      "track_cluster": "C05"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 312.6103276689842,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.6,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e1488_o1503_s0.6.npz",
+      "scenario_id": "training-sp35-ego1488-raceline1-v060",
+      "source_ego_idx": 1488,
+      "source_startpoint_ordinal": 35,
+      "track_cluster": "SCATTER_04"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 328.6813563117418,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.6,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e1567_o1582_s0.6.npz",
+      "scenario_id": "training-sp37-ego1567-raceline1-v060",
+      "source_ego_idx": 1567,
+      "source_startpoint_ordinal": 37,
+      "track_cluster": "SCATTER_05"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 3.391021200750562,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline2",
+      "opp_speedscale": 0.8,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol2_e1954_o1988_s0.8.npz",
+      "scenario_id": "training-sp46-ego1954-raceline2-v080",
+      "source_ego_idx": 1954,
+      "source_startpoint_ordinal": 46,
+      "track_cluster": "C00"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 6.2776804962482196,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.5,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e2075_o2090_s0.5.npz",
+      "scenario_id": "training-sp49-ego2075-raceline1-v050",
+      "source_ego_idx": 2075,
+      "source_startpoint_ordinal": 49,
+      "track_cluster": "C00"
+    },
+    {
+      "collision_classification": "opponent_proximity",
+      "collision_progress_m": 10.22455260151063,
+      "ego_collision_reproduced": true,
+      "opp_raceline": "raceline1",
+      "opp_speedscale": 0.6,
+      "phase0_trace_path": "eval_results/end2race_Austin/multiagents/traces/ol1_e2075_o2090_s0.6.npz",
+      "scenario_id": "training-sp49-ego2075-raceline1-v060",
+      "source_ego_idx": 2075,
+      "source_startpoint_ordinal": 49,
+      "track_cluster": "C00"
+    }
+  ],
+  "clustered_case_count": 16,
+  "clusters": [
+    {
+      "case_count": 3,
+      "cluster_id": "C00",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_max_m": 10.22455260151063,
+      "collision_progress_min_m": 3.391021200750562,
+      "opp_raceline_distribution": {
+        "raceline1": 2,
+        "raceline2": 1
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 1,
+        "0.6": 1,
+        "0.8": 1
+      },
+      "scenario_ids": [
+        "training-sp46-ego1954-raceline2-v080",
+        "training-sp49-ego2075-raceline1-v050",
+        "training-sp49-ego2075-raceline1-v060"
+      ]
+    },
+    {
+      "case_count": 2,
+      "cluster_id": "C01",
+      "collision_classification_distribution": {
+        "opponent_proximity": 1,
+        "wall_other_or_not_reproduced": 1
+      },
+      "collision_progress_max_m": 36.29304328274337,
+      "collision_progress_min_m": 35.66250044641785,
+      "opp_raceline_distribution": {
+        "raceline1": 1,
+        "raceline2": 1
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 2
+      },
+      "scenario_ids": [
+        "training-sp03-ego0151-raceline1-v050",
+        "training-sp03-ego0151-raceline2-v050"
+      ]
+    },
+    {
+      "case_count": 3,
+      "cluster_id": "C02",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_max_m": 49.05822049209336,
+      "collision_progress_min_m": 46.607723491943204,
+      "opp_raceline_distribution": {
+        "raceline1": 1,
+        "raceline2": 2
+      },
+      "opp_speedscale_distribution": {
+        "0.6": 1,
+        "0.8": 2
+      },
+      "scenario_ids": [
+        "training-sp00-ego0021-raceline2-v080",
+        "training-sp02-ego0110-raceline2-v080",
+        "training-sp03-ego0151-raceline1-v060"
+      ]
+    },
+    {
+      "case_count": 3,
+      "cluster_id": "C03",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_max_m": 102.51668440906236,
+      "collision_progress_min_m": 97.03852450287903,
+      "opp_raceline_distribution": {
+        "raceline0": 3
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 1,
+        "0.6": 1,
+        "0.8": 1
+      },
+      "scenario_ids": [
+        "training-sp07-ego0319-raceline0-v080",
+        "training-sp10-ego0440-raceline0-v050",
+        "training-sp10-ego0440-raceline0-v060"
+      ]
+    },
+    {
+      "case_count": 3,
+      "cluster_id": "C04",
+      "collision_classification_distribution": {
+        "opponent_proximity": 3
+      },
+      "collision_progress_max_m": 148.83185259066266,
+      "collision_progress_min_m": 148.09619092770913,
+      "opp_raceline_distribution": {
+        "raceline0": 1,
+        "raceline2": 2
+      },
+      "opp_speedscale_distribution": {
+        "0.7": 2,
+        "0.8": 1
+      },
+      "scenario_ids": [
+        "training-sp14-ego0613-raceline0-v080",
+        "training-sp15-ego0650-raceline2-v070",
+        "training-sp16-ego0692-raceline2-v070"
+      ]
+    },
+    {
+      "case_count": 2,
+      "cluster_id": "C05",
+      "collision_classification_distribution": {
+        "opponent_proximity": 2
+      },
+      "collision_progress_max_m": 298.77594390183987,
+      "collision_progress_min_m": 293.127765760195,
+      "opp_raceline_distribution": {
+        "raceline0": 1,
+        "raceline1": 1
+      },
+      "opp_speedscale_distribution": {
+        "0.5": 1,
+        "0.7": 1
+      },
+      "scenario_ids": [
+        "training-sp32-ego1356-raceline1-v050",
+        "training-sp33-ego1404-raceline0-v070"
+      ]
+    }
+  ],
+  "decision": "CLEAR_CLUSTERED",
+  "epsilon_m": 8.382485,
+  "focused_source_startpoint_ordinals": [
+    0,
+    2,
+    3,
+    7,
+    10,
+    14,
+    15,
+    16,
+    32,
+    33,
+    46,
+    49
+  ],
+  "minimum_clustered_case_count": 12,
+  "not_reproduced_count": 2,
+  "reproduced_collision_count": 22,
+  "scatter_case_count": 8,
+  "schema_version": 1,
+  "selected_h0_count": 24,
+  "selected_h1_count": 162,
+  "selected_scenarios_path": "runs/ppo/DR_B1_20260717/selected_scenarios.json",
+  "selected_scenarios_sha256": "fe01f648af7f942a793bd1ba390931c93b6e54126ee0251b2881b881fe6ecbbe",
+  "selected_total_count": 186,
+  "track_length_m": 419.12425
+}

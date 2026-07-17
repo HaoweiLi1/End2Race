@@ -1,0 +1,49 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/f110_gym/envs/base_classes.py:93: UserWarning: Chosen integrator is RK4. This is different from previous versions of the gym.
+  warnings.warn(f"Chosen integrator is RK4. This is different from previous versions of the gym.")
+Using cuda device
+Early stopping at step 0 due to reaching max kl: 0.18
+Traceback (most recent call last):
+  File "/home/haowei/Documents/End2Race/train_ppo.py", line 391, in <module>
+    run_dir = train(config, args.seed, output_dir)
+  File "/home/haowei/Documents/End2Race/train_ppo.py", line 351, in train
+    model.learn(
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/ppo_recurrent/ppo_recurrent.py", line 450, in learn
+    return super().learn(
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/stable_baselines3/common/on_policy_algorithm.py", line 324, in learn
+    continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/sb3_contrib/ppo_recurrent/ppo_recurrent.py", line 252, in collect_rollouts
+    new_obs, rewards, dones, infos = env.step(clipped_actions)
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/stable_baselines3/common/vec_env/base_vec_env.py", line 222, in step
+    return self.step_wait()
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/stable_baselines3/common/vec_env/dummy_vec_env.py", line 71, in step_wait
+    obs, self.reset_infos[env_idx] = self.envs[env_idx].reset()
+  File "/home/haowei/Documents/End2Race/ppo/environment.py", line 395, in reset
+    self.opponent_controller.reset(spec, self.num_agents, self.ego_index)
+  File "/home/haowei/Documents/End2Race/ppo/environment.py", line 256, in reset
+    planner = self._create_planner(map_name, raceline)
+  File "/home/haowei/Documents/End2Race/ppo/environment.py", line 208, in _create_planner
+    return setup_opp_planner(map_name, raceline)
+  File "/home/haowei/Documents/End2Race/demonstration.py", line 74, in setup_opp_planner
+    config = load_config(config_path)
+  File "/home/haowei/Documents/End2Race/latticeplanner/utils.py", line 539, in load_config
+    config_dict = yaml.load(file, Loader=yaml.FullLoader)
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/__init__.py", line 81, in load
+    return loader.get_single_data()
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/constructor.py", line 49, in get_single_data
+    node = self.get_single_node()
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/composer.py", line 36, in get_single_node
+    document = self.compose_document()
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/composer.py", line 55, in compose_document
+    node = self.compose_node(None, None)
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/composer.py", line 82, in compose_node
+    node = self.compose_sequence_node(anchor)
+  File "/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/yaml/composer.py", line 113, in compose_sequence_node
+    end_event = self.get_event()
+KeyboardInterrupt

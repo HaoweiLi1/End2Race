@@ -1,0 +1,31 @@
+{
+  "dataset_path": null,
+  "dataset_sha256": null,
+  "ego_collision_occurred": true,
+  "environment_done_before_timeout": false,
+  "final_relative_position_m": 0.24112533244837664,
+  "opponent_collision_occurred": true,
+  "outcome": "ego_collision",
+  "retained": false,
+  "sample_count": 66,
+  "scenario": {
+    "assigned_training_startpoint_ordinal": 15,
+    "ego_idx": 660,
+    "ego_raceline": "raceline1",
+    "integrator": "RK4",
+    "interval_idx": 8,
+    "map_name": "Austin",
+    "opp_idx": 668,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.45,
+    "pool": "train_austin_expanded_v1_2",
+    "scenario_id": "v12-sp031-ego0660-raceline1-i08-v045",
+    "sim_duration": 8.0,
+    "startpoint_ordinal": 31,
+    "timestep": 0.01
+  },
+  "scenario_id": "v12-sp031-ego0660-raceline1-i08-v045",
+  "scenario_source": "H1",
+  "simulation_time_s": 6.6099999999999035,
+  "steps": 661
+}
