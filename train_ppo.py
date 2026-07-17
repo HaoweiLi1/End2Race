@@ -141,20 +141,52 @@ def _parameter_delta_statistics(
     }
 
 
+def _parameter_previous_delta_statistics(
+    candidate: dict[str, torch.Tensor],
+    previous: dict[str, torch.Tensor],
+    prefixes: tuple[str, ...],
+) -> dict[str, float]:
+    """Summarize one actor parameter group's displacement from the previous update."""
+    names = sorted(name for name in previous if name.startswith(prefixes))
+    if not names:
+        raise RuntimeError(f"No actor parameters match prefixes {prefixes}")
+    squared_delta = 0.0
+    squared_previous = 0.0
+    maximum = 0.0
+    count = 0
+    for name in names:
+        current = candidate[name].detach().cpu().double()
+        reference = previous[name].detach().cpu().double()
+        delta = current - reference
+        squared_delta += float(delta.square().sum().item())
+        squared_previous += float(reference.square().sum().item())
+        maximum = max(maximum, float(delta.abs().max().item()))
+        count += delta.numel()
+    rms_delta = float(np.sqrt(squared_delta / count))
+    rms_previous = float(np.sqrt(squared_previous / count))
+    return {
+        "max_abs_delta_from_previous": maximum,
+        "rms_delta_from_previous": rms_delta,
+        "relative_rms_delta_from_previous": rms_delta / max(rms_previous, 1e-12),
+    }
+
+
 def _actor_delta_record(
     model: End2RaceRecurrentPPO,
     bc_state: dict[str, torch.Tensor],
+    previous_actor_state: dict[str, torch.Tensor],
     initial_log_std: torch.Tensor,
 ) -> dict[str, Any]:
     actor_state = model.policy.actor_checkpoint_state_dict()
+    def group(prefixes: tuple[str, ...]) -> dict[str, float | int]:
+        return {
+            **_parameter_delta_statistics(actor_state, bc_state, prefixes),
+            **_parameter_previous_delta_statistics(actor_state, previous_actor_state, prefixes),
+        }
     return {
-        "gru": _parameter_delta_statistics(actor_state, bc_state, ("gru.",)),
-        "output_layer": _parameter_delta_statistics(actor_state, bc_state, ("output_layer.",)),
-        "frozen_actor": _parameter_delta_statistics(
-            actor_state,
-            bc_state,
-            ("k", "dummy_embedding", "speed_mlp."),
-        ),
+        "gru": group(("gru.",)),
+        "output_layer": group(("output_layer.",)),
+        "frozen_actor": group(("k", "dummy_embedding", "speed_mlp.")),
         "log_std_max_abs_delta_from_initial": float(
             (model.policy.log_std.detach().cpu() - initial_log_std).abs().max().item()
         ),
@@ -449,6 +481,8 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
     write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
     status_path = output_dir / "run_status.json"
     run_status: dict[str, Any] = {
+        "schema_version": 1,
+        "experiment": config.name,
         "status": "RUNNING",
         "config": config.name,
         "seed": seed,
@@ -467,6 +501,7 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
         model = build_model(vector_env, config, seed)
         callback = PPOTrainingCallback()
         bc_state = torch.load(ppo_config.BC_CHECKPOINT, map_location="cpu", weights_only=True)
+        previous_actor_state = {name: tensor.detach().cpu().clone() for name, tensor in bc_state.items()}
         initial_log_std = model.policy.log_std.detach().cpu().clone()
         minibatches_per_epoch = ppo_config.N_ENVS * config.n_steps // config.batch_size
         planned_optimizer_steps = minibatches_per_epoch * config.n_epochs
@@ -486,6 +521,12 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
                     f"Invalid optimizer-step count at update {update}: "
                     f"{actual_optimizer_steps} not in [1, {planned_optimizer_steps}]"
                 )
+            actor_delta = _actor_delta_record(model, bc_state, previous_actor_state, initial_log_std)
+            if (
+                actor_delta["frozen_actor"]["max_abs_delta_from_bc"] != 0.0
+                or actor_delta["log_std_max_abs_delta_from_initial"] != 0.0
+            ):
+                raise RuntimeError(f"Frozen actor state drifted at update {update}")
             metrics = {
                 "update": update,
                 "num_timesteps": int(model.num_timesteps),
@@ -497,7 +538,7 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
                 "optimizer_active_parameters": optimizer_after["active_parameters"],
                 "target_kl_early_stop": actual_optimizer_steps < planned_optimizer_steps,
                 "effective_epoch_fraction": actual_optimizer_steps / minibatches_per_epoch,
-                "actor_delta_from_bc": _actor_delta_record(model, bc_state, initial_log_std),
+                "actor_delta_from_bc": actor_delta,
             }
             for key in ("loss", "policy_gradient_loss", "value_loss", "approx_kl", "clip_fraction", "explained_variance"):
                 logger_key = f"train/{key}"
@@ -507,6 +548,10 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
                 raise RuntimeError(f"PPO logger did not report approx_kl at update {update}")
             _assert_finite(metrics)
             append_json(output_dir / "training_metrics.jsonl", metrics)
+            previous_actor_state = {
+                name: tensor.detach().cpu().clone()
+                for name, tensor in model.policy.actor_checkpoint_state_dict().items()
+            }
             run_status["last_completed_update"] = update
             if (
                 config.update_kl_guardrail is not None
@@ -538,10 +583,17 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
             write_json_atomic(status_path, run_status)
     except Exception as error:
         if run_status["status"] != "STOPPED_KL_GUARDRAIL":
+            message = f"{type(error).__name__}: {error}"
+            if "Non-finite" in message:
+                failure_status = "FAILED_NONFINITE"
+            elif "checkpoint" in message.lower() or "actor tensor" in message.lower():
+                failure_status = "FAILED_CHECKPOINT"
+            else:
+                failure_status = "FAILED_RUNTIME"
             run_status.update(
                 {
-                    "status": "FAILED",
-                    "stop_reason": f"{type(error).__name__}: {error}",
+                    "status": failure_status,
+                    "stop_reason": message,
                 }
             )
             write_json_atomic(status_path, run_status)

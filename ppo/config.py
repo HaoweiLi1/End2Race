@@ -227,6 +227,18 @@ V1_3_B = replace(
     update_kl_guardrail=0.020,
 )
 
+V1_3_A = replace(
+    V1_2_H0_CONTROL,
+    name="v1_3_a",
+    updates=8,
+    checkpoint_updates=(8,),
+    n_epochs=1,
+    gru_lr=3.0e-6,
+    head_lr=3.0e-5,
+    target_kl=0.010,
+    update_kl_guardrail=0.020,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -253,6 +265,7 @@ CONFIGS = {
         SG_LR10,
         SG_FULL,
         V1_3_B,
+        V1_3_A,
     )
 }
 
