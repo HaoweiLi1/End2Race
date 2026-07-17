@@ -65,6 +65,44 @@
       "runtime_harness": "Untracked one-shot orchestration only; reuse demonstration.py setup functions and existing environment/progress facilities; do not add an evaluator."
     }
   },
+  "b1_taxonomy_contract": {
+    "cluster_definition": {
+      "circular_distance": true,
+      "component_rule": "Connect two reproduced-collision cases when their collision-progress circular distance is at most 8.382485 m; use transitive connected components. A component with at least two cases is a cluster; a singleton is scatter.",
+      "epsilon_derivation": "Austin progress-reference track length 419.12425 m divided by the 50 canonical training startpoint sectors.",
+      "epsilon_m": 8.382485,
+      "explicit_tuple_fields": [
+        "collision_classification",
+        "track_cluster",
+        "opp_raceline",
+        "opp_speedscale"
+      ],
+      "not_reproduced_rule": "A H0 case that did not reproduce ego collision in Phase 0 has no collision-progress coordinate and is classified as not_reproduced scatter.",
+      "position_rule": "For a reproduced collision, project the final saved ego pose from its existing Phase 0 trace. The evaluator omits the terminal post-step observation, so this is the last pre-terminal pose and no new replay is allowed for taxonomy."
+    },
+    "decision_rule": {
+      "clear_cluster_minimum_cases": 12,
+      "clear_cluster_rule": "CLEAR_CLUSTERED iff at least 12 of all 24 H0 cases belong to non-singleton circular components; otherwise COMPLETELY_SCATTERED.",
+      "denominator": 24
+    },
+    "focused_h1_scope_rule": {
+      "clear_clustered": "Keep all 24 H0 scenarios. For H1, project each H1 ego start and assign it to the nearest of the 50 canonical training startpoint progress anchors by circular distance, breaking ties by lower training ordinal. Select all H1 parameter variants assigned to any source H0 startpoint ordinal represented in a non-singleton collision cluster.",
+      "completely_scattered": "Use all 24 H0 plus all 482 H1 scenarios.",
+      "selection_hash_rule": "Hash compact canonical JSON rows with sort_keys=True and separators=(',', ':') followed by one newline."
+    },
+    "inputs": {
+      "phase0_result": {
+        "path": "ppo_experiments/signal_repair/SG_P0_RESULTS.json",
+        "sha256": "d0d6b4ae07ef2fde2c3b7467ef43153b0390af41c0a3eaa1206eac5f70bb909c"
+      },
+      "progress_reference": {
+        "path": "f1tenth_racetracks/Austin/raceline1.csv",
+        "sha256": "d7612e2d3d0e25f7de4c97a5ed131508c6f175cfee91f5f732b0a5c569b2d8db"
+      }
+    },
+    "locked_at": "2026-07-17T14:30:19+08:00",
+    "status": "READY"
+  },
   "created_at": "2026-07-17T14:23:23+08:00",
   "downstream_contract": {
     "b1": "Use the already completed Route A Phase 0 traces and the guide-defined tuple (collision type, track-segment cluster, opponent raceline, speed scale). Clustered failures select the corresponding H1 neighborhood; otherwise use all H0 plus H1.",
@@ -85,5 +123,5 @@
   "execution_scope": "local_only",
   "schema_version": 1,
   "source_commit": "f5768f3f231edb7bb6a12a00fe4c7c7488728d48",
-  "status": "B0_READY"
+  "status": "B1_READY"
 }
