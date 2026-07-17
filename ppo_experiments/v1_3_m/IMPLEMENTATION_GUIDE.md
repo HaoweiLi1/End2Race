@@ -1,6 +1,8 @@
 # End2Race PPO V1.3-M：受控更新强度下的 Margin 信号边际价值验证
 
-**状态：** `READY_FOR_LOCAL_CODEX_IMPLEMENTATION`（owner 放行后执行）
+> **HALTED_BY_OWNER_STOP_ORDER（2026-07-17 晚）**：owner 下令终止全部运行与实验。本指南任何阶段（M0–M5）均未执行。未经 owner 重新明确授权，任何 agent（Claude Code 或 Codex）不得执行本指南。见 `V13M_STATUS.json`。
+
+**状态：** ~~`READY_FOR_LOCAL_CODEX_IMPLEMENTATION`~~ → `HALTED_BY_OWNER_STOP_ORDER`
 **制定：** 2026-07-17，Claude Code session（受 owner 委托设计 v1_3 探索；执行方为本地 Codex）
 **正式配置名：** `v1_3_m`
 **正式训练 seed：** `20260723, 20260724, 20260725, 20260726, 20260727`（与 `v1_3_b` 完全相同，用于逐 seed 配对）
