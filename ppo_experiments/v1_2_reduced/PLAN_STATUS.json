@@ -1,7 +1,7 @@
 {
   "plan": "End2Race PPO V1.2 Reduced 22-Arm",
   "device": "A",
-  "status": "FAILED_STAGE_K_EVALUATION",
+  "status": "STAGE_X_WAITING_FOR_B_E",
   "formal_started_at": "2026-07-16T23:48:00+08:00",
   "prepared_core_head": "a0237bdd2ba50dfbe09f7160087a7cc70461e359",
   "source_start_head": "cc475f6373b891a8db75fb884b02e8986122b3d9",
@@ -160,10 +160,19 @@
     ],
     "training_complete": true,
     "evaluation_started": true,
-    "evaluation_complete": false,
-    "valid_checkpoint_evaluations": 4,
+    "evaluation_complete": true,
+    "valid_checkpoint_evaluations": 6,
     "invalid_checkpoint_evaluations": 1,
-    "stopped_checkpoint_evaluations": 1
+    "stopped_checkpoint_evaluations": 1,
+    "manual_reevaluation_complete": true,
+    "selection": "AH-H0-p50-wr",
+    "selected_checkpoint_update": 2,
+    "selected_checkpoint_metrics": {
+      "ego_collision": 15,
+      "follow": 232,
+      "overtake": 353,
+      "error": 0
+    }
   },
   "failure": {
     "detected_at": "2026-07-17T07:50:37+08:00",
@@ -222,5 +231,115 @@
       "exact_worker_command_unavailable_reason": "evaluate.sh removed the completed worker temp directory after aggregation and coredumpctl is not installed",
       "automatic_reproduction_attempted": false
     }
+  },
+  "manual_reevaluation": {
+    "authorized_at": "2026-07-17T08:15:11+08:00",
+    "authorization_type": "one_bounded_manual_evaluation_only_recovery",
+    "arm_id": "AK-L1-kl010",
+    "ordered_checkpoints": [
+      {
+        "update": 4,
+        "checkpoint_sha256": "bfa10708b4ba0f6b603216ba1c0d92496aa9888d6a8d5651d3706eb8d1089b34",
+        "condition": "run_after_missing_scenario_smoke_passes"
+      },
+      {
+        "update": 2,
+        "checkpoint_sha256": "bc7687c273ce99438935c2183cff49a7156fe4e4c07847806c54822d7985ddf5",
+        "condition": "run_only_after_full_update_4_passes"
+      }
+    ],
+    "maximum_full_reevaluations_per_checkpoint": 1,
+    "automatic_second_retry_authorized": false,
+    "retraining_authorized": false,
+    "checkpoint_regeneration_authorized": false,
+    "config_or_core_change_authorized": false,
+    "dependency_change_authorized": false,
+    "other_checkpoint_reevaluation_authorized": false,
+    "partial_row_patch_or_merge_authorized": false,
+    "protocol": {
+      "evaluator": "evaluate.sh",
+      "map": "Austin",
+      "collision_scope": "ego",
+      "render": false,
+      "save_trace": false,
+      "noise": 0,
+      "sim_duration": 8,
+      "num_workers": 4,
+      "expected_total": 600,
+      "expected_error_count": 0
+    },
+    "smoke": {
+      "checkpoint_update": 4,
+      "scenario_id": "evaluation-sp16-ego684-raceline1-v0.7",
+      "formal": false,
+      "status": "PASS",
+      "started_at": "2026-07-17T08:16:18+08:00",
+      "completed_at": "2026-07-17T08:16:23+08:00",
+      "exit_status": 1,
+      "outcome": "follow",
+      "ego_collision_occurred": false,
+      "evaluator_log": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/manual_reevaluation_smoke_u4_missing_scenario/evaluator.log",
+      "evaluator_log_sha256": "93e4c38e51508881aac830437d494e64d42caeae10af0a17bf174dc7194cde33",
+      "metrics": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/manual_reevaluation_smoke_u4_missing_scenario/metrics.json",
+      "metrics_sha256": "bf7f3f06bcfb25038611ac6d79965e7e7c913d07254803abab37f757f734e51b"
+    },
+    "full_update_4": {
+      "status": "PASS",
+      "started_at": "2026-07-17T08:17:10+08:00",
+      "completed_at": "2026-07-17T08:29:43+08:00",
+      "num_workers": 4,
+      "checkpoint_sha256_before_and_after": "bfa10708b4ba0f6b603216ba1c0d92496aa9888d6a8d5651d3706eb8d1089b34",
+      "evaluation_result": "eval_results/end2race_ppo_AK-L1-kl010_u0004_s20260715_Austin/multiagents/results_multi.json",
+      "evaluation_result_sha256": "4c38c50c7eee5bb9162d0cd6a0cd1fe5af3239e4daf95202e1c9a0bcb0e66d66",
+      "evaluation_log": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/manual_reevaluation_logs/u4_full_evaluate.log",
+      "evaluation_log_sha256": "d64df35324a6bd1656b710d80ad86fa015de61b78dbea98aba826562d4f584f4",
+      "total": 600,
+      "rows": 600,
+      "unique_scenario_ids": 600,
+      "error": 0,
+      "ego_collision": 20,
+      "follow": 235,
+      "overtake": 345
+    },
+    "full_update_2": {
+      "status": "PASS",
+      "started_at": "2026-07-17T08:30:17+08:00",
+      "completed_at": "2026-07-17T08:42:52+08:00",
+      "num_workers": 4,
+      "checkpoint_sha256_before_and_after": "bc7687c273ce99438935c2183cff49a7156fe4e4c07847806c54822d7985ddf5",
+      "evaluation_result": "eval_results/end2race_ppo_AK-L1-kl010_u0002_s20260715_Austin/multiagents/results_multi.json",
+      "evaluation_result_sha256": "a8398c9ec559366c9df3ecb33342dfbf99a245cb5deb80cce5fed283f514447b",
+      "evaluation_log": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/manual_reevaluation_logs/u2_full_evaluate.log",
+      "evaluation_log_sha256": "51c260ae51493d205c207aca475abdd02af6955182fef375cf794a0ef06c3001",
+      "total": 600,
+      "rows": 600,
+      "unique_scenario_ids": 600,
+      "error": 0,
+      "ego_collision": 20,
+      "follow": 236,
+      "overtake": 344
+    },
+    "preserved_evidence": {
+      "root": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717",
+      "u4_invalid_output": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/u4_invalid_attempt_evaluation_output",
+      "u4_invalid_output_file_count": 1,
+      "u4_invalid_output_size_bytes": 759530,
+      "u4_invalid_output_tree_sha256": "e74c8a97f27d14b4bfee6c3a30dc6eb549264f77b894045cf86f3054f0d53e21",
+      "u4_invalid_log": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/u4_invalid_attempt_evaluate.log",
+      "u4_invalid_log_sha256": "f33c4d90f750cd084ab3c4c06f68b19a9617ca2af3bea2b63805118970f28c3b",
+      "u2_interrupted_workers": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/u2_interrupted_worker_artifacts",
+      "u2_interrupted_worker_file_count": 1781,
+      "u2_interrupted_worker_size_bytes": 1088672,
+      "u2_interrupted_worker_tree_sha256": "03eaa754bc375290462efb51b09711b661cab2ece18f8851b5cbc008feb79ab9",
+      "u2_interrupted_log": "eval_results/_failure_evidence/v1_2_reduced_stage_k_20260717/u2_interrupted_evaluate.log",
+      "u2_interrupted_log_sha256": "21de172401ee4ee4cbf88920df0151f9ef1920df2dbd6f843d796030a753ca95"
+    },
+    "aggregation": {
+      "completed_at": "2026-07-17T08:44:15+08:00",
+      "results": "ppo_experiments/v1_2_reduced/A_K_RESULTS.json",
+      "selection": "ppo_experiments/v1_2_reduced/A_K_SELECTION.json",
+      "winner": "AH-H0-p50-wr"
+    },
+    "status": "AGGREGATED"
   }
 }
