@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "record": "PPO_V1_3_CONSOLIDATED_RESULT",
+  "generated_on": "2026-07-17",
+  "status": "CLOSED_NO_PRODUCT_VERDICT",
+  "completion_rule": "An experiment is complete when it reaches a preregistered terminal state. A fail-fast terminal is complete even when later seeds are intentionally not started.",
+  "deployment_recommendation": {
+    "model": "pretrained/end2race.pth",
+    "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "status": "CANONICAL_BC_REMAINS_AUTHORITY"
+  },
+  "completed_terminal_experiments": {
+    "v1_3_a": {
+      "single_axis": "One PPO epoch with actor learning rates fixed at 3x nominal.",
+      "terminal_by_protocol": true,
+      "final_verdict": "FAIL_KL_UNSTABLE",
+      "formal_seeds_started": [20260718],
+      "formal_seeds_not_started_by_fail_fast": [20260719, 20260720, 20260721, 20260722],
+      "last_update": 5,
+      "terminal_approx_kl": 0.09671211987733841,
+      "guardrail": 0.02,
+      "result_path": "ppo_experiments/v1_3_a/RESULTS.json",
+      "result_sha256": "311e3030f93efd14eb07e976a66e26715a2d2b2624d341618ab8862c92927b4f"
+    },
+    "v1_3_b": {
+      "single_axis": "Four PPO epochs at nominal actor learning rates.",
+      "terminal_by_protocol": true,
+      "final_verdict": "FAIL_KL_UNSTABLE",
+      "formal_seeds_started": [20260723],
+      "formal_seeds_not_started_by_fail_fast": [20260724, 20260725, 20260726, 20260727],
+      "last_update": 5,
+      "terminal_approx_kl": 0.11944372206926346,
+      "guardrail": 0.02,
+      "result_path": "ppo_experiments/v1_3_b/RESULTS.json",
+      "result_sha256": "5653fe2e9930983574f26a20fe74b11fda2331feeeb9b13de5a21f0152985fcc"
+    },
+    "v1_3_d": {
+      "single_axis_from_v1_3_c": "Disable PyTorch autograd multithreading for infrastructure stability while retaining the physical steering Gaussian.",
+      "terminal_by_protocol": true,
+      "final_verdict": "STOP_PROTOCOL_DRIFT",
+      "formal_seeds_completed": [20260735, 20260736, 20260737],
+      "fixed_checkpoint_update": 8,
+      "training": [
+        {
+          "seed": 20260735,
+          "max_approx_kl": 0.007611207664012909,
+          "updates_in_target_window": 8,
+          "u8_gru_relative_rms_delta_from_bc": 0.00015662207584791734,
+          "u8_head_relative_rms_delta_from_bc": 0.0016333466892209786,
+          "u8_frozen_max_abs_delta": 0.0,
+          "u8_log_std_max_abs_delta": 0.0,
+          "checkpoint_sha256": "02351fc34fc6010dd0b2507bc11b25b1e1b10e6f0037646c549e968083ab5ce7"
+        },
+        {
+          "seed": 20260736,
+          "max_approx_kl": 0.015772277489304543,
+          "updates_in_target_window": 6,
+          "u8_gru_relative_rms_delta_from_bc": 0.00014227698609278977,
+          "u8_head_relative_rms_delta_from_bc": 0.0014850712777228464,
+          "u8_frozen_max_abs_delta": 0.0,
+          "u8_log_std_max_abs_delta": 0.0,
+          "checkpoint_sha256": "e98976e42e8b55c1bfcfc637b43047efdbdf4c3288675c3040c20f5da91800d0"
+        },
+        {
+          "seed": 20260737,
+          "max_approx_kl": 0.00835360772907734,
+          "updates_in_target_window": 6,
+          "u8_gru_relative_rms_delta_from_bc": 0.00013744701063120074,
+          "u8_head_relative_rms_delta_from_bc": 0.0014934970124604026,
+          "u8_frozen_max_abs_delta": 0.0,
+          "u8_log_std_max_abs_delta": 0.0,
+          "checkpoint_sha256": "b56f9998e7e2f149fbf19c9cb8eb7657c7f0baed29af1ef837896dfec28f68d5"
+        }
+      ],
+      "candidate_evaluations_completed": 0,
+      "result_path": "ppo_experiments/v1_3_d/RESULTS.json",
+      "result_sha256": "9ed27a8681dfea1bcf462d2c81844e8debffd56f45d4ecd0c97294096a31e7d9"
+    }
+  },
+  "completed_diagnostics": {
+    "physical_gaussian_single_axis_probe": {
+      "formal": false,
+      "status": "COMPLETED",
+      "seed": 20260718,
+      "updates": 8,
+      "max_approx_kl": 0.010797240771353245,
+      "u8_gru_relative_rms_delta_from_bc": 0.00014744113396420293,
+      "u8_head_relative_rms_delta_from_bc": 0.0015592915742524596,
+      "path": "ppo_experiments/v1_3/MECHANISM_PROBE.json"
+    },
+    "evaluation_device_contract": {
+      "status": "RESOLVED",
+      "historical_cpu_counts": {"collision": 21, "follow": 233, "overtake": 346},
+      "cuda_counts": {"collision": 22, "follow": 234, "overtake": 344},
+      "same_scenario_set": true,
+      "changed_outcome_count": 4,
+      "cpu_reproduction_rows": 600,
+      "cpu_reproduction_outcome_differences": 0,
+      "path": "ppo_experiments/v1_3/EVALUATION_PROTOCOL.json"
+    }
+  },
+  "incomplete_experiments_removed": [
+    {
+      "experiment": "v1_3_c_formal",
+      "reason": "Host-level SIGSEGV after update 6; later seeds and all candidate evaluations were not started.",
+      "superseded_by": "v1_3_d"
+    },
+    {
+      "experiment": "v1_3_e_performance_evaluation",
+      "reason": "Owner stopped the first candidate evaluation before an atomic result was written; two candidate seeds were not started.",
+      "completed_diagnostic_retained": "evaluation_device_contract"
+    },
+    {
+      "experiment": "v1_3_m",
+      "reason": "No phase, implementation, preregistration, training, or evaluation was started."
+    }
+  ],
+  "supported_claims": [
+    "A fixed 3x actor learning rate is KL-unstable under the tested old steering likelihood.",
+    "Four PPO epochs are KL-unstable under the tested old steering likelihood.",
+    "After the physical steering Gaussian repair, one PPO epoch can produce controlled, measurable, similarly sized nonzero actor displacement across three fresh seeds.",
+    "CPU versus CUDA evaluator drift can change boundary-case outcomes and must be frozen as part of the experiment identity."
+  ],
+  "unsupported_claims": [
+    "Any V1.3 actor improves collision performance over canonical BC.",
+    "The three V1.3-D actors improve behavior in the same direction.",
+    "The reward produces an aligned safety correction.",
+    "Any V1.3 actor passes development, holdout, or deployment gates."
+  ],
+  "selection_performed": false,
+  "holdout_performed": false,
+  "promotion_performed": false,
+  "performance_verdict": null
+}
