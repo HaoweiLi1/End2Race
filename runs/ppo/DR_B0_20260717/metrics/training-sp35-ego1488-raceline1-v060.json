@@ -1,0 +1,30 @@
+{
+  "ego_collision_occurred": false,
+  "ego_desired_speed_mean": 3.9446038972534327,
+  "ego_steering_max": 0.3418588977493231,
+  "ego_steering_min": -0.16390118873373116,
+  "final_relative_position_m": -1.4991925748046242,
+  "no_collision_completion": true,
+  "opponent_collision_occurred": false,
+  "opponent_desired_speed_mean": 3.484442011985019,
+  "outcome": "follow",
+  "scenario": {
+    "ego_idx": 1488,
+    "ego_raceline": "raceline1",
+    "integrator": "RK4",
+    "interval_idx": 15,
+    "map_name": "Austin",
+    "opp_idx": 1503,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "pool": "training",
+    "scenario_id": "training-sp35-ego1488-raceline1-v060",
+    "sim_duration": 8.0,
+    "startpoint_ordinal": 35,
+    "timestep": 0.01
+  },
+  "scenario_id": "training-sp35-ego1488-raceline1-v060",
+  "simulation_time_s": 8.0,
+  "steps": 801,
+  "wall_time_s": 2.011238141999911
+}

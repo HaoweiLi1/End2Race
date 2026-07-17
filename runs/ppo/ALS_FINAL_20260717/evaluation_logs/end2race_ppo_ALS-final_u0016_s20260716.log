@@ -1,0 +1,14 @@
+Starting batch evaluation of 600 segments
+Model: runs/ppo/ALS-final_seed20260716/checkpoints/end2race_ppo_ALS-final_u0016_s20260716.pth
+Map: Austin
+Workers: 8
+Noise level: 0.0
+
+Evaluation complete in 475 seconds
+
+Results by category:
+  following: 238 (39.6%)
+  overtaking: 341 (56.8%)
+  success: 579 (96.5%)
+  collision: 21 (3.5%)
+  error: 0 (0%)

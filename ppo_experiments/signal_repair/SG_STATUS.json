@@ -1,0 +1,10 @@
+{
+  "completed_at": null,
+  "current_phase": "route_b_feasibility",
+  "execution_scope": "local_only",
+  "next_action": "Route A is closed by the Phase 1 KL guardrail. Preregister and run Route B B-F0 feasibility on the 24 H0 scenarios.",
+  "owner_approved_at": "2026-07-17T14:01:34+08:00",
+  "schema_version": 1,
+  "source_commit": "434833e4dc7abe8d41a85f1c3226d3909e6c880e",
+  "status": "ROUTE_A_CLOSED_KL_GUARDRAIL"
+}

@@ -1,0 +1,16 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_BE-E0-current_u0002_s20260715.pth",
+      "sha256": "0b965fd3c2b71ff863249e38306a427b331c0c0f05dbc6e7ea3461636be477e4",
+      "update": 2
+    },
+    {
+      "path": "checkpoints/end2race_ppo_BE-E0-current_u0004_s20260715.pth",
+      "sha256": "ae77fc521e86ceee864d4e1348d901c05bfac3a37df607c90909f276eb377137",
+      "update": 4
+    }
+  ],
+  "config": "BE-E0-current",
+  "seed": 20260715
+}

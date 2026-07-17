@@ -1,0 +1,14 @@
+{
+  "completed_at": "2026-07-17T14:41:29+08:00",
+  "current_phase": "b3_blocked",
+  "execution_scope": "local_only",
+  "next_action": "B2 completed with 161 retained demonstrations and passed schema/hash validation. Do not start fine-tuning until the exact frozen Task8 original BC dataset is restored inside the local scope with its authoritative hash and path; then preregister the B3 mixture, LR, epoch count, and final checkpoint.",
+  "owner_approved_at": "2026-07-17T14:01:34+08:00",
+  "route_a_trigger": {
+    "record": "ppo_experiments/signal_repair/SG_P1_RESULTS.json",
+    "status": "CLOSED_KL_GUARDRAIL"
+  },
+  "schema_version": 1,
+  "source_commit": "f5d3a9d3c8531d4cd6836996f3a4165481827440",
+  "status": "BLOCKED_MISSING_FROZEN_TASK8_DATA"
+}

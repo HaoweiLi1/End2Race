@@ -1,0 +1,160 @@
+{
+  "authority": {
+    "execution_guide_path": ".agents/End2Race_PPO_Route_AB_Execution_Guide.md",
+    "execution_guide_sha256": "d91772e31c7f0080daa7dafc3d21e1514b6b8f3319a30b01f5b365a53a4a481e",
+    "handoff_path": ".agents/HANDOFF_CC.md",
+    "handoff_sha256": "2fa608777daca9b92a7e80e1d38243c32c41625af42b2e3a2e3d70ef968e755e"
+  },
+  "canonical_bc": {
+    "path": "pretrained/end2race.pth",
+    "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+  },
+  "created_at": "2026-07-17T14:01:34+08:00",
+  "execution_scope": "local_only",
+  "implementation_lock": {
+    "completed_at": "2026-07-17T14:12:57+08:00",
+    "files": {
+      "evaluate.sh": "00c1b8dab23e90f530d851951bfdaef7341d5f7406ee86977c9826a52357c901",
+      "ppo/config.py": "0c08ea828d27bce09c14b3c7ad18b7079fe7b58296f1aab81db08889846b3622",
+      "ppo/reward.py": "bd895a131e1eb04a187a29781082ce729628912446fcc5b796be6982a0570aaf",
+      "tests/test_ppo_signal_repair.py": "1ea90da068f0e91d5bd82664428f10d7a400c7c96c61ec53b579c72883cd3243",
+      "train_ppo.py": "239f7ecece6d7ad56fb56f70c01cf87a9005205077a6565984177c08b185ef5c"
+    },
+    "implementation_commit": "58e8728faf069893627fcf5bad2000c0c5865181",
+    "tests": {
+      "environment_integration": "PASS",
+      "python_compile": "PASS",
+      "shell_syntax": "PASS",
+      "unittest_command": "/home/haowei/miniconda3/envs/end2race/bin/python -m unittest -v tests.test_ppo_signal_repair",
+      "unittest_passed": 5
+    }
+  },
+  "phase0": {
+    "analysis_contract": {
+      "clearance_function": "ppo.environment.oriented_rectangle_clearance",
+      "collision_time_rule": "For an ego_collision outcome, use the first recorded ego collision sample when present; otherwise use final trace time plus 0.01 seconds because the frozen evaluator records pre-step observations and omits the terminal post-step observation.",
+      "f0_pass_rule": "At least 15 of the 24 H0 scenarios must reproduce ego_collision and have minimum oriented clearance below 0.5 m during the final 2.0 seconds before collision. A non-reproduced H0 collision counts as not opponent_proximity.",
+      "f0_threshold_fraction": 0.6,
+      "margin_candidate_pass_rule": {
+        "distribution_separation": "q25(collision episode penalty magnitude) > q75(safe episode penalty magnitude)",
+        "safe_overtake_ratio": "median(safe overtake episode penalty magnitude) < 0.30 * median(safe overtake positive relative reward)",
+        "safe_overtake_relative_reward": "0.02 times the positive unwrapped ego-minus-opponent progress change over the trace",
+        "strict_inequalities": true
+      },
+      "margin_candidate_selection": "Select (0.02,0.5) if it passes. Otherwise select the passing candidate with smallest weight, then smallest absolute threshold distance from 0.5, then smaller threshold. If none passes, Phase 0 calibration fails and no Route A training starts.",
+      "opponent_collision_latch": "Margin accumulation is zero from the first recorded opponent collision sample onward.",
+      "quantile_method": "numpy linear"
+    },
+    "candidate_grid": {
+      "margin_threshold": [
+        0.4,
+        0.5,
+        0.6
+      ],
+      "margin_weight": [
+        0.01,
+        0.02,
+        0.04
+      ]
+    },
+    "h0_manifest": {
+      "count": 24,
+      "manifest_hash": "d022150627ff66af61e0b600699588181d8b06edf78a5723cf9ee503f89edcc9",
+      "path": "ppo/hard_pools/h0_current_det.json",
+      "sha256": "a8082dd15dbc93bf374c182f6c57befa67560f445389a776c8ad24fbc7bab755"
+    },
+    "locked_result": {
+      "completed_at": "2026-07-17T14:06:37+08:00",
+      "f0_opponent_proximity_count": 20,
+      "f0_passes": true,
+      "margin_threshold": 0.5,
+      "margin_weight": 0.02,
+      "path": "ppo_experiments/signal_repair/SG_P0_RESULTS.json"
+    },
+    "run_contract": {
+      "collision_scope": "ego",
+      "evaluator_path": "eval_multiagent.py",
+      "evaluator_sha256": "56cb38aaa6f6b1362ef27bdf5a162410b0d27f9e310c8f9f5c12e13e1e73550e",
+      "metrics_directory": "runs/ppo/SG_PHASE0_20260717/metrics",
+      "noise": 0.0,
+      "render": false,
+      "run_directory": "runs/ppo/SG_PHASE0_20260717",
+      "save_trace": true,
+      "trace_directory": "eval_results/end2race_Austin/multiagents/traces"
+    },
+    "safe_scenario_selection": {
+      "candidate_pool": "training_scenarios minus H0 scenario IDs",
+      "candidate_pool_count": 576,
+      "numpy_generator": "PCG64/default_rng",
+      "sample_without_replacement": true,
+      "sampling_seed": 20260717,
+      "scenario_rows_sha256": "1e8be6cb4cb4f0f3da14b1abf68c511985810a80028e38e6036ca04cf6f5aa25",
+      "selected_scenario_ids_in_draw_order": [
+        "training-sp44-ego1865-raceline1-v050",
+        "training-sp20-ego0861-raceline2-v070",
+        "training-sp20-ego0861-raceline2-v060",
+        "training-sp42-ego1787-raceline2-v070",
+        "training-sp13-ego0571-raceline0-v050",
+        "training-sp34-ego1441-raceline0-v080",
+        "training-sp21-ego0904-raceline0-v080",
+        "training-sp18-ego0780-raceline2-v060",
+        "training-sp23-ego0989-raceline2-v080",
+        "training-sp39-ego1656-raceline2-v070",
+        "training-sp03-ego0151-raceline0-v080",
+        "training-sp07-ego0319-raceline1-v070",
+        "training-sp25-ego1064-raceline1-v080",
+        "training-sp23-ego0989-raceline2-v060",
+        "training-sp08-ego0356-raceline1-v060",
+        "training-sp32-ego1356-raceline2-v060",
+        "training-sp41-ego1745-raceline1-v070",
+        "training-sp15-ego0650-raceline2-v060",
+        "training-sp41-ego1745-raceline0-v050",
+        "training-sp07-ego0319-raceline2-v060",
+        "training-sp04-ego0189-raceline2-v070",
+        "training-sp00-ego0021-raceline0-v060",
+        "training-sp31-ego1315-raceline1-v050",
+        "training-sp06-ego0272-raceline2-v070",
+        "training-sp40-ego1703-raceline2-v050",
+        "training-sp45-ego1912-raceline2-v080",
+        "training-sp06-ego0272-raceline2-v050",
+        "training-sp27-ego1149-raceline0-v080",
+        "training-sp36-ego1525-raceline1-v070",
+        "training-sp21-ego0904-raceline0-v070"
+      ]
+    }
+  },
+  "phase1": {
+    "arms": {
+      "SG-full": {
+        "checkpoint_updates": [8, 16, 24],
+        "gru_lr": 1e-05,
+        "head_lr": 0.0001,
+        "margin_threshold": 0.5,
+        "margin_weight": 0.02,
+        "n_epochs": 2,
+        "target_kl": 0.01,
+        "updates": 24
+      },
+      "SG-lr10": {
+        "checkpoint_updates": [8, 16, 24],
+        "gru_lr": 1e-05,
+        "head_lr": 0.0001,
+        "margin_threshold": 0.0,
+        "margin_weight": 0.0,
+        "n_epochs": 2,
+        "target_kl": 0.01,
+        "updates": 24
+      }
+    },
+    "gates": {
+      "F": "Each seed late hard-branch collision rate is below its early rate and pooled late rate is at least 0.10 below pooled early rate.",
+      "F1": "SG-lr10 satisfies F.",
+      "F2": "SG-full satisfies F.",
+      "F3": "A pooled decline in [0.05,0.10) with median explained variance below 0.3 after U12 permits only SG-full-c3."
+    },
+    "seeds": [20260715, 20260716, 20260717]
+  },
+  "schema_version": 1,
+  "source_commit": "dcccc33f83f9b25fbd9b18a975f45da2126a74aa",
+  "status": "PHASE1_READY"
+}

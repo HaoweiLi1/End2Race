@@ -1,0 +1,30 @@
+{
+  "dataset_path": "runs/ppo/DR_B2_20260717/dataset/training-sp30-ego1272-raceline0-v070.npz",
+  "dataset_sha256": "bbd6a3925309000de1e26345fd4934d1efaff6b51725d1c9351d9e50d8b3a706",
+  "ego_collision_occurred": false,
+  "environment_done_before_timeout": false,
+  "final_relative_position_m": 13.714833756382347,
+  "opponent_collision_occurred": false,
+  "outcome": "overtake",
+  "retained": true,
+  "sample_count": 80,
+  "scenario": {
+    "ego_idx": 1272,
+    "ego_raceline": "raceline1",
+    "integrator": "RK4",
+    "interval_idx": 15,
+    "map_name": "Austin",
+    "opp_idx": 1268,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "pool": "training",
+    "scenario_id": "training-sp30-ego1272-raceline0-v070",
+    "sim_duration": 8.0,
+    "startpoint_ordinal": 30,
+    "timestep": 0.01
+  },
+  "scenario_id": "training-sp30-ego1272-raceline0-v070",
+  "scenario_source": "H0",
+  "simulation_time_s": 8.0,
+  "steps": 801
+}

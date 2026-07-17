@@ -1,0 +1,14 @@
+Starting batch evaluation of 600 segments
+Model: runs/ppo/AX-E-transfer_seed20260715/checkpoints/end2race_ppo_AX-E-transfer_u0004_s20260715.pth
+Map: Austin
+Workers: 8
+Noise level: 0.0
+
+Evaluation complete in 456 seconds
+
+Results by category:
+  following: 237 (39.5%)
+  overtaking: 345 (57.5%)
+  success: 582 (97.0%)
+  collision: 18 (3.0%)
+  error: 0 (0%)

@@ -1,0 +1,16 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_AX-K-E_u0002_s20260715.pth",
+      "sha256": "313299a7abc7b8b71e6c20030233119f28c1dcaddb38410bc5bf5cbd40791314",
+      "update": 2
+    },
+    {
+      "path": "checkpoints/end2race_ppo_AX-K-E_u0004_s20260715.pth",
+      "sha256": "dca7cd6a2cb1d2211b360f75198ec31d125bcb535d13e84399e29fa2284d60dc",
+      "update": 4
+    }
+  ],
+  "config": "AX-K-E",
+  "seed": 20260715
+}

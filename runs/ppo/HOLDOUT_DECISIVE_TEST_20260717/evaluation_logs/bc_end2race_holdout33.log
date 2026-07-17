@@ -1,0 +1,14 @@
+Starting batch evaluation of 600 segments
+Model: runs/ppo/HOLDOUT_DECISIVE_TEST_20260717/checkpoints/bc_end2race_holdout33.pth
+Map: Austin
+Workers: 8
+Noise level: 0.0
+
+Evaluation complete in 782 seconds
+
+Results by category:
+  following: 236 (39.3%)
+  overtaking: 332 (55.3%)
+  success: 568 (94.6%)
+  collision: 32 (5.3%)
+  error: 0 (0%)

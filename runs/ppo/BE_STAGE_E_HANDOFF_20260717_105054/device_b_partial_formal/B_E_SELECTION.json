@@ -1,0 +1,37 @@
+{
+  "arm_rule": [
+    "selected_checkpoint_missing",
+    "selected_ego_collision",
+    "negative selected_overtake",
+    "median_common_budget_collision",
+    "negative median_common_budget_overtake",
+    "arm_id"
+  ],
+  "checkpoint_rule": [
+    "eligible iff overtake >= 329",
+    "minimize ego_collision",
+    "maximize overtake",
+    "minimize transition_budget"
+  ],
+  "completed_arm_ids": [
+    "BE-E0-current",
+    "BE-E1-coupled-low",
+    "BE-E2-steer-low"
+  ],
+  "completed_at": "2026-07-17T02:50:54.451710+00:00",
+  "current_std_control_evaluated": true,
+  "device": "B",
+  "matrix_complete": false,
+  "missing_evaluated_arm_ids": [
+    "BE-E3-speed-low"
+  ],
+  "ranking": [],
+  "reason": "USER_REQUESTED_TERMINATION_BEFORE_COMPLETE_FOUR_ARM_EVALUATION",
+  "schema_version": 1,
+  "selection_performed": false,
+  "source_commit": "59b942b0006705f7a9bc8ae39c65a325fc02e5ed",
+  "source_results": "ppo_experiments/v1_2_reduced/B_E_RESULTS.json",
+  "stage": "E",
+  "status": "NOT_SELECTED_INCOMPLETE",
+  "winner": null
+}
