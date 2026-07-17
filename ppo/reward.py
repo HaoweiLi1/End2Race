@@ -113,6 +113,7 @@ class ProgressProjector:
 class RewardResult:
     reward_progress: float
     reward_relative: float
+    reward_margin: float
     reward_collision: float
     reward_total: float
     ego_progress_delta_m: float
@@ -133,8 +134,14 @@ class PPOTransitionReward:
     def __init__(
         self,
         projector: ProgressProjector | None = None,
+        margin_weight: float = 0.0,
+        margin_threshold: float = 0.0,
     ) -> None:
+        if margin_weight < 0.0 or margin_threshold < 0.0:
+            raise ValueError("Margin weight and threshold must be non-negative")
         self.projector = projector or ProgressProjector.from_csv()
+        self.margin_weight = float(margin_weight)
+        self.margin_threshold = float(margin_threshold)
         self._previous_ego_progress: float | None = None
         self._previous_opponent_progress: float | None = None
         self._relative_position_m = 0.0
@@ -213,15 +220,39 @@ class PPOTransitionReward:
             self._opponent_collision_latched = True
         reward_progress = PROGRESS_WEIGHT * ego_delta
         reward_relative = 0.0 if self._opponent_collision_latched else RELATIVE_WEIGHT * (ego_delta - opponent_delta)
+        if self._opponent_collision_latched or self.margin_weight == 0.0 or self.margin_threshold == 0.0:
+            reward_margin = 0.0
+        else:
+            from ppo.environment import oriented_rectangle_clearance
+
+            ego_pose = np.asarray(
+                (
+                    raw_observation["poses_x"][ego_index],
+                    raw_observation["poses_y"][ego_index],
+                    raw_observation["poses_theta"][ego_index],
+                ),
+                dtype=np.float64,
+            )
+            opponent_pose = np.asarray(
+                (
+                    raw_observation["poses_x"][opponent_index],
+                    raw_observation["poses_y"][opponent_index],
+                    raw_observation["poses_theta"][opponent_index],
+                ),
+                dtype=np.float64,
+            )
+            clearance = oriented_rectangle_clearance(ego_pose, opponent_pose)
+            reward_margin = -self.margin_weight * max(0.0, self.margin_threshold - clearance) ** 2
         if ego_collision and not self._ego_collision_penalty_applied:
             reward_collision = COLLISION_PENALTY
             self._ego_collision_penalty_applied = True
         else:
             reward_collision = 0.0
-        reward_total = reward_progress + reward_relative + reward_collision
+        reward_total = reward_progress + reward_relative + reward_margin + reward_collision
         return RewardResult(
             reward_progress=float(reward_progress),
             reward_relative=float(reward_relative),
+            reward_margin=float(reward_margin),
             reward_collision=float(reward_collision),
             reward_total=float(reward_total),
             ego_progress_delta_m=float(ego_delta),

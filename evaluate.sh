@@ -14,6 +14,7 @@ OPP_RACELINES=("raceline0" "raceline1" "raceline2")
 OPP_SPEED_SCALES=(0.5 0.6 0.7 0.8)
 INTERVAL_IDX="${INTERVAL_IDX:-15}"
 NUM_STARTPOINTS="${NUM_STARTPOINTS:-50}"
+EGO_IDX_OFFSET="${EGO_IDX_OFFSET:-0}"
 COLLISION_SCOPE="${COLLISION_SCOPE:-legacy}"
 PYTHON="${PYTHON:-python}"
 
@@ -22,7 +23,7 @@ raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
 max_waypoints=$(tail -n +3 "$raceline_path" | wc -l)
 ego_idx_range=()
 for ((i=0; i<NUM_STARTPOINTS; i++)); do
-    idx=$((i * max_waypoints / (NUM_STARTPOINTS - 1)))
+    idx=$((i * max_waypoints / (NUM_STARTPOINTS - 1) + EGO_IDX_OFFSET))
     ego_idx_range+=($idx)
 done
 

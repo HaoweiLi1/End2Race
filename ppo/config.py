@@ -9,7 +9,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 N_ENVS = 16
-N_EPOCHS = 1
 DEVICE = "cuda"
 
 GAMMA = 0.999
@@ -49,6 +48,9 @@ class PPOConfig:
     target_kl: float | None = TARGET_KL
     steering_latent_std: float = STEERING_LATENT_STD
     speed_physical_std: float = SPEED_PHYSICAL_STD
+    margin_weight: float = 0.0
+    margin_threshold: float = 0.0
+    n_epochs: int = 1
 
 
 V1 = PPOConfig(
@@ -196,6 +198,24 @@ BE_E3_SPEED_LOW = replace(
     speed_physical_std=0.10,
 )
 
+SG_LR10 = replace(
+    AH_H0_P50_WR,
+    name="SG-lr10",
+    updates=24,
+    checkpoint_updates=(8, 16, 24),
+    n_epochs=2,
+    gru_lr=1.0e-5,
+    head_lr=1.0e-4,
+    target_kl=0.010,
+)
+
+SG_FULL = replace(
+    SG_LR10,
+    name="SG-full",
+    margin_weight=0.02,
+    margin_threshold=0.5,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -219,6 +239,8 @@ CONFIGS = {
         BE_E1_COUPLED_LOW,
         BE_E2_STEER_LOW,
         BE_E3_SPEED_LOW,
+        SG_LR10,
+        SG_FULL,
     )
 }
 
@@ -241,6 +263,8 @@ def _validate(config: PPOConfig) -> None:
         raise ValueError(f"Illegal PPO config name: {config.name}")
     if config.n_steps <= 0 or config.batch_size <= 0 or config.updates <= 0:
         raise ValueError("n_steps, batch_size, and updates must be positive")
+    if config.n_epochs <= 0:
+        raise ValueError("n_epochs must be positive")
     if (N_ENVS * config.n_steps) % config.batch_size != 0:
         raise ValueError("batch_size must evenly divide N_ENVS * n_steps")
     if tuple(sorted(set(config.checkpoint_updates))) != config.checkpoint_updates:
@@ -267,6 +291,8 @@ def _validate(config: PPOConfig) -> None:
         raise ValueError("target_kl must be positive or None")
     if config.steering_latent_std <= 0.0 or config.speed_physical_std <= 0.0:
         raise ValueError("steering_latent_std and speed_physical_std must be positive")
+    if config.margin_weight < 0.0 or config.margin_threshold < 0.0:
+        raise ValueError("Margin weight and threshold must be non-negative")
 
 
 for _config in CONFIGS.values():

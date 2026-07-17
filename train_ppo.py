@@ -95,7 +95,7 @@ class PPOTrainingCallback(BaseCallback):
             self.scenario_ids.add(scenario_id)
             if branch in {"bc_ego_collision", "hard_pool"}:
                 self.hard_scenario_ids.add(scenario_id)
-            for key in ("reward_progress", "reward_relative", "reward_collision", "reward_total"):
+            for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total"):
                 self.reward_sums[key] += float(info[key])
             if dones[index]:
                 if bool(info["ego_collision"]):
@@ -146,7 +146,7 @@ class PPOTrainingCallback(BaseCallback):
             },
             "reward_component_means": {
                 key: float(self.reward_sums[key] / self.transitions)
-                for key in ("reward_progress", "reward_relative", "reward_collision", "reward_total")
+                for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total")
             },
         }
 
@@ -190,7 +190,11 @@ def make_training_env(
             reset_provider=sampler,
             ego_index=0,
             opponent_controller=LatticePlannerOpponentController(),
-            transition_reward=PPOTransitionReward(ProgressProjector.from_csv()),
+            transition_reward=PPOTransitionReward(
+                ProgressProjector.from_csv(),
+                margin_weight=config.margin_weight,
+                margin_threshold=config.margin_threshold,
+            ),
             privileged_critic=config.critic_profile == "C3_PRIVILEGED_PHYSICAL",
         )
 
@@ -209,7 +213,7 @@ def build_model(
         learning_rate=1.0,
         n_steps=config.n_steps,
         batch_size=config.batch_size,
-        n_epochs=ppo_config.N_EPOCHS,
+        n_epochs=config.n_epochs,
         gamma=ppo_config.GAMMA,
         gae_lambda=ppo_config.GAE_LAMBDA,
         clip_range=ppo_config.CLIP_RANGE,
@@ -268,7 +272,7 @@ def _resolved_record(
             "output_dir": str(output_dir),
             "device": ppo_config.DEVICE,
             "n_envs": ppo_config.N_ENVS,
-            "n_epochs": ppo_config.N_EPOCHS,
+            "n_epochs": config.n_epochs,
             "gamma": ppo_config.GAMMA,
             "gae_lambda": ppo_config.GAE_LAMBDA,
             "clip_range": ppo_config.CLIP_RANGE,
@@ -289,7 +293,7 @@ def _resolved_record(
     )
     record["transitions_per_update"] = ppo_config.N_ENVS * config.n_steps
     record["minibatches_per_update"] = ppo_config.N_ENVS * config.n_steps // config.batch_size
-    record["total_optimizer_steps"] = record["minibatches_per_update"] * ppo_config.N_EPOCHS * config.updates
+    record["total_optimizer_steps"] = record["minibatches_per_update"] * config.n_epochs * config.updates
     return record
 
 
