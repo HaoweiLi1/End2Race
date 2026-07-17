@@ -1,10 +1,10 @@
 {
   "completed_at": null,
-  "current_phase": "implementation",
+  "current_phase": "phase1",
   "execution_scope": "local_only",
-  "next_action": "Implement the locked margin reward and per-config n_epochs contract, run regression tests, and lock affected file hashes before Phase 1.",
+  "next_action": "Run SG-lr10 and SG-full for seeds 20260715, 20260716, and 20260717; then apply the preregistered F1, F2, F3, and guardrail rules.",
   "owner_approved_at": "2026-07-17T14:01:34+08:00",
   "schema_version": 1,
-  "source_commit": "fbffdb51d7be583d7a1a6caba5ac81aeae6cddc4",
-  "status": "P0_PASS_IMPLEMENTATION_PENDING"
+  "source_commit": "58e8728faf069893627fcf5bad2000c0c5865181",
+  "status": "PHASE1_READY"
 }
