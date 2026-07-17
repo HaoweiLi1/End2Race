@@ -1,0 +1,105 @@
+{
+  "arms": {
+    "SG-full": {
+      "F_eligible": false,
+      "failure_reason": "PER_UPDATE_APPROX_KL_GUARDRAIL",
+      "runs": [
+        {
+          "action_statistics_finite": true,
+          "approx_kl": 0.04758274555206299,
+          "approx_kl_limit": 0.015,
+          "checkpoint_count": 0,
+          "explained_variance": -0.31072354316711426,
+          "metrics_rows": 1,
+          "run_dir": "runs/ppo/SG-full_seed20260715",
+          "seed": 20260715,
+          "status": "TERMINATED_AFTER_U1_GUARDRAIL",
+          "training_metrics_sha256": "b23ebe16e28e4095063dd4980d694342d94f05f97497d6b513783c3838eec521",
+          "update": 1
+        },
+        {
+          "action_statistics_finite": true,
+          "approx_kl": 0.09258769452571869,
+          "approx_kl_limit": 0.015,
+          "checkpoint_count": 0,
+          "explained_variance": -0.057267069816589355,
+          "metrics_rows": 1,
+          "run_dir": "runs/ppo/SG-full_seed20260716",
+          "seed": 20260716,
+          "status": "TERMINATED_AFTER_U1_GUARDRAIL",
+          "training_metrics_sha256": "a744e6988902113dbb6571bc37c8f5bf0f1e727626a68fbeae075922fef528c5",
+          "update": 1
+        },
+        {
+          "checkpoint_count": 0,
+          "metrics_rows": 0,
+          "run_dir": "runs/ppo/SG-full_seed20260717",
+          "seed": 20260717,
+          "status": "TERMINATED_DURING_QUEUE_CANCELLATION_BEFORE_U1"
+        }
+      ]
+    },
+    "SG-lr10": {
+      "F_eligible": false,
+      "failure_reason": "PER_UPDATE_APPROX_KL_GUARDRAIL",
+      "runs": [
+        {
+          "action_statistics_finite": true,
+          "approx_kl": 0.05217164009809494,
+          "approx_kl_limit": 0.015,
+          "checkpoint_count": 0,
+          "explained_variance": -0.31160879135131836,
+          "metrics_rows": 1,
+          "run_dir": "runs/ppo/SG-lr10_seed20260715",
+          "seed": 20260715,
+          "status": "TERMINATED_AFTER_U1_GUARDRAIL",
+          "training_metrics_sha256": "87f2b2667d7fd2dd05df458d602df76898d2b2909bd8e3005cdde0c34c638399",
+          "update": 1
+        },
+        {
+          "action_statistics_finite": true,
+          "approx_kl": 0.09076680988073349,
+          "approx_kl_limit": 0.015,
+          "checkpoint_count": 0,
+          "explained_variance": -0.0788193941116333,
+          "metrics_rows": 1,
+          "run_dir": "runs/ppo/SG-lr10_seed20260716",
+          "seed": 20260716,
+          "status": "TERMINATED_AFTER_U1_GUARDRAIL",
+          "training_metrics_sha256": "5083cbc29ea3bd41daec7d76b89dd647fb885345e7711ee0d0e3f03ccb98cb1a",
+          "update": 1
+        },
+        {
+          "checkpoint_count": 0,
+          "metrics_rows": 0,
+          "run_dir": "runs/ppo/SG-lr10_seed20260717",
+          "seed": 20260717,
+          "status": "TERMINATED_DURING_QUEUE_CANCELLATION_BEFORE_U1"
+        }
+      ]
+    }
+  },
+  "completed_at": "2026-07-17T14:19:37+08:00",
+  "decisions": {
+    "F1": false,
+    "F1_reason": "SG-lr10 is ineligible because two runs violated the per-update approx_kl guardrail at U1.",
+    "F2": false,
+    "F2_reason": "SG-full is ineligible because two runs violated the per-update approx_kl guardrail at U1.",
+    "F3": false,
+    "F3_reason": "The conditional-arm trigger requires completed late-window and post-U12 evidence; guardrail termination makes it inapplicable.",
+    "phase2_allowed": false,
+    "route_A_status": "CLOSED_KL_GUARDRAIL",
+    "route_B_triggered": true
+  },
+  "execution": {
+    "guardrail_action": "All active local trainers and the queue controller were terminated. No configuration was changed and no rerun was started.",
+    "max_concurrency": 4,
+    "planned_runs": 6,
+    "runs_reaching_u1": 4,
+    "runs_started_before_queue_shutdown": 6,
+    "source_commit": "434833e4dc7abe8d41a85f1c3226d3909e6c880e"
+  },
+  "phase": 1,
+  "schema_version": 1,
+  "status": "TERMINATED_KL_GUARDRAIL"
+}
