@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "record": "PPO_V1_3_E_PREREGISTRATION",
+  "status": "PREREGISTERED",
+  "created_at": "2026-07-17T19:15:45+08:00",
+  "scope": "evaluation_only_post_protocol_correction",
+  "hypothesis": "The three fixed V1.3-D U8 actors will produce same-direction development improvement when evaluated under the CPU device contract that generated the canonical BC reference.",
+  "single_change_from_v1_3_d_evaluation": {
+    "field": "evaluation_device",
+    "old": "cuda_if_available",
+    "new": "cpu",
+    "mechanism": "CUDA_VISIBLE_DEVICES is empty for every worker"
+  },
+  "seeds": [20260735, 20260736, 20260737],
+  "checkpoint_update": 8,
+  "candidate_selection": false,
+  "paired_bc_evaluation": {
+    "required_counts": {"collision": 21, "follow": 233, "overtake": 346, "error": 0},
+    "device": "cpu",
+    "workers": 4,
+    "panel": "Austin canonical development 600",
+    "collision_scope": "ego",
+    "ego_idx_offset": 0,
+    "noise": 0.0,
+    "render": false,
+    "save_trace": false,
+    "sim_duration": 8.0
+  },
+  "product_gate_per_seed": {
+    "G_gte": 5,
+    "collision_lte": 16,
+    "overtake_gte": 340,
+    "speed_ratio_to_bc_gte": 0.99,
+    "distance_ratio_to_bc_gte": 0.99
+  },
+  "cross_seed_gate": "3/3 fixed U8 actors must pass every product gate",
+  "failure_policy": {
+    "retry": false,
+    "threshold_change": false,
+    "checkpoint_change": false,
+    "additional_training": false,
+    "holdout": false,
+    "promotion": false
+  },
+  "allowed_final_verdicts": [
+    "PASS_EXPLORATORY_CPU_DEVELOPMENT",
+    "FAIL_NO_STABLE_IMPROVEMENT",
+    "STOP_CPU_BASELINE_MISMATCH",
+    "INVALID_EVALUATION"
+  ]
+}

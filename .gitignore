@@ -22,3 +22,6 @@ runs/ppo/v1_3_c_baseline/
 runs/ppo/v1_3_d_seed*/
 runs/ppo/v1_3_d_logs/
 runs/ppo/v1_3_d_baseline/
+runs/ppo/v1_3_e_logs/
+runs/ppo/v1_3_e_baseline/
+runs/ppo/v1_3_e_candidates/

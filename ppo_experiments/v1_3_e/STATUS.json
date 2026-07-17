@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "experiment": "v1_3_e",
+  "status": "PREREGISTERED",
+  "phase": "PREPARATION",
+  "created_at": "2026-07-17T19:15:45+08:00",
+  "source_head": "cc258b663f22aee5f24d58537bb20b396140211b",
+  "failure_reason": null
+}
