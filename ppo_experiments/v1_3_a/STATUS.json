@@ -1,10 +1,10 @@
 {
-  "schema_version": 1,
   "experiment": "v1_3_a",
-  "status": "PREREGISTERED",
-  "phase": "PREPARATION",
-  "source_head": "0ac292e914f561361035dbab87ca4c8419c3c1ee",
+  "failure_reason": "A formal update exceeded the locked KL guardrail; fixed 3x actor LR is not stable.",
   "implementation_commit": "8a14590aa72448ebfa1689723e0bcd4dcbf2393a",
-  "updated_at": "2026-07-17T17:24:08+08:00",
-  "failure_reason": null
+  "phase": "TERMINAL",
+  "schema_version": 1,
+  "source_head": "0ac292e914f561361035dbab87ca4c8419c3c1ee",
+  "status": "FAIL_KL_UNSTABLE",
+  "updated_at": "2026-07-17T09:34:24.424769+00:00"
 }
