@@ -1,13 +1,33 @@
 {
   "actionability_window": {
-    "earliest_actionable_seconds_before_collision": null,
-    "last_actionable_seconds_before_collision": null,
-    "repairable_cases_by_action_class": {}
+    "earliest_actionable_seconds_before_collision": {
+      "median": 2.5,
+      "p25": 1.375,
+      "p75": 3.0
+    },
+    "last_actionable_seconds_before_collision": {
+      "median": 0.5,
+      "p25": 0.5,
+      "p75": 1.0
+    },
+    "repairable_cases_by_action_class": {
+      "combined": 17,
+      "speed_only": 11,
+      "steering_only": 18
+    }
   },
-  "best_safe_pulse_count": 0,
-  "best_safe_pulse_exploration_bad_count": 0,
-  "best_safe_return_above_noop_count": 0,
-  "best_safe_return_above_noop_fraction": 0.0,
+  "aggregation_elapsed_seconds": 0.04936218399961945,
+  "aggregation_revision": {
+    "raw_branches_reused": true,
+    "reason": "Completion audit found that revision 1 collapsed 0.25 s and 0.50 s pulses into one family, although duration is part of the guide's pulse specification. Revision 2 uses offset plus duration as the template; raw branches and all thresholds are unchanged.",
+    "revision": 2,
+    "superseded_result_sha256": "34cf58a2a63a7500a26f9a7b6b490873b74e295768e431ac514dcf19a03311ed",
+    "superseded_verdict": "LOCAL_ACTION_NOT_FOUND"
+  },
+  "best_safe_pulse_count": 20,
+  "best_safe_pulse_exploration_bad_count": 20,
+  "best_safe_return_above_noop_count": 20,
+  "best_safe_return_above_noop_fraction": 1.0,
   "case_summaries": {
     "training-sp01-ego0063-raceline2-v080": {
       "baseline": {
@@ -34,12 +54,39 @@
         "steering_offset_rad": 0.0,
         "steps": 657
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 1.0,
+        "branch_start_step": 557,
+        "discounted_return": 0.34577144977319896,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 1.0005907923190875,
+        "max_single_dimension_sigma": 1.6456689044909545,
+        "min_oriented_clearance_m": 0.03814776388955584,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.6456689044909545,
+        "pulse_mahalanobis_mean": 1.5581298876310106,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp01-ego0063-raceline2-v080",
+        "sequence_directional_tail_probability": 2.382416401044596e-31,
+        "sequence_log_directional_tail_probability": -70.5120226156384,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 1.0,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 6,
+      "usable_safe_repair_found": true
     },
     "training-sp02-ego0110-raceline0-v080": {
       "baseline": {
@@ -66,12 +113,39 @@
         "steering_offset_rad": 0.0,
         "steps": 700
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 2.5,
+        "branch_start_step": 450,
+        "discounted_return": 0.3378530099614623,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 1.8680401846039274,
+        "max_single_dimension_sigma": 1.6872146738761329,
+        "min_oriented_clearance_m": 0.06799864121980378,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.6872146738761329,
+        "pulse_mahalanobis_mean": 1.620672651753398,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp02-ego0110-raceline0-v080",
+        "sequence_directional_tail_probability": 1.009797244573691e-32,
+        "sequence_log_directional_tail_probability": -73.6729734130557,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 2.5,
+      "last_actionable_seconds_before_collision": 1.0,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 5,
+      "usable_safe_repair_found": true
     },
     "training-sp02-ego0110-raceline2-v080": {
       "baseline": {
@@ -98,12 +172,39 @@
         "steering_offset_rad": 0.0,
         "steps": 503
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 0.5,
+        "branch_start_step": 453,
+        "discounted_return": 0.343154646965104,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 0.8093052964180174,
+        "max_single_dimension_sigma": 1.8511474692474539,
+        "min_oriented_clearance_m": 0.0737104624767012,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.8511474692474539,
+        "pulse_mahalanobis_mean": 1.6917753047355162,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp02-ego0110-raceline2-v080",
+        "sequence_directional_tail_probability": 2.386238765302973e-34,
+        "sequence_log_directional_tail_probability": -77.41817477384805,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 2.5,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 5,
+      "usable_safe_repair_found": true
     },
     "training-sp03-ego0151-raceline1-v050": {
       "baseline": {
@@ -130,12 +231,39 @@
         "steering_offset_rad": 0.0,
         "steps": 128
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 0.5,
+        "branch_start_step": 78,
+        "discounted_return": 0.6203063925560702,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 20.121230313942334,
+        "max_single_dimension_sigma": 1.5584817949486385,
+        "min_oriented_clearance_m": 0.3110409150559539,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.5584817949486385,
+        "pulse_mahalanobis_mean": 1.5498547856754512,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp03-ego0151-raceline1-v050",
+        "sequence_directional_tail_probability": 3.62774140201804e-31,
+        "sequence_log_directional_tail_probability": -70.09152763148828,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 0.5,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 1,
+      "usable_safe_repair_found": true
     },
     "training-sp03-ego0151-raceline2-v050": {
       "baseline": {
@@ -162,12 +290,39 @@
         "steering_offset_rad": 0.0,
         "steps": 137
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 0.5,
+        "branch_start_step": 87,
+        "discounted_return": 0.6228951877850976,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 20.322478586291368,
+        "max_single_dimension_sigma": 1.5679575510917168,
+        "min_oriented_clearance_m": 0.09156291505121512,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.5679575510917168,
+        "pulse_mahalanobis_mean": 1.5580729752959093,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp03-ego0151-raceline2-v050",
+        "sequence_directional_tail_probability": 2.4118892566984756e-31,
+        "sequence_log_directional_tail_probability": -70.49972751847946,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 0.5,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 3,
+      "usable_safe_repair_found": true
     },
     "training-sp07-ego0319-raceline0-v080": {
       "baseline": {
@@ -194,12 +349,39 @@
         "steering_offset_rad": 0.0,
         "steps": 567
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 2.5,
+        "branch_start_step": 317,
+        "discounted_return": 0.3732014463570607,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 0.5372344296403639,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.020757609993788638,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "speed_only",
+        "pulse_id": "SPEED_P025",
+        "pulse_mahalanobis_max": 1.6666666666666667,
+        "pulse_mahalanobis_mean": 1.6666666666666665,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp07-ego0319-raceline0-v080",
+        "sequence_directional_tail_probability": 9.627328596079126e-34,
+        "sequence_log_directional_tail_probability": -76.02328737882438,
+        "speed_offset_mps": 0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": 0.0,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 2.5,
+      "last_actionable_seconds_before_collision": 2.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 1,
+      "usable_safe_repair_found": true
     },
     "training-sp10-ego0440-raceline0-v050": {
       "baseline": {
@@ -226,12 +408,39 @@
         "steering_offset_rad": 0.0,
         "steps": 312
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 1.0,
+        "branch_start_step": 212,
+        "discounted_return": 0.5501858430664558,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 16.812705388830267,
+        "max_single_dimension_sigma": 1.5907163460613372,
+        "min_oriented_clearance_m": 0.010287251434389685,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.5907163460613372,
+        "pulse_mahalanobis_mean": 1.573514614044342,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp10-ego0440-raceline0-v050",
+        "sequence_directional_tail_probability": 1.1150904645256171e-31,
+        "sequence_log_directional_tail_probability": -71.27120234709083,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 3.0,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 14,
+      "usable_safe_repair_found": true
     },
     "training-sp10-ego0440-raceline0-v060": {
       "baseline": {
@@ -258,12 +467,39 @@
         "steering_offset_rad": 0.0,
         "steps": 315
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 2.0,
+        "branch_start_step": 115,
+        "discounted_return": 0.48946037334902853,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 11.901684057957766,
+        "max_single_dimension_sigma": 1.5959868668690291,
+        "min_oriented_clearance_m": 0.016605068775047426,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.5959868668690291,
+        "pulse_mahalanobis_mean": 1.5628181930811444,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp10-ego0440-raceline0-v060",
+        "sequence_directional_tail_probability": 1.9011300973508427e-31,
+        "sequence_log_directional_tail_probability": -70.73768938537995,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 2.0,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 2,
+      "usable_safe_repair_found": true
     },
     "training-sp13-ego0571-raceline1-v050": {
       "baseline": {
@@ -290,12 +526,39 @@
         "steering_offset_rad": 0.0,
         "steps": 449
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 2.5,
+        "branch_start_step": 199,
+        "discounted_return": 0.34715088602224375,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 5.682019437242872,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.03230815450005916,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "combined",
+        "pulse_id": "COMBINED_M020_M025",
+        "pulse_mahalanobis_max": 1.836233042800844,
+        "pulse_mahalanobis_mean": 1.8359041561356395,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp13-ego0571-raceline1-v050",
+        "sequence_directional_tail_probability": 3.778933910479464e-50,
+        "sequence_log_directional_tail_probability": -113.79981271411462,
+        "speed_offset_mps": -0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.02,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 3.0,
+      "last_actionable_seconds_before_collision": 1.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 8,
+      "usable_safe_repair_found": true
     },
     "training-sp14-ego0613-raceline0-v080": {
       "baseline": {
@@ -322,12 +585,39 @@
         "steering_offset_rad": 0.0,
         "steps": 567
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 1.0,
+        "branch_start_step": 467,
+        "discounted_return": 0.29368339153757134,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 1.2141525257185606,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.18258866216831998,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "combined",
+        "pulse_id": "COMBINED_M020_M025",
+        "pulse_mahalanobis_max": 1.8542781936890183,
+        "pulse_mahalanobis_mean": 1.8456312307565252,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp14-ego0613-raceline0-v080",
+        "sequence_directional_tail_probability": 1.7438253719966518e-50,
+        "sequence_log_directional_tail_probability": -114.57317345996478,
+        "speed_offset_mps": -0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.02,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 2.5,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 7,
+      "usable_safe_repair_found": true
     },
     "training-sp15-ego0650-raceline2-v070": {
       "baseline": {
@@ -386,12 +676,39 @@
         "steering_offset_rad": 0.0,
         "steps": 249
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 2.0,
+        "branch_start_step": 49,
+        "discounted_return": 0.5523670661717491,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 13.774143904588982,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.019309382489855118,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "speed_only",
+        "pulse_id": "SPEED_P025",
+        "pulse_mahalanobis_max": 1.6666666666666667,
+        "pulse_mahalanobis_mean": 1.6666666666666665,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp16-ego0692-raceline2-v070",
+        "sequence_directional_tail_probability": 9.627328596079126e-34,
+        "sequence_log_directional_tail_probability": -76.02328737882438,
+        "speed_offset_mps": 0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": 0.0,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 2.0,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 5,
+      "usable_safe_repair_found": true
     },
     "training-sp24-ego1032-raceline0-v080": {
       "baseline": {
@@ -418,12 +735,39 @@
         "steering_offset_rad": 0.0,
         "steps": 574
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 0.5,
+        "branch_start_step": 524,
+        "discounted_return": 0.3659353103040704,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 0.08154733510815504,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.059677876445971265,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "speed_only",
+        "pulse_id": "SPEED_P025",
+        "pulse_mahalanobis_max": 1.6666666666666667,
+        "pulse_mahalanobis_mean": 1.6666666666666665,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp24-ego1032-raceline0-v080",
+        "sequence_directional_tail_probability": 9.627328596079126e-34,
+        "sequence_log_directional_tail_probability": -76.02328737882438,
+        "speed_offset_mps": 0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": 0.0,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 3.0,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 11,
+      "usable_safe_repair_found": true
     },
     "training-sp24-ego1032-raceline2-v070": {
       "baseline": {
@@ -450,12 +794,39 @@
         "steering_offset_rad": 0.0,
         "steps": 285
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 1.5,
+        "branch_start_step": 135,
+        "discounted_return": 0.4876312329491143,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 10.566726614987658,
+        "max_single_dimension_sigma": 1.7050978395484095,
+        "min_oriented_clearance_m": 0.38080947567793655,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.7050978395484095,
+        "pulse_mahalanobis_mean": 1.591084210492669,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp24-ego1032-raceline2-v070",
+        "sequence_directional_tail_probability": 4.450047029893339e-32,
+        "sequence_log_directional_tail_probability": -72.1898083111718,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 1.5,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 4,
+      "usable_safe_repair_found": true
     },
     "training-sp30-ego1272-raceline0-v070": {
       "baseline": {
@@ -482,12 +853,39 @@
         "steering_offset_rad": 0.0,
         "steps": 457
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 0.5,
+        "branch_start_step": 407,
+        "discounted_return": 0.3663949281577985,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 5.858960395401937,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.018724205108728822,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "combined",
+        "pulse_id": "COMBINED_M020_M025",
+        "pulse_mahalanobis_max": 1.8374448923055637,
+        "pulse_mahalanobis_mean": 1.8366819063700826,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp30-ego1272-raceline0-v070",
+        "sequence_directional_tail_probability": 3.550765732568787e-50,
+        "sequence_log_directional_tail_probability": -113.86209137015956,
+        "speed_offset_mps": -0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.02,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 3.0,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 6,
+      "usable_safe_repair_found": true
     },
     "training-sp32-ego1356-raceline1-v050": {
       "baseline": {
@@ -514,12 +912,39 @@
         "steering_offset_rad": 0.0,
         "steps": 643
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 1.0,
+        "branch_start_step": 543,
+        "discounted_return": 0.2141299806022642,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": -0.7012431413165814,
+        "max_single_dimension_sigma": 1.769490777744811,
+        "min_oriented_clearance_m": 0.0695528916169565,
+        "opponent_collision": false,
+        "outcome": "follow",
+        "pulse_class": "combined",
+        "pulse_id": "COMBINED_M020_M025",
+        "pulse_mahalanobis_max": 2.4308178439162638,
+        "pulse_mahalanobis_mean": 2.056931516085251,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp32-ego1356-raceline1-v050",
+        "sequence_directional_tail_probability": 2.760509655464386e-57,
+        "sequence_log_directional_tail_probability": -130.23193498020174,
+        "speed_offset_mps": -0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.02,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 3.0,
+      "last_actionable_seconds_before_collision": 1.0,
       "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "usable_safe_repair_count": 8,
+      "usable_safe_repair_found": true
     },
     "training-sp33-ego1404-raceline0-v070": {
       "baseline": {
@@ -546,12 +971,39 @@
         "steering_offset_rad": 0.0,
         "steps": 426
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 1.0,
+        "branch_start_step": 326,
+        "discounted_return": 0.3823804664066885,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 7.483511506661728,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.024399093230679215,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "combined",
+        "pulse_id": "COMBINED_M020_M025",
+        "pulse_mahalanobis_max": 1.8525211628799763,
+        "pulse_mahalanobis_mean": 1.8428240803180969,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp33-ego1404-raceline0-v070",
+        "sequence_directional_tail_probability": 2.1785985431726045e-50,
+        "sequence_log_directional_tail_probability": -114.35057284973519,
+        "speed_offset_mps": -0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.02,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 1.0,
+      "last_actionable_seconds_before_collision": 1.0,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 2,
+      "usable_safe_repair_found": true
     },
     "training-sp35-ego1488-raceline1-v060": {
       "baseline": {
@@ -578,12 +1030,39 @@
         "steering_offset_rad": 0.0,
         "steps": 432
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 3.0,
+        "branch_start_step": 132,
+        "discounted_return": 0.2212545685570861,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": -1.7920196641480857,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.11872562501667394,
+        "opponent_collision": false,
+        "outcome": "follow",
+        "pulse_class": "combined",
+        "pulse_id": "COMBINED_M020_M025",
+        "pulse_mahalanobis_max": 1.857940059746808,
+        "pulse_mahalanobis_mean": 1.8480728164404732,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp35-ego1488-raceline1-v060",
+        "sequence_directional_tail_probability": 1.438373232328872e-50,
+        "sequence_log_directional_tail_probability": -114.76574187447777,
+        "speed_offset_mps": -0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.02,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 3.0,
+      "last_actionable_seconds_before_collision": 0.5,
       "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "usable_safe_repair_count": 11,
+      "usable_safe_repair_found": true
     },
     "training-sp37-ego1567-raceline1-v060": {
       "baseline": {
@@ -642,12 +1121,39 @@
         "steering_offset_rad": 0.0,
         "steps": 596
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 3.0,
+        "branch_start_step": 296,
+        "discounted_return": 0.38081110588108136,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 3.7516734052271943,
+        "max_single_dimension_sigma": 1.5458018315736322,
+        "min_oriented_clearance_m": 0.10901074467402636,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "steering_only",
+        "pulse_id": "STEER_M040",
+        "pulse_mahalanobis_max": 1.5458018315736322,
+        "pulse_mahalanobis_mean": 1.5416374303690847,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp46-ego1954-raceline2-v080",
+        "sequence_directional_tail_probability": 5.4465695553322196e-31,
+        "sequence_log_directional_tail_probability": -69.68515191170899,
+        "speed_offset_mps": 0.0,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.04,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 3.0,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 5,
+      "usable_safe_repair_found": true
     },
     "training-sp49-ego2075-raceline1-v050": {
       "baseline": {
@@ -674,12 +1180,39 @@
         "steering_offset_rad": 0.0,
         "steps": 276
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 2.0,
+        "branch_start_step": 76,
+        "discounted_return": 0.5062425678422956,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 13.939283914289888,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.22213502551531275,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "combined",
+        "pulse_id": "COMBINED_M020_M025",
+        "pulse_mahalanobis_max": 1.844958898730199,
+        "pulse_mahalanobis_mean": 1.8419546007720826,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp49-ego2075-raceline1-v050",
+        "sequence_directional_tail_probability": 2.332124670997145e-50,
+        "sequence_log_directional_tail_probability": -114.28247492166655,
+        "speed_offset_mps": -0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": -0.02,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 2.5,
+      "last_actionable_seconds_before_collision": 1.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 9,
+      "usable_safe_repair_found": true
     },
     "training-sp49-ego2075-raceline1-v060": {
       "baseline": {
@@ -706,17 +1239,45 @@
         "steering_offset_rad": 0.0,
         "steps": 314
       },
-      "best_safe_branch": null,
-      "earliest_actionable_seconds_before_collision": null,
-      "last_actionable_seconds_before_collision": null,
-      "usable_safe_pass_repair_found": false,
-      "usable_safe_repair_count": 0,
-      "usable_safe_repair_found": false
+      "best_safe_branch": {
+        "branch_seconds_before_collision": 0.5,
+        "branch_start_step": 264,
+        "discounted_return": 0.5005367292954411,
+        "duration_seconds": 0.25,
+        "duration_steps": 25,
+        "ego_collision": false,
+        "elapsed_time": 7.999999999999874,
+        "final_relative_progress_m": 11.739639453232456,
+        "max_single_dimension_sigma": 1.6666666666666667,
+        "min_oriented_clearance_m": 0.26248295730241117,
+        "opponent_collision": false,
+        "outcome": "overtake",
+        "pulse_class": "speed_only",
+        "pulse_id": "SPEED_P025",
+        "pulse_mahalanobis_max": 1.6666666666666667,
+        "pulse_mahalanobis_mean": 1.6666666666666665,
+        "pulse_steps_executed": 25,
+        "pulse_touched_steering_bound": false,
+        "return_exceeds_no_op": true,
+        "scenario_id": "training-sp49-ego2075-raceline1-v060",
+        "sequence_directional_tail_probability": 9.627328596079126e-34,
+        "sequence_log_directional_tail_probability": -76.02328737882438,
+        "speed_offset_mps": 0.25,
+        "status": "COMPLETED",
+        "steering_offset_rad": 0.0,
+        "steps": 800
+      },
+      "earliest_actionable_seconds_before_collision": 0.5,
+      "last_actionable_seconds_before_collision": 0.5,
+      "usable_safe_pass_repair_found": true,
+      "usable_safe_repair_count": 1,
+      "usable_safe_repair_found": true
     }
   },
-  "completed_at": "2026-07-18T00:41:41+08:00",
+  "collection_elapsed_seconds": 6051.1775982170075,
+  "completed_at": "2026-07-18T06:46:48+08:00",
   "device": "cuda",
-  "elapsed_seconds": 6051.1775982170075,
+  "elapsed_seconds": 6051.226960401007,
   "frozen_hashes": {
     "ppo/environment.py": "49c484064d4a4c1a95e25128420ed419e73ac36acc6d0661a64bd82e6085bb0c",
     "ppo/hard_pools/h0_current_det.json": "a8082dd15dbc93bf374c182f6c57befa67560f445389a776c8ad24fbc7bab755",
@@ -729,9 +1290,9 @@
     "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
   },
   "gates": {
-    "exploration_coverage_insufficient": false,
-    "local_action_not_found": true,
-    "reward_direction_ok": false,
+    "exploration_coverage_insufficient": true,
+    "local_action_not_found": false,
+    "reward_direction_ok": true,
     "reward_misaligned": false
   },
   "h0_collision_reproduced": 22,
@@ -742,6 +1303,7 @@
   ],
   "optimizer_steps": 0,
   "probability_definition": "For each nonzero pulse dimension, use the one-sided Gaussian tail at the achieved signed latent/physical z magnitude; multiply dimensions and iid pulse steps. This is an at-least-as-extreme directional occurrence probability, not a continuous-action point probability.",
+  "pulse_template_definition": "physical offset identity plus fixed duration; branch placement is a repeated trial of the same template",
   "raw_branches": {
     "collision_branch_rows": 2172,
     "path": "runs/ppo/RL_DIRECTION_AUDIT_20260717/p2/counterfactual_branches.json",
@@ -749,8 +1311,8 @@
     "sha256": "54cda1d15365ab31878dfed9fe852f4b32ac952c5307b504c34420ebacb7253a"
   },
   "record": "P2_COUNTERFACTUAL_ACTIONABILITY_AND_REWARD_RANKING",
-  "repairable_case_count": 0,
-  "repairable_fraction": 0.0,
+  "repairable_case_count": 20,
+  "repairable_fraction": 0.9090909090909091,
   "reward_misaligned_case_count": 0,
   "reward_misaligned_fraction": 0.0,
   "safe_harm_panel_contract": "first 12 preregistered safe_overtake plus first 12 preregistered safe_follow rows",
@@ -781,8 +1343,20 @@
     "training-sp34-ego1441-raceline1-v060"
   ],
   "safe_template_harm": {
-    "COMBINED_M020_M025": {
+    "COMBINED_M020_M025__D250MS": {
+      "case_level_collision_rate": 0.041666666666666664,
+      "duration_seconds": 0.25,
+      "harmed_scenario_count": 1,
+      "harmed_scenario_ids": [
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "COMBINED_M020_M025",
+      "trials": 144,
+      "usable_pulse": true
+    },
+    "COMBINED_M020_M025__D500MS": {
       "case_level_collision_rate": 0.16666666666666666,
+      "duration_seconds": 0.5,
       "harmed_scenario_count": 4,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
@@ -790,95 +1364,233 @@
         "training-sp25-ego1064-raceline0-v070",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "COMBINED_M020_M025",
+      "trials": 144,
       "usable_pulse": false
     },
-    "COMBINED_P020_M025": {
+    "COMBINED_P020_M025__D250MS": {
       "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.25,
       "harmed_scenario_count": 2,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "COMBINED_P020_M025",
+      "trials": 144,
       "usable_pulse": false
     },
-    "SPEED_M025": {
+    "COMBINED_P020_M025__D500MS": {
       "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.5,
       "harmed_scenario_count": 2,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "COMBINED_P020_M025",
+      "trials": 144,
       "usable_pulse": false
     },
-    "SPEED_M050": {
+    "SPEED_M025__D250MS": {
       "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.25,
       "harmed_scenario_count": 2,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "SPEED_M025",
+      "trials": 144,
       "usable_pulse": false
     },
-    "SPEED_P025": {
+    "SPEED_M025__D500MS": {
       "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.5,
       "harmed_scenario_count": 2,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "SPEED_M025",
+      "trials": 144,
       "usable_pulse": false
     },
-    "STEER_M020": {
+    "SPEED_M050__D250MS": {
       "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.25,
       "harmed_scenario_count": 2,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "SPEED_M050",
+      "trials": 144,
       "usable_pulse": false
     },
-    "STEER_M040": {
+    "SPEED_M050__D500MS": {
+      "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.5,
+      "harmed_scenario_count": 2,
+      "harmed_scenario_ids": [
+        "training-sp15-ego0650-raceline1-v050",
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "SPEED_M050",
+      "trials": 144,
+      "usable_pulse": false
+    },
+    "SPEED_P025__D250MS": {
+      "case_level_collision_rate": 0.041666666666666664,
+      "duration_seconds": 0.25,
+      "harmed_scenario_count": 1,
+      "harmed_scenario_ids": [
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "SPEED_P025",
+      "trials": 144,
+      "usable_pulse": true
+    },
+    "SPEED_P025__D500MS": {
+      "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.5,
+      "harmed_scenario_count": 2,
+      "harmed_scenario_ids": [
+        "training-sp15-ego0650-raceline1-v050",
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "SPEED_P025",
+      "trials": 144,
+      "usable_pulse": false
+    },
+    "STEER_M020__D250MS": {
+      "case_level_collision_rate": 0.041666666666666664,
+      "duration_seconds": 0.25,
+      "harmed_scenario_count": 1,
+      "harmed_scenario_ids": [
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "STEER_M020",
+      "trials": 144,
+      "usable_pulse": true
+    },
+    "STEER_M020__D500MS": {
+      "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.5,
+      "harmed_scenario_count": 2,
+      "harmed_scenario_ids": [
+        "training-sp15-ego0650-raceline1-v050",
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "STEER_M020",
+      "trials": 144,
+      "usable_pulse": false
+    },
+    "STEER_M040__D250MS": {
+      "case_level_collision_rate": 0.041666666666666664,
+      "duration_seconds": 0.25,
+      "harmed_scenario_count": 1,
+      "harmed_scenario_ids": [
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "STEER_M040",
+      "trials": 144,
+      "usable_pulse": true
+    },
+    "STEER_M040__D500MS": {
       "case_level_collision_rate": 0.125,
+      "duration_seconds": 0.5,
       "harmed_scenario_count": 3,
       "harmed_scenario_ids": [
         "training-sp21-ego0904-raceline1-v050",
         "training-sp22-ego0949-raceline0-v080",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "STEER_M040",
+      "trials": 144,
       "usable_pulse": false
     },
-    "STEER_P020": {
+    "STEER_P020__D250MS": {
       "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.25,
       "harmed_scenario_count": 2,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "STEER_P020",
+      "trials": 144,
       "usable_pulse": false
     },
-    "STEER_P040": {
+    "STEER_P020__D500MS": {
+      "case_level_collision_rate": 0.08333333333333333,
+      "duration_seconds": 0.5,
+      "harmed_scenario_count": 2,
+      "harmed_scenario_ids": [
+        "training-sp15-ego0650-raceline1-v050",
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "STEER_P020",
+      "trials": 144,
+      "usable_pulse": false
+    },
+    "STEER_P040__D250MS": {
       "case_level_collision_rate": 0.125,
+      "duration_seconds": 0.25,
       "harmed_scenario_count": 3,
       "harmed_scenario_ids": [
         "training-sp15-ego0650-raceline1-v050",
         "training-sp21-ego0904-raceline1-v050",
         "training-sp35-ego1488-raceline1-v050"
       ],
-      "trials": 288,
+      "pulse_id": "STEER_P040",
+      "trials": 144,
+      "usable_pulse": false
+    },
+    "STEER_P040__D500MS": {
+      "case_level_collision_rate": 0.125,
+      "duration_seconds": 0.5,
+      "harmed_scenario_count": 3,
+      "harmed_scenario_ids": [
+        "training-sp15-ego0650-raceline1-v050",
+        "training-sp21-ego0904-raceline1-v050",
+        "training-sp35-ego1488-raceline1-v050"
+      ],
+      "pulse_id": "STEER_P040",
+      "trials": 144,
       "usable_pulse": false
     }
   },
   "schema_version": 1,
   "source_head": "5bfccef9f8053a0d857cb0728c146a9fe3b4dc15",
   "status": "COMPLETED",
-  "usable_pulse_ids": [],
-  "verdict": "LOCAL_ACTION_NOT_FOUND"
+  "usable_pulse_ids": [
+    "COMBINED_M020_M025",
+    "SPEED_P025",
+    "STEER_M020",
+    "STEER_M040"
+  ],
+  "usable_pulse_templates": [
+    {
+      "duration_seconds": 0.25,
+      "pulse_id": "COMBINED_M020_M025",
+      "template_id": "COMBINED_M020_M025__D250MS"
+    },
+    {
+      "duration_seconds": 0.25,
+      "pulse_id": "SPEED_P025",
+      "template_id": "SPEED_P025__D250MS"
+    },
+    {
+      "duration_seconds": 0.25,
+      "pulse_id": "STEER_M020",
+      "template_id": "STEER_M020__D250MS"
+    },
+    {
+      "duration_seconds": 0.25,
+      "pulse_id": "STEER_M040",
+      "template_id": "STEER_M040__D250MS"
+    }
+  ],
+  "verdict": "EXPLORATION_COVERAGE_INSUFFICIENT"
 }
