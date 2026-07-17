@@ -7,10 +7,12 @@ install/
 .codex/
 .agents/
 .remember/
+**/.numba_cache/
 Dataset_*/
 eval_results/
 posttrained/
 runs/ppo/*/checkpoints/
+runs/ppo/quick_pool_3s_v2/*/checkpoints/
 runs/ppo/v1_3_b_seed*/
 runs/ppo/v1_3_b_logs/
 runs/ppo/v1_3_b_baseline/

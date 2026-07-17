@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "experiment_id": "quick_pool_3s_v2",
+  "preregistered_at_utc": "2026-07-17T14:39:43Z",
+  "source_commit": "566026ef60536346d412c094c9eac2986e5c8dd7",
+  "candidate_results_observed": false,
+  "statement": "No candidate result had been observed when this preregistration was written. Phase 0 is reused without rerunning, and the observed same-protocol CPU quick baseline is binding.",
+  "source_hashes": {
+    "ppo/config.py": "7464a0260498705242189e09528c6b1925522911ddd5e5a4fae34e154921f295",
+    "ppo/policy.py": "7b14ccb60ce7494c611cab2df729df562895137af4694aa805c5a57e8e4f64d8",
+    "ppo/environment.py": "49c484064d4a4c1a95e25128420ed419e73ac36acc6d0661a64bd82e6085bb0c",
+    "ppo/reward.py": "bd895a131e1eb04a187a29781082ce729628912446fcc5b796be6982a0570aaf",
+    "ppo/scenarios.py": "f3103d1cb3ba4601db46ab419e6776c535183182f2b8fec2ff72136746dc56d1",
+    "train_ppo.py": "817bdac4e9e4dfb43c813942fe688c5dfffd30eacf1a9c2d25dcb8402d55a5c2",
+    "eval_multiagent.py": "5ca6329513fd46b2216b84a2f7a154e470a83c674670628d94373e9cca891580",
+    "evaluate.sh": "be774b398d63725a4ac9329816c79c68f673e3d60f11793b53cfff5fcfceee4a",
+    "utils.py": "77459621bf6af7fa8726ba4182fe28f3c4f4c5ebabf0f876553534dfcb95edfe",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+  },
+  "reused_phase0": {
+    "interpretation": {
+      "full_h1_count": 482,
+      "h1_collisions_within_3_0_s": 152,
+      "selected_h1_early_3s_count": 138,
+      "selection_threshold_s": 2.8,
+      "reproduced_collision_within_3_s": 138,
+      "reproduction_total": 138,
+      "coverage": "early-failure subset, not full H1 coverage"
+    },
+    "artifacts": {
+      "ppo_experiments/quick_pool_3s/H1_EARLY_3S.json": {
+        "sha256": "a6ccdc4083e7f2daf081fbac00e39d86c02ddd30d7c19a32494a8dc22583c898",
+        "manifest_hash": "a1c0d7bd2eac7d244301cbeb6a9ef854995bb5e12c89d957cb35800ea17ec1fc"
+      },
+      "ppo_experiments/quick_pool_3s/H1_EARLY_3S_SUMMARY.json": {
+        "sha256": "9b37cd92b1948eb38a0644f665b5bda0991fe3931c55b6ca1b2eb8fb2bd114d8"
+      },
+      "ppo_experiments/quick_pool_3s/H1_EARLY_3S_PRECHECK_RESULTS.json": {
+        "sha256": "dda23e6ee0d2168eaf0db59a7f865010faf349fffe48dcf1aa4bdc064eadc8f8"
+      },
+      "ppo_experiments/quick_pool_3s/QUICK_PANEL_120.json": {
+        "sha256": "7c633628d039215a00b13b77376f255bebeacff2b990561ea62b34f439cf7918",
+        "manifest_hash": "447a996bf7d9617e86950e456cd8cb08d68ba9b8f349cab7959bc205f437bf52"
+      },
+      "ppo_experiments/quick_pool_3s/QUICK_PANEL_BC_RESULTS.json": {
+        "sha256": "5ec8e604c4e5745bb658f78e442a36840dc1eb0059624e282ed0930fc687c5f8"
+      }
+    }
+  },
+  "binding_quick_cpu_baseline": {
+    "collision": 20,
+    "follow": 49,
+    "overtake": 51,
+    "error": 0,
+    "total": 120,
+    "historical_drift": {
+      "scenario_id": "evaluation-sp30-ego1283-raceline0-v070",
+      "historical": "ego_collision",
+      "current_cpu_contract": "overtake"
+    }
+  },
+  "training_contract": {
+    "seed": 20260718,
+    "fresh_start_checkpoint": "pretrained/end2race.pth",
+    "n_envs": 16,
+    "n_steps": 800,
+    "batch_size": 6400,
+    "n_epochs": 1,
+    "gamma": 0.999,
+    "gae_lambda": 0.995,
+    "clip_range": 0.1,
+    "vf_coef": 0.5,
+    "ent_coef": 0.0,
+    "max_grad_norm": 0.5,
+    "target_kl": null,
+    "learning_rates": {
+      "gru": 0.000001,
+      "head": 0.00001,
+      "critic": 0.0003
+    },
+    "exploration": {
+      "steering_latent_std": 0.03,
+      "speed_physical_std": 0.15,
+      "log_std": "frozen"
+    },
+    "critic": "C0_RAW_SINGLE_FRAME",
+    "reward": "unchanged",
+    "env_roles": {
+      "0-7": "hard",
+      "8-15": "ordinary"
+    },
+    "ordinary_horizon_s": 8.0,
+    "episode_semantics": {
+      "collision": "terminated=true,truncated=false",
+      "time_limit": "terminated=false,truncated=true",
+      "initialization": "real environment reset with normal recurrent-state reset"
+    }
+  },
+  "arms": {
+    "QP3_A0_H0_8S": {
+      "hard_pool": "H0_CURRENT_DET",
+      "hard_horizon_s": 8.0
+    },
+    "QP3_A1_H1FULL_8S": {
+      "hard_pool": "H1_EXPANDED_DET",
+      "hard_horizon_s": 8.0
+    },
+    "QP3_A2_H1EARLY_8S": {
+      "hard_pool": "H1_EARLY_3S",
+      "hard_horizon_s": 8.0
+    },
+    "QP3_A3_H1EARLY_3S": {
+      "hard_pool": "H1_EARLY_3S",
+      "hard_horizon_s": 3.0
+    }
+  },
+  "fixed_checkpoints": {
+    "screen": {
+      "update": 2,
+      "transitions": 25600,
+      "arms": [
+        "QP3_A0_H0_8S",
+        "QP3_A1_H1FULL_8S",
+        "QP3_A2_H1EARLY_8S",
+        "QP3_A3_H1EARLY_3S"
+      ]
+    },
+    "retention": {
+      "update": 4,
+      "transitions": 51200,
+      "arms": [
+        "QP3_A0_H0_8S",
+        "QP3_A2_H1EARLY_8S",
+        "QP3_A3_H1EARLY_3S"
+      ],
+      "continuation": "same paused process; no restart"
+    },
+    "full600": {
+      "update": 4,
+      "arms": [
+        "QP3_A0_H0_8S",
+        "QP3_A2_H1EARLY_8S",
+        "QP3_A3_H1EARLY_3S"
+      ]
+    }
+  },
+  "gates": {
+    "screen": {
+      "error": 0,
+      "collision_max": 18,
+      "net_collision_repair_min": 2,
+      "overtake_min": 49
+    },
+    "retention_basic_a2_a3": {
+      "error": 0,
+      "collision_max": 18,
+      "fixed_collision_gt_new_collision": true,
+      "overtake_min": 49
+    },
+    "retention_a3_additional": {
+      "comparison": "A3 collision <= A2 collision OR A3 net repair >= A2 net repair + 2",
+      "stability": "A3 update-4 collision <= A3 update-2 collision + 2"
+    },
+    "full600": {
+      "run_only_if": "A2 or A3 passes retention",
+      "baseline": "fresh canonical BC evaluation with same CPU persistent-worker protocol",
+      "overtake_floor": "ceil(0.95 * current_CPU_BC_overtake)",
+      "forward_signal": "candidate collision < A0 collision AND fixed collision > new collision AND candidate overtake >= floor AND error == 0"
+    }
+  }
+}

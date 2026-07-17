@@ -1,0 +1,9 @@
+{
+  "config": "QP3_A1_H1FULL_8S",
+  "experiment": "QP3_A1_H1FULL_8S",
+  "last_completed_update": 2,
+  "schema_version": 1,
+  "seed": 20260718,
+  "status": "STOPPED_SCREEN",
+  "stop_reason": "Stopped by fixed screen-stage decision"
+}

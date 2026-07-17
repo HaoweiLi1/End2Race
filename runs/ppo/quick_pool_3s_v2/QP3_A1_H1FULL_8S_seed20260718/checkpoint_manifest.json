@@ -1,0 +1,11 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_QP3_A1_H1FULL_8S_u0002_s20260718.pth",
+      "sha256": "6331c2982beb481f580bd7bcdd38b47986ec414847e83fed2e0d3527b977f99c",
+      "update": 2
+    }
+  ],
+  "config": "QP3_A1_H1FULL_8S",
+  "seed": 20260718
+}
