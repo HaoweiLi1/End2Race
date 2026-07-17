@@ -1,0 +1,179 @@
+{
+  "artifacts": {
+    "logs_count": 54,
+    "logs_manifest_sha256": "c5107a7e2bf0a2eff3c7f4cdaab407ed20cea102fa5145f3ea20cb9500092d67",
+    "metrics_count": 54,
+    "metrics_manifest_sha256": "9e38b2a2af266f62a5f94c6474551ec5f9e003e642e872c653e0a41abda6819c",
+    "trace_count": 54,
+    "trace_manifest_sha256": "df91daea81cbe22fb12dfc59385c2506a403e7ecb8e7e5964da65374d645f1a8"
+  },
+  "calibration": {
+    "candidates": [
+      {
+        "collision_penalty_q25": 0.016333645212192924,
+        "distribution_separation_pass": true,
+        "margin_threshold": 0.4,
+        "margin_weight": 0.01,
+        "passes": true,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.0014501431716244055,
+        "safe_overtake_ratio_pass": true,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.012157628265951088
+      },
+      {
+        "collision_penalty_q25": 0.033130125527261356,
+        "distribution_separation_pass": true,
+        "margin_threshold": 0.5,
+        "margin_weight": 0.01,
+        "passes": true,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.009177359139201662,
+        "safe_overtake_ratio_pass": true,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.03075127283606882
+      },
+      {
+        "collision_penalty_q25": 0.057439108659785784,
+        "distribution_separation_pass": false,
+        "margin_threshold": 0.6,
+        "margin_weight": 0.01,
+        "passes": false,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.03276538373432742,
+        "safe_overtake_ratio_pass": true,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.06427987652506166
+      },
+      {
+        "collision_penalty_q25": 0.03266729042438585,
+        "distribution_separation_pass": true,
+        "margin_threshold": 0.4,
+        "margin_weight": 0.02,
+        "passes": true,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.002900286343248811,
+        "safe_overtake_ratio_pass": true,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.024315256531902175
+      },
+      {
+        "collision_penalty_q25": 0.06626025105452271,
+        "distribution_separation_pass": true,
+        "margin_threshold": 0.5,
+        "margin_weight": 0.02,
+        "passes": true,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.018354718278403324,
+        "safe_overtake_ratio_pass": true,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.06150254567213764
+      },
+      {
+        "collision_penalty_q25": 0.11487821731957157,
+        "distribution_separation_pass": false,
+        "margin_threshold": 0.6,
+        "margin_weight": 0.02,
+        "passes": false,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.06553076746865484,
+        "safe_overtake_ratio_pass": false,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.12855975305012332
+      },
+      {
+        "collision_penalty_q25": 0.0653345808487717,
+        "distribution_separation_pass": true,
+        "margin_threshold": 0.4,
+        "margin_weight": 0.04,
+        "passes": true,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.005800572686497622,
+        "safe_overtake_ratio_pass": true,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.04863051306380435
+      },
+      {
+        "collision_penalty_q25": 0.13252050210904542,
+        "distribution_separation_pass": true,
+        "margin_threshold": 0.5,
+        "margin_weight": 0.04,
+        "passes": true,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.03670943655680665,
+        "safe_overtake_ratio_pass": true,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.12300509134427529
+      },
+      {
+        "collision_penalty_q25": 0.22975643463914314,
+        "distribution_separation_pass": false,
+        "margin_threshold": 0.6,
+        "margin_weight": 0.04,
+        "passes": false,
+        "safe_overtake_30pct_relative_reward": 0.06418230099510248,
+        "safe_overtake_penalty_median": 0.13106153493730968,
+        "safe_overtake_ratio_pass": false,
+        "safe_overtake_relative_reward_median": 0.21394100331700827,
+        "safe_penalty_q75": 0.25711950610024664
+      }
+    ],
+    "collision_episode_count": 22,
+    "passes": true,
+    "safe_episode_count": 30,
+    "safe_overtake_count": 22,
+    "selected": {
+      "margin_threshold": 0.5,
+      "margin_weight": 0.02
+    }
+  },
+  "completed_at": "2026-07-17T14:06:37+08:00",
+  "f0": {
+    "denominator": 24,
+    "details": [
+      {"classification": "opponent_proximity", "collision_time_s": 7.9699999999998745, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0021216296368779457, "precollision_2s_min_lidar_m": 0.18583638966083527, "scenario_id": "training-sp00-ego0021-raceline2-v080"},
+      {"classification": "wall_other_or_not_reproduced", "collision_time_s": null, "ego_collision_reproduced": false, "outcome": "overtake", "precollision_2s_min_clearance_m": null, "precollision_2s_min_lidar_m": null, "scenario_id": "training-sp01-ego0063-raceline2-v080"},
+      {"classification": "wall_other_or_not_reproduced", "collision_time_s": null, "ego_collision_reproduced": false, "outcome": "overtake", "precollision_2s_min_clearance_m": null, "precollision_2s_min_lidar_m": null, "scenario_id": "training-sp02-ego0110-raceline0-v080"},
+      {"classification": "opponent_proximity", "collision_time_s": 5.009999999999938, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.005143903312197518, "precollision_2s_min_lidar_m": 0.19405104219913483, "scenario_id": "training-sp02-ego0110-raceline2-v080"},
+      {"classification": "wall_other_or_not_reproduced", "collision_time_s": 1.270000000000001, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.8683196583929217, "precollision_2s_min_lidar_m": 0.2211502641439438, "scenario_id": "training-sp03-ego0151-raceline1-v050"},
+      {"classification": "opponent_proximity", "collision_time_s": 3.8199999999999625, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0033690963976133925, "precollision_2s_min_lidar_m": 0.322140634059906, "scenario_id": "training-sp03-ego0151-raceline1-v060"},
+      {"classification": "opponent_proximity", "collision_time_s": 1.380000000000001, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.011722042197311468, "precollision_2s_min_lidar_m": 0.31608521938323975, "scenario_id": "training-sp03-ego0151-raceline2-v050"},
+      {"classification": "opponent_proximity", "collision_time_s": 5.599999999999925, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.002994666447381309, "precollision_2s_min_lidar_m": 0.18582648038864136, "scenario_id": "training-sp07-ego0319-raceline0-v080"},
+      {"classification": "opponent_proximity", "collision_time_s": 3.1199999999999775, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0034655835432022726, "precollision_2s_min_lidar_m": 0.2448989301919937, "scenario_id": "training-sp10-ego0440-raceline0-v050"},
+      {"classification": "opponent_proximity", "collision_time_s": 3.1699999999999764, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.006708247586350956, "precollision_2s_min_lidar_m": 0.23840509355068207, "scenario_id": "training-sp10-ego0440-raceline0-v060"},
+      {"classification": "opponent_proximity", "collision_time_s": 5.199999999999934, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.002488639156705457, "precollision_2s_min_lidar_m": 0.21133901178836823, "scenario_id": "training-sp13-ego0571-raceline1-v050"},
+      {"classification": "opponent_proximity", "collision_time_s": 5.5799999999999255, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0009744393714806327, "precollision_2s_min_lidar_m": 0.30417507886886597, "scenario_id": "training-sp14-ego0613-raceline0-v080"},
+      {"classification": "opponent_proximity", "collision_time_s": 3.989999999999959, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.002212180802118888, "precollision_2s_min_lidar_m": 0.17840415239334106, "scenario_id": "training-sp15-ego0650-raceline2-v070"},
+      {"classification": "opponent_proximity", "collision_time_s": 2.489999999999991, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.011123467304956867, "precollision_2s_min_lidar_m": 0.22546008229255676, "scenario_id": "training-sp16-ego0692-raceline2-v070"},
+      {"classification": "wall_other_or_not_reproduced", "collision_time_s": 5.689999999999923, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 1.0141070551777482, "precollision_2s_min_lidar_m": 0.20581349730491638, "scenario_id": "training-sp24-ego1032-raceline0-v080"},
+      {"classification": "opponent_proximity", "collision_time_s": 2.7899999999999845, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.011948169345339326, "precollision_2s_min_lidar_m": 0.3116282522678375, "scenario_id": "training-sp24-ego1032-raceline2-v070"},
+      {"classification": "opponent_proximity", "collision_time_s": 4.4999999999999485, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0022559747794424325, "precollision_2s_min_lidar_m": 0.16227442026138306, "scenario_id": "training-sp30-ego1272-raceline0-v070"},
+      {"classification": "opponent_proximity", "collision_time_s": 6.599999999999904, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0031480907111830912, "precollision_2s_min_lidar_m": 0.2966684401035309, "scenario_id": "training-sp32-ego1356-raceline1-v050"},
+      {"classification": "opponent_proximity", "collision_time_s": 4.269999999999953, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0034251008253724916, "precollision_2s_min_lidar_m": 0.1840187907218933, "scenario_id": "training-sp33-ego1404-raceline0-v070"},
+      {"classification": "opponent_proximity", "collision_time_s": 4.239999999999954, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.00027593814062051674, "precollision_2s_min_lidar_m": 0.32168444991111755, "scenario_id": "training-sp35-ego1488-raceline1-v060"},
+      {"classification": "opponent_proximity", "collision_time_s": 3.8299999999999623, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.004543341623495694, "precollision_2s_min_lidar_m": 0.29657992720603943, "scenario_id": "training-sp37-ego1567-raceline1-v060"},
+      {"classification": "opponent_proximity", "collision_time_s": 5.969999999999917, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0010556190870730292, "precollision_2s_min_lidar_m": 0.18885110318660736, "scenario_id": "training-sp46-ego1954-raceline2-v080"},
+      {"classification": "opponent_proximity", "collision_time_s": 2.7499999999999853, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.004341402480013567, "precollision_2s_min_lidar_m": 0.17309443652629852, "scenario_id": "training-sp49-ego2075-raceline1-v050"},
+      {"classification": "opponent_proximity", "collision_time_s": 3.2099999999999755, "ego_collision_reproduced": true, "outcome": "ego_collision", "precollision_2s_min_clearance_m": 0.0048008141456439635, "precollision_2s_min_lidar_m": 0.17270000278949738, "scenario_id": "training-sp49-ego2075-raceline1-v060"}
+    ],
+    "ego_collision_reproduced": 22,
+    "opponent_proximity_count": 20,
+    "opponent_proximity_fraction": 0.8333333333333334,
+    "passes": true,
+    "required_count": 15
+  },
+  "phase": 0,
+  "preregistration_commit": "fbffdb51d7be583d7a1a6caba5ac81aeae6cddc4",
+  "safe_sample": {
+    "all_non_collision": true,
+    "count": 30,
+    "outcomes": {
+      "follow": 8,
+      "overtake": 22
+    },
+    "safe_overtake_count": 22
+  },
+  "schema_version": 1,
+  "source_commit": "dcccc33f83f9b25fbd9b18a975f45da2126a74aa",
+  "status": "PASS"
+}

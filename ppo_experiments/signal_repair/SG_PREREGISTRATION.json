@@ -45,6 +45,14 @@
       "path": "ppo/hard_pools/h0_current_det.json",
       "sha256": "a8082dd15dbc93bf374c182f6c57befa67560f445389a776c8ad24fbc7bab755"
     },
+    "locked_result": {
+      "completed_at": "2026-07-17T14:06:37+08:00",
+      "f0_opponent_proximity_count": 20,
+      "f0_passes": true,
+      "margin_threshold": 0.5,
+      "margin_weight": 0.02,
+      "path": "ppo_experiments/signal_repair/SG_P0_RESULTS.json"
+    },
     "run_contract": {
       "collision_scope": "ego",
       "evaluator_path": "eval_multiagent.py",
@@ -103,7 +111,8 @@
         "checkpoint_updates": [8, 16, 24],
         "gru_lr": 1e-05,
         "head_lr": 0.0001,
-        "margin": "phase0_locked_value",
+        "margin_threshold": 0.5,
+        "margin_weight": 0.02,
         "n_epochs": 2,
         "target_kl": 0.01,
         "updates": 24
@@ -112,7 +121,8 @@
         "checkpoint_updates": [8, 16, 24],
         "gru_lr": 1e-05,
         "head_lr": 0.0001,
-        "margin": 0.0,
+        "margin_threshold": 0.0,
+        "margin_weight": 0.0,
         "n_epochs": 2,
         "target_kl": 0.01,
         "updates": 24
@@ -128,5 +138,5 @@
   },
   "schema_version": 1,
   "source_commit": "dcccc33f83f9b25fbd9b18a975f45da2126a74aa",
-  "status": "P0_PREREGISTERED"
+  "status": "P0_PASS_IMPLEMENTATION_PENDING"
 }
