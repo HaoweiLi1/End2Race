@@ -547,11 +547,16 @@ def _pairwise_metrics(vectors: list[torch.Tensor], slices: dict[str, slice]) -> 
 
 def _bootstrap_ci(vectors: list[torch.Tensor], group_slice: slice, seed: int) -> dict[str, float | int]:
     rng = np.random.default_rng(seed)
+    cosine_matrix = np.eye(len(vectors), dtype=np.float64)
+    for first, second in itertools.combinations(range(len(vectors)), 2):
+        value = _cosine(vectors[first][group_slice], vectors[second][group_slice])
+        cosine_matrix[first, second] = value
+        cosine_matrix[second, first] = value
     values: list[float] = []
     for _replicate in range(10000):
         sampled = rng.integers(0, len(vectors), size=len(vectors))
         pair_values = [
-            _cosine(vectors[first][group_slice], vectors[second][group_slice])
+            float(cosine_matrix[first, second])
             for first, second in itertools.combinations(sampled.tolist(), 2)
             if first != second
         ]
@@ -864,11 +869,26 @@ def main() -> None:
         shard_records: list[dict[str, Any]] = []
         seeds = preregistration["seeds"]["p1"][pool_name]
         for shard_index, seed in enumerate(seeds):
+            shard_dir = RUN_DIR / "p1" / pool_name / f"shard_{shard_index}"
+            shard_result_path = shard_dir / "shard_result.json"
+            if shard_result_path.is_file():
+                shard_record = read_json(shard_result_path)
+                if len(shard_record["episodes"]) != 32 or int(shard_record["seed"]) != int(seed):
+                    raise RuntimeError(f"Invalid resumable shard record: {shard_result_path}")
+                gradient_path = ROOT / shard_record["gradient"]["gradient_file"]
+                if sha256_file(gradient_path) != shard_record["gradient"]["gradient_file_sha256"]:
+                    raise RuntimeError(f"Resumable shard gradient hash mismatch: {gradient_path}")
+                shard_records.append(shard_record)
+                print(
+                    f"P1_SHARD_RESUME pool={pool_name} shard={shard_index} "
+                    f"seed={seed} collisions={shard_record['collection']['actual_ego_collisions']}",
+                    flush=True,
+                )
+                continue
             print(f"P1_SHARD_START pool={pool_name} shard={shard_index} seed={seed}", flush=True)
             provider = FixedScenarioProvider()
             env = make_env(provider, int(seed))
             episodes: list[dict[str, Any]] = []
-            shard_dir = RUN_DIR / "p1" / pool_name / f"shard_{shard_index}"
             try:
                 for episode_index, (scenario, branch) in enumerate(_shard_scenarios(pool_name, int(seed))):
                     destination = shard_dir / "episodes" / f"episode_{episode_index:02d}_{scenario.scenario_id}.npz"
