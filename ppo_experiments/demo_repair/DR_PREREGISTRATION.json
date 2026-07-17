@@ -1,0 +1,89 @@
+{
+  "authority": {
+    "execution_guide_path": ".agents/End2Race_PPO_Route_AB_Execution_Guide.md",
+    "execution_guide_sha256": "d91772e31c7f0080daa7dafc3d21e1514b6b8f3319a30b01f5b365a53a4a481e",
+    "handoff_path": ".agents/HANDOFF_CC.md",
+    "handoff_sha256": "2fa608777daca9b92a7e80e1d38243c32c41625af42b2e3a2e3d70ef968e755e"
+  },
+  "b0_feasibility": {
+    "classification_contract": {
+      "collision_precedence": [
+        "ego_collision",
+        "opponent_collision_only"
+      ],
+      "follow_rule": "If neither agent collides, classify follow when final seam-safe unwrapped ego-minus-opponent progress is less than or equal to zero.",
+      "overtake_rule": "If neither agent collides, classify overtake when final seam-safe unwrapped ego-minus-opponent progress is greater than zero.",
+      "progress_implementation": "ppo.reward.ProgressProjector with seam-safe unwrapping",
+      "success_buckets": [
+        "overtake",
+        "follow"
+      ],
+      "termination_rule": "Stop on any-agent collision, environment done, or 8.0 seconds, matching demonstration.py collision handling. Any collision is excluded from no-collision completion."
+    },
+    "gate": {
+      "minimum_no_collision_completions": 17,
+      "rule": "B-F0 passes iff at least 17 of 24 H0 scenarios finish without either vehicle colliding and are classified as overtake or clean follow.",
+      "threshold_fraction": 0.7
+    },
+    "h0_manifest": {
+      "count": 24,
+      "manifest_hash": "d022150627ff66af61e0b600699588181d8b06edf78a5723cf9ee503f89edcc9",
+      "path": "ppo/hard_pools/h0_current_det.json",
+      "sha256": "a8082dd15dbc93bf374c182f6c57befa67560f445389a776c8ad24fbc7bab755"
+    },
+    "planner_contract": {
+      "ego": {
+        "cost_weights": [
+          0.12,
+          2.0,
+          0.3,
+          0.5
+        ],
+        "raceline": "raceline1",
+        "traj_v_scale": 1.0
+      },
+      "opponent": {
+        "cost_weights": [
+          1.0,
+          2.0,
+          0.5,
+          0.0
+        ],
+        "raceline_and_speed_scale": "Use each H0 scenario's opp_raceline and opp_speedscale.",
+        "traj_v_scale": 1.0
+      },
+      "source_path": "demonstration.py",
+      "source_sha256": "c9344a73aa3cad9d5ead0750d3f23eac7a2f9ebfcb747480e978b05a5938767f"
+    },
+    "run_contract": {
+      "concurrency": 1,
+      "integrator": "Use each H0 scenario's RK4 value.",
+      "metrics_directory": "runs/ppo/DR_B0_20260717/metrics",
+      "noise": 0.0,
+      "render": false,
+      "run_directory": "runs/ppo/DR_B0_20260717",
+      "runtime_harness": "Untracked one-shot orchestration only; reuse demonstration.py setup functions and existing environment/progress facilities; do not add an evaluator."
+    }
+  },
+  "created_at": "2026-07-17T14:23:23+08:00",
+  "downstream_contract": {
+    "b1": "Use the already completed Route A Phase 0 traces and the guide-defined tuple (collision type, track-segment cluster, opponent raceline, speed scale). Clustered failures select the corresponding H1 neighborhood; otherwise use all H0 plus H1.",
+    "b2": "Training-side H0/H1 only. Generate planner-ego demonstrations in the original BC input/action schema and discard every ego-collision episode before any BC fine-tuning.",
+    "b3_external_dependency": {
+      "required_by_guide": "Original frozen BC Task8 training data and its hash from the backup directory.",
+      "status": "MISSING_IN_LOCAL_SCOPE",
+      "verified_at": "2026-07-17T14:23:23+08:00",
+      "verification": "The guide names no concrete Task8 path or hash, HANDOFF_CC section 6 contains SG exploration rather than Task8 data, /home/haowei/Documents/End2Race_backup1 is absent, and no Dataset_* directory exists inside the local repository. B3 must not start unless the exact frozen dependency is restored inside the allowed local scope and hash-verified."
+    },
+    "h1_manifest": {
+      "count": 482,
+      "manifest_hash": "b760e0ed95bef1694db1955502fdef5b64555080223c6a768db12e4105541df2",
+      "path": "ppo/hard_pools/h1_expanded_det.json",
+      "sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8"
+    }
+  },
+  "execution_scope": "local_only",
+  "schema_version": 1,
+  "source_commit": "f5768f3f231edb7bb6a12a00fe4c7c7488728d48",
+  "status": "B0_READY"
+}

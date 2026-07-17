@@ -1,0 +1,14 @@
+{
+  "completed_at": null,
+  "current_phase": "b0_feasibility",
+  "execution_scope": "local_only",
+  "next_action": "Run the preregistered 24-scenario H0 planner-ego feasibility replay. Continue to B1 only if at least 17 scenarios finish without either vehicle colliding.",
+  "owner_approved_at": "2026-07-17T14:01:34+08:00",
+  "route_a_trigger": {
+    "record": "ppo_experiments/signal_repair/SG_P1_RESULTS.json",
+    "status": "CLOSED_KL_GUARDRAIL"
+  },
+  "schema_version": 1,
+  "source_commit": "f5768f3f231edb7bb6a12a00fe4c7c7488728d48",
+  "status": "B0_READY"
+}
