@@ -59,6 +59,8 @@ def evaluation_log(seed: int | None = None) -> dict[str, str]:
     content = path.read_text(encoding="utf-8", errors="replace")
     for marker in (
         "EVAL_DEVICE=cpu",
+        "TORCH_NUM_THREADS=1",
+        "EVALUATOR=persistent_spawn_pool",
         "Starting batch evaluation of 600 segments",
         "Noise level: 0.0",
         "error: 0",
@@ -165,6 +167,8 @@ def main() -> None:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "scope": "evaluation_only_post_protocol_correction",
         "evaluation_device": "cpu",
+        "evaluator": "persistent_spawn_pool",
+        "torch_num_threads_per_worker": 1,
         "source_v1_3_d_results": {
             "path": "ppo_experiments/v1_3_d/RESULTS.json",
             "sha256": sha256_file(ROOT / "ppo_experiments" / "v1_3_d" / "RESULTS.json"),

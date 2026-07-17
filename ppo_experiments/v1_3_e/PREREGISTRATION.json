@@ -2,6 +2,8 @@
   "schema_version": 1,
   "record": "PPO_V1_3_E_PREREGISTRATION",
   "status": "PREREGISTERED",
+  "revision": 2,
+  "supersedes_revision_1_lock_commit": "640c2e9",
   "created_at": "2026-07-17T19:15:45+08:00",
   "scope": "evaluation_only_post_protocol_correction",
   "hypothesis": "The three fixed V1.3-D U8 actors will produce same-direction development improvement when evaluated under the CPU device contract that generated the canonical BC reference.",
@@ -9,7 +11,7 @@
     "field": "evaluation_device",
     "old": "cuda_if_available",
     "new": "cpu",
-    "mechanism": "CUDA_VISIBLE_DEVICES is empty for every worker"
+    "mechanism": "persistent spawned CPU workers; torch.set_num_threads(1); model loaded once per worker"
   },
   "seeds": [20260735, 20260736, 20260737],
   "checkpoint_update": 8,
@@ -25,6 +27,13 @@
     "render": false,
     "save_trace": false,
     "sim_duration": 8.0
+  },
+  "revision_1_preflight": {
+    "status": "ABORTED_BEFORE_AGGREGATION",
+    "completed_rows": 200,
+    "candidate_evaluations": 0,
+    "reason": "evaluate.sh launched one multithreaded Python/model load per scenario and was not equivalent to the historical persistent CPU evaluator",
+    "result_used_for_decision": false
   },
   "product_gate_per_seed": {
     "G_gte": 5,

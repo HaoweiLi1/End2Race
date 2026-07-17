@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "record": "PPO_V1_3_E_ABORTED_PREFLIGHT",
+  "protocol_revision": 1,
+  "status": "ABORTED_BEFORE_AGGREGATION",
+  "started_at": "2026-07-17T19:18:00+08:00",
+  "stopped_at": "2026-07-17T19:45:28+08:00",
+  "exit_code": 130,
+  "completed_bc_rows": 200,
+  "expected_bc_rows": 600,
+  "candidate_evaluations_started": 0,
+  "aggregate_result_written": false,
+  "reason": "The CPU evaluate.sh path launched and reloaded one multithreaded Python actor per scenario. Four workers were strongly oversubscribed and this did not reproduce the historical persistent single-thread worker execution contract.",
+  "process_evidence": {
+    "elapsed_at_audit": "00:27:28",
+    "active_workers": 4,
+    "observed_worker_cpu_percent_range": [268, 433],
+    "completed_rows_at_audit": 195
+  },
+  "semantic_spot_check": {
+    "episode_key": "ol0_e384_o391_s0.7",
+    "historical_cpu_outcome": "overtake",
+    "preflight_cpu_outcome": "overtake",
+    "historical_final_relative_position_m": 1.0846766518690458,
+    "preflight_final_relative_position_m": 1.0846766518690458
+  },
+  "preserved_evidence": {
+    "directory": "eval_results/_failure_evidence/v1_3_e_cpu_evaluate_sh_preflight",
+    "worker_metrics": 200,
+    "log_path": "eval_results/_failure_evidence/v1_3_e_cpu_evaluate_sh_preflight/eval_bc_cpu.log",
+    "log_sha256": "493e313d7bd40f8382cb8fb8850c0f2029648560af54db4174160a674383d166"
+  },
+  "scientific_impact": "No complete baseline or candidate outcome was observed. Checkpoints, product gates, cross-seed gate, and expected canonical BC counts remain unchanged in revision 2."
+}
