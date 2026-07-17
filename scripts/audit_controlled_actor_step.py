@@ -689,6 +689,11 @@ def main() -> None:
         "same_rollout_buffer_per_method": True,
         "actor_only_updates": True,
         "critic_optimizer_steps": 0,
+        "minibatch_contract": (
+            "collection-order complete recurrent sequences greedily packed to at most 1600 valid steps; "
+            "zero padding contributes no loss; the identical partition and per-minibatch advantage "
+            "normalization are reused by S1, S2, and S3"
+        ),
         "panel": {"path": "ppo_experiments/rl_direction_audit/P4_PANEL.json", "sha256": sha256_file(EXPERIMENT_DIR / "P4_PANEL.json")},
         "seeds": seed_records,
         "parameter_delta_pairwise_cosine_across_seeds": direction_consistency,
