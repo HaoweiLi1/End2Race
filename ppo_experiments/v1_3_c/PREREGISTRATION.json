@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "record": "PPO_V1_3_C_PREREGISTRATION",
+  "status": "PREREGISTERED",
+  "created_at": "2026-07-17T17:57:12+08:00",
+  "implementation_commit": "26935eb473d208816e68d531226d402ade6c24a2",
+  "hypothesis": "Removing the singular atanh steering likelihood while preserving deterministic End2Race actions allows one-epoch 3x-LR PPO to produce controlled updates and same-direction U8 improvement across five fresh seeds.",
+  "canonical_bc": {
+    "path": "pretrained/end2race.pth",
+    "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+  },
+  "single_change_from_v1_3_a": {
+    "field": "steering_distribution",
+    "old": "squashed_latent",
+    "new": "physical_gaussian",
+    "effective_physical_std": 0.026,
+    "deterministic_action_after_clip": "identical"
+  },
+  "formal_seeds": [20260729, 20260730, 20260731, 20260732, 20260733],
+  "excluded_probe_seed": 20260718,
+  "excluded_smoke_seed": 20260734,
+  "primary_checkpoint": 8,
+  "training_order": "All five formal seeds serially; no candidate evaluation before all training reaches terminal status.",
+  "process_gate": {
+    "all_updates_approx_kl_lte": 0.02,
+    "target_window": [0.002, 0.01],
+    "minimum_updates_in_target_window_per_seed": 6,
+    "actual_optimizer_steps_range": [1, 16],
+    "gru_and_head_update_nonzero": true,
+    "frozen_actor_drift": 0.0,
+    "log_std_drift": 0.0,
+    "checkpoint_actor_key_count": 12
+  },
+  "product_gate_per_seed": {
+    "G_gte": 5,
+    "collision_lte": 16,
+    "overtake_gte": 340,
+    "speed_ratio_to_bc_gte": 0.99,
+    "distance_ratio_to_bc_gte": 0.99
+  },
+  "cross_seed_gate": "5/5 process pass and 5/5 product pass at fixed U8",
+  "paired_bc_evaluation": {
+    "panel": "Austin canonical development 600",
+    "collision_scope": "ego",
+    "workers": 4,
+    "ego_idx_offset": 0,
+    "noise": 0.0,
+    "render": false,
+    "save_trace": false,
+    "sim_duration": 8.0,
+    "required_counts": {"collision": 21, "follow": 233, "overtake": 346, "error": 0}
+  },
+  "failure_policy": {
+    "training_retry": false,
+    "seed_replacement": false,
+    "checkpoint_selection": false,
+    "threshold_change": false,
+    "extra_lr_arm": false,
+    "margin_arm": false,
+    "holdout": false,
+    "fail_fast_on_kl_guardrail": true
+  },
+  "expected_run_paths": [
+    "runs/ppo/v1_3_c_seed20260729",
+    "runs/ppo/v1_3_c_seed20260730",
+    "runs/ppo/v1_3_c_seed20260731",
+    "runs/ppo/v1_3_c_seed20260732",
+    "runs/ppo/v1_3_c_seed20260733"
+  ],
+  "allowed_final_verdicts": [
+    "PASS_STABLE_PHYSICAL_GAUSSIAN_DEVELOPMENT",
+    "FAIL_KL_UNSTABLE",
+    "FAIL_UPDATE_WINDOW_NOT_REACHED",
+    "FAIL_NO_STABLE_IMPROVEMENT",
+    "STOP_PROTOCOL_DRIFT",
+    "INVALID_INFRASTRUCTURE"
+  ]
+}
