@@ -53,8 +53,8 @@
         }
       ],
       "common_budget_summary": {
-        "median_ego_collision": 21.0,
-        "median_overtake": 345.0,
+        "median_ego_collision": 21,
+        "median_overtake": 345,
         "transition_budgets": [
           51200,
           102400
@@ -75,7 +75,7 @@
         "critic_lr": 0.0003,
         "critic_profile": "C0_RAW_SINGLE_FRAME",
         "device": "cuda",
-        "ent_coef": 0.0,
+        "ent_coef": 0,
         "gae_lambda": 0.995,
         "gamma": 0.999,
         "gru_lr": 1e-06,
@@ -92,7 +92,7 @@
         "normalize_advantage": true,
         "output_dir": "/home/haowei/Documents/End2Race/runs/ppo/BE-E0-current_seed20260715",
         "seed": 20260715,
-        "sim_duration": 8.0,
+        "sim_duration": 8,
         "speed_physical_std": 0.15,
         "steering_latent_std": 0.05,
         "target_kl": null,
@@ -212,7 +212,7 @@
         "critic_lr": 0.0003,
         "critic_profile": "C0_RAW_SINGLE_FRAME",
         "device": "cuda",
-        "ent_coef": 0.0,
+        "ent_coef": 0,
         "gae_lambda": 0.995,
         "gamma": 0.999,
         "gru_lr": 1e-06,
@@ -229,7 +229,7 @@
         "normalize_advantage": true,
         "output_dir": "/home/haowei/Documents/End2Race/runs/ppo/BE-E1-coupled-low_seed20260715",
         "seed": 20260715,
-        "sim_duration": 8.0,
+        "sim_duration": 8,
         "speed_physical_std": 0.1,
         "steering_latent_std": 0.03,
         "target_kl": null,
@@ -327,7 +327,7 @@
         }
       ],
       "common_budget_summary": {
-        "median_ego_collision": 20.0,
+        "median_ego_collision": 20,
         "median_overtake": 345.5,
         "transition_budgets": [
           51200,
@@ -349,7 +349,7 @@
         "critic_lr": 0.0003,
         "critic_profile": "C0_RAW_SINGLE_FRAME",
         "device": "cuda",
-        "ent_coef": 0.0,
+        "ent_coef": 0,
         "gae_lambda": 0.995,
         "gamma": 0.999,
         "gru_lr": 1e-06,
@@ -366,7 +366,7 @@
         "normalize_advantage": true,
         "output_dir": "/home/haowei/Documents/End2Race/runs/ppo/BE-E2-steer-low_seed20260715",
         "seed": 20260715,
-        "sim_duration": 8.0,
+        "sim_duration": 8,
         "speed_physical_std": 0.15,
         "steering_latent_std": 0.03,
         "target_kl": null,
@@ -410,6 +410,143 @@
         "metrics_rows": 4,
         "status": "COMPLETED"
       }
+    },
+    {
+      "arm_id": "BE-E3-speed-low",
+      "checkpoints": [
+        {
+          "checkpoint_path": "runs/ppo/BE-E3-speed-low_seed20260715/checkpoints/end2race_ppo_BE-E3-speed-low_u0002_s20260715.pth",
+          "checkpoint_sha256": "df9cb05255c31a84e68f6e3faa7b666f6bc496ae4e1bed8f4ed3b89f6127aece",
+          "eligible": true,
+          "evaluation": {
+            "ego_collision": 20,
+            "error": 0,
+            "follow": 234,
+            "overtake": 346,
+            "total": 600
+          },
+          "evaluation_attempt": "device_a_handoff_completion",
+          "evaluation_result_path": "eval_results/end2race_ppo_BE-E3-speed-low_u0002_s20260715_Austin/multiagents/results_multi.json",
+          "evaluation_result_sha256": "591da1053f9ab129ab6e272b1426642b07fd015f3d9a6b6baace8963ffc36f58",
+          "num_workers": 8,
+          "paired_churn": {
+            "fixed_collision": 8,
+            "gained_overtake": 8,
+            "lost_overtake": 8,
+            "new_collision": 7
+          },
+          "transition_budget": 51200,
+          "update": 2
+        },
+        {
+          "checkpoint_path": "runs/ppo/BE-E3-speed-low_seed20260715/checkpoints/end2race_ppo_BE-E3-speed-low_u0004_s20260715.pth",
+          "checkpoint_sha256": "9434d1a9c4a0b83259ec15b382ea71e43139e80aa554ea1c5cd7f387a1f77131",
+          "eligible": true,
+          "evaluation": {
+            "ego_collision": 23,
+            "error": 0,
+            "follow": 235,
+            "overtake": 342,
+            "total": 600
+          },
+          "evaluation_attempt": "device_a_handoff_completion",
+          "evaluation_result_path": "eval_results/end2race_ppo_BE-E3-speed-low_u0004_s20260715_Austin/multiagents/results_multi.json",
+          "evaluation_result_sha256": "76b28c7bc1d5f5d928022f13c59711b9feaabe59f8c6c565ed4b8eb464bfb784",
+          "num_workers": 8,
+          "paired_churn": {
+            "fixed_collision": 3,
+            "gained_overtake": 3,
+            "lost_overtake": 7,
+            "new_collision": 5
+          },
+          "transition_budget": 102400,
+          "update": 4
+        }
+      ],
+      "common_budget_summary": {
+        "median_ego_collision": 21.5,
+        "median_overtake": 344,
+        "transition_budgets": [
+          51200,
+          102400
+        ]
+      },
+      "config_hash": "1bea7b560a67161775a538524b17de8588d8c47add990a9d69ce14363b870f87",
+      "hard_pool_manifest_hash": "d022150627ff66af61e0b600699588181d8b06edf78a5723cf9ee503f89edcc9",
+      "parent_arm": "AH-H0-p50-wr",
+      "resolved_config": {
+        "batch_size": 1600,
+        "bc_checkpoint": "/home/haowei/Documents/End2Race/pretrained/end2race.pth",
+        "checkpoint_updates": [
+          2,
+          4
+        ],
+        "clip_range": 0.1,
+        "clip_range_vf": null,
+        "critic_lr": 0.0003,
+        "critic_profile": "C0_RAW_SINGLE_FRAME",
+        "device": "cuda",
+        "ent_coef": 0,
+        "gae_lambda": 0.995,
+        "gamma": 0.999,
+        "gru_lr": 1e-06,
+        "hard_pool": "h0_current_det",
+        "hard_sampling_mode": "with_replacement",
+        "hard_sampling_probability": 0.5,
+        "head_lr": 1e-05,
+        "max_grad_norm": 0.5,
+        "minibatches_per_update": 16,
+        "n_envs": 16,
+        "n_epochs": 1,
+        "n_steps": 1600,
+        "name": "BE-E3-speed-low",
+        "normalize_advantage": true,
+        "output_dir": "/home/haowei/Documents/End2Race/runs/ppo/BE-E3-speed-low_seed20260715",
+        "seed": 20260715,
+        "sim_duration": 8,
+        "speed_physical_std": 0.1,
+        "steering_latent_std": 0.05,
+        "target_kl": null,
+        "total_optimizer_steps": 64,
+        "transitions_per_update": 25600,
+        "updates": 4,
+        "vf_coef": 0.5
+      },
+      "reused": false,
+      "run_dir": "runs/ppo/BE-E3-speed-low_seed20260715",
+      "seed": 20260715,
+      "selected_checkpoint": {
+        "checkpoint_path": "runs/ppo/BE-E3-speed-low_seed20260715/checkpoints/end2race_ppo_BE-E3-speed-low_u0002_s20260715.pth",
+        "checkpoint_sha256": "df9cb05255c31a84e68f6e3faa7b666f6bc496ae4e1bed8f4ed3b89f6127aece",
+        "eligible": true,
+        "evaluation": {
+          "ego_collision": 20,
+          "error": 0,
+          "follow": 234,
+          "overtake": 346,
+          "total": 600
+        },
+        "evaluation_attempt": "device_a_handoff_completion",
+        "evaluation_result_path": "eval_results/end2race_ppo_BE-E3-speed-low_u0002_s20260715_Austin/multiagents/results_multi.json",
+        "evaluation_result_sha256": "591da1053f9ab129ab6e272b1426642b07fd015f3d9a6b6baace8963ffc36f58",
+        "num_workers": 8,
+        "paired_churn": {
+          "fixed_collision": 8,
+          "gained_overtake": 8,
+          "lost_overtake": 8,
+          "new_collision": 7
+        },
+        "transition_budget": 51200,
+        "update": 2
+      },
+      "source_commit": "59b942b0006705f7a9bc8ae39c65a325fc02e5ed",
+      "training": {
+        "final_transition_budget": 102400,
+        "finished_before_stage_evaluation": true,
+        "metrics_path": "runs/ppo/BE-E3-speed-low_seed20260715/training_metrics.jsonl",
+        "metrics_rows": 4,
+        "status": "COMPLETED"
+      }
     }
   ],
   "canonical_bc": {
@@ -426,15 +563,16 @@
     51200,
     102400
   ],
-  "completed_at": "2026-07-17T02:50:54.451710+00:00",
+  "completed_at": "2026-07-17T03:15:15Z",
   "device": "B",
   "eligibility_overtake_floor": 329,
   "evaluated_arm_ids": [
     "BE-E0-current",
     "BE-E1-coupled-low",
-    "BE-E2-steer-low"
+    "BE-E2-steer-low",
+    "BE-E3-speed-low"
   ],
-  "evaluated_new_checkpoints": 6,
+  "evaluated_new_checkpoints": 8,
   "evaluation_contract": {
     "collision_scope": "ego",
     "map": "Austin",
@@ -451,7 +589,7 @@
     "remaining_checkpoint_not_started": "end2race_ppo_BE-E3-speed-low_u0004_s20260715",
     "terminated_arm": "BE-E3-speed-low"
   },
-  "matrix_complete": false,
+  "matrix_complete": true,
   "new_training_runs": 4,
   "required_arm_ids": [
     "BE-E0-current",
@@ -464,7 +602,7 @@
   "schema_version": 1,
   "source_commit": "59b942b0006705f7a9bc8ae39c65a325fc02e5ed",
   "stage": "E",
-  "status": "USER_TERMINATED_PARTIAL",
+  "status": "COMPLETED",
   "trained_arm_ids": [
     "BE-E0-current",
     "BE-E1-coupled-low",
@@ -475,5 +613,21 @@
     "evaluation_processes": 1,
     "evaluation_workers_per_process": 8,
     "max_parallel_training_processes": 2
+  },
+  "completion_device": "A",
+  "handoff_completion": {
+    "source_device": "B",
+    "completion_device": "A",
+    "user_authorized_takeover": true,
+    "imported_training_runs": 4,
+    "imported_valid_checkpoint_evaluations": 6,
+    "completed_checkpoint_evaluations_on_a": 2,
+    "partial_results_sha256": "534c34fb5cadd7aa2617300bce35124fcb2437a9cb0b7412740190a93c4cfb0f",
+    "partial_selection_sha256": "0b122dd7d3a7bf3444e27505ea98da6fa124e236928271ae0ce849bba1307054",
+    "preserved_partial_root": "runs/ppo/BE_STAGE_E_HANDOFF_20260717_105054/device_b_partial_formal",
+    "completion_logs_root": "runs/ppo/BE_STAGE_E_HANDOFF_20260717_105054/logs/device_a_completion",
+    "prelaunch_permission_denied_before_workers": true,
+    "prelaunch_evidence": "runs/ppo/BE_STAGE_E_HANDOFF_20260717_105054/logs/device_a_completion/end2race_ppo_BE-E3-speed-low_u0002_s20260715.prelaunch_permission_denied.log",
+    "evaluation_protocol_unchanged": true
   }
 }
