@@ -866,6 +866,15 @@ def main() -> None:
     }
     all_pool_records: dict[str, Any] = {}
     for pool_name in POOL_NAMES:
+        pool_result_path = RUN_DIR / "p1" / pool_name / "pool_result.json"
+        if pool_result_path.is_file():
+            all_pool_records[pool_name] = read_json(pool_result_path)
+            print(
+                f"P1_POOL_RESUME pool={pool_name} "
+                f"verdict={all_pool_records[pool_name]['verdict']}",
+                flush=True,
+            )
+            continue
         shard_records: list[dict[str, Any]] = []
         seeds = preregistration["seeds"]["p1"][pool_name]
         for shard_index, seed in enumerate(seeds):
@@ -941,6 +950,7 @@ def main() -> None:
                 flush=True,
             )
         all_pool_records[pool_name] = _aggregate_pool(pool_name, shard_records, device)
+        write_json_atomic(pool_result_path, all_pool_records[pool_name])
         print(
             f"P1_POOL_COMPLETE pool={pool_name} verdict={all_pool_records[pool_name]['verdict']} "
             f"median_cos={all_pool_records[pool_name]['pairwise_combined_median']:.6f}",
