@@ -51,6 +51,7 @@ class PPOConfig:
     margin_weight: float = 0.0
     margin_threshold: float = 0.0
     n_epochs: int = 1
+    update_kl_guardrail: float | None = None
 
 
 V1 = PPOConfig(
@@ -216,6 +217,16 @@ SG_FULL = replace(
     margin_threshold=0.5,
 )
 
+V1_3_B = replace(
+    AH_H0_P50_WR,
+    name="v1_3_b",
+    updates=8,
+    checkpoint_updates=(2, 4, 8),
+    n_epochs=4,
+    target_kl=0.010,
+    update_kl_guardrail=0.020,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -241,6 +252,7 @@ CONFIGS = {
         BE_E3_SPEED_LOW,
         SG_LR10,
         SG_FULL,
+        V1_3_B,
     )
 }
 
@@ -289,6 +301,8 @@ def _validate(config: PPOConfig) -> None:
         raise ValueError("gru_lr and head_lr must be positive")
     if config.target_kl is not None and config.target_kl <= 0.0:
         raise ValueError("target_kl must be positive or None")
+    if config.update_kl_guardrail is not None and config.update_kl_guardrail <= 0.0:
+        raise ValueError("update_kl_guardrail must be positive or None")
     if config.steering_latent_std <= 0.0 or config.speed_physical_std <= 0.0:
         raise ValueError("steering_latent_std and speed_physical_std must be positive")
     if config.margin_weight < 0.0 or config.margin_threshold < 0.0:

@@ -49,9 +49,116 @@ def write_json(path: Path, value: Any) -> None:
         handle.write("\n")
 
 
+def write_json_atomic(path: Path, value: Any) -> None:
+    """Atomically replace a small JSON status file in its destination directory."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        json.dump(value, handle, indent=2, sort_keys=True, allow_nan=False)
+        handle.write("\n")
+    temporary.replace(path)
+
+
 def append_json(path: Path, value: dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(value, sort_keys=True, allow_nan=False) + "\n")
+
+
+def _assert_finite(value: Any, path: str = "metrics") -> None:
+    """Reject any non-finite numeric value in a nested metrics record."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            _assert_finite(child, f"{path}.{key}")
+    elif isinstance(value, (list, tuple)):
+        for index, child in enumerate(value):
+            _assert_finite(child, f"{path}[{index}]")
+    elif isinstance(value, (float, np.floating)) and not np.isfinite(value):
+        raise RuntimeError(f"Non-finite value at {path}: {value!r}")
+
+
+def _optimizer_step(model: End2RaceRecurrentPPO, *, require_initialized: bool) -> dict[str, int]:
+    """Read the common Adam step of every active optimizer parameter."""
+    steps: list[int] = []
+    missing = 0
+    active = 0
+    for group in model.policy.optimizer.param_groups:
+        for parameter in group["params"]:
+            if not parameter.requires_grad:
+                continue
+            active += 1
+            state = model.policy.optimizer.state.get(parameter, {})
+            if "step" not in state:
+                missing += 1
+                continue
+            raw_step = state["step"]
+            step = float(raw_step.detach().cpu().item() if torch.is_tensor(raw_step) else raw_step)
+            if not np.isfinite(step) or step < 0.0 or not step.is_integer():
+                raise RuntimeError(f"Invalid optimizer step value: {step!r}")
+            steps.append(int(step))
+    if active == 0:
+        raise RuntimeError("Optimizer has no active parameters")
+    if steps and missing:
+        raise RuntimeError(f"Optimizer state is initialized for only {len(steps)}/{active} active parameters")
+    if require_initialized and missing:
+        raise RuntimeError(f"Optimizer state is missing for {missing}/{active} active parameters")
+    if not steps:
+        return {"min": 0, "max": 0, "active_parameters": active}
+    minimum, maximum = min(steps), max(steps)
+    if minimum != maximum:
+        raise RuntimeError(f"Active optimizer parameters have inconsistent steps: {minimum}..{maximum}")
+    return {"min": minimum, "max": maximum, "active_parameters": active}
+
+
+def _parameter_delta_statistics(
+    candidate: dict[str, torch.Tensor],
+    reference: dict[str, torch.Tensor],
+    prefixes: tuple[str, ...],
+) -> dict[str, float | int]:
+    """Summarize one named actor parameter group's displacement from BC."""
+    names = sorted(name for name in reference if name.startswith(prefixes))
+    if not names:
+        raise RuntimeError(f"No actor parameters match prefixes {prefixes}")
+    squared_delta = 0.0
+    squared_reference = 0.0
+    maximum = 0.0
+    count = 0
+    for name in names:
+        current = candidate[name].detach().cpu().double()
+        baseline = reference[name].detach().cpu().double()
+        delta = current - baseline
+        squared_delta += float(delta.square().sum().item())
+        squared_reference += float(baseline.square().sum().item())
+        maximum = max(maximum, float(delta.abs().max().item()))
+        count += delta.numel()
+    rms_delta = float(np.sqrt(squared_delta / count))
+    rms_reference = float(np.sqrt(squared_reference / count))
+    return {
+        "parameter_tensors": len(names),
+        "parameter_elements": count,
+        "max_abs_delta_from_bc": maximum,
+        "rms_delta_from_bc": rms_delta,
+        "relative_rms_delta_from_bc": rms_delta / max(rms_reference, 1e-12),
+    }
+
+
+def _actor_delta_record(
+    model: End2RaceRecurrentPPO,
+    bc_state: dict[str, torch.Tensor],
+    initial_log_std: torch.Tensor,
+) -> dict[str, Any]:
+    actor_state = model.policy.actor_checkpoint_state_dict()
+    return {
+        "gru": _parameter_delta_statistics(actor_state, bc_state, ("gru.",)),
+        "output_layer": _parameter_delta_statistics(actor_state, bc_state, ("output_layer.",)),
+        "frozen_actor": _parameter_delta_statistics(
+            actor_state,
+            bc_state,
+            ("k", "dummy_embedding", "speed_mlp."),
+        ),
+        "log_std_max_abs_delta_from_initial": float(
+            (model.policy.log_std.detach().cpu() - initial_log_std).abs().max().item()
+        ),
+    }
 
 
 class PPOTrainingCallback(BaseCallback):
@@ -292,8 +399,10 @@ def _resolved_record(
         }
     )
     record["transitions_per_update"] = ppo_config.N_ENVS * config.n_steps
-    record["minibatches_per_update"] = ppo_config.N_ENVS * config.n_steps // config.batch_size
-    record["total_optimizer_steps"] = record["minibatches_per_update"] * config.n_epochs * config.updates
+    record["minibatches_per_epoch"] = ppo_config.N_ENVS * config.n_steps // config.batch_size
+    record["minibatches_per_update"] = record["minibatches_per_epoch"]
+    record["planned_optimizer_steps_per_update"] = record["minibatches_per_epoch"] * config.n_epochs
+    record["total_optimizer_steps"] = record["planned_optimizer_steps_per_update"] * config.updates
     return record
 
 
@@ -338,16 +447,31 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
         "checkpoints": [],
     }
     write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
+    status_path = output_dir / "run_status.json"
+    run_status: dict[str, Any] = {
+        "status": "RUNNING",
+        "config": config.name,
+        "seed": seed,
+        "last_completed_update": 0,
+        "stop_reason": None,
+    }
+    write_json_atomic(status_path, run_status)
     set_random_seed(seed)
 
-    vector_env = DummyVecEnv(
-        [make_training_env(rank, sampler, config, seed) for rank in range(ppo_config.N_ENVS)]
-    )
-    vector_env.seed(seed)
-    model = build_model(vector_env, config, seed)
-    callback = PPOTrainingCallback()
+    vector_env: DummyVecEnv | None = None
     try:
+        vector_env = DummyVecEnv(
+            [make_training_env(rank, sampler, config, seed) for rank in range(ppo_config.N_ENVS)]
+        )
+        vector_env.seed(seed)
+        model = build_model(vector_env, config, seed)
+        callback = PPOTrainingCallback()
+        bc_state = torch.load(ppo_config.BC_CHECKPOINT, map_location="cpu", weights_only=True)
+        initial_log_std = model.policy.log_std.detach().cpu().clone()
+        minibatches_per_epoch = ppo_config.N_ENVS * config.n_steps // config.batch_size
+        planned_optimizer_steps = minibatches_per_epoch * config.n_epochs
         for update in range(1, config.updates + 1):
+            optimizer_before = _optimizer_step(model, require_initialized=update > 1)
             model.learn(
                 total_timesteps=ppo_config.N_ENVS * config.n_steps,
                 callback=callback,
@@ -355,15 +479,50 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
                 reset_num_timesteps=update == 1,
                 progress_bar=False,
             )
-            metrics = {"update": update, "num_timesteps": int(model.num_timesteps), "rollout": callback.latest}
+            optimizer_after = _optimizer_step(model, require_initialized=True)
+            actual_optimizer_steps = optimizer_after["max"] - optimizer_before["max"]
+            if actual_optimizer_steps <= 0 or actual_optimizer_steps > planned_optimizer_steps:
+                raise RuntimeError(
+                    f"Invalid optimizer-step count at update {update}: "
+                    f"{actual_optimizer_steps} not in [1, {planned_optimizer_steps}]"
+                )
+            metrics = {
+                "update": update,
+                "num_timesteps": int(model.num_timesteps),
+                "rollout": callback.latest,
+                "planned_optimizer_steps": planned_optimizer_steps,
+                "actual_optimizer_steps": actual_optimizer_steps,
+                "optimizer_step_min": optimizer_after["min"],
+                "optimizer_step_max": optimizer_after["max"],
+                "optimizer_active_parameters": optimizer_after["active_parameters"],
+                "target_kl_early_stop": actual_optimizer_steps < planned_optimizer_steps,
+                "effective_epoch_fraction": actual_optimizer_steps / minibatches_per_epoch,
+                "actor_delta_from_bc": _actor_delta_record(model, bc_state, initial_log_std),
+            }
             for key in ("loss", "policy_gradient_loss", "value_loss", "approx_kl", "clip_fraction", "explained_variance"):
                 logger_key = f"train/{key}"
                 if logger_key in model.logger.name_to_value:
                     metrics[key] = float(model.logger.name_to_value[logger_key])
-            scalar_values = [value for value in metrics.values() if isinstance(value, float)]
-            if not np.isfinite(scalar_values).all():
-                raise RuntimeError(f"Non-finite PPO metrics at update {update}")
+            if "approx_kl" not in metrics:
+                raise RuntimeError(f"PPO logger did not report approx_kl at update {update}")
+            _assert_finite(metrics)
             append_json(output_dir / "training_metrics.jsonl", metrics)
+            run_status["last_completed_update"] = update
+            if (
+                config.update_kl_guardrail is not None
+                and metrics["approx_kl"] > config.update_kl_guardrail
+            ):
+                run_status.update(
+                    {
+                        "status": "STOPPED_KL_GUARDRAIL",
+                        "stop_reason": (
+                            f"approx_kl {metrics['approx_kl']:.9g} exceeds "
+                            f"{config.update_kl_guardrail:.9g}"
+                        ),
+                    }
+                )
+                write_json_atomic(status_path, run_status)
+                break
             if update in config.checkpoint_updates:
                 filename = f"end2race_ppo_{config.name}_u{update:04d}_s{seed}.pth"
                 actor_path = checkpoint_dir / filename
@@ -375,10 +534,23 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
                     }
                 )
                 write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
+            run_status["status"] = "COMPLETED" if update == config.updates else "RUNNING"
+            write_json_atomic(status_path, run_status)
+    except Exception as error:
+        if run_status["status"] != "STOPPED_KL_GUARDRAIL":
+            run_status.update(
+                {
+                    "status": "FAILED",
+                    "stop_reason": f"{type(error).__name__}: {error}",
+                }
+            )
+            write_json_atomic(status_path, run_status)
+        raise
     finally:
-        vector_env.close()
+        if vector_env is not None:
+            vector_env.close()
+        write_json(output_dir / "sampler_summary.json", _sampler_summary(config, sampler))
 
-    write_json(output_dir / "sampler_summary.json", _sampler_summary(config, sampler))
     return output_dir
 
 
@@ -390,3 +562,7 @@ if __name__ == "__main__":
     )
     run_dir = train(config, args.seed, output_dir)
     print(f"PPO_RUN_DIR={run_dir}")
+    with (run_dir / "run_status.json").open("r", encoding="utf-8") as handle:
+        final_status = json.load(handle)
+    if final_status["status"] != "COMPLETED":
+        raise SystemExit(2)
