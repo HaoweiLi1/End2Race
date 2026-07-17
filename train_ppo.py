@@ -371,6 +371,7 @@ def build_model(
             "critic_profile": config.critic_profile,
             "gru_lr": config.gru_lr,
             "head_lr": config.head_lr,
+            "steering_distribution": config.steering_distribution,
             "steering_latent_std": config.steering_latent_std,
             "speed_physical_std": config.speed_physical_std,
         },

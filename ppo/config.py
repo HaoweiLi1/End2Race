@@ -46,6 +46,7 @@ class PPOConfig:
     gru_lr: float = GRU_LR
     head_lr: float = HEAD_LR
     target_kl: float | None = TARGET_KL
+    steering_distribution: str = "squashed_latent"
     steering_latent_std: float = STEERING_LATENT_STD
     speed_physical_std: float = SPEED_PHYSICAL_STD
     margin_weight: float = 0.0
@@ -239,6 +240,12 @@ V1_3_A = replace(
     update_kl_guardrail=0.020,
 )
 
+V1_3_C = replace(
+    V1_3_A,
+    name="v1_3_c",
+    steering_distribution="physical_gaussian",
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -266,10 +273,12 @@ CONFIGS = {
         SG_FULL,
         V1_3_B,
         V1_3_A,
+        V1_3_C,
     )
 }
 
 _HARD_SAMPLING_MODES = {"with_replacement", "per_env_balanced_cycle"}
+_STEERING_DISTRIBUTIONS = {"squashed_latent", "physical_gaussian"}
 _CRITIC_PROFILES = {
     "C0_RAW_SINGLE_FRAME",
     "C1_FROZEN_BC_FEATURE",
@@ -314,6 +323,8 @@ def _validate(config: PPOConfig) -> None:
         raise ValueError("gru_lr and head_lr must be positive")
     if config.target_kl is not None and config.target_kl <= 0.0:
         raise ValueError("target_kl must be positive or None")
+    if config.steering_distribution not in _STEERING_DISTRIBUTIONS:
+        raise ValueError(f"Unknown steering distribution: {config.steering_distribution}")
     if config.update_kl_guardrail is not None and config.update_kl_guardrail <= 0.0:
         raise ValueError("update_kl_guardrail must be positive or None")
     if config.steering_latent_std <= 0.0 or config.speed_physical_std <= 0.0:

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "record": "PPO_V1_3_C_MECHANISM_PROBE",
+  "formal": false,
+  "seed": 20260718,
+  "source_head": "5ffbfa2a3f45378d7233c1cd37e6b1c4aa5073e6",
+  "base_config": "v1_3_a",
+  "temporary_config_name": "v1_3_c_probe",
+  "single_change": "Replace atanh-squashed steering distribution with a physical Gaussian; effective steering std=0.52*0.05=0.026 rad.",
+  "status": "COMPLETED",
+  "updates": 8,
+  "kl_sequence": [
+    0.010797240771353245,
+    0.005871342495083809,
+    0.003679444082081318,
+    0.0033722585067152977,
+    0.002140818163752556,
+    0.00214725686237216,
+    0.0051713380962610245,
+    0.003001054748892784
+  ],
+  "optimizer_steps_sequence": [1, 16, 16, 16, 16, 16, 14, 16],
+  "optimizer_steps_total": 111,
+  "updates_in_target_window": 7,
+  "max_kl": 0.010797240771353245,
+  "u8_actor_delta_from_bc": {
+    "gru_relative_rms": 0.00014744113396420293,
+    "head_relative_rms": 0.0015592915742524596,
+    "frozen_max_abs": 0.0,
+    "log_std_max_abs": 0.0
+  },
+  "checkpoint": {
+    "actor_key_count": 12,
+    "strict_load": "PASS",
+    "sha256": "d9cbb4de852aa4bf77ca00fe7da7ba68dc56d65638053a8d141767b727571527"
+  },
+  "temporary_artifact_hashes": {
+    "resolved_config.json": "738b35501f9419bef21d6eccdf75f499c5ac9e0aea2accc1c3ee6408b5f0f62f",
+    "run_status.json": "921d1c212eadf92bc8f8a2ca67c657e98d81279c2a2720a0162f842c9f0d2dd4",
+    "training_metrics.jsonl": "2865278514ed0db77aeddee73005866ab52605a4199e4d685cda8e1d15a885cf",
+    "checkpoint_manifest.json": "f12877291f739be351c96a2cca81362159ba9e716ff4cf7df93b9cd70140c5b5",
+    "sampler_summary.json": "5ded3fdc92bdc7d1a548d0f1ae09cfda464718a424744b34a197e57032ebfd6c",
+    "probe.log": "759983b96e48e53e7a377fd993f675c66487df0c766913ec36149be5ed7fba05"
+  },
+  "formal_use": "Excluded. The formal experiment uses five new seeds 20260729..20260733."
+}

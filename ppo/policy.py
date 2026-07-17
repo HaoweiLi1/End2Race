@@ -144,6 +144,83 @@ class EvaluatorCompatibleJointDistribution(Distribution):
         return actions, self.log_prob(actions)
 
 
+class EvaluatorClippedPhysicalGaussianDistribution(Distribution):
+    """Use a regular physical steering Gaussian and let SB3 clip for the env.
+
+    The End2Race actor already emits steering in physical radians and the
+    evaluator clips that raw output to ``[-steer_bound, steer_bound]``.  SB3
+    stores the unclipped Gaussian sample in its rollout buffer and clips only
+    the action sent to the environment, so replay likelihood remains exact.
+
+    The physical steering standard deviation is ``steer_bound * latent_std``.
+    This preserves the squashed distribution's local exploration scale around
+    zero while removing the singular ``atanh(raw_mean / steer_bound)`` map at
+    the evaluator boundary.
+    """
+
+    def __init__(self, steer_bound: float = EVALUATOR_STEER_BOUND):
+        super().__init__()
+        self.steer_bound = float(steer_bound)
+        self.raw_mean_actions: torch.Tensor | None = None
+        self.steer_distribution: torch.distributions.Normal | None = None
+        self.speed_distribution: torch.distributions.Normal | None = None
+
+    def proba_distribution_net(self, *args: Any, **kwargs: Any) -> nn.Module:
+        del args, kwargs
+        return nn.Identity()
+
+    def proba_distribution(
+        self,
+        raw_mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
+    ) -> "EvaluatorClippedPhysicalGaussianDistribution":
+        std = log_std.exp()
+        self.raw_mean_actions = raw_mean_actions
+        self.steer_distribution = torch.distributions.Normal(
+            raw_mean_actions[:, 0],
+            std[0] * self.steer_bound,
+        )
+        self.speed_distribution = torch.distributions.Normal(raw_mean_actions[:, 1], std[1])
+        self.distribution = (self.steer_distribution, self.speed_distribution)
+        return self
+
+    def _require_parameters(
+        self,
+    ) -> tuple[torch.Tensor, torch.distributions.Normal, torch.distributions.Normal]:
+        return self.raw_mean_actions, self.steer_distribution, self.speed_distribution
+
+    def log_prob(self, actions: torch.Tensor) -> torch.Tensor:
+        _raw_means, steer_distribution, speed_distribution = self._require_parameters()
+        return steer_distribution.log_prob(actions[:, 0]) + speed_distribution.log_prob(actions[:, 1])
+
+    def entropy(self) -> None:
+        return None
+
+    def sample(self) -> torch.Tensor:
+        _raw_means, steer_distribution, speed_distribution = self._require_parameters()
+        return torch.stack((steer_distribution.rsample(), speed_distribution.rsample()), dim=1)
+
+    def mode(self) -> torch.Tensor:
+        raw_means, _steer_distribution, _speed_distribution = self._require_parameters()
+        return raw_means
+
+    def actions_from_params(
+        self,
+        raw_mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
+        deterministic: bool = False,
+    ) -> torch.Tensor:
+        return self.proba_distribution(raw_mean_actions, log_std).get_actions(deterministic=deterministic)
+
+    def log_prob_from_params(
+        self,
+        raw_mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        actions = self.actions_from_params(raw_mean_actions, log_std)
+        return actions, self.log_prob(actions)
+
+
 class GRUWithLSTMStateInterface(nn.Module):
     """Expose a batch-first GRU through SB3's time-major ``(h, c)`` API.
 
@@ -191,6 +268,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         critic_profile: str = "C0_RAW_SINGLE_FRAME",
         gru_lr: float = GRU_LR,
         head_lr: float = HEAD_LR,
+        steering_distribution: str = "squashed_latent",
         steering_latent_std: float = STEERING_LATENT_STD,
         speed_physical_std: float = SPEED_PHYSICAL_STD,
         **kwargs: Any,
@@ -281,10 +359,16 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             )
         )
         self.log_std.requires_grad_(False)
-        self.action_dist = EvaluatorCompatibleJointDistribution(
-            steer_bound=steer_bound,
-            inverse_tanh_epsilon=inverse_tanh_epsilon,
-        )
+        self.steering_distribution = str(steering_distribution)
+        if self.steering_distribution == "squashed_latent":
+            self.action_dist = EvaluatorCompatibleJointDistribution(
+                steer_bound=steer_bound,
+                inverse_tanh_epsilon=inverse_tanh_epsilon,
+            )
+        elif self.steering_distribution == "physical_gaussian":
+            self.action_dist = EvaluatorClippedPhysicalGaussianDistribution(steer_bound=steer_bound)
+        else:
+            raise ValueError(f"Unknown steering distribution: {self.steering_distribution}")
         # The parent head is not used by any custom actor path.  Replacing it
         # with a parameter-free module prevents dead parameters in the optimizer.
         self.action_net = nn.Identity()
