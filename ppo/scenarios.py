@@ -23,6 +23,7 @@ OPPONENT_SPEED_SCALES = (0.5, 0.6, 0.7, 0.8)
 INTERVAL_IDX = 15
 TIMESTEP = 0.01
 HARD_POOL_DIRECTORY = Path(__file__).resolve().parent / "hard_pools"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 TRAINING_STARTPOINTS = (
     21, 63, 110, 151, 189, 231, 272, 319, 356, 398,
@@ -177,8 +178,18 @@ class FixedMixtureScenarioSampler:
         self.visit_counts[scenario.scenario_id] += 1
         return scenario
 
-    def sample(self, rng: np.random.Generator) -> tuple[ScenarioSpec, str]:
-        if float(rng.random()) < self.collision_probability:
+    def sample(
+        self,
+        rng: np.random.Generator,
+        *,
+        env_role: str | None = None,
+    ) -> tuple[ScenarioSpec, str]:
+        if env_role not in {None, "hard", "ordinary"}:
+            raise ValueError(f"Unknown fixed environment role: {env_role}")
+        sample_hard = env_role == "hard" or (
+            env_role is None and float(rng.random()) < self.collision_probability
+        )
+        if sample_hard:
             scenario = self._sample_hard(rng)
             branch = "bc_ego_collision" if self.hard_pool_id == "H0_CURRENT_DET" else "hard_pool"
         else:
@@ -186,12 +197,23 @@ class FixedMixtureScenarioSampler:
             branch = "all_training"
         return scenario, branch
 
-    def __call__(self, rng: np.random.Generator) -> EpisodeResetSpec:
-        scenario, branch = self.sample(rng)
+    def reset_spec(
+        self,
+        rng: np.random.Generator,
+        *,
+        env_role: str | None = None,
+    ) -> EpisodeResetSpec:
+        scenario, branch = self.sample(rng, env_role=env_role)
         spec = deepcopy(scenario.to_reset_spec(sampler_branch=branch))
         spec.scenario["hard_pool_id"] = self.hard_pool_id
         spec.scenario["hard_sampling_mode"] = self.hard_sampling_mode
+        spec.scenario["env_role"] = env_role or (
+            "hard" if branch in {"bc_ego_collision", "hard_pool"} else "ordinary"
+        )
         return spec
+
+    def __call__(self, rng: np.random.Generator) -> EpisodeResetSpec:
+        return self.reset_spec(rng)
 
 
 def scenario_from_dict(row: dict[str, Any]) -> ScenarioSpec:
@@ -209,10 +231,13 @@ def _manifest_hash(value: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def load_hard_pool(name: str) -> tuple[tuple[ScenarioSpec, ...], tuple[str, ...], dict[str, Any]]:
+def load_hard_pool(
+    name: str,
+    manifest_path: str | None = None,
+) -> tuple[tuple[ScenarioSpec, ...], tuple[str, ...], dict[str, Any]]:
     """Load one canonical hard-pool manifest without generating a fallback."""
 
-    path = HARD_POOL_DIRECTORY / f"{name}.json"
+    path = PROJECT_ROOT / manifest_path if manifest_path is not None else HARD_POOL_DIRECTORY / f"{name}.json"
     if not path.is_file():
         raise FileNotFoundError(f"Hard-pool manifest does not exist: {path}")
     with path.open("r", encoding="utf-8") as handle:

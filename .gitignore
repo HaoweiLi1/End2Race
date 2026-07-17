@@ -6,6 +6,7 @@ install/
 .claude/
 .codex/
 .agents/
+.remember/
 Dataset_*/
 eval_results/
 posttrained/
