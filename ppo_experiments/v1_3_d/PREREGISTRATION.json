@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "record": "PPO_V1_3_D_PREREGISTRATION",
+  "status": "PREREGISTERED",
+  "created_at": "2026-07-17T18:25:44+08:00",
+  "implementation_commit": "bc0e04af85c600124d12495c9fd7cc5721764baf",
+  "hypothesis": "With the physical steering Gaussian retained and autograd multithreading disabled only for infrastructure stability, one-epoch 3x-LR PPO produces controlled updates and same-direction U8 improvement across three fresh seeds.",
+  "canonical_bc": {
+    "path": "pretrained/end2race.pth",
+    "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+  },
+  "single_change_from_v1_3_c": {
+    "field": "autograd_multithreading",
+    "old": true,
+    "new": false,
+    "rl_semantics": "unchanged",
+    "bitwise_equal_recovery_prefix_updates": 6
+  },
+  "formal_seeds": [20260735, 20260736, 20260737],
+  "excluded_failed_seed": 20260729,
+  "excluded_smoke_seed": 20260738,
+  "primary_checkpoint": 8,
+  "training_order": "All three formal seeds serially; no candidate evaluation before all training reaches terminal status.",
+  "process_gate": {
+    "all_updates_approx_kl_lte": 0.02,
+    "target_window": [0.002, 0.01],
+    "minimum_updates_in_target_window_per_seed": 6,
+    "actual_optimizer_steps_range": [1, 16],
+    "gru_and_head_update_nonzero": true,
+    "frozen_actor_drift": 0.0,
+    "log_std_drift": 0.0,
+    "checkpoint_actor_key_count": 12
+  },
+  "product_gate_per_seed": {
+    "G_gte": 5,
+    "collision_lte": 16,
+    "overtake_gte": 340,
+    "speed_ratio_to_bc_gte": 0.99,
+    "distance_ratio_to_bc_gte": 0.99
+  },
+  "cross_seed_gate": "3/3 process pass and 3/3 product pass at fixed U8",
+  "paired_bc_evaluation": {
+    "panel": "Austin canonical development 600",
+    "collision_scope": "ego",
+    "workers": 4,
+    "ego_idx_offset": 0,
+    "noise": 0.0,
+    "render": false,
+    "save_trace": false,
+    "sim_duration": 8.0,
+    "required_counts": {"collision": 21, "follow": 233, "overtake": 346, "error": 0}
+  },
+  "failure_policy": {
+    "training_retry": false,
+    "seed_replacement": false,
+    "checkpoint_selection": false,
+    "threshold_change": false,
+    "extra_rl_arm": false,
+    "further_infrastructure_recovery_arm": false,
+    "holdout": false,
+    "fail_fast_on_kl_or_runtime_failure": true
+  },
+  "expected_run_paths": [
+    "runs/ppo/v1_3_d_seed20260735",
+    "runs/ppo/v1_3_d_seed20260736",
+    "runs/ppo/v1_3_d_seed20260737"
+  ],
+  "allowed_final_verdicts": [
+    "PASS_STABLE_PHYSICAL_GAUSSIAN_DEVELOPMENT",
+    "FAIL_KL_UNSTABLE",
+    "FAIL_UPDATE_WINDOW_NOT_REACHED",
+    "FAIL_NO_STABLE_IMPROVEMENT",
+    "STOP_PROTOCOL_DRIFT",
+    "INVALID_INFRASTRUCTURE"
+  ]
+}
