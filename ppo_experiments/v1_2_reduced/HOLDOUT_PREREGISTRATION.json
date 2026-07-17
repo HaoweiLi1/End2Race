@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "record": "HOLDOUT_PREREGISTRATION",
+  "purpose": "Decisive zero-training test of the churn hypothesis: does the best confirmed development actor (V1.1 U2, 15/353 on the development panel) retain any improvement over paired BC on a start-point panel it was never selected on?",
+  "created_at": "2026-07-17T14:05:00+08:00",
+  "device": "A",
+  "source_commit": "67d7fef44253d447fc40c5f746ad7273e5aa146f",
+  "hypotheses": {
+    "H_churn": "The development-panel improvement (21->15 collision, 346->353 overtake) is a selection artifact (order statistic of ~46 checkpoint evaluations with sd ~3). Prediction: on the held-out panel the candidate is indistinguishable from paired BC.",
+    "H_real": "The candidate carries a genuine collision reduction that transfers. Prediction: the candidate reproduces a collision reduction of comparable direction and size on the held-out panel."
+  },
+  "held_out_panel": {
+    "name": "austin_600_holdout33",
+    "definition": "Identical to the fixed development panel generator (evaluate.sh) except every ego start index is shifted by EGO_IDX_OFFSET=33: ego_idx = floor(i*2096/49) + 33 for i in 0..49 (effective index modulo 2097 applied inside eval_multiagent).",
+    "map": "Austin",
+    "ego_raceline": "raceline1",
+    "opp_racelines": ["raceline0", "raceline1", "raceline2"],
+    "opp_speed_scales": [0.5, 0.6, 0.7, 0.8],
+    "interval_idx": 15,
+    "sim_duration": 8.0,
+    "noise": 0.0,
+    "collision_scope": "ego",
+    "num_startpoints": 50,
+    "total_cases": 600,
+    "effective_ego_start_indices": [33, 75, 118, 161, 204, 246, 289, 332, 375, 417, 460, 503, 546, 589, 631, 674, 717, 760, 802, 845, 888, 931, 974, 1016, 1059, 1102, 1145, 1187, 1230, 1273, 1316, 1359, 1401, 1444, 1487, 1530, 1572, 1615, 1658, 1701, 1744, 1786, 1829, 1872, 1915, 1957, 2000, 2043, 2086, 32],
+    "separation": {
+      "min_circular_waypoint_distance_to_development_startpoints": 9,
+      "min_distance_to_development_m": 1.8,
+      "min_circular_waypoint_distance_to_training_startpoints": 1,
+      "min_distance_to_training_m": 0.2,
+      "note": "No holdout start index coincides exactly with any development or training start index. A uniform offset cannot be far from both panels simultaneously because the two existing panels interleave at ~21-waypoint half-spacing. Independence from the DEVELOPMENT panel (the selection surface) is the property this test requires; residual proximity to TRAINING startpoints can only favor the candidate, so a null result remains conservative evidence for H_churn."
+    }
+  },
+  "models": [
+    {
+      "role": "paired_bc",
+      "eval_stem": "bc_end2race_holdout33",
+      "source_path": "pretrained/end2race.pth",
+      "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+    },
+    {
+      "role": "candidate",
+      "eval_stem": "ppo_v1_1_u0002_holdout33",
+      "source_path": "posttrained/end2race_ppo_v1_1_u0002_s20260715_austin_c015_o353.pth",
+      "sha256": "0aaba3ba7a58cea70afd2ac5a6428666fef2401f72d4f0e730a9e6115880ddfd",
+      "development_panel_result": {"ego_collision": 15, "follow": 232, "overtake": 353}
+    }
+  ],
+  "execution_contract": {
+    "command": "MODEL_PATH=<copy> EGO_IDX_OFFSET=33 COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NOISE=0.0 NUM_WORKERS=8 bash evaluate.sh",
+    "attempts": "Exactly one evaluation per model. A rerun is permitted only if the attempt is INVALID (error > 0 or total != 600) and the failure cause is infrastructural; any such rerun must be recorded with the failed attempt retained.",
+    "single_use": "This held-out panel is single-use for the V1.x line. Neither device may evaluate any other V1.x checkpoint on it afterwards; it must not become a second selection surface. The one-shot discipline is global across devices, not per device.",
+    "artifacts_dir": "runs/ppo/HOLDOUT_DECISIVE_TEST_20260717/"
+  },
+  "preregistered_decision_rule": {
+    "valid": "error == 0 and ego_collision + follow + overtake == 600 for both runs",
+    "real_improvement_confirmed": "candidate_ego_collision <= bc_ego_collision - 4 AND candidate_overtake >= ceil(0.95 * bc_overtake)",
+    "otherwise": "CONSISTENT_WITH_CHURN: the development-panel best is declared a selection artifact; the V1.x micro-LR hyperparameter line is closed as the final conclusion of this round. No post-hoc threshold adjustment.",
+    "margin_justification": "The claimed development effect is -6 collisions; observed checkpoint-to-checkpoint churn sd is 3.05; requiring at least -4 demands the transferred effect exceed ~1.3 churn sd in the claimed direction while tolerating panel-difficulty shift. The overtake floor mirrors the existing G2 gate ratio (0.95 of paired BC)."
+  },
+  "context": {
+    "checkpoint_distribution_reference": "ppo_experiments/v1_2_reduced/CHECKPOINT_DISTRIBUTION_ANALYSIS.json",
+    "concurrent_runs_note": "Three ALS-final training runs (seeds 20260715/16/17, 16 updates) were already running on device A when this record was created (started 2026-07-17 12:00 local). They are independent processes; evaluation determinism does not depend on machine load. Their existence contradicts the decide-before-training ordering this test was requested to establish, and is flagged in the session report."
+  }
+}

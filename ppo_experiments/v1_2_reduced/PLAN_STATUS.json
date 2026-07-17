@@ -1,7 +1,7 @@
 {
   "plan": "End2Race PPO V1.2 Reduced 22-Arm",
   "device": "A",
-  "status": "LONG_REPEAT_READY",
+  "status": "CLOSED_BY_HOLDOUT_VERDICT",
   "formal_started_at": "2026-07-16T23:48:00+08:00",
   "prepared_core_head": "a0237bdd2ba50dfbe09f7160087a7cc70461e359",
   "source_start_head": "cc475f6373b891a8db75fb884b02e8986122b3d9",
@@ -409,5 +409,23 @@
       "winner": "AH-H0-p50-wr"
     },
     "status": "AGGREGATED"
+  },
+  "holdout_decisive_test": {
+    "completed_at": "2026-07-17T14:55:00+08:00",
+    "device": "A",
+    "preregistration": "ppo_experiments/v1_2_reduced/HOLDOUT_PREREGISTRATION.json",
+    "results": "ppo_experiments/v1_2_reduced/HOLDOUT_RESULTS.json",
+    "distribution_analysis": "ppo_experiments/v1_2_reduced/CHECKPOINT_DISTRIBUTION_ANALYSIS.json",
+    "panel": "austin_600_holdout33",
+    "paired_bc": {"ego_collision": 32, "follow": 236, "overtake": 332, "error": 0},
+    "candidate_v1_1_u2": {"ego_collision": 37, "follow": 234, "overtake": 329, "error": 0},
+    "verdict": "CONSISTENT_WITH_CHURN",
+    "consequence": "The reduced 22-arm study concludes with a validated negative result. The V1.x micro-LR line is closed; the development-panel best (15/353) is a selection artifact; the best-evidenced actor remains canonical BC. The austin_600_holdout33 panel is spent for V1.x on both devices. The 46 development-panel checkpoint numbers may not be used for any further selection or ranking.",
+    "evaluate_sh_change": {
+      "description": "evaluate.sh gained EGO_IDX_OFFSET (default 0, existing callers unchanged) to express the shifted start-point panel; scenario_id prefix becomes holdout<offset> when nonzero.",
+      "new_sha256": "be774b398d63725a4ac9329816c79c68f673e3d60f11793b53cfff5fcfceee4a",
+      "preflight_sha256_superseded": "eb70eaa2439a28b6aa2db4bfc73507d3a2bca73c03ebc45dd42e43da2ab7ae8a"
+    },
+    "in_flight_runs_note": "Three ALS-final long-repeat runs (seeds 20260715/16/17, 16 updates, AH-H0-p50-wr config) were already running when the verdict landed. They belong to the closed line; disposition is an owner decision, and their checkpoints may not be selected against the development panel."
   }
 }

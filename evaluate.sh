@@ -14,15 +14,17 @@ OPP_RACELINES=("raceline0" "raceline1" "raceline2")
 OPP_SPEED_SCALES=(0.5 0.6 0.7 0.8)
 INTERVAL_IDX="${INTERVAL_IDX:-15}"
 NUM_STARTPOINTS="${NUM_STARTPOINTS:-50}"
+EGO_IDX_OFFSET="${EGO_IDX_OFFSET:-0}"
 COLLISION_SCOPE="${COLLISION_SCOPE:-legacy}"
 PYTHON="${PYTHON:-python}"
 
-# Generate ego_idx_range
+# Generate ego_idx_range; a nonzero EGO_IDX_OFFSET selects a shifted start-point
+# panel (eval_multiagent reduces indices modulo the waypoint count).
 raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
 max_waypoints=$(tail -n +3 "$raceline_path" | wc -l)
 ego_idx_range=()
 for ((i=0; i<NUM_STARTPOINTS; i++)); do
-    idx=$((i * max_waypoints / (NUM_STARTPOINTS - 1)))
+    idx=$((i * max_waypoints / (NUM_STARTPOINTS - 1) + EGO_IDX_OFFSET))
     ego_idx_range+=($idx)
 done
 
@@ -47,7 +49,12 @@ startpoint_ordinal=0
 for ego_idx in "${ego_idx_range[@]}"; do
     for opp_raceline in "${OPP_RACELINES[@]}"; do
         for speed_scale in "${OPP_SPEED_SCALES[@]}"; do
-            scenario_id="evaluation-sp${startpoint_ordinal}-ego${ego_idx}-${opp_raceline}-v${speed_scale}"
+            if [ "$EGO_IDX_OFFSET" -eq 0 ]; then
+                scenario_prefix="evaluation"
+            else
+                scenario_prefix="holdout${EGO_IDX_OFFSET}"
+            fi
+            scenario_id="${scenario_prefix}-sp${startpoint_ordinal}-ego${ego_idx}-${opp_raceline}-v${speed_scale}"
             cmd="$PYTHON eval_multiagent.py --model_path $MODEL_PATH --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE --collision_scope $COLLISION_SCOPE --scenario_id $scenario_id"
             metrics_result_path="$temp_dir/$job_id.metrics.json"
             cmd="$cmd --metrics_out \"$metrics_result_path\""
