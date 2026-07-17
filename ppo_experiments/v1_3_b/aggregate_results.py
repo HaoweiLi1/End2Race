@@ -318,7 +318,31 @@ def build_report(results: dict[str, Any]) -> str:
             "",
             "Formal evaluation was not started because at least one seed failed the frozen training-stability gate.",
             "",
+            "| Seed | Update | Approx KL | Clip fraction | Actual/planned steps | Target-KL early stop |",
+            "|---:|---:|---:|---:|---:|:---:|",
         ])
+        for run in results["training"]:
+            for row in run["metrics"]:
+                lines.append(
+                    f"| {run['seed']} | {row['update']} | {row['approx_kl']:.6f} | "
+                    f"{row['clip_fraction']:.6f} | {row['actual_optimizer_steps']}/{row['planned_optimizer_steps']} | "
+                    f"{'Y' if row['target_kl_early_stop'] else 'N'} |"
+                )
+        stopped = next(
+            (run for run in results["training"] if run["status"]["status"] != "COMPLETED"),
+            None,
+        )
+        if stopped is not None:
+            lines.extend([
+                "",
+                f"Seed `{stopped['seed']}` stopped after U{stopped['status']['last_completed_update']}: "
+                f"`{stopped['status']['stop_reason']}`.",
+                "",
+                f"Not started under fail-fast policy: `{results['not_started_seeds']}`.",
+                "",
+                "Only guardrail-passing U2 and U4 checkpoints exist; no U5 checkpoint was saved.",
+                "",
+            ])
     else:
         baseline = results["baseline"]
         lines.extend([
@@ -373,7 +397,18 @@ def main() -> None:
     precheck = read_json(precheck_path)
     if precheck.get("status") != "PASS":
         raise ValueError("PRECHECK.json is not PASS")
-    training = [summarize_training(seed) for seed in SEEDS]
+    training: list[dict[str, Any]] = []
+    not_started_seeds: list[int] = []
+    for seed in SEEDS:
+        run_dir = RUN_ROOT / f"v1_3_b_seed{seed}"
+        if run_dir.exists():
+            if not_started_seeds:
+                raise ValueError("A later formal seed exists after an earlier seed was not started")
+            training.append(summarize_training(seed))
+        else:
+            not_started_seeds.append(seed)
+    if not training:
+        raise ValueError("No formal V1.3-B training run exists")
     results: dict[str, Any] = {
         "schema_version": 1,
         "record": "PPO_V1_3_B_RESULTS",
@@ -384,10 +419,20 @@ def main() -> None:
         "seeds": list(SEEDS),
         "primary_update": PRIMARY_UPDATE,
         "training": training,
+        "not_started_seeds": not_started_seeds,
+        "aggregation_script": {
+            "path": relative(Path(__file__)),
+            "sha256": sha256_file(Path(__file__)),
+        },
     }
     statuses = [run["status"]["status"] for run in training]
-    if statuses != ["COMPLETED"] * len(SEEDS):
+    if statuses != ["COMPLETED"] * len(SEEDS) or not_started_seeds:
         if any(status == "STOPPED_KL_GUARDRAIL" for status in statuses):
+            first_stop = next(
+                index for index, status in enumerate(statuses) if status == "STOPPED_KL_GUARDRAIL"
+            )
+            if first_stop != len(training) - 1 or not_started_seeds != list(SEEDS[len(training):]):
+                raise ValueError("Formal seed stop order does not match the preregistered fail-fast policy")
             results["final_verdict"] = "FAIL_KL_UNSTABLE"
             results["interpretation"] = (
                 "At least one formal seed crossed the preregistered post-update KL guardrail. "
