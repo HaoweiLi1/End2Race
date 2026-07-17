@@ -53,6 +53,7 @@ class PPOConfig:
     margin_threshold: float = 0.0
     n_epochs: int = 1
     update_kl_guardrail: float | None = None
+    autograd_multithreading: bool = True
 
 
 V1 = PPOConfig(
@@ -246,6 +247,12 @@ V1_3_C = replace(
     steering_distribution="physical_gaussian",
 )
 
+V1_3_D = replace(
+    V1_3_C,
+    name="v1_3_d",
+    autograd_multithreading=False,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -274,6 +281,7 @@ CONFIGS = {
         V1_3_B,
         V1_3_A,
         V1_3_C,
+        V1_3_D,
     )
 }
 
@@ -327,6 +335,8 @@ def _validate(config: PPOConfig) -> None:
         raise ValueError(f"Unknown steering distribution: {config.steering_distribution}")
     if config.update_kl_guardrail is not None and config.update_kl_guardrail <= 0.0:
         raise ValueError("update_kl_guardrail must be positive or None")
+    if not isinstance(config.autograd_multithreading, bool):
+        raise ValueError("autograd_multithreading must be boolean")
     if config.steering_latent_std <= 0.0 or config.speed_physical_std <= 0.0:
         raise ValueError("steering_latent_std and speed_physical_std must be positive")
     if config.margin_weight < 0.0 or config.margin_threshold < 0.0:

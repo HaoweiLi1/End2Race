@@ -508,13 +508,14 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
         planned_optimizer_steps = minibatches_per_epoch * config.n_epochs
         for update in range(1, config.updates + 1):
             optimizer_before = _optimizer_step(model, require_initialized=update > 1)
-            model.learn(
-                total_timesteps=ppo_config.N_ENVS * config.n_steps,
-                callback=callback,
-                log_interval=None,
-                reset_num_timesteps=update == 1,
-                progress_bar=False,
-            )
+            with torch.autograd.set_multithreading_enabled(config.autograd_multithreading):
+                model.learn(
+                    total_timesteps=ppo_config.N_ENVS * config.n_steps,
+                    callback=callback,
+                    log_interval=None,
+                    reset_num_timesteps=update == 1,
+                    progress_bar=False,
+                )
             optimizer_after = _optimizer_step(model, require_initialized=True)
             actual_optimizer_steps = optimizer_after["max"] - optimizer_before["max"]
             if actual_optimizer_steps <= 0 or actual_optimizer_steps > planned_optimizer_steps:

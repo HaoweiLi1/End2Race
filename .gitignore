@@ -19,3 +19,6 @@ runs/ppo/v1_3_a_baseline/
 runs/ppo/v1_3_c_seed*/
 runs/ppo/v1_3_c_logs/
 runs/ppo/v1_3_c_baseline/
+runs/ppo/v1_3_d_seed*/
+runs/ppo/v1_3_d_logs/
+runs/ppo/v1_3_d_baseline/

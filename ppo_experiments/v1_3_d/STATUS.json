@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "experiment": "v1_3_d",
+  "status": "IMPLEMENTED",
+  "phase": "PRECHECK_LOCK_PENDING",
+  "source_head": "283a7591c90a0a1f228f10895b28402400f33257",
+  "implementation_commit": null,
+  "updated_at": "2026-07-17T18:24:22+08:00",
+  "failure_reason": null
+}

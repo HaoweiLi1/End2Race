@@ -23,6 +23,18 @@ class PPOActionDistributionTest(unittest.TestCase):
         self.assertEqual(differing, {"name", "steering_distribution"})
         self.assertEqual(candidate.steering_distribution, "physical_gaussian")
 
+    def test_v1_3_d_changes_only_autograd_execution_from_v1_3_c(self):
+        baseline = ppo_config.V1_3_C
+        candidate = ppo_config.V1_3_D
+        differing = {
+            field
+            for field in baseline.__dataclass_fields__
+            if getattr(baseline, field) != getattr(candidate, field)
+        }
+        self.assertEqual(differing, {"name", "autograd_multithreading"})
+        self.assertTrue(baseline.autograd_multithreading)
+        self.assertFalse(candidate.autograd_multithreading)
+
     def test_deterministic_action_matches_evaluator_after_clipping(self):
         raw_means = torch.tensor(
             [[-0.70, 4.0], [-0.20, 5.0], [0.20, 6.0], [0.70, 7.0]],
