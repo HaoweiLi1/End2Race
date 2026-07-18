@@ -31,6 +31,11 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--config", required=True, choices=ppo_config.CONFIGS)
     parser.add_argument("--seed", type=int, default=20260715)
     parser.add_argument("--output_dir", type=Path, default=None)
+    parser.add_argument(
+        "--screen-pause",
+        action="store_true",
+        help="Pause after update 2 and read continue/stop from stdin.",
+    )
     return parser.parse_args()
 
 
@@ -205,10 +210,15 @@ class PPOTrainingCallback(BaseCallback):
         self.transitions = 0
         self.completed = Counter()
         self.completed_by_branch = Counter()
+        self.completed_by_role = Counter()
         self.branches = Counter()
+        self.roles = Counter()
         self.reward_sums = Counter()
+        self.reward_sums_by_role = Counter()
         self.scenario_ids: set[str] = set()
         self.hard_scenario_ids: set[str] = set()
+        self.episode_length_steps_by_role = Counter()
+        self.hard_truncations = 0
         self.action_count = 0
         self.action_sum = np.zeros(2, dtype=np.float64)
         self.action_sum_squares = np.zeros(2, dtype=np.float64)
@@ -229,13 +239,16 @@ class PPOTrainingCallback(BaseCallback):
         for index, info in enumerate(infos):
             self.transitions += 1
             branch = str(info["sampler_branch"])
+            role = str(info["scenario"]["env_role"])
             scenario_id = str(info["scenario_id"])
             self.branches[branch] += 1
+            self.roles[role] += 1
             self.scenario_ids.add(scenario_id)
             if branch in {"bc_ego_collision", "hard_pool"}:
                 self.hard_scenario_ids.add(scenario_id)
             for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total"):
                 self.reward_sums[key] += float(info[key])
+                self.reward_sums_by_role[(role, key)] += float(info[key])
             if dones[index]:
                 if bool(info["ego_collision"]):
                     outcome = "ego_collision"
@@ -245,6 +258,10 @@ class PPOTrainingCallback(BaseCallback):
                     outcome = "follow"
                 self.completed[outcome] += 1
                 self.completed_by_branch[(branch, outcome)] += 1
+                self.completed_by_role[(role, outcome)] += 1
+                self.episode_length_steps_by_role[role] += int(round(float(info["elapsed_time"]) / 0.01))
+                if role == "hard" and bool(info["timeout"]):
+                    self.hard_truncations += 1
         return True
 
     def _action_statistics(self, index: int) -> dict[str, float]:
@@ -276,7 +293,17 @@ class PPOTrainingCallback(BaseCallback):
                 }
                 for branch in sorted(self.branches)
             },
+            "completed_episodes_by_env_role": {
+                role: {
+                    outcome: int(self.completed_by_role[(role, outcome)])
+                    for outcome in outcomes
+                }
+                for role in ("hard", "ordinary")
+            },
             "sampler_branch_transitions": dict(sorted(self.branches.items())),
+            "env_role_transitions": {
+                role: int(self.roles[role]) for role in ("hard", "ordinary")
+            },
             "unique_scenario_count": len(self.scenario_ids),
             "unique_hard_scenario_count": len(self.hard_scenario_ids),
             "action_statistics": {
@@ -287,12 +314,34 @@ class PPOTrainingCallback(BaseCallback):
                 key: float(self.reward_sums[key] / self.transitions)
                 for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total")
             },
+            "reward_component_sums": {
+                key: float(self.reward_sums[key])
+                for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total")
+            },
+            "reward_component_sums_by_env_role": {
+                role: {
+                    key: float(self.reward_sums_by_role[(role, key)])
+                    for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total")
+                }
+                for role in ("hard", "ordinary")
+            },
+            "hard_truncations": int(self.hard_truncations),
+            "mean_episode_length_steps_by_env_role": {
+                role: (
+                    float(self.episode_length_steps_by_role[role])
+                    / max(sum(self.completed_by_role[(role, outcome)] for outcome in outcomes), 1)
+                )
+                for role in ("hard", "ordinary")
+            },
         }
 
 
 def build_sampler(config: ppo_config.PPOConfig) -> FixedMixtureScenarioSampler:
     full_pool = training_scenarios()
-    hard_scenarios, hard_ids, manifest = load_hard_pool(config.hard_pool)
+    hard_scenarios, hard_ids, manifest = load_hard_pool(
+        config.hard_pool,
+        config.hard_pool_manifest,
+    )
     return FixedMixtureScenarioSampler(
         full_pool,
         hard_ids,
@@ -323,10 +372,21 @@ def make_training_env(
             integrator=Integrator.RK4,
             seed=seed + rank,
         )
+        fixed_role = None
+        if config.fixed_hard_env_count is not None:
+            fixed_role = "hard" if rank < config.fixed_hard_env_count else "ordinary"
+        horizon = (
+            config.hard_horizon_s if fixed_role == "hard" else config.ordinary_horizon_s
+        )
+        reset_provider = (
+            (lambda rng: sampler.reset_spec(rng, env_role=fixed_role))
+            if fixed_role is not None
+            else sampler
+        )
         return End2RaceGymnasiumEnv(
             core,
-            sim_duration=ppo_config.SIM_DURATION,
-            reset_provider=sampler,
+            sim_duration=horizon,
+            reset_provider=reset_provider,
             ego_index=0,
             opponent_controller=LatticePlannerOpponentController(),
             transition_reward=PPOTransitionReward(
@@ -462,7 +522,13 @@ def _sampler_summary(
     }
 
 
-def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
+def train(
+    config: ppo_config.PPOConfig,
+    seed: int,
+    output_dir: Path,
+    *,
+    screen_pause: bool = False,
+) -> Path:
     """Run one fresh profile in a new output directory."""
 
     if not ppo_config.BC_CHECKPOINT.is_file():
@@ -581,6 +647,25 @@ def train(config: ppo_config.PPOConfig, seed: int, output_dir: Path) -> Path:
                     }
                 )
                 write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
+            if screen_pause and update == 2:
+                write_json(output_dir / "sampler_summary.json", _sampler_summary(config, sampler))
+                run_status["status"] = "PAUSED_SCREEN"
+                write_json_atomic(status_path, run_status)
+                print("SCREEN_PAUSED: enter continue or stop", flush=True)
+                decision = input().strip().lower()
+                if decision == "stop":
+                    run_status.update(
+                        {
+                            "status": "STOPPED_SCREEN",
+                            "stop_reason": "Stopped by fixed screen-stage decision",
+                        }
+                    )
+                    write_json_atomic(status_path, run_status)
+                    break
+                if decision != "continue":
+                    raise ValueError(f"Unknown screen decision: {decision!r}")
+                run_status["status"] = "RUNNING"
+                write_json_atomic(status_path, run_status)
             run_status["status"] = "COMPLETED" if update == config.updates else "RUNNING"
             write_json_atomic(status_path, run_status)
     except Exception as error:
@@ -614,9 +699,9 @@ if __name__ == "__main__":
     output_dir = args.output_dir or (
         ppo_config.PROJECT_ROOT / "runs" / "ppo" / f"{config.name}_seed{args.seed}"
     )
-    run_dir = train(config, args.seed, output_dir)
+    run_dir = train(config, args.seed, output_dir, screen_pause=args.screen_pause)
     print(f"PPO_RUN_DIR={run_dir}")
     with (run_dir / "run_status.json").open("r", encoding="utf-8") as handle:
         final_status = json.load(handle)
-    if final_status["status"] != "COMPLETED":
+    if final_status["status"] not in {"COMPLETED", "STOPPED_SCREEN"}:
         raise SystemExit(2)

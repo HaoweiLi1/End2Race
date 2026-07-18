@@ -1,0 +1,23 @@
+{
+  "head": "5bfccef9f8053a0d857cb0728c146a9fe3b4dc15",
+  "recorded_at": "2026-07-17T22:03:57+08:00",
+  "preexisting_worktree_changes": [
+    {
+      "path": ".gitignore",
+      "status": "modified",
+      "note": "Pre-existing user change adding .remember/; preserved and not used by the experiment."
+    }
+  ],
+  "sha256": {
+    "ppo/config.py": "f44bc7cba0e719b1aa0392f9a690a40092ef14e76f340a7f46d80250b28d4dda",
+    "ppo/policy.py": "7b14ccb60ce7494c611cab2df729df562895137af4694aa805c5a57e8e4f64d8",
+    "ppo/environment.py": "49c484064d4a4c1a95e25128420ed419e73ac36acc6d0661a64bd82e6085bb0c",
+    "ppo/reward.py": "bd895a131e1eb04a187a29781082ce729628912446fcc5b796be6982a0570aaf",
+    "ppo/scenarios.py": "8991e6238de9ccd23c10f125568cd2d407b8111f06bca972ef4f9ecb8b0c359c",
+    "train_ppo.py": "1a86994b456f4bf600aaddbc8b6cb37c35187376defcbed1f12abf6f0f03d6f9",
+    "eval_multiagent.py": "56cb38aaa6f6b1362ef27bdf5a162410b0d27f9e310c8f9f5c12e13e1e73550e",
+    "evaluate.sh": "be774b398d63725a4ac9329816c79c68f673e3d60f11793b53cfff5fcfceee4a",
+    "utils.py": "77459621bf6af7fa8726ba4182fe28f3c4f4c5ebabf0f876553534dfcb95edfe",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+  }
+}

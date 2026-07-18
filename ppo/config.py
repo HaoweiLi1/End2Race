@@ -43,6 +43,10 @@ class PPOConfig:
     hard_sampling_probability: float
     hard_sampling_mode: str
     critic_profile: str
+    fixed_hard_env_count: int | None = None
+    hard_horizon_s: float = SIM_DURATION
+    ordinary_horizon_s: float = SIM_DURATION
+    hard_pool_manifest: str | None = None
     gru_lr: float = GRU_LR
     head_lr: float = HEAD_LR
     target_kl: float | None = TARGET_KL
@@ -253,6 +257,39 @@ V1_3_D = replace(
     autograd_multithreading=False,
 )
 
+QP3_A0_H0_8S = replace(
+    V1_2_H0_CONTROL,
+    name="QP3_A0_H0_8S",
+    n_steps=800,
+    batch_size=6400,
+    updates=4,
+    checkpoint_updates=(2, 4),
+    hard_sampling_probability=0.50,
+    fixed_hard_env_count=8,
+    hard_horizon_s=8.0,
+    ordinary_horizon_s=8.0,
+    steering_latent_std=0.03,
+)
+
+QP3_A1_H1FULL_8S = replace(
+    QP3_A0_H0_8S,
+    name="QP3_A1_H1FULL_8S",
+    hard_pool="h1_expanded_det",
+)
+
+QP3_A2_H1EARLY_8S = replace(
+    QP3_A0_H0_8S,
+    name="QP3_A2_H1EARLY_8S",
+    hard_pool="h1_early_3s",
+    hard_pool_manifest="ppo_experiments/quick_pool_3s/H1_EARLY_3S.json",
+)
+
+QP3_A3_H1EARLY_3S = replace(
+    QP3_A2_H1EARLY_8S,
+    name="QP3_A3_H1EARLY_3S",
+    hard_horizon_s=3.0,
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -282,6 +319,10 @@ CONFIGS = {
         V1_3_A,
         V1_3_C,
         V1_3_D,
+        QP3_A0_H0_8S,
+        QP3_A1_H1FULL_8S,
+        QP3_A2_H1EARLY_8S,
+        QP3_A3_H1EARLY_3S,
     )
 }
 
@@ -325,6 +366,18 @@ def _validate(config: PPOConfig) -> None:
         raise ValueError(f"Illegal hard-pool name: {config.hard_pool}")
     if config.hard_sampling_mode not in _HARD_SAMPLING_MODES:
         raise ValueError(f"Unknown hard sampling mode: {config.hard_sampling_mode}")
+    if config.fixed_hard_env_count is not None:
+        if not 1 <= config.fixed_hard_env_count < N_ENVS:
+            raise ValueError("fixed_hard_env_count must be in [1, N_ENVS - 1]")
+        expected_probability = config.fixed_hard_env_count / N_ENVS
+        if abs(config.hard_sampling_probability - expected_probability) > 1e-12:
+            raise ValueError("hard_sampling_probability must match the fixed hard-env fraction")
+    if config.hard_horizon_s <= 0.0 or config.ordinary_horizon_s <= 0.0:
+        raise ValueError("Episode horizons must be positive")
+    if config.hard_pool_manifest is not None:
+        manifest = Path(config.hard_pool_manifest)
+        if manifest.is_absolute() or ".." in manifest.parts:
+            raise ValueError("hard_pool_manifest must be a project-relative path")
     if config.critic_profile not in _CRITIC_PROFILES:
         raise ValueError(f"Unknown critic profile: {config.critic_profile}")
     if config.gru_lr <= 0.0 or config.head_lr <= 0.0:

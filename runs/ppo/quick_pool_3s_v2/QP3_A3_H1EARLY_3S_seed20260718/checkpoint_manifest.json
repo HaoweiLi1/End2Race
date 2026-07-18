@@ -1,0 +1,16 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_QP3_A3_H1EARLY_3S_u0002_s20260718.pth",
+      "sha256": "fe55ad1c08175c9f63b1b769cc78dde6a736988927f6be3d49270885d59c0845",
+      "update": 2
+    },
+    {
+      "path": "checkpoints/end2race_ppo_QP3_A3_H1EARLY_3S_u0004_s20260718.pth",
+      "sha256": "7cfc638b8817a7dbcc28c138a37ea94c77af3efde0f3bcaad12e368a13355bab",
+      "update": 4
+    }
+  ],
+  "config": "QP3_A3_H1EARLY_3S",
+  "seed": 20260718
+}

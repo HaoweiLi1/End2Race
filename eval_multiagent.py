@@ -123,6 +123,17 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     
     # Reset environment
     obs, _, done, _ = env.reset(poses=positions)
+    initial_collisions = np.asarray(obs['collisions'], dtype=bool).reshape(-1)
+    initial_ego_collision = bool(initial_collisions[0])
+    initial_opponent_collision = bool(initial_collisions[1])
+    observation_finite = bool(
+        all(
+            np.isfinite(np.asarray(value)).all()
+            for value in obs.values()
+            if isinstance(value, (list, tuple, np.ndarray))
+        )
+    )
+    action_finite = True
     
     # Only initialize rendering if render flag is set
     if render:
@@ -145,6 +156,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     collision_occurred = False
     ego_collision_occurred = False
     opp_collision_occurred = False
+    ego_collision_time_s = None
+    step_count = 0
     final_state = initial_state
     ego_trajectory = []
     speeds = []
@@ -202,6 +215,7 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         ego_raw_action = np.array([ego_steer, ego_speed], dtype=np.float32)
         ego_steer = np.clip(ego_steer, -0.52, 0.52)
         ego_executed_action = np.array([ego_steer, ego_speed], dtype=np.float32)
+        action_finite = action_finite and bool(np.isfinite(ego_executed_action).all())
         prev_speed = obs['linear_vels_x'][0]
         
         # Opponent lattice planner
@@ -214,6 +228,7 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         opp_steer = np.clip(opp_steer, -0.52, 0.52)
         opp_speed *= opp_speed_scale
         opp_executed_action = np.array([opp_steer, opp_speed], dtype=np.float32)
+        action_finite = action_finite and bool(np.isfinite(opp_executed_action).all())
 
         opp_lidar = np.array(obs["scans"][1]).flatten()
         if len(opp_lidar) > num_features:
@@ -258,6 +273,14 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         action = np.array([[ego_steer, ego_speed], [opp_steer, opp_speed]])
         obs, timestep, done, _ = env.step(action)
         lap_time += timestep
+        step_count += 1
+        observation_finite = observation_finite and bool(
+            all(
+                np.isfinite(np.asarray(value)).all()
+                for value in obs.values()
+                if isinstance(value, (list, tuple, np.ndarray))
+            )
+        )
         
         # Capture video frame if rendering
         if render:
@@ -293,6 +316,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         step_opp_collision = bool(obs['collisions'][1])
         ego_collision_occurred = ego_collision_occurred or step_ego_collision
         opp_collision_occurred = opp_collision_occurred or step_opp_collision
+        if step_ego_collision and ego_collision_time_s is None:
+            ego_collision_time_s = float(lap_time)
         if collision_scope_stops_episode(collision_scope, step_ego_collision, step_opp_collision):
             collision_occurred = True
             done = True
@@ -360,6 +385,13 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         "ego_collision_occurred": bool(ego_collision_occurred),
         "opp_collision_occurred": bool(opp_collision_occurred),
         "opponent_only_collision": bool(opp_collision_occurred and not ego_collision_occurred),
+        "initial_ego_collision": initial_ego_collision,
+        "initial_opponent_collision": initial_opponent_collision,
+        "observation_finite": observation_finite,
+        "action_finite": action_finite,
+        "ego_collision_time_s": ego_collision_time_s,
+        "simulation_time_s": float(lap_time),
+        "steps": int(step_count),
         "final_relative_position_m": float(relative_unwrapped),
         **proximity_quality,
         **steering_quality,
