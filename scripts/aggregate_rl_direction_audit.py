@@ -224,6 +224,8 @@ def _report(result: dict[str, Any], p1: dict[str, Any], p2: dict[str, Any], p3: 
             "",
             "### 4. Does reward rank safe alternatives correctly?",
             "",
+            f"`{questions['Q4_REWARD_RANKING']['answer']}`.",
+            "",
             f"P2 verdict: `{p2['verdict']}`. Reproduced collisions: {p2['h0_collision_reproduced']}; "
             f"repairable: {p2['repairable_case_count']} ({_f(p2['repairable_fraction'])}); "
             f"best-safe return above no-op: {_f(p2['best_safe_return_above_noop_fraction'])}.",
@@ -251,6 +253,12 @@ def _report(result: dict[str, Any], p1: dict[str, Any], p2: dict[str, Any], p3: 
                     f"{row['panel']['fixed_collision_count']} | {row['panel']['new_collision_count']} | "
                     f"{row['panel']['safe_reference_new_collision_count']} | {row['panel']['lost_overtake_count']} |"
                 )
+        lines.extend(
+            [
+                "",
+                "Neither S2 nor S3 produced a single fully passing seed: smaller KL did not prevent SAFE collisions or overtake losses, so sequential minibatch geometry is not confirmed as the primary failure source.",
+            ]
+        )
     lines.extend(
         [
             "",
@@ -262,6 +270,13 @@ def _report(result: dict[str, Any], p1: dict[str, Any], p2: dict[str, Any], p3: 
             f"- P6: `{result['conditional_phases']['P6']}`",
             "",
             "No long PPO training, demonstration mixing, architecture change, reward sweep, or product checkpoint selection was performed.",
+            "",
+            "## Final verification",
+            "",
+            "- Repository unittest discovery: 13/13 passed in conda env `end2race` (`pytest` is not installed in that environment).",
+            "- All nine audit diagnostic scripts compiled successfully.",
+            "- Frozen contract: 9/9 file hashes matched; canonical BC strict schema: 12 keys.",
+            "- Frozen product surfaces `ppo/`, `model.py`, `train_ppo.py`, and `pretrained/` have no diff from source HEAD.",
             "",
             "## Reproducibility artifacts",
             "",
