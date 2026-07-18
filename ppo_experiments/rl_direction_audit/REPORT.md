@@ -35,6 +35,8 @@ P2 earliest-actionable window: `{'median': 2.5, 'p25': 1.375, 'p75': 3.0}`. P3 c
 
 ### 4. Does reward rank safe alternatives correctly?
 
+`YES_FOR_THE_PREREGISTERED_LOCAL_REPAIRS; EXPLORATION_COVERAGE_IS_INSUFFICIENT`.
+
 P2 verdict: `EXPLORATION_COVERAGE_INSUFFICIENT`. Reproduced collisions: 22; repairable: 20 (0.9091); best-safe return above no-op: 1.0000.
 
 P2 aggregation revision: `{'raw_branches_reused': True, 'reason': "Completion audit found that revision 1 collapsed 0.25 s and 0.50 s pulses into one family, although duration is part of the guide's pulse specification. Revision 2 uses offset plus duration as the template; raw branches and all thresholds are unchanged.", 'revision': 2, 'superseded_result_sha256': '34cf58a2a63a7500a26f9a7b6b490873b74e295768e431ac514dcf19a03311ed', 'superseded_verdict': 'LOCAL_ACTION_NOT_FOUND'}`. The corrected result reuses the identical raw branch SHA and unchanged thresholds; duration is part of a pulse template.
@@ -55,6 +57,8 @@ P2 aggregation revision: `{'raw_branches_reused': True, 'reason': "Completion au
 | S2_FULL_ROLLOUT_ONE_STEP | 20260763 | 0.001514 | 0.002224 | 5 | 5 | 3 | 5 |
 | S3_TRANSACTIONAL_BACKTRACKED_ONE_STEP | 20260763 | 0.001514 | 0.002224 | 5 | 5 | 3 | 5 |
 
+Neither S2 nor S3 produced a single fully passing seed: smaller KL did not prevent SAFE collisions or overtake losses, so sequential minibatch geometry is not confirmed as the primary failure source.
+
 ## Decision and next allowed action
 
 - Action: `PREREGISTER_A_NARROW_SUSTAINED_ACTION_EXPLORATION_INTERVENTION_THEN_REPEAT_P1_AND_P4`
@@ -63,6 +67,13 @@ P2 aggregation revision: `{'raw_branches_reused': True, 'reason': "Completion au
 - P6: `NOT_AUTHORIZED`
 
 No long PPO training, demonstration mixing, architecture change, reward sweep, or product checkpoint selection was performed.
+
+## Final verification
+
+- Repository unittest discovery: 13/13 passed in conda env `end2race` (`pytest` is not installed in that environment).
+- All nine audit diagnostic scripts compiled successfully.
+- Frozen contract: 9/9 file hashes matched; canonical BC strict schema: 12 keys.
+- Frozen product surfaces `ppo/`, `model.py`, `train_ppo.py`, and `pretrained/` have no diff from source HEAD.
 
 ## Reproducibility artifacts
 
