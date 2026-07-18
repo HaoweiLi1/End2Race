@@ -6,6 +6,7 @@ episode-local controllers and never enter the actor observation or optimizer.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -26,6 +27,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 AUSTIN_DIRECTORY = PROJECT_ROOT / "f1tenth_racetracks" / "Austin"
 VEHICLE_LENGTH_M = 0.58
 VEHICLE_WIDTH_M = 0.31
+_PLANNER_TEMPLATE_CACHE: dict[tuple[str, str], Any] = {}
 
 
 def _rectangle_vertices(x: float, y: float, heading: float) -> np.ndarray:
@@ -206,7 +208,33 @@ class LatticePlannerOpponentController:
         # Gym stack until a real lattice-planner opponent is requested.
         from demonstration import setup_opp_planner
 
-        return setup_opp_planner(map_name, raceline)
+        key = (map_name, raceline)
+        template = _PLANNER_TEMPLATE_CACHE.get(key)
+        if template is None:
+            template = setup_opp_planner(map_name, raceline)
+            _PLANNER_TEMPLATE_CACHE[key] = template
+
+        # Map/raceline/config arrays are immutable during planning and remain
+        # shared.  All episode-local planner and tracker state is recreated to
+        # the exact values produced by a fresh constructor.
+        planner = copy.copy(template)
+        planner.best_traj = None
+        planner.best_traj_ref_v = 0.0
+        planner.best_traj_idx = 0
+        planner.prev_traj_local = np.zeros((planner.traj_points, 2))
+        planner.prev_opp_pose = np.array([0, 0])
+        planner.goal_grid = None
+        planner.state_i = None
+        planner.state_t = None
+        planner.step_all_cost = {}
+        planner.all_costs = None
+        planner.last_s = 0.0
+        planner.selection_func = None
+        planner.step = 0
+        planner.tracker = copy.copy(template.tracker)
+        planner.tracker.drawn_waypoints = []
+        planner.tracker.prev_error = 0.0
+        return planner
 
     @staticmethod
     def _per_opponent_value(
