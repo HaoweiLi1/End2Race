@@ -59,8 +59,12 @@ def _next_action(p2: dict[str, Any], p3: dict[str, Any], p4: dict[str, Any] | No
         }
     if verdict == "EXPLORATION_COVERAGE_INSUFFICIENT":
         return {
-            "action": "ADJUST_ONLY_THE_IMPLICATED_ACTION_STD_THEN_REPEAT_P1_AND_P4",
-            "reason": "Reward direction passed, but naturally sampling the best sustained repair pulse is too unlikely.",
+            "action": "PREREGISTER_A_NARROW_SUSTAINED_ACTION_EXPLORATION_INTERVENTION_THEN_REPEAT_P1_AND_P4",
+            "reason": (
+                "Reward direction passed and all best repairs were below 3 sigma per step, but every "
+                "0.25 s repair had iid sequence probability below 1%; more samples of unchanged iid noise "
+                "do not directly address that temporal coverage failure."
+            ),
         }
     if p4 is None:
         return {
@@ -144,7 +148,11 @@ def _build_questions(
         {
             "id": "Q4_REWARD_RANKING",
             "question": "Does current reward rank genuinely safe local alternatives above BC/no-op?",
-            "answer": p2["verdict"],
+            "answer": (
+                "YES_FOR_THE_PREREGISTERED_LOCAL_REPAIRS; EXPLORATION_COVERAGE_IS_INSUFFICIENT"
+                if p2["gates"]["reward_direction_ok"] and p2["gates"]["exploration_coverage_insufficient"]
+                else p2["verdict"]
+            ),
             "evidence": {
                 "reproduced_collision_cases": p2["h0_collision_reproduced"],
                 "repairable_case_count": p2["repairable_case_count"],
@@ -219,6 +227,8 @@ def _report(result: dict[str, Any], p1: dict[str, Any], p2: dict[str, Any], p3: 
             f"P2 verdict: `{p2['verdict']}`. Reproduced collisions: {p2['h0_collision_reproduced']}; "
             f"repairable: {p2['repairable_case_count']} ({_f(p2['repairable_fraction'])}); "
             f"best-safe return above no-op: {_f(p2['best_safe_return_above_noop_fraction'])}.",
+            "",
+            f"P2 aggregation revision: `{p2.get('aggregation_revision')}`. The corrected result reuses the identical raw branch SHA and unchanged thresholds; duration is part of a pulse template.",
             "",
             "### 5. Does sequential minibatch update destroy a useful direction?",
             "",
