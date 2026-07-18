@@ -1,0 +1,11 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_N1-H1E-p25_u0001_s20260719.pth",
+      "sha256": "1ba3d30eb12d8c602097866eb89c4c82437579632742b175b416aa1f3dfcc425",
+      "update": 1
+    }
+  ],
+  "config": "N1-H1E-p25",
+  "seed": 20260719
+}

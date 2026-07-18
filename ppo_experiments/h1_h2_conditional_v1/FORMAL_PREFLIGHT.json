@@ -1,0 +1,28 @@
+{
+  "baseline_path": "ppo_experiments/quick_pool_3s_v2/FULL600_BC_RESULTS.json",
+  "baseline_sha256": "dd690ac2241ff5269ef1ed4df6f428fdb931b740e7cc95dbdfb5eaa224da89f9",
+  "baseline_summary": {
+    "collision": 22,
+    "error": 0,
+    "follow": 233,
+    "overtake": 345,
+    "total": 600
+  },
+  "frozen_source_hashes": {
+    "eval_multiagent.py": "5ca6329513fd46b2216b84a2f7a154e470a83c674670628d94373e9cca891580",
+    "evaluate.sh": "be774b398d63725a4ac9329816c79c68f673e3d60f11793b53cfff5fcfceee4a",
+    "ppo/environment.py": "25f6f289455c86197b657945b099c220f11b1f56a47a652692a979b9aeccb742",
+    "ppo/policy.py": "7b14ccb60ce7494c611cab2df729df562895137af4694aa805c5a57e8e4f64d8",
+    "ppo/reward.py": "bd895a131e1eb04a187a29781082ce729628912446fcc5b796be6982a0570aaf",
+    "ppo/scenarios.py": "6bdfd480be4cae8984204567da33d41130d9b73849c2378a35a75304880a5a42",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "utils.py": "77459621bf6af7fa8726ba4182fe28f3c4f4c5ebabf0f876553534dfcb95edfe"
+  },
+  "git_head": "245e87f27cdd3325742263c4054e3192a1a224a1",
+  "recorded_at_utc": "2026-07-18T00:03:34.492458+00:00",
+  "schema_version": 1,
+  "status": "PASS",
+  "support_validation": "ppo_experiments/h1_h2_conditional_v1/SUPPORT_VALIDATION.json",
+  "support_validation_sha256": "61e46a82d68d38345c6c1a7a49abeb059093a0f7bc9cf0b71cd98d3c153481c0",
+  "worktree_clean_before_record": true
+}

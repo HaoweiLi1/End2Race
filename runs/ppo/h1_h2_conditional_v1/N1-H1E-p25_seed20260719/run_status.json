@@ -1,0 +1,9 @@
+{
+  "config": "N1-H1E-p25",
+  "experiment": "N1-H1E-p25",
+  "last_completed_update": 1,
+  "schema_version": 1,
+  "seed": 20260719,
+  "status": "STOPPED_SCREEN",
+  "stop_reason": "Stopped by fixed screen-stage decision"
+}

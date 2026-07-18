@@ -1,0 +1,16 @@
+{
+  "checkpoints": [
+    {
+      "path": "checkpoints/end2race_ppo_N1-H1F-p50_u0001_s20260720.pth",
+      "sha256": "95f4dd4d76be9ccab20a604223bfbdc932fc7b4b7e3e845b40abb11840861eb7",
+      "update": 1
+    },
+    {
+      "path": "checkpoints/end2race_ppo_N1-H1F-p50_u0002_s20260720.pth",
+      "sha256": "2cc9ca6c4b8fdd6ca73cacf3021a42e4f0bbf0148ee38f47187e22d8191cc741",
+      "update": 2
+    }
+  ],
+  "config": "N1-H1F-p50",
+  "seed": 20260720
+}
