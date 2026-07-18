@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "/home/haowei/miniconda3/envs/end2race/bin/python",
+        "-u",
+        "/home/haowei/Documents/End2Race/ppo_experiments/quick_pool_3s/evaluate_pool.py",
+        "--model-path",
+        "/home/haowei/Documents/End2Race/runs/ppo/quick_pool_3s_v2/QP3_A1_H1FULL_8S_seed20260718/checkpoints/end2race_ppo_QP3_A1_H1FULL_8S_u0002_s20260718.pth",
+        "--output",
+        "/home/haowei/Documents/End2Race/ppo_experiments/h1_h2_conditional_v1/posthoc_a1_u2_full600_raw.json",
+        "--workers",
+        "8",
+        "--sim-duration",
+        "8.0"
+      ],
+      "completed_at_utc": "2026-07-18T00:01:28.450349+00:00",
+      "purpose": "Evaluate existing A1 H1-full update-2 checkpoint once on current CPU full-600",
+      "return_code": 0,
+      "started_at_utc": "2026-07-17T23:49:34.927254+00:00"
+    }
+  ],
+  "schema_version": 1
+}

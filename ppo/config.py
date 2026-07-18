@@ -47,6 +47,8 @@ class PPOConfig:
     hard_horizon_s: float = SIM_DURATION
     ordinary_horizon_s: float = SIM_DURATION
     hard_pool_manifest: str | None = None
+    paired_hard_sampling: bool = False
+    hard_pair_size: int = 1
     gru_lr: float = GRU_LR
     head_lr: float = HEAD_LR
     target_kl: float | None = TARGET_KL
@@ -290,6 +292,74 @@ QP3_A3_H1EARLY_3S = replace(
     hard_horizon_s=3.0,
 )
 
+H1_H2_CONDITIONAL_BASE = replace(
+    QP3_A0_H0_8S,
+    name="H1_H2_CONDITIONAL_BASE",
+    n_steps=1600,
+    batch_size=6400,
+    updates=2,
+    checkpoint_updates=(1, 2),
+    hard_horizon_s=8.0,
+    ordinary_horizon_s=8.0,
+)
+
+N1_H1F_P50 = replace(
+    H1_H2_CONDITIONAL_BASE,
+    name="N1-H1F-p50",
+    hard_pool="h1_expanded_det",
+    hard_sampling_probability=0.50,
+    fixed_hard_env_count=8,
+)
+
+N1_H1F_P25 = replace(
+    N1_H1F_P50,
+    name="N1-H1F-p25",
+    hard_sampling_probability=0.25,
+    fixed_hard_env_count=4,
+)
+
+N1_H1E_P50 = replace(
+    N1_H1F_P50,
+    name="N1-H1E-p50",
+    hard_pool="h1_early_3s",
+    hard_pool_manifest="ppo_experiments/quick_pool_3s/H1_EARLY_3S.json",
+)
+
+N1_H1E_P25 = replace(
+    N1_H1E_P50,
+    name="N1-H1E-p25",
+    hard_sampling_probability=0.25,
+    fixed_hard_env_count=4,
+)
+
+N2_I8_SINGLE_8S = replace(
+    H1_H2_CONDITIONAL_BASE,
+    name="N2-I8-single-8s",
+    hard_pool="h2_matched_contrast_i8",
+    hard_pool_manifest="ppo_experiments/h1_h2_conditional_v1/H2_MATCHED_CONTRAST.json",
+    hard_sampling_probability=0.25,
+    fixed_hard_env_count=4,
+)
+
+N2_I8_PAIRED_8S = replace(
+    N2_I8_SINGLE_8S,
+    name="N2-I8-paired-8s",
+    paired_hard_sampling=True,
+    hard_pair_size=2,
+)
+
+N2_I8_PAIRED_4S = replace(
+    N2_I8_PAIRED_8S,
+    name="N2-I8-paired-4s",
+    hard_horizon_s=4.0,
+)
+
+N2_I7_PAIRED_4S = replace(
+    N2_I8_PAIRED_4S,
+    name="N2-I7-paired-4s",
+    hard_pool="h2_matched_contrast_i7",
+)
+
 CONFIGS = {
     config.name: config
     for config in (
@@ -323,6 +393,14 @@ CONFIGS = {
         QP3_A1_H1FULL_8S,
         QP3_A2_H1EARLY_8S,
         QP3_A3_H1EARLY_3S,
+        N1_H1F_P50,
+        N1_H1F_P25,
+        N1_H1E_P50,
+        N1_H1E_P25,
+        N2_I8_SINGLE_8S,
+        N2_I8_PAIRED_8S,
+        N2_I8_PAIRED_4S,
+        N2_I7_PAIRED_4S,
     )
 }
 
@@ -372,6 +450,19 @@ def _validate(config: PPOConfig) -> None:
         expected_probability = config.fixed_hard_env_count / N_ENVS
         if abs(config.hard_sampling_probability - expected_probability) > 1e-12:
             raise ValueError("hard_sampling_probability must match the fixed hard-env fraction")
+    if config.hard_pair_size not in {1, 2}:
+        raise ValueError("hard_pair_size must be 1 or 2")
+    if config.paired_hard_sampling and config.hard_pair_size != 2:
+        raise ValueError("paired_hard_sampling requires hard_pair_size=2")
+    if not config.paired_hard_sampling and config.hard_pair_size != 1:
+        raise ValueError("non-paired sampling requires hard_pair_size=1")
+    if config.paired_hard_sampling and config.fixed_hard_env_count is None:
+        raise ValueError("paired_hard_sampling requires fixed_hard_env_count")
+    if (
+        config.fixed_hard_env_count is not None
+        and config.fixed_hard_env_count % config.hard_pair_size != 0
+    ):
+        raise ValueError("fixed_hard_env_count must be divisible by hard_pair_size")
     if config.hard_horizon_s <= 0.0 or config.ordinary_horizon_s <= 0.0:
         raise ValueError("Episode horizons must be positive")
     if config.hard_pool_manifest is not None:

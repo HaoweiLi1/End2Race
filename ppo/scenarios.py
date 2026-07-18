@@ -178,6 +178,22 @@ class FixedMixtureScenarioSampler:
         self.visit_counts[scenario.scenario_id] += 1
         return scenario
 
+    def _sample_paired_hard(
+        self,
+        *,
+        pair_seed: int,
+        pair_group: int,
+        pair_episode_ordinal: int,
+    ) -> ScenarioSpec:
+        seed_sequence = np.random.SeedSequence(
+            [int(pair_seed), int(pair_group), int(pair_episode_ordinal)]
+        )
+        pair_rng = np.random.default_rng(seed_sequence)
+        index = int(pair_rng.integers(0, len(self.bc_collision_scenarios)))
+        scenario = self.bc_collision_scenarios[index]
+        self.visit_counts[scenario.scenario_id] += 1
+        return scenario
+
     def sample(
         self,
         rng: np.random.Generator,
@@ -202,14 +218,38 @@ class FixedMixtureScenarioSampler:
         rng: np.random.Generator,
         *,
         env_role: str | None = None,
+        pair_seed: int | None = None,
+        pair_group: int | None = None,
+        pair_member: int | None = None,
+        pair_episode_ordinal: int | None = None,
     ) -> EpisodeResetSpec:
-        scenario, branch = self.sample(rng, env_role=env_role)
+        paired_values = (pair_seed, pair_group, pair_member, pair_episode_ordinal)
+        is_paired = any(value is not None for value in paired_values)
+        if is_paired:
+            if any(value is None for value in paired_values):
+                raise ValueError("Paired hard reset requires all pair metadata")
+            if env_role != "hard" or pair_member not in {0, 1}:
+                raise ValueError("Paired reset requires a hard env and pair_member 0 or 1")
+            if int(pair_group) < 0 or int(pair_episode_ordinal) < 0:
+                raise ValueError("Pair group and episode ordinal must be non-negative")
+            scenario = self._sample_paired_hard(
+                pair_seed=int(pair_seed),
+                pair_group=int(pair_group),
+                pair_episode_ordinal=int(pair_episode_ordinal),
+            )
+            branch = "bc_ego_collision" if self.hard_pool_id == "H0_CURRENT_DET" else "hard_pool"
+        else:
+            scenario, branch = self.sample(rng, env_role=env_role)
         spec = deepcopy(scenario.to_reset_spec(sampler_branch=branch))
         spec.scenario["hard_pool_id"] = self.hard_pool_id
         spec.scenario["hard_sampling_mode"] = self.hard_sampling_mode
         spec.scenario["env_role"] = env_role or (
             "hard" if branch in {"bc_ego_collision", "hard_pool"} else "ordinary"
         )
+        if is_paired:
+            spec.scenario["pair_group"] = int(pair_group)
+            spec.scenario["pair_member"] = int(pair_member)
+            spec.scenario["pair_episode_ordinal"] = int(pair_episode_ordinal)
         return spec
 
     def __call__(self, rng: np.random.Generator) -> EpisodeResetSpec:
@@ -243,6 +283,11 @@ def load_hard_pool(
     with path.open("r", encoding="utf-8") as handle:
         manifest = json.load(handle)
     expected_pool_id = name.upper()
+    if "variant_manifests" in manifest:
+        variants = manifest["variant_manifests"]
+        if expected_pool_id not in variants:
+            raise ValueError(f"Hard-pool variant is absent: {expected_pool_id} in {path}")
+        manifest = variants[expected_pool_id]
     if manifest["pool_id"] != expected_pool_id:
         raise ValueError(f"Hard-pool ID mismatch: expected {expected_pool_id}, got {manifest['pool_id']}")
     content = {key: value for key, value in manifest.items() if key != "manifest_hash"}

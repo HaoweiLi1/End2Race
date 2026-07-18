@@ -34,7 +34,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--screen-pause",
         action="store_true",
-        help="Pause after update 2 and read continue/stop from stdin.",
+        help="Pause after the config's first checkpoint and read continue/stop from stdin.",
     )
     return parser.parse_args()
 
@@ -207,6 +207,7 @@ class PPOTrainingCallback(BaseCallback):
         self.latest: dict[str, Any] = {}
 
     def _on_rollout_start(self) -> None:
+        self.current_update = self.update + 1
         self.transitions = 0
         self.completed = Counter()
         self.completed_by_branch = Counter()
@@ -224,6 +225,8 @@ class PPOTrainingCallback(BaseCallback):
         self.action_sum_squares = np.zeros(2, dtype=np.float64)
         self.action_min = np.full(2, np.inf, dtype=np.float64)
         self.action_max = np.full(2, -np.inf, dtype=np.float64)
+        self.paired_completed: list[dict[str, Any]] = []
+        self.paired_cross_update_keys: set[tuple[int, int, int, str]] = set()
 
     def _on_step(self) -> bool:
         infos = list(self.locals["infos"])
@@ -262,7 +265,92 @@ class PPOTrainingCallback(BaseCallback):
                 self.episode_length_steps_by_role[role] += int(round(float(info["elapsed_time"]) / 0.01))
                 if role == "hard" and bool(info["timeout"]):
                     self.hard_truncations += 1
+                if info.get("pair_group") is not None:
+                    pair_record = {
+                        "pair_group": int(info["pair_group"]),
+                        "pair_member": int(info["pair_member"]),
+                        "pair_episode_ordinal": int(info["pair_episode_ordinal"]),
+                        "scenario_id": scenario_id,
+                        "policy_update_index": int(info["policy_update_index"]),
+                        "episode_outcome": str(info["episode_outcome"]),
+                        "episode_return": float(info["episode_return"]),
+                        "elapsed_time": float(info["elapsed_time"]),
+                    }
+                    pair_key = (
+                        pair_record["pair_group"],
+                        pair_record["pair_episode_ordinal"],
+                        pair_record["policy_update_index"],
+                        pair_record["scenario_id"],
+                    )
+                    if pair_record["policy_update_index"] == self.current_update:
+                        self.paired_completed.append(pair_record)
+                    else:
+                        self.paired_cross_update_keys.add(pair_key)
         return True
+
+    @staticmethod
+    def _difference_statistics(values: list[float]) -> dict[str, float | int | None]:
+        if not values:
+            return {"count": 0, "mean": None, "mean_absolute": None, "min": None, "max": None}
+        array = np.asarray(values, dtype=np.float64)
+        return {
+            "count": len(values),
+            "mean": float(array.mean()),
+            "mean_absolute": float(np.abs(array).mean()),
+            "min": float(array.min()),
+            "max": float(array.max()),
+        }
+
+    def _paired_telemetry(self) -> dict[str, Any]:
+        grouped: dict[tuple[int, int, int, str], list[dict[str, Any]]] = {}
+        for record in self.paired_completed:
+            key = (
+                record["pair_group"],
+                record["pair_episode_ordinal"],
+                record["policy_update_index"],
+                record["scenario_id"],
+            )
+            grouped.setdefault(key, []).append(record)
+        complete: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        incomplete = 0
+        for records in grouped.values():
+            by_member = {record["pair_member"]: record for record in records}
+            if len(records) == 2 and set(by_member) == {0, 1}:
+                complete.append((by_member[0], by_member[1]))
+            else:
+                incomplete += 1
+        outcomes = [
+            (first["episode_outcome"], second["episode_outcome"])
+            for first, second in complete
+        ]
+        discordant = sum((left == "ego_collision") != (right == "ego_collision") for left, right in outcomes)
+        both_collision = sum(left == right == "ego_collision" for left, right in outcomes)
+        both_safe = sum(left != "ego_collision" and right != "ego_collision" for left, right in outcomes)
+        return_differences = [
+            second["episode_return"] - first["episode_return"] for first, second in complete
+        ]
+        collision_time_differences = [
+            second["elapsed_time"] - first["elapsed_time"]
+            for first, second in complete
+            if first["episode_outcome"] == second["episode_outcome"] == "ego_collision"
+        ]
+        complete_count = len(complete)
+        return {
+            "complete_same_update_pairs": complete_count,
+            "incomplete_pairs": incomplete + len(self.paired_cross_update_keys),
+            "cross_update_incomplete_pairs": len(self.paired_cross_update_keys),
+            "discordant_pairs": discordant,
+            "discordant_pair_rate": discordant / complete_count if complete_count else 0.0,
+            "both_collision_pairs": both_collision,
+            "both_safe_pairs": both_safe,
+            "paired_return_difference_member1_minus_member0": self._difference_statistics(return_differences),
+            "paired_collision_time_difference_member1_minus_member0": self._difference_statistics(
+                collision_time_differences
+            ),
+            "paired_scenario_coverage": len(
+                {first["scenario_id"] for first, _second in complete}
+            ),
+        }
 
     def _action_statistics(self, index: int) -> dict[str, float]:
         if self.action_count == 0:
@@ -333,6 +421,7 @@ class PPOTrainingCallback(BaseCallback):
                 )
                 for role in ("hard", "ordinary")
             },
+            "paired_telemetry": self._paired_telemetry(),
         }
 
 
@@ -379,7 +468,7 @@ def make_training_env(
             config.hard_horizon_s if fixed_role == "hard" else config.ordinary_horizon_s
         )
         reset_provider = (
-            (lambda rng: sampler.reset_spec(rng, env_role=fixed_role))
+            _fixed_reset_provider(rank, sampler, config, seed, fixed_role)
             if fixed_role is not None
             else sampler
         )
@@ -398,6 +487,33 @@ def make_training_env(
         )
 
     return factory
+
+
+def _fixed_reset_provider(
+    rank: int,
+    sampler: FixedMixtureScenarioSampler,
+    config: ppo_config.PPOConfig,
+    seed: int,
+    fixed_role: str,
+):
+    pair_episode_ordinal = 0
+
+    def provider(rng: np.random.Generator):
+        nonlocal pair_episode_ordinal
+        if config.paired_hard_sampling and fixed_role == "hard":
+            spec = sampler.reset_spec(
+                rng,
+                env_role="hard",
+                pair_seed=seed,
+                pair_group=rank // config.hard_pair_size,
+                pair_member=rank % config.hard_pair_size,
+                pair_episode_ordinal=pair_episode_ordinal,
+            )
+            pair_episode_ordinal += 1
+            return spec
+        return sampler.reset_spec(rng, env_role=fixed_role)
+
+    return provider
 
 
 def build_model(
@@ -573,6 +689,7 @@ def train(
         minibatches_per_epoch = ppo_config.N_ENVS * config.n_steps // config.batch_size
         planned_optimizer_steps = minibatches_per_epoch * config.n_epochs
         for update in range(1, config.updates + 1):
+            vector_env.env_method("set_policy_update_index", update)
             optimizer_before = _optimizer_step(model, require_initialized=update > 1)
             with torch.autograd.set_multithreading_enabled(config.autograd_multithreading):
                 model.learn(
@@ -647,7 +764,7 @@ def train(
                     }
                 )
                 write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
-            if screen_pause and update == 2:
+            if screen_pause and update == config.checkpoint_updates[0]:
                 write_json(output_dir / "sampler_summary.json", _sampler_summary(config, sampler))
                 run_status["status"] = "PAUSED_SCREEN"
                 write_json_atomic(status_path, run_status)

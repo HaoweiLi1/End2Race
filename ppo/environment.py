@@ -347,10 +347,19 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._previous_ego_speed = 0.0
         self._raw_observation: dict[str, Any] | None = None
         self._current_spec: EpisodeResetSpec | None = None
+        self._episode_return = 0.0
+        self._next_policy_update_index = 0
+        self._episode_policy_update_index = 0
 
     @property
     def num_agents(self) -> int:
         return int(getattr(self.f110_env, "unwrapped", self.f110_env).num_agents)
+
+    def set_policy_update_index(self, update: int) -> None:
+        """Set the policy version attached to episodes beginning after this call."""
+        if int(update) <= 0:
+            raise ValueError("policy update index must be positive")
+        self._next_policy_update_index = int(update)
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][self.ego_index]).reshape(-1)
@@ -385,6 +394,8 @@ class End2RaceGymnasiumEnv(gym.Env):
         spec = self.reset_provider(self._reset_rng)
         raw_observation, _, _, base_info = self.f110_env.reset(poses=spec.poses.copy())
         self._elapsed_time = 0.0
+        self._episode_return = 0.0
+        self._episode_policy_update_index = self._next_policy_update_index
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
@@ -406,6 +417,13 @@ class End2RaceGymnasiumEnv(gym.Env):
             "sampler_branch": spec.scenario["sampler_branch"],
             "hard_pool_id": spec.scenario["hard_pool_id"],
             "hard_sampling_mode": spec.scenario["hard_sampling_mode"],
+            "env_role": spec.scenario["env_role"],
+            "pair_group": spec.scenario.get("pair_group"),
+            "pair_member": spec.scenario.get("pair_member"),
+            "pair_episode_ordinal": spec.scenario.get("pair_episode_ordinal"),
+            "policy_update_index": self._episode_policy_update_index,
+            "episode_outcome": None,
+            "episode_return": self._episode_return,
             "base_info": base_info,
         }
         return self._observation(raw_observation), info
@@ -462,6 +480,16 @@ class End2RaceGymnasiumEnv(gym.Env):
             reward_info = dict(reward_result.to_info())
             reward = float(reward_info["reward_total"])
 
+        self._episode_return += reward
+        episode_outcome = None
+        if terminated or truncated:
+            if ego_collision:
+                episode_outcome = "ego_collision"
+            elif float(reward_info.get("relative_position_m", 0.0)) > 0.0:
+                episode_outcome = "overtake"
+            else:
+                episode_outcome = "follow"
+
         self._raw_observation = raw_observation
         self._previous_ego_speed = pre_step_ego_speed
         observation = self._observation(raw_observation)
@@ -479,6 +507,13 @@ class End2RaceGymnasiumEnv(gym.Env):
             "sampler_branch": scenario["sampler_branch"],
             "hard_pool_id": scenario["hard_pool_id"],
             "hard_sampling_mode": scenario["hard_sampling_mode"],
+            "env_role": scenario["env_role"],
+            "pair_group": scenario.get("pair_group"),
+            "pair_member": scenario.get("pair_member"),
+            "pair_episode_ordinal": scenario.get("pair_episode_ordinal"),
+            "policy_update_index": self._episode_policy_update_index,
+            "episode_outcome": episode_outcome,
+            "episode_return": self._episode_return,
             "simulator_reward": float(simulator_reward),
             "base_info": base_info,
             **reward_info,
