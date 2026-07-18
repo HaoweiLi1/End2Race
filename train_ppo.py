@@ -16,6 +16,7 @@ import numpy as np
 import torch
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.vec_env.base_vec_env import VecEnv
 
 from model import End2Race
 from ppo import config as ppo_config
@@ -23,6 +24,7 @@ from ppo.environment import End2RaceGymnasiumEnv, LatticePlannerOpponentControll
 from ppo.policy import End2RaceGRUPolicy, End2RaceRecurrentPPO
 from ppo.reward import PPOTransitionReward, ProgressProjector
 from ppo.scenarios import FixedMixtureScenarioSampler, load_hard_pool, training_scenarios
+from ppo.vec_env import CentralScheduleSubprocVecEnv
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -489,6 +491,53 @@ def make_training_env(
     return factory
 
 
+def _external_reset_required(_rng: np.random.Generator):
+    """Reject unscheduled worker resets without capturing a sampler object."""
+
+    raise RuntimeError("Subprocess training resets must be supplied by the parent scheduler")
+
+
+def make_subprocess_training_env(
+    rank: int,
+    config: ppo_config.PPOConfig,
+    seed: int,
+):
+    """Build one worker env that contains no sampler or visit-count state."""
+
+    def factory() -> End2RaceGymnasiumEnv:
+        import gym
+        from f110_gym.envs.base_classes import Integrator
+
+        core = gym.make(
+            "f110-v0",
+            map=str(ppo_config.PROJECT_ROOT / "f1tenth_racetracks" / "Austin" / "Austin_map"),
+            map_ext=".png",
+            num_agents=2,
+            timestep=0.01,
+            integrator=Integrator.RK4,
+            seed=seed + rank,
+        )
+        fixed_role = None
+        if config.fixed_hard_env_count is not None:
+            fixed_role = "hard" if rank < config.fixed_hard_env_count else "ordinary"
+        horizon = config.hard_horizon_s if fixed_role == "hard" else config.ordinary_horizon_s
+        return End2RaceGymnasiumEnv(
+            core,
+            sim_duration=horizon,
+            reset_provider=_external_reset_required,
+            ego_index=0,
+            opponent_controller=LatticePlannerOpponentController(),
+            transition_reward=PPOTransitionReward(
+                ProgressProjector.from_csv(),
+                margin_weight=config.margin_weight,
+                margin_threshold=config.margin_threshold,
+            ),
+            privileged_critic=config.critic_profile == "C3_PRIVILEGED_PHYSICAL",
+        )
+
+    return factory
+
+
 def _fixed_reset_provider(
     rank: int,
     sampler: FixedMixtureScenarioSampler,
@@ -517,7 +566,7 @@ def _fixed_reset_provider(
 
 
 def build_model(
-    vector_env: DummyVecEnv,
+    vector_env: VecEnv,
     config: ppo_config.PPOConfig,
     seed: int,
 ) -> End2RaceRecurrentPPO:
@@ -555,6 +604,32 @@ def build_model(
     )
 
 
+def build_training_vector_env(
+    sampler: FixedMixtureScenarioSampler,
+    config: ppo_config.PPOConfig,
+    seed: int,
+    *,
+    subprocess: bool = True,
+    worker_count: int = ppo_config.ENV_WORKERS,
+) -> VecEnv:
+    """Build the training VecEnv without changing the scenario scheduler."""
+    if subprocess:
+        factories = [
+            make_subprocess_training_env(rank, config, seed)
+            for rank in range(ppo_config.N_ENVS)
+        ]
+        return CentralScheduleSubprocVecEnv(
+            factories,
+            sampler=sampler,
+            config=config,
+            seed=seed,
+            worker_count=worker_count,
+            start_method=ppo_config.ENV_START_METHOD,
+        )
+    factories = [make_training_env(rank, sampler, config, seed) for rank in range(ppo_config.N_ENVS)]
+    return DummyVecEnv(factories)
+
+
 def save_actor(model: End2RaceRecurrentPPO, destination: Path) -> str:
     """Save, validate, and hash one BC-compatible actor checkpoint."""
     if destination.exists():
@@ -588,6 +663,8 @@ def _resolved_record(
             "output_dir": str(output_dir),
             "device": ppo_config.DEVICE,
             "n_envs": ppo_config.N_ENVS,
+            "env_workers": ppo_config.ENV_WORKERS,
+            "env_start_method": ppo_config.ENV_START_METHOD,
             "n_epochs": config.n_epochs,
             "gamma": ppo_config.GAMMA,
             "gae_lambda": ppo_config.GAE_LAMBDA,
@@ -675,11 +752,9 @@ def train(
     write_json_atomic(status_path, run_status)
     set_random_seed(seed)
 
-    vector_env: DummyVecEnv | None = None
+    vector_env: VecEnv | None = None
     try:
-        vector_env = DummyVecEnv(
-            [make_training_env(rank, sampler, config, seed) for rank in range(ppo_config.N_ENVS)]
-        )
+        vector_env = build_training_vector_env(sampler, config, seed)
         vector_env.seed(seed)
         model = build_model(vector_env, config, seed)
         callback = PPOTrainingCallback()

@@ -10,6 +10,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 N_ENVS = 16
 DEVICE = "cuda"
+ENV_WORKERS = 6
+ENV_START_METHOD = "forkserver"
 
 GAMMA = 0.999
 GAE_LAMBDA = 0.995

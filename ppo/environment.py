@@ -184,6 +184,7 @@ class EpisodeResetSpec:
 
 
 EpisodeResetProvider = Callable[[np.random.Generator], EpisodeResetSpec]
+EXTERNAL_RESET_OPTION = "end2race_episode_reset_spec"
 
 
 class LatticePlannerOpponentController:
@@ -391,7 +392,10 @@ class End2RaceGymnasiumEnv(gym.Env):
             self._reset_rng = np.random.default_rng(seed)
         # The fixed sampler fully specifies every reset, so DummyVecEnv auto-reset
         # never needs options and cannot accidentally omit poses.
-        spec = self.reset_provider(self._reset_rng)
+        external_spec = None if options is None else options.get(EXTERNAL_RESET_OPTION)
+        if external_spec is not None and not isinstance(external_spec, EpisodeResetSpec):
+            raise TypeError(f"{EXTERNAL_RESET_OPTION} must contain an EpisodeResetSpec")
+        spec = external_spec if external_spec is not None else self.reset_provider(self._reset_rng)
         raw_observation, _, _, base_info = self.f110_env.reset(poses=spec.poses.copy())
         self._elapsed_time = 0.0
         self._episode_return = 0.0
