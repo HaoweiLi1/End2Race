@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "record": "P1_CONDITIONAL_256_EPISODE_EXTENSION_PREREGISTRATION",
+  "status": "PREREGISTERED_NOT_STARTED",
+  "created_at": "2026-07-17T22:14:00+08:00",
+  "source_head": "5bfccef9f8053a0d857cb0728c146a9fe3b4dc15",
+  "initial_p1_result_commit": "a3b745d",
+  "initial_p1_result_sha256": "b89153c7d0aebbd69d5c986d8592d564df340d5c33aea433ca40439072afe5de",
+  "trigger": {
+    "H0_CURRENT_DET": "INCONCLUSIVE",
+    "H2_STOCH_CORE": "INCONCLUSIVE"
+  },
+  "excluded_from_extension": {
+    "H1_EXPANDED_DET": "DIRECTION_PRESENT",
+    "H3_UNION_CORE": "DIRECTION_ABSENT_OR_CONFLICTING"
+  },
+  "extension_contract": {
+    "additional_shards_per_triggered_pool": 4,
+    "complete_episodes_per_additional_shard": 32,
+    "additional_complete_episodes_per_pool": 128,
+    "final_complete_episodes_per_pool": 256,
+    "hard_episodes_per_additional_shard": 16,
+    "ordinary_training_episodes_per_additional_shard": 16,
+    "sampling_and_gradient_contract": "identical to AUDIT_PREREGISTRATION.json P1",
+    "thresholds_unchanged": true,
+    "second_extension_forbidden": true
+  },
+  "seeds": {
+    "derivation": "mechanical continuation of each pool's four initial consecutive preregistered seeds; no result-dependent seed search",
+    "H0_CURRENT_DET": [20260725, 20260726, 20260727, 20260728],
+    "H2_STOCH_CORE": [20260745, 20260746, 20260747, 20260748]
+  }
+}

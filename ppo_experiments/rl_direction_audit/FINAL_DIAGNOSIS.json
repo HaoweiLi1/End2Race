@@ -1,0 +1,281 @@
+{
+  "artifacts": {
+    "p1": {
+      "path": "ppo_experiments/rl_direction_audit/P1_GRADIENT_DIRECTION.json",
+      "sha256": "4b54e0c4184d8f934c975f55355963ee87070ccce5508a7e2594f68da2391655"
+    },
+    "p1_extension": {
+      "path": "ppo_experiments/rl_direction_audit/P1_GRADIENT_DIRECTION_EXTENSION.json",
+      "sha256": "48071e1cb45a1ee9cbd2fce7c7a197c7c44faa5da9bb83b3e93811c68065bc2d"
+    },
+    "p2": {
+      "path": "ppo_experiments/rl_direction_audit/P2_COUNTERFACTUAL_ACTIONABILITY.json",
+      "sha256": "0335748dc8b128d77b722952771e9fdb65c7952fbcdcba2162b2a68a990623e7"
+    },
+    "p3": {
+      "path": "ppo_experiments/rl_direction_audit/P3_CREDIT_HORIZON.json",
+      "sha256": "b586e495f543e2cbdfb3f191d8de54a02676fbfaa5885d87f584cc114e627e56"
+    },
+    "p4": {
+      "path": "ppo_experiments/rl_direction_audit/P4_CONTROLLED_STEP.json",
+      "sha256": "5d8b2c49a54c4befa2d9b24f095642bab6fabecee31160aeb911a04a35734390"
+    },
+    "p4_panel": {
+      "path": "ppo_experiments/rl_direction_audit/P4_PANEL.json",
+      "sha256": "6c573190850b706201e24756cd4bf521f871ac4dbe5aeb68b43c633fe2f27101"
+    },
+    "p5": null,
+    "p6": null,
+    "preregistration": {
+      "path": "ppo_experiments/rl_direction_audit/AUDIT_PREREGISTRATION.json",
+      "sha256": "ed6dad39fe420238dabbf3fef22ea590e25abe173213685896e8863fa0887fe2"
+    },
+    "safe_reference": {
+      "path": "ppo_experiments/rl_direction_audit/SAFE_REFERENCE.json",
+      "sha256": "731d039f10cab2cb9d55d6050b0836cadb74b84f27b2d0bc12689d74778af40b"
+    }
+  },
+  "canonical_bc_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "completed_at": "2026-07-18T08:52:58+08:00",
+  "conditional_phases": {
+    "P5": "NOT_TRIGGERED",
+    "P6": "NOT_AUTHORIZED"
+  },
+  "device": "cuda",
+  "frozen_hashes": {
+    "ppo/environment.py": "49c484064d4a4c1a95e25128420ed419e73ac36acc6d0661a64bd82e6085bb0c",
+    "ppo/hard_pools/h0_current_det.json": "a8082dd15dbc93bf374c182f6c57befa67560f445389a776c8ad24fbc7bab755",
+    "ppo/hard_pools/h1_expanded_det.json": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+    "ppo/hard_pools/h2_stoch_core.json": "3ac980070a24a4ac8ab839978a40b93a523c1b40ffeab6b343d72787e2676cce",
+    "ppo/hard_pools/h3_union_core.json": "2fee9ec439d45879e59e1d0853274025bf00df9cc0b9e859c533e74eb5d44030",
+    "ppo/policy.py": "7b14ccb60ce7494c611cab2df729df562895137af4694aa805c5a57e8e4f64d8",
+    "ppo/reward.py": "bd895a131e1eb04a187a29781082ce729628912446fcc5b796be6982a0570aaf",
+    "ppo/scenarios.py": "8991e6238de9ccd23c10f125568cd2d407b8111f06bca972ef4f9ecb8b0c359c",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+  },
+  "next_allowed_action": {
+    "action": "PREREGISTER_A_NARROW_SUSTAINED_ACTION_EXPLORATION_INTERVENTION_THEN_REPEAT_P1_AND_P4",
+    "reason": "Reward direction passed and all best repairs were below 3 sigma per step, but every 0.25 s repair had iid sequence probability below 1%; more samples of unchanged iid noise do not directly address that temporal coverage failure."
+  },
+  "product_improvement_claimed": false,
+  "questions": [
+    {
+      "answer": "POOL_DEPENDENT_YES_ONLY_FOR_H1; H0_AND_H2_REMAIN_INCONCLUSIVE; H3_IS_CONFLICTING",
+      "evidence": {
+        "H0_256_median_pairwise_cosine": -0.07357573827011024,
+        "H0_256_verdict": "INCONCLUSIVE",
+        "H1_bootstrap_95ci": {
+          "lower": 0.6620692318305498,
+          "median": 0.8168664923411396,
+          "replicates_requested": 10000,
+          "replicates_valid": 9853,
+          "upper": 0.9440287226532805
+        },
+        "H1_collision_action_sign_agreement": 0.7534817813765182,
+        "H1_episodes": 128,
+        "H1_median_pairwise_cosine": 0.8626854307773144,
+        "H2_256_median_pairwise_cosine": 0.02919616099744468,
+        "H2_256_verdict": "INCONCLUSIVE",
+        "H3_128_verdict": "DIRECTION_ABSENT_OR_CONFLICTING"
+      },
+      "id": "Q1_STABLE_ACTOR_GRADIENT",
+      "question": "Does the expected current PPO actor gradient have a stable direction?"
+    },
+    {
+      "answer": "128_IS_THE_FIRST_PREREGISTERED_TESTED_COUNT_THAT_PASSES_FOR_H1; NO_UNIVERSAL_COUNT_EXISTS_BECAUSE_H0_AND_H2_FAIL_TO_STABILIZE_AT_256",
+      "evidence": {
+        "H0_no_pass_episode_count": 256,
+        "H1_first_gate_passing_episode_count": 128,
+        "H2_no_pass_episode_count": 256,
+        "transition_count_not_used_as_independence_count": true
+      },
+      "id": "Q2_EPISODES_REQUIRED",
+      "question": "How many independent episodes are required to estimate the direction stably?"
+    },
+    {
+      "answer": "NOT_SUPPORTED_BY_THE_PREREGISTERED_OFFLINE_IMPROVEMENT_GATE",
+      "evidence": {
+        "current_median_pairwise_cosine": 0.8626854307773144,
+        "earliest_actionable_seconds_before_collision": {
+          "median": 2.5,
+          "p25": 1.375,
+          "p75": 3.0
+        },
+        "primary_pool": "H1_EXPANDED_DET",
+        "redistribution_window_seconds": 3.0,
+        "selected_credit": "C0_CURRENT",
+        "selected_median_pairwise_cosine": 0.8626854307773144,
+        "selection": {
+          "candidate_evaluations": {
+            "C1_LONGER_GAE": {
+              "advantage_p99_ratio": 1.0349933866428995,
+              "checks": {
+                "advantage_p99_le_2x_current": true,
+                "bootstrap_95ci_lower_gt_0": true,
+                "collision_action_agreement_not_lower": false,
+                "median_cosine_improvement_ge_0.10": false,
+                "safe_gradient_norm_increase_le_20pct": true
+              },
+              "collision_action_agreement_delta": -0.00038461538461542766,
+              "median_cosine_improvement": -0.0765721923129552,
+              "passed": false,
+              "safe_gradient_norm_ratio": 0.7425737216683468
+            },
+            "C2_MONTE_CARLO_LIKE": {
+              "advantage_p99_ratio": 1.1728549481275892,
+              "checks": {
+                "advantage_p99_le_2x_current": true,
+                "bootstrap_95ci_lower_gt_0": false,
+                "collision_action_agreement_not_lower": false,
+                "median_cosine_improvement_ge_0.10": false,
+                "safe_gradient_norm_increase_le_20pct": true
+              },
+              "collision_action_agreement_delta": -0.09541160593792175,
+              "median_cosine_improvement": -0.7988180101952931,
+              "passed": false,
+              "safe_gradient_norm_ratio": 0.3624759391232433
+            },
+            "C3_REDISTRIBUTED": {
+              "advantage_p99_ratio": 0.6105896248666787,
+              "checks": {
+                "advantage_p99_le_2x_current": true,
+                "bootstrap_95ci_lower_gt_0": true,
+                "collision_action_agreement_not_lower": true,
+                "median_cosine_improvement_ge_0.10": false,
+                "safe_gradient_norm_increase_le_20pct": false
+              },
+              "collision_action_agreement_delta": 0.10195006747638335,
+              "median_cosine_improvement": -0.14100306370293958,
+              "passed": false,
+              "safe_gradient_norm_ratio": 1.2680057756194858
+            }
+          },
+          "passing_candidates": [],
+          "selected_credit": "C0_CURRENT",
+          "verdict": "KEEP_CURRENT_CREDIT"
+        }
+      },
+      "id": "Q3_CREDIT_HORIZON",
+      "question": "Is 2-3 second collision credit excessively attenuated by current GAE?"
+    },
+    {
+      "answer": "YES_FOR_THE_PREREGISTERED_LOCAL_REPAIRS; EXPLORATION_COVERAGE_IS_INSUFFICIENT",
+      "evidence": {
+        "best_safe_return_above_noop_fraction": 1.0,
+        "gates": {
+          "exploration_coverage_insufficient": true,
+          "local_action_not_found": false,
+          "reward_direction_ok": true,
+          "reward_misaligned": false
+        },
+        "repairable_case_count": 20,
+        "repairable_fraction": 0.9090909090909091,
+        "reproduced_collision_cases": 22,
+        "reward_misaligned_fraction": 0.0
+      },
+      "id": "Q4_REWARD_RANKING",
+      "question": "Does current reward rank genuinely safe local alternatives above BC/no-op?"
+    },
+    {
+      "answer": "CONTROLLED_STEP_INSUFFICIENT",
+      "evidence": {
+        "method_gates": {
+          "S2_FULL_ROLLOUT_ONE_STEP": {
+            "checks_by_seed": {
+              "20260761": {
+                "fixed_collision_gt_new_collision": false,
+                "mean_exact_kl_smaller_than_s1": true,
+                "overtake_lost_le_2": false,
+                "p99_sequence_exact_kl_smaller_than_s1": false,
+                "safe_reference_new_collision_le_1": false,
+                "transaction_committed": true
+              },
+              "20260762": {
+                "fixed_collision_gt_new_collision": true,
+                "mean_exact_kl_smaller_than_s1": true,
+                "overtake_lost_le_2": false,
+                "p99_sequence_exact_kl_smaller_than_s1": true,
+                "safe_reference_new_collision_le_1": false,
+                "transaction_committed": true
+              },
+              "20260763": {
+                "fixed_collision_gt_new_collision": false,
+                "mean_exact_kl_smaller_than_s1": false,
+                "overtake_lost_le_2": false,
+                "p99_sequence_exact_kl_smaller_than_s1": true,
+                "safe_reference_new_collision_le_1": false,
+                "transaction_committed": true
+              }
+            },
+            "passes_two_of_three": false,
+            "passing_seeds": []
+          },
+          "S3_TRANSACTIONAL_BACKTRACKED_ONE_STEP": {
+            "checks_by_seed": {
+              "20260761": {
+                "fixed_collision_gt_new_collision": false,
+                "mean_exact_kl_smaller_than_s1": true,
+                "overtake_lost_le_2": false,
+                "p99_sequence_exact_kl_smaller_than_s1": false,
+                "safe_reference_new_collision_le_1": false,
+                "transaction_committed": true
+              },
+              "20260762": {
+                "fixed_collision_gt_new_collision": true,
+                "mean_exact_kl_smaller_than_s1": true,
+                "overtake_lost_le_2": false,
+                "p99_sequence_exact_kl_smaller_than_s1": true,
+                "safe_reference_new_collision_le_1": false,
+                "transaction_committed": true
+              },
+              "20260763": {
+                "fixed_collision_gt_new_collision": false,
+                "mean_exact_kl_smaller_than_s1": false,
+                "overtake_lost_le_2": false,
+                "p99_sequence_exact_kl_smaller_than_s1": true,
+                "safe_reference_new_collision_le_1": false,
+                "transaction_committed": true
+              }
+            },
+            "passes_two_of_three": false,
+            "passing_seeds": []
+          }
+        },
+        "parameter_delta_pairwise_cosine_across_seeds": {
+          "S1_SEQUENTIAL_MINIBATCH": [
+            0.027720716684113144,
+            -0.015559371463068182,
+            -0.0560175639291449
+          ],
+          "S2_FULL_ROLLOUT_ONE_STEP": [
+            -0.016954385703727044,
+            0.07153465083942682,
+            0.19216260903837845
+          ],
+          "S3_TRANSACTIONAL_BACKTRACKED_ONE_STEP": [
+            -0.016954385703727044,
+            0.07153465083942682,
+            0.19216260903837845
+          ]
+        }
+      },
+      "id": "Q5_UPDATE_GEOMETRY",
+      "question": "Does sequential minibatch Adam destroy an otherwise useful direction?"
+    }
+  ],
+  "record": "RL_ONLY_MECHANISM_AUDIT_FINAL_DIAGNOSIS",
+  "schema_version": 1,
+  "source_head": "5bfccef9f8053a0d857cb0728c146a9fe3b4dc15",
+  "stage_verdicts": {
+    "P1": {
+      "H0_CURRENT_DET": "INCONCLUSIVE",
+      "H1_EXPANDED_DET": "DIRECTION_PRESENT",
+      "H2_STOCH_CORE": "INCONCLUSIVE",
+      "H3_UNION_CORE": "DIRECTION_ABSENT_OR_CONFLICTING"
+    },
+    "P2": "EXPLORATION_COVERAGE_INSUFFICIENT",
+    "P3": "KEEP_CURRENT_CREDIT",
+    "P4": "CONTROLLED_STEP_INSUFFICIENT"
+  },
+  "status": "MECHANISM_AUDIT_COMPLETE_NO_PRODUCT_CLAIM"
+}

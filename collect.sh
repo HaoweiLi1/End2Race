@@ -1,11 +1,11 @@
 #!/bin/bash
-
+export DISPLAY=:1
 # Parameters (converted from argparse defaults)
-WORKERS=4
+WORKERS=8
 RENDER=true
 MAP_NAME="Austin"
 EGO_RACELINE="raceline1"
-OPP_RACELINES=("raceline0" "raceline1" "raceline2")
+OPP_RACELINES=("raceline1")
 OPP_SPEED_SCALES=(0.5 0.6 0.7 0.8)
 INTERVAL_IDX=15
 SIM_DURATION=8.0

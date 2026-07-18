@@ -13,6 +13,17 @@ eval_results/
 posttrained/
 runs/ppo/*/checkpoints/
 runs/ppo/quick_pool_3s_v2/*/checkpoints/
+
+# Experiment-generated datasets and model weights.
+# Curated assets outside runs/ppo remain trackable.
+/runs/ppo/**/*.npz
+/runs/ppo/**/*.pt
+/runs/ppo/**/*.pth
+/runs/ppo/**/*.ckpt
+/runs/ppo/**/*.onnx
+/runs/ppo/**/*.safetensors
+/runs/ppo/**/*.zip
+
 runs/ppo/v1_3_b_seed*/
 runs/ppo/v1_3_b_logs/
 runs/ppo/v1_3_b_baseline/
