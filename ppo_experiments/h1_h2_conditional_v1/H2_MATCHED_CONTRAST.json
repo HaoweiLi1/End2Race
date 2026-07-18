@@ -1,0 +1,16 @@
+{
+  "fallback_matched_base_ids": [
+    "v12-sp065-ego1374-raceline0-i08-v080",
+    "v12-sp067-ego1417-raceline0-i08-v080"
+  ],
+  "manifest_hash": "b2c1e4b2ee0fc3d84e6f03685809a01b12b5ef5c4b29d4489d613fdc045c804d",
+  "primary_matched_base_ids": [
+    "v12-sp067-ego1417-raceline0-i08-v080"
+  ],
+  "schema_version": 1,
+  "selected_base_count": 0,
+  "selected_base_ids": [],
+  "selected_tier": "STOP_H2_MATCHED_POOL_TOO_SMALL",
+  "status": "STOP_H2_MATCHED_POOL_TOO_SMALL",
+  "variant_manifests": {}
+}

@@ -1,0 +1,20 @@
+{
+  "forward_config": "N1-H1F-p50",
+  "h1_early_preferred": false,
+  "h1_full_preferred": true,
+  "h1_product_direction_repeats": true,
+  "h1_ratio_25_supported": false,
+  "h1_short_retention_supported": false,
+  "h2_4s_supported": false,
+  "h2_conditional_pool_valid": false,
+  "h2_interval7_supported": false,
+  "h2_paired_sampling_supported": false,
+  "h2_product_direction_repeats": false,
+  "h2_short_retention_supported": false,
+  "overall_status": "FORWARD_SIGNAL",
+  "schema_version": 1,
+  "status_reasons": {
+    "h1": "N1-H1F-p50 passed the registered product gate on 2 of 3 seeds; median collision=19 and median deltaC=-3",
+    "h2": "primary matched count=1 and fallback matched count=2, both below 24; H2 training was not run"
+  }
+}

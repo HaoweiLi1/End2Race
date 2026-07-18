@@ -248,6 +248,15 @@
       ],
       "purpose": "Evaluate N1-H1F-p50 seed 20260721 U2 on current CPU full-600",
       "started_at_utc": "2026-07-18T01:54:35.070678+00:00"
+    },
+    {
+      "argv": [
+        "/home/haowei/miniconda3/envs/end2race/bin/python",
+        "-u",
+        "/home/haowei/Documents/End2Race/ppo_experiments/h1_h2_conditional_v1/build_h2_pool.py"
+      ],
+      "purpose": "Build and classify the matched H2 interval-7/interval-8 contrast pool",
+      "started_at_utc": "2026-07-18T02:11:19.104318+00:00"
     }
   ],
   "schema_version": 1
