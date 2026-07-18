@@ -407,6 +407,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         obs: torch.Tensor | dict[str, torch.Tensor],
         states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
+        valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Return actor means, final state, and each timestep's actor hidden."""
 
@@ -422,7 +423,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
         means: list[torch.Tensor] = []
         timestep_hidden: list[torch.Tensor] = []
-        for step_obs, episode_start in zip(obs_sequence, start_sequence):
+        for timestep, (step_obs, episode_start) in enumerate(zip(obs_sequence, start_sequence)):
             # Reset only the env/sequence slots marked as new episodes.
             hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
             lidar = step_obs[:, :END2RACE_LIDAR_SIZE].unsqueeze(1)
@@ -433,13 +434,18 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             slot_means: list[torch.Tensor] = []
             slot_hidden: list[torch.Tensor] = []
             for sequence_index in range(n_seq):
-                action_sequence, next_hidden = self.end2race_actor(
-                    lidar[sequence_index : sequence_index + 1],
-                    previous_speed[sequence_index : sequence_index + 1],
-                    hidden[:, sequence_index : sequence_index + 1],
-                )
-                slot_means.append(action_sequence[:, -1, :])
-                slot_hidden.append(next_hidden)
+                valid = valid_by_timestep is None or valid_by_timestep[timestep][sequence_index]
+                if valid:
+                    action_sequence, next_hidden = self.end2race_actor(
+                        lidar[sequence_index : sequence_index + 1],
+                        previous_speed[sequence_index : sequence_index + 1],
+                        hidden[:, sequence_index : sequence_index + 1],
+                    )
+                    slot_means.append(action_sequence[:, -1, :])
+                    slot_hidden.append(next_hidden)
+                else:
+                    slot_means.append(torch.zeros((1, END2RACE_ACTION_SIZE), device=obs.device))
+                    slot_hidden.append(hidden[:, sequence_index : sequence_index + 1])
             hidden = torch.cat(slot_hidden, dim=1)
             means.append(torch.cat(slot_means, dim=0))
             timestep_hidden.append(hidden.squeeze(0))
@@ -542,7 +548,16 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lstm_states: RNNStates,
         episode_starts: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
-        mean_actions, _actor_states, actor_features = self._actor_forward(obs, lstm_states.pi, episode_starts)
+        valid_by_timestep = None
+        rollout_buffer = getattr(self, "_actor_hidden_rollout_buffer", None)
+        if rollout_buffer is not None:
+            valid_by_timestep = rollout_buffer.current_valid_by_timestep
+        mean_actions, _actor_states, actor_features = self._actor_forward(
+            obs,
+            lstm_states.pi,
+            episode_starts,
+            valid_by_timestep,
+        )
         distribution = self._distribution(mean_actions)
         log_prob = distribution.log_prob(actions)
         entropy = distribution.entropy()
