@@ -1,0 +1,326 @@
+{
+  "p1_episode_paths": [
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_00_v12-sp063-ego1332-raceline1-i08-v075.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_01_training-sp24-ego1032-raceline0-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_02_training-sp00-ego0021-raceline2-v050.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_03_v12-sp070-ego1478-raceline1-i12-v050.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_04_training-sp22-ego0949-raceline2-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_05_v12-sp025-ego0534-raceline2-i12-v055.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_06_v12-sp027-ego0576-raceline0-i10-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_07_v12-sp072-ego1520-raceline1-i15-v045.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_08_training-sp34-ego1441-raceline1-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_09_v12-sp008-ego0178-raceline0-i10-v075.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_10_training-sp23-ego0989-raceline2-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_11_v12-sp024-ego0518-raceline2-i10-v050.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_12_training-sp42-ego1787-raceline2-v060.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_13_training-sp25-ego1064-raceline1-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_14_v12-sp076-ego1603-raceline0-i08-v060.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_15_v12-sp024-ego0518-raceline2-i08-v045.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_16_training-sp47-ego1997-raceline0-v060.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_17_v12-sp068-ego1436-raceline1-i15-v045.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_18_v12-sp021-ego0451-raceline0-i15-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_19_v12-sp073-ego1544-raceline1-i10-v045.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_20_training-sp19-ego0823-raceline1-v070.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_21_training-sp48-ego2033-raceline2-v050.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_22_training-sp02-ego0110-raceline1-v050.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_23_training-sp44-ego1865-raceline0-v050.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_24_v12-sp020-ego0432-raceline2-i08-v075.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_25_training-sp40-ego1703-raceline2-v070.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_26_training-sp35-ego1488-raceline2-v060.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_27_v12-sp050-ego1058-raceline0-i12-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_28_training-sp33-ego1404-raceline2-v060.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_29_training-sp17-ego0739-raceline0-v060.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_30_v12-sp001-ego0031-raceline2-i12-v080.npz",
+    "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/episodes/episode_31_v12-sp007-ego0157-raceline0-i08-v085.npz"
+  ],
+  "p1_episode_sha256": [
+    "01a5d158680171bca888b72f0487dafccf5fad90aa105a97277c20bbcbfa8695",
+    "b8df4cce86ff1e2443de84c269addfe5e2390f9c039bb1111580700f58c27a93",
+    "14352e119ba9011325f698cadf55a1167b1f2ef546ed1244cdac97c7ff6329a4",
+    "d9ba4b968a8d56f57716fe6f67c4c7c5be213386547604e56d10c51b2b0505ae",
+    "21445c74b6972e886effbd252a8f7769f65a6f76af5b92ce1b49f1d11b3f90c8",
+    "f2ae8877f0d1e18b3756827b6a7fe7131e9699a6ddcd26e2234e91d6cf402d1b",
+    "f96cf439a4b8d71bce6d6509c154880f4aed653f31542c94c42421a48364a1c6",
+    "750ed25aa9924a3dcd34337a657d36d3259cd0c48ce2cf4488ce371bf975e878",
+    "5cf1dcf29b4905300add89827244f50ebc591f40ea6fd86bd216de0ec7788546",
+    "06f855bd15f1b7911123ec6363ab7976048d92d19c5f903d891f2d63c4ae776e",
+    "e0d572cc03c4d37125ac51838a2bc788709c8ef47d67f1993b2ae7f1e356acda",
+    "c89d043fda6f4d732bb9e523cfdb631ca244aa705579510e59966e4eb1558e19",
+    "a4c774d59e3dd8da41423b118524f5d366dd3aacfddbf735737271746bf41eb1",
+    "8cb3757b4bb8608451add0993828df9b27c09198ce2dd45aaff0ca104538f370",
+    "54a06c370614ed42997373f23104e31919e818941fbcce53948aa11c98f082b7",
+    "c189c101bf2f1b7496c5e0c5db519cd91f7e410fb37f4cb8c4766eb59561da06",
+    "3a482f7859761b6c13311986eb83f40dabf3e633b27d5c7fd1a000e61c855e3e",
+    "f5ce84f34cb408d0812b3fcdad195eceaeddea8b0b530623b46e14ef7acb7c03",
+    "b3c79042ced4e04dc36c675d5c5a872aac7de49ea6051d3b190313bc43acafe8",
+    "383617ef054b4bf2bb412763a2c64e768fcc2e49c122d177a42cf52ed8924c4d",
+    "0e7ffb6e60674fc01b42dbac8e253767c6e379bd349e7cbb5c6ca7c34af60e79",
+    "f4c66dde3c3d41e6948b7bff248229244c2de7a32bedfb3d2c8cd97b4bc4b85f",
+    "24dca9dd87f575a96f56391fe00dfcbf1f5bd70d816d0a4bbf42db23d10a1ef4",
+    "477ea1e277557249ab0d61b1411237beecc7dd6f655fcd45a36346602d2b0a38",
+    "11c1e05bca3a1bfb108bd95b1de44f5ef3ffb4bd0ee7215ee5647aac77c7b258",
+    "ca2e2c18674ea9da03349960dfa578a93fc8441406c2c1497952528282455c6e",
+    "382609de6517a6b13ab6ec1e1845bb44a0adea806553c54538f084b4ae49f8d3",
+    "6950dc57b2be5e7223b9111b2576ab0d49557345721d122445ac39dddd0e95d6",
+    "d776cd74462f1e984622800f0b253738fd9b162acf703285007a0516cdd73f1c",
+    "99b06256fee6e086f5d9870122478923c504393461e40f4fbb58504f82b5a11f",
+    "511019833a077e6cebe5d658481db6577c7f44ec0b0895b81e6efc6e500d036e",
+    "7a528e8934efbdd094570451dcf3361785aff26f10e0398082fa3919c38aff1f"
+  ],
+  "p1_gradient_file": "runs/ppo/RL_DIRECTION_AUDIT_20260717/p1/H1_EXPANDED_DET/shard_3/gradients.pt",
+  "p1_gradient_file_sha256": "b1a30cdd5a46f1d2cd20700d59969948a62d97952f6c6f532e1e78c130ed6ac8",
+  "p3": {
+    "candidates": {
+      "C0_CURRENT": {
+        "advantage": {
+          "mc_correlation": 0.4708731775005329,
+          "mc_sign_agreement": 0.6042296072507553,
+          "normalization": {
+            "mean": -0.014114376860313365,
+            "std": 0.5121168272688709
+          },
+          "raw": {
+            "p95_abs": 1.011305778924117,
+            "p99_abs": 1.9114602498836917,
+            "std": 0.5121168272688709
+          }
+        },
+        "exact_p1_reproduction": {
+          "gradient_cosine": 1.000000000000013,
+          "max_abs_difference": 0.0
+        },
+        "gradient_file": "runs/ppo/RL_DIRECTION_AUDIT_20260717/p3/H1_EXPANDED_DET/shard_3/c0_current_gradients.pt",
+        "gradient_file_sha256": "c60f0629aa522b1692fdad668c36bc3fe4fa68c302c5203454cb12a8d98f0ec6",
+        "gradient_norm": {
+          "combined": 9.899374008178711,
+          "gru": 0.8845832347869873,
+          "head": 9.859772682189941
+        },
+        "replay_log_prob_component_max_abs": 0.6891202926635742,
+        "safe_gradient_norm": {
+          "combined": 4.207206726074219,
+          "gru": 0.5324594378471375,
+          "head": 4.173377513885498
+        },
+        "safe_steps": 19200,
+        "time_to_end_gradient_norm": {
+          "0.5_1s": {
+            "combined": 3.2015914916992188,
+            "gru": 0.21615630388259888,
+            "head": 3.194286346435547
+          },
+          "0_0.5s": {
+            "combined": 3.7551112174987793,
+            "gru": 0.41014790534973145,
+            "head": 3.732645034790039
+          },
+          "1_2s": {
+            "combined": 3.247825860977173,
+            "gru": 0.5002667903900146,
+            "head": 3.2090671062469482
+          },
+          "2_3s": {
+            "combined": 1.1731255054473877,
+            "gru": 0.12647750973701477,
+            "head": 1.166287899017334
+          },
+          "gt_3s": {
+            "combined": 1.7550197839736938,
+            "gru": 0.4362320601940155,
+            "head": 1.6999411582946777
+          }
+        },
+        "total_steps": 21515
+      },
+      "C1_LONGER_GAE": {
+        "advantage": {
+          "mc_correlation": 0.5353606415769235,
+          "mc_sign_agreement": 0.6202649314431792,
+          "normalization": {
+            "mean": -0.010091788636692224,
+            "std": 0.5756776581935887
+          },
+          "raw": {
+            "p95_abs": 1.2288214518665121,
+            "p99_abs": 2.049736680648871,
+            "std": 0.5756776581935887
+          }
+        },
+        "gradient_file": "runs/ppo/RL_DIRECTION_AUDIT_20260717/p3/H1_EXPANDED_DET/shard_3/c1_longer_gae_gradients.pt",
+        "gradient_file_sha256": "3cd0fb56c29fb543157c9f6cf71916c4fdf51e2c89a326baa0a9904971c4e1fe",
+        "gradient_norm": {
+          "combined": 8.787612915039062,
+          "gru": 0.9306703209877014,
+          "head": 8.738192558288574
+        },
+        "replay_log_prob_component_max_abs": 0.6891202926635742,
+        "safe_gradient_norm": {
+          "combined": 3.4778082370758057,
+          "gru": 0.49912092089653015,
+          "head": 3.4418063163757324
+        },
+        "safe_steps": 19200,
+        "time_to_end_gradient_norm": {
+          "0.5_1s": {
+            "combined": 3.199559211730957,
+            "gru": 0.21870851516723633,
+            "head": 3.192075729370117
+          },
+          "0_0.5s": {
+            "combined": 3.4032175540924072,
+            "gru": 0.3797823488712311,
+            "head": 3.381959915161133
+          },
+          "1_2s": {
+            "combined": 3.3060970306396484,
+            "gru": 0.6013970971107483,
+            "head": 3.250938653945923
+          },
+          "2_3s": {
+            "combined": 1.4557455778121948,
+            "gru": 0.14017295837402344,
+            "head": 1.4489812850952148
+          },
+          "gt_3s": {
+            "combined": 1.3170208930969238,
+            "gru": 0.4133632183074951,
+            "head": 1.2504713535308838
+          }
+        },
+        "total_steps": 21515
+      },
+      "C2_MONTE_CARLO_LIKE": {
+        "advantage": {
+          "mc_correlation": 0.632966089478762,
+          "mc_sign_agreement": 0.6537299558447595,
+          "normalization": {
+            "mean": 0.01561701700592453,
+            "std": 0.787949869984769
+          },
+          "raw": {
+            "p95_abs": 1.7171742794702654,
+            "p99_abs": 2.3104195778507024,
+            "std": 0.787949869984769
+          }
+        },
+        "gradient_file": "runs/ppo/RL_DIRECTION_AUDIT_20260717/p3/H1_EXPANDED_DET/shard_3/c2_monte_carlo_like_gradients.pt",
+        "gradient_file_sha256": "4b61cfe51812419a1d4634fbd812238554b23430c04be4f5e6e3ff0e22a6fac9",
+        "gradient_norm": {
+          "combined": 6.91040563583374,
+          "gru": 0.9590626358985901,
+          "head": 6.843531131744385
+        },
+        "replay_log_prob_component_max_abs": 0.6891202926635742,
+        "safe_gradient_norm": {
+          "combined": 2.640695333480835,
+          "gru": 0.48727235198020935,
+          "head": 2.5953497886657715
+        },
+        "safe_steps": 19200,
+        "time_to_end_gradient_norm": {
+          "0.5_1s": {
+            "combined": 2.8067069053649902,
+            "gru": 0.1966657042503357,
+            "head": 2.7998082637786865
+          },
+          "0_0.5s": {
+            "combined": 2.5911591053009033,
+            "gru": 0.29755115509033203,
+            "head": 2.5740182399749756
+          },
+          "1_2s": {
+            "combined": 3.0250322818756104,
+            "gru": 0.6864267587661743,
+            "head": 2.9461236000061035
+          },
+          "2_3s": {
+            "combined": 1.5811399221420288,
+            "gru": 0.1694936901330948,
+            "head": 1.5720289945602417
+          },
+          "gt_3s": {
+            "combined": 0.9461176991462708,
+            "gru": 0.4195004105567932,
+            "head": 0.8480333685874939
+          }
+        },
+        "total_steps": 21515
+      },
+      "C3_REDISTRIBUTED": {
+        "advantage": {
+          "mc_correlation": 0.4190504612984817,
+          "mc_sign_agreement": 0.6116662793399954,
+          "normalization": {
+            "mean": 0.008532146986736955,
+            "std": 0.4412059136334739
+          },
+          "raw": {
+            "p95_abs": 0.8936757475205344,
+            "p99_abs": 1.2420445696642994,
+            "std": 0.4412059136334739
+          },
+          "redistribution_check": {
+            "collision_episode_count": 8,
+            "max_discounted_contribution_abs_error": 2.220446049250313e-16
+          }
+        },
+        "gradient_file": "runs/ppo/RL_DIRECTION_AUDIT_20260717/p3/H1_EXPANDED_DET/shard_3/c3_redistributed_gradients.pt",
+        "gradient_file_sha256": "13f62b88ef314722822cbd7773ab2d933cf9e0f34bbd582827ffe3901d063c04",
+        "gradient_norm": {
+          "combined": 6.284801483154297,
+          "gru": 1.023930549621582,
+          "head": 6.200831413269043
+        },
+        "replay_log_prob_component_max_abs": 0.6891202926635742,
+        "safe_gradient_norm": {
+          "combined": 5.240658760070801,
+          "gru": 0.6275649070739746,
+          "head": 5.202948570251465
+        },
+        "safe_steps": 19200,
+        "time_to_end_gradient_norm": {
+          "0.5_1s": {
+            "combined": 2.159963369369507,
+            "gru": 0.1726658046245575,
+            "head": 2.1530508995056152
+          },
+          "0_0.5s": {
+            "combined": 0.5394216179847717,
+            "gru": 0.1702219545841217,
+            "head": 0.5118597745895386
+          },
+          "1_2s": {
+            "combined": 3.6716949939727783,
+            "gru": 0.7542503476142883,
+            "head": 3.593390941619873
+          },
+          "2_3s": {
+            "combined": 1.3274587392807007,
+            "gru": 0.17626023292541504,
+            "head": 1.3157049417495728
+          },
+          "gt_3s": {
+            "combined": 2.1354620456695557,
+            "gru": 0.514222264289856,
+            "head": 2.0726258754730225
+          }
+        },
+        "total_steps": 21515
+      }
+    },
+    "mc_advantage": {
+      "normalization": {
+        "mean": 0.0019709263137018995,
+        "std": 0.5099355249971425
+      },
+      "raw": {
+        "p95_abs": 1.201689147538682,
+        "p99_abs": 1.6931301583143232,
+        "std": 0.5099355249971425
+      }
+    }
+  },
+  "pool": "H1_EXPANDED_DET",
+  "seed": 20260734,
+  "shard_index": 3
+}
