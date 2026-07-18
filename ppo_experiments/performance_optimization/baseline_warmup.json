@@ -1,0 +1,165 @@
+{
+  "actor_frozen_max_abs_delta": 0.0,
+  "batch_size": 6400,
+  "checkpoint": {
+    "bytes": 45209883,
+    "sha256": "44a3033cd75d16d329e43beca2f695e491fa14d49744a15a6ded442c68ed1c29",
+    "strict_12_key_load": true
+  },
+  "checkpoint_io_s": 0.1283945989998756,
+  "completed_episodes": 35,
+  "completed_episodes_per_rollout_s": 0.8372681600741921,
+  "config": "N1-H1F-p50",
+  "estimated_copy_bytes": {
+    "collection_action_d2h": 204800,
+    "collection_four_recurrent_states_d2h": 688128000,
+    "collection_observation_h2d": 36966400,
+    "collection_value_logp_d2h": 204800,
+    "training_padded_observation_h2d": 55449600
+  },
+  "event_counts": {
+    "ego_collision": 26,
+    "follow": 9,
+    "opponent_collision": 13,
+    "overtake": 13,
+    "terminated": 13,
+    "timeout": 22,
+    "truncated": 22
+  },
+  "head": "ef8570bc522fb3b4dc6df2636bbe3a6e9afc4da4",
+  "label": "baseline_warmup",
+  "learn_s": 63.821865213998535,
+  "log_std_max_abs_delta": 0.0,
+  "n_envs": 16,
+  "n_epochs": 1,
+  "n_steps": 1600,
+  "optimizer_step": {
+    "active_parameters": 12,
+    "max": 4,
+    "min": 4
+  },
+  "outcomes": {
+    "ego_collision": 13,
+    "follow": 9,
+    "overtake": 13
+  },
+  "padding": {
+    "batches": [
+      {
+        "n_seq": 13,
+        "padded": 10400,
+        "valid": 6400
+      },
+      {
+        "n_seq": 12,
+        "padded": 9600,
+        "valid": 6400
+      },
+      {
+        "n_seq": 10,
+        "padded": 8000,
+        "valid": 6400
+      },
+      {
+        "n_seq": 13,
+        "padded": 10400,
+        "valid": 6400
+      }
+    ],
+    "computed": 38400,
+    "ratio": 1.5,
+    "valid": 25600
+  },
+  "post_update_s": 0.0801548309973441,
+  "ppo_train_s": 22.019248478998634,
+  "reset_order_count": 51,
+  "reset_order_sha256": "e657103581f646e2dc3d289caa886447fc8f93d679ac32acf5d6bff7d5abc059",
+  "resources": {
+    "gpu_framebuffer_mib_device": {
+      "max": 1962.0,
+      "mean": 1159.1875,
+      "median": 852.0
+    },
+    "gpu_memory_activity_pct_device": {
+      "max": 98.0,
+      "mean": 31.578125,
+      "median": 8.0
+    },
+    "gpu_power_w": {
+      "max": 201.0,
+      "mean": 96.890625,
+      "median": 60.0
+    },
+    "gpu_sm_pct_device": {
+      "max": 98.0,
+      "mean": 35.40625,
+      "median": 12.0
+    },
+    "process_cpu_pct": {
+      "max": 616.0,
+      "mean": 102.92524590163934,
+      "median": 101.7
+    },
+    "processes": {
+      "max": 1.0,
+      "mean": 1.0,
+      "median": 1.0
+    },
+    "rss_mib": {
+      "max": 4103.7734375,
+      "mean": 3235.4900102459014,
+      "median": 3146.41015625
+    },
+    "system_cpu_pct": {
+      "max": 31.4,
+      "mean": 5.719016393442622,
+      "median": 5.4
+    },
+    "threads": {
+      "max": 58.0,
+      "mean": 57.33114754098361,
+      "median": 57.0
+    }
+  },
+  "roles": {
+    "hard": 12800,
+    "ordinary": 12800
+  },
+  "rollout_buffer_mib": 692.2852554321289,
+  "rollout_s": 41.8026167349999,
+  "rollout_transitions_per_s": 612.4018542256948,
+  "runtime": {
+    "python": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "torch": "2.7.0+cu128",
+    "torch_cuda": "12.8",
+    "torch_interop_threads": 14,
+    "torch_threads": 14
+  },
+  "sampler_visit_sha256": "f4669eb9231c83a6832a4c2f9c2423da9839c6a8351f3a95817b4d13e0880d0e",
+  "schema_version": 1,
+  "seed": 20260917,
+  "timings": {
+    "buffer_add_calls": 1600.0,
+    "buffer_add_s": 0.5303797759734152,
+    "env_reset_calls": 51.0,
+    "env_reset_s": 5.744618915989122,
+    "env_step_calls": 25600.0,
+    "env_step_s": 29.939445561980392,
+    "evaluate_actions_calls": 4.0,
+    "evaluate_actions_s": 6.02937827599817,
+    "gae_calls": 1.0,
+    "gae_s": 0.005376216999138705,
+    "policy_forward_calls": 1600.0,
+    "policy_forward_s": 4.787090661073307,
+    "ppo_train_calls": 1.0,
+    "ppo_train_s": 22.019248478998634,
+    "predict_values_calls": 23.0,
+    "predict_values_s": 0.001890886007458903
+  },
+  "torch_peak_allocated_mib": 1031.9951171875,
+  "torch_peak_reserved_mib": 1292.0,
+  "total_transitions_per_s": 399.7920610215288,
+  "total_update_s": 64.03328754099857,
+  "train_valid_transitions_per_s": 1162.6191522574711,
+  "transitions": 25600
+}

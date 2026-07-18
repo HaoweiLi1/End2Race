@@ -1,0 +1,49 @@
+{
+  "scenarios": [
+    {
+      "scenario_id": "evaluation-sp06-ego0256-raceline0-v080",
+      "pool": "evaluation",
+      "startpoint_ordinal": 6,
+      "ego_idx": 256,
+      "opp_idx": 262,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.8,
+      "map_name": "Austin",
+      "ego_raceline": "raceline1",
+      "interval_idx": 15,
+      "sim_duration": 8.0,
+      "timestep": 0.01,
+      "integrator": "RK4"
+    },
+    {
+      "scenario_id": "evaluation-sp25-ego1069-raceline0-v080",
+      "pool": "evaluation",
+      "startpoint_ordinal": 25,
+      "ego_idx": 1069,
+      "opp_idx": 1067,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.8,
+      "map_name": "Austin",
+      "ego_raceline": "raceline1",
+      "interval_idx": 15,
+      "sim_duration": 8.0,
+      "timestep": 0.01,
+      "integrator": "RK4"
+    },
+    {
+      "scenario_id": "evaluation-sp30-ego1283-raceline0-v070",
+      "pool": "evaluation",
+      "startpoint_ordinal": 30,
+      "ego_idx": 1283,
+      "opp_idx": 1279,
+      "opp_raceline": "raceline0",
+      "opp_speedscale": 0.7,
+      "map_name": "Austin",
+      "ego_raceline": "raceline1",
+      "interval_idx": 15,
+      "sim_duration": 8.0,
+      "timestep": 0.01,
+      "integrator": "RK4"
+    }
+  ]
+}

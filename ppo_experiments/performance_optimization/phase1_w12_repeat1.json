@@ -1,0 +1,378 @@
+{
+  "actor_frozen_max_abs_delta": 0.0,
+  "batch_size": 6400,
+  "checkpoint": {
+    "bytes": 45209883,
+    "sha256": "44a3033cd75d16d329e43beca2f695e491fa14d49744a15a6ded442c68ed1c29",
+    "strict_12_key_load": true
+  },
+  "checkpoint_io_s": 0.1248880810016999,
+  "completed_episodes": 35,
+  "completed_episodes_per_rollout_s": 1.5806113071558234,
+  "config": "N1-H1F-p50",
+  "copy_timings": {
+    "buffer_add_including_recurrent_d2h_s": 0.5846807479538256,
+    "collection_observation_h2d_s": 0.04755147007381311,
+    "terminal_observation_h2d_s": 0.0016828879925014917
+  },
+  "detailed_breakdown": {
+    "buffer_add_s": 0.5846807479538256,
+    "checkpoint_io_s": 0.1248880810016999,
+    "collision_checking_s": 0.0,
+    "critic_cpu_enqueue_s": 0.09943932699388824,
+    "f110_physics_s": 0.0,
+    "gae_s": 0.005174139001610456,
+    "lidar_s": 0.0,
+    "logger_io_s": 8.39999847812578e-06,
+    "observation_construction_s": 0.0,
+    "opponent_replan_s": 0.0,
+    "opponent_tracking_s": 0.0,
+    "policy_actor_total_s": 10.74027536995709,
+    "policy_gru_cpu_enqueue_s": 3.191572203842952,
+    "policy_preprocess_and_head_cpu_enqueue_s": 6.221876466799586,
+    "ppo_backward_s": 15.627761124003882,
+    "ppo_forward_s": 6.181253940001625,
+    "ppo_optimizer_s": 0.02121958199859364,
+    "progress_projection_s": 0.0,
+    "reset_s": 3.265958080010023,
+    "reset_static_asset_load_s": 0.0,
+    "sequence_generation_padding_s": 0.18829228100003093
+  },
+  "estimated_copy_bytes": {
+    "collection_action_d2h": 204800,
+    "collection_four_recurrent_states_d2h": 688128000,
+    "collection_observation_h2d": 36966400,
+    "collection_value_logp_d2h": 204800,
+    "training_padded_observation_h2d": 55449600
+  },
+  "event_counts": {
+    "ego_collision": 26,
+    "follow": 9,
+    "opponent_collision": 13,
+    "overtake": 13,
+    "terminated": 13,
+    "timeout": 22,
+    "truncated": 22
+  },
+  "head": "ef8570bc522fb3b4dc6df2636bbe3a6e9afc4da4",
+  "json_io_s": 0.0005936509987805039,
+  "label": "phase1_w12_repeat1",
+  "learn_s": 44.3581882719991,
+  "log_std_max_abs_delta": 0.0,
+  "mode": "central_subproc",
+  "n_envs": 16,
+  "n_epochs": 1,
+  "n_steps": 1600,
+  "optimizer_step": {
+    "active_parameters": 12,
+    "max": 4,
+    "min": 4
+  },
+  "outcomes": {
+    "ego_collision": 13,
+    "follow": 9,
+    "overtake": 13
+  },
+  "padding": {
+    "batches": [
+      {
+        "n_seq": 13,
+        "padded": 10400,
+        "valid": 6400
+      },
+      {
+        "n_seq": 12,
+        "padded": 9600,
+        "valid": 6400
+      },
+      {
+        "n_seq": 10,
+        "padded": 8000,
+        "valid": 6400
+      },
+      {
+        "n_seq": 13,
+        "padded": 10400,
+        "valid": 6400
+      }
+    ],
+    "computed": 38400,
+    "ratio": 1.5,
+    "valid": 25600
+  },
+  "pipeline_profile": {
+    "process_startup_s": 2.316701578001812,
+    "reset_batches": 23.0,
+    "reset_calls": 51.0,
+    "reset_ipc_serialization_s": 0.006530887014378095,
+    "reset_schedule_s": 0.10970209700099076,
+    "reset_send_s": 0.001229294004588155,
+    "reset_wait_s": 3.155026689004444,
+    "start_method": "forkserver",
+    "step_batches": 1600.0,
+    "step_calls": 25600.0,
+    "step_ipc_serialization_s": 0.3499867618556891,
+    "step_send_s": 0.23316301200247835,
+    "step_wait_s": 12.111529692949262,
+    "worker_count": 12,
+    "worker_reset_critical_s": 3.149725095994654,
+    "worker_reset_sum_s": 8.389027635988896,
+    "worker_runtime": [
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258550,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258551,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258552,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258553,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258554,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258555,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258556,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258557,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258558,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258559,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258560,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      },
+      {
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "pid": 258561,
+        "threadpools": [],
+        "torch_interop_threads": 1,
+        "torch_threads": 1
+      }
+    ],
+    "worker_step_critical_s": 11.761542931093572,
+    "worker_step_sum_s": 72.8295532637676
+  },
+  "post_update_s": 0.07933413700084202,
+  "ppo_train_s": 22.21485686500091,
+  "reset_order_count": 51,
+  "reset_order_sha256": "e657103581f646e2dc3d289caa886447fc8f93d679ac32acf5d6bff7d5abc059",
+  "resources": {
+    "gpu_framebuffer_mib_device": {
+      "max": 1962.0,
+      "mean": 1305.911111111111,
+      "median": 852.0
+    },
+    "gpu_memory_activity_pct_device": {
+      "max": 98.0,
+      "mean": 44.08888888888889,
+      "median": 17.0
+    },
+    "gpu_power_w": {
+      "max": 199.0,
+      "mean": 116.4,
+      "median": 75.0
+    },
+    "gpu_sm_pct_device": {
+      "max": 98.0,
+      "mean": 48.888888888888886,
+      "median": 26.0
+    },
+    "involuntary_context_switches": {
+      "max": 1735.0,
+      "mean": 1267.4065934065934,
+      "median": 1709.5
+    },
+    "process_cpu_pct": {
+      "max": 494.8,
+      "mean": 86.88571428571429,
+      "median": 111.05000000000001
+    },
+    "processes": {
+      "max": 15.0,
+      "mean": 15.0,
+      "median": 15.0
+    },
+    "pss_mib": {
+      "max": 11222.5703125,
+      "mean": 10401.086838942309,
+      "median": 10381.5625
+    },
+    "rss_mib": {
+      "max": 14935.7734375,
+      "mean": 14113.005945226649,
+      "median": 14094.712890625
+    },
+    "system_cpu_pct": {
+      "max": 63.4,
+      "mean": 14.08956043956044,
+      "median": 7.449999999999999
+    },
+    "threads": {
+      "max": 72.0,
+      "mean": 71.46703296703296,
+      "median": 71.0
+    },
+    "voluntary_context_switches": {
+      "max": 61247.0,
+      "mean": 41968.82417582418,
+      "median": 53402.5
+    }
+  },
+  "roles": {
+    "hard": 12800,
+    "ordinary": 12800
+  },
+  "rollout_buffer_mib": 692.2852554321289,
+  "rollout_s": 22.143331406998186,
+  "rollout_transitions_per_s": 1156.1042703768308,
+  "runtime": {
+    "python": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "torch": "2.7.0+cu128",
+    "torch_cuda": "12.8",
+    "torch_interop_threads": 14,
+    "torch_threads": 14
+  },
+  "sampler_visit_sha256": "f4669eb9231c83a6832a4c2f9c2423da9839c6a8351f3a95817b4d13e0880d0e",
+  "schema_version": 1,
+  "seed": 20260917,
+  "startup": {
+    "model_s": 0.736149194999598,
+    "sampler_s": 0.011747642998670926,
+    "total_s": 3.1850911949986767,
+    "vector_env_s": 2.316711186002067
+  },
+  "timings": {
+    "backward_calls": 4.0,
+    "backward_s": 15.627761124003882,
+    "buffer_add_calls": 1600.0,
+    "buffer_add_s": 0.5846807479538256,
+    "collection_observation_h2d_calls": 1601.0,
+    "collection_observation_h2d_s": 0.04755147007381311,
+    "env_reset_calls": 51.0,
+    "env_reset_s": 3.265958080010023,
+    "env_step_calls": 25600.0,
+    "env_step_s": 12.34469270495174,
+    "evaluate_actions_calls": 4.0,
+    "evaluate_actions_s": 6.181253940001625,
+    "gae_calls": 1.0,
+    "gae_s": 0.005174139001610456,
+    "logger_dump_s": 0.0,
+    "logger_record_calls": 10.0,
+    "logger_record_s": 8.39999847812578e-06,
+    "observation_construction_s": 0.0,
+    "opponent_replan_s": 0.0,
+    "opponent_tracking_s": 0.0,
+    "optimizer_step_calls": 4.0,
+    "optimizer_step_s": 0.02121958199859364,
+    "planner_static_asset_load_s": 0.0,
+    "policy_actor_module_enqueue_calls": 64000.0,
+    "policy_actor_module_enqueue_s": 9.413448670642538,
+    "policy_actor_total_calls": 1604.0,
+    "policy_actor_total_s": 10.74027536995709,
+    "policy_critic_enqueue_calls": 1627.0,
+    "policy_critic_enqueue_s": 0.09943932699388824,
+    "policy_forward_calls": 1600.0,
+    "policy_forward_s": 5.4611337770475075,
+    "policy_gru_enqueue_calls": 64000.0,
+    "policy_gru_enqueue_s": 3.191572203842952,
+    "ppo_train_calls": 1.0,
+    "ppo_train_s": 22.21485686500091,
+    "predict_values_calls": 23.0,
+    "predict_values_s": 0.0018883770062529948,
+    "progress_projection_s": 0.0,
+    "sequence_padding_calls": 4.0,
+    "sequence_padding_s": 0.18829228100003093,
+    "sim_agent_collision_s": 0.0,
+    "sim_agent_lidar_ray_cast_s": 0.0,
+    "sim_environment_collision_s": 0.0,
+    "sim_map_lidar_s": 0.0,
+    "sim_update_pose_including_map_lidar_s": 0.0,
+    "terminal_observation_h2d_calls": 22.0,
+    "terminal_observation_h2d_s": 0.0016828879925014917
+  },
+  "torch_peak_allocated_mib": 1031.9951171875,
+  "torch_peak_reserved_mib": 1292.0,
+  "total_transitions_per_s": 574.4368969965216,
+  "total_update_s": 44.56538243600153,
+  "train_valid_transitions_per_s": 1152.3819467111814,
+  "transitions": 25600,
+  "worker_count": 12
+}

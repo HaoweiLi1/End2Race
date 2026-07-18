@@ -1,0 +1,45 @@
+{
+  "all_pass": true,
+  "checks": {
+    "exception_propagated": true,
+    "exception_workers_exited": true,
+    "normal_has_no_error": true,
+    "normal_workers_exited": true
+  },
+  "exceptional": {
+    "all_workers_exited": true,
+    "error_seen": true,
+    "expected_error_text": true,
+    "intentional_failure": true,
+    "workers": [
+      {
+        "alive": false,
+        "exitcode": 0,
+        "pid": 266707
+      },
+      {
+        "alive": false,
+        "exitcode": -15,
+        "pid": 266708
+      }
+    ]
+  },
+  "normal": {
+    "all_workers_exited": true,
+    "error_seen": false,
+    "expected_error_text": false,
+    "intentional_failure": false,
+    "workers": [
+      {
+        "alive": false,
+        "exitcode": 0,
+        "pid": 266691
+      },
+      {
+        "alive": false,
+        "exitcode": 0,
+        "pid": 266692
+      }
+    ]
+  }
+}
