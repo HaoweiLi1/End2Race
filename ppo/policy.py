@@ -20,11 +20,14 @@ from ppo.config import (
     STEERING_LATENT_STD,
 )
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
+from sb3_contrib.common.recurrent.buffers import RecurrentDictRolloutBuffer, RecurrentRolloutBuffer
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.distributions import Distribution
 from stable_baselines3.common.torch_layers import CombinedExtractor
 from torch.optim import Optimizer
+
+from ppo.buffer import ActorHiddenRolloutBuffer
 
 
 END2RACE_OBSERVATION_SIZE = 361
@@ -563,6 +566,66 @@ def end2race_observation(lidar: np.ndarray, previous_ego_speed: float) -> np.nda
 
 class End2RaceRecurrentPPO(RecurrentPPO):
     """Keep the three named optimizer-group learning rates fixed."""
+
+    def _setup_model(self) -> None:
+        """Use actor-only recurrent storage for C0 without changing sampling."""
+
+        from stable_baselines3.common.utils import FloatSchedule
+
+        self._setup_lr_schedule()
+        self.set_random_seed(self.seed)
+        self.policy = self.policy_class(
+            self.observation_space,
+            self.action_space,
+            self.lr_schedule,
+            use_sde=self.use_sde,
+            **self.policy_kwargs,
+        )
+        self.policy = self.policy.to(self.device)
+        if not isinstance(self.policy, RecurrentActorCriticPolicy):
+            raise ValueError("Policy must subclass RecurrentActorCriticPolicy")
+        if isinstance(self.observation_space, spaces.Dict):
+            buffer_class = RecurrentDictRolloutBuffer
+        elif self.policy.critic_profile == "C0_RAW_SINGLE_FRAME":
+            buffer_class = ActorHiddenRolloutBuffer
+        else:
+            buffer_class = RecurrentRolloutBuffer
+        lstm = self.policy.lstm_actor
+        single_hidden_state_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
+        self._last_lstm_states = RNNStates(
+            (
+                torch.zeros(single_hidden_state_shape, device=self.device),
+                torch.zeros(single_hidden_state_shape, device=self.device),
+            ),
+            (
+                torch.zeros(single_hidden_state_shape, device=self.device),
+                torch.zeros(single_hidden_state_shape, device=self.device),
+            ),
+        )
+        hidden_state_buffer_shape = (
+            self.n_steps,
+            lstm.num_layers,
+            self.n_envs,
+            lstm.hidden_size,
+        )
+        self.rollout_buffer = buffer_class(
+            self.n_steps,
+            self.observation_space,
+            self.action_space,
+            hidden_state_buffer_shape,
+            self.device,
+            gamma=self.gamma,
+            gae_lambda=self.gae_lambda,
+            n_envs=self.n_envs,
+        )
+        self.policy._actor_hidden_rollout_buffer = (
+            self.rollout_buffer if isinstance(self.rollout_buffer, ActorHiddenRolloutBuffer) else None
+        )
+        self.clip_range = FloatSchedule(self.clip_range)
+        if self.clip_range_vf is not None:
+            if isinstance(self.clip_range_vf, (float, int)):
+                assert self.clip_range_vf > 0, "`clip_range_vf` must be positive, pass `None` to deactivate vf clipping"
+            self.clip_range_vf = FloatSchedule(self.clip_range_vf)
 
     def _update_learning_rate(self, optimizers: list[Optimizer] | Optimizer) -> None:
         for optimizer in optimizers if isinstance(optimizers, list) else [optimizers]:
