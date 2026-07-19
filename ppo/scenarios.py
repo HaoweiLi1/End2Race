@@ -28,6 +28,7 @@ COLLISION_STARTPOINT_COUNT = int(PPO_CONFIG["collision_startpoint_count"])
 COLLISION_STARTPOINT_MIN_DISTANCE = float(PPO_CONFIG["collision_startpoint_min_distance"])
 SIM_DURATION = float(PPO_CONFIG["episode_horizon"])
 TIMESTEP = float(PPO_CONFIG["simulator_timestep"])
+COLLISION_CLASSIFICATION_SCHEMA = 1
 
 
 @dataclass
@@ -145,7 +146,7 @@ def expanded_scenarios(map_name: str) -> tuple[ScenarioSpec, ...]:
 
 def collision_classification_config(args, candidate_count: int) -> dict:
     return {
-        "classification_schema": 1,
+        "classification_schema": COLLISION_CLASSIFICATION_SCHEMA,
         "pretrained_model_path": str(Path(args.pretrained_model_path).expanduser().resolve()),
         "hidden_scale": int(args.hidden_scale),
         "map_name": str(args.map_name),

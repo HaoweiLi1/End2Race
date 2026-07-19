@@ -95,6 +95,11 @@ def validate_arguments(args) -> None:
         raise ValueError(f"output_dir must be inside the project post-trained directory: {POST_TRAINED_ROOT}")
     if output_dir == collision_cache_dir:
         raise ValueError("output_dir and collision_cache_dir must be different directories")
+    if output_dir.exists():
+        if not output_dir.is_dir():
+            raise ValueError(f"PPO output path is not a directory: {output_dir}")
+        if any(output_dir.iterdir()):
+            raise ValueError(f"PPO output directory must be empty: {output_dir}")
     if args.env_workers <= 0 or args.n_envs < args.env_workers or args.n_envs % 2 != 0:
         raise ValueError("n_envs must be even and at least env_workers, and env_workers must be positive")
     for name in ("hidden_scale", "n_steps", "batch_size", "num_updates", "actor_epochs", "critic_epochs"):

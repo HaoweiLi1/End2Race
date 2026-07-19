@@ -92,7 +92,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.warmup_completed = False
         self.rollout_index = 0
         self.current_phase = "warmup"
-        self.current_formal_update = 0
+        self.rollout_for_update = 0
+        self.rollout_policy_update = 0
         self.rollout_wall_seconds = 0.0
         self._rollout_episode_records: list[dict] = []
         kwargs["n_epochs"] = actor_epochs
@@ -132,9 +133,14 @@ class End2RaceRecurrentPPO(RecurrentPPO):
     def collect_rollouts(self, env, callback, rollout_buffer, n_rollout_steps: int) -> bool:
         self.rollout_index += 1
         self.current_phase = "warmup" if not self.warmup_completed else "formal"
-        self.current_formal_update = 0 if not self.warmup_completed else self._n_updates + 1
+        self.rollout_for_update = 0 if not self.warmup_completed else self._n_updates + 1
+        self.rollout_policy_update = self._n_updates
         self._rollout_episode_records = []
-        print(f"Rollout {self.rollout_index} start: phase={self.current_phase}, formal_update={self.current_formal_update}", flush=True)
+        print(
+            f"Rollout {self.rollout_index} start: phase={self.current_phase}, "
+            f"rollout_policy_update={self.rollout_policy_update}, rollout_for_update={self.rollout_for_update}",
+            flush=True,
+        )
         started_at = time.perf_counter()
         completed = super().collect_rollouts(env, callback, rollout_buffer, n_rollout_steps)
         self.rollout_wall_seconds = time.perf_counter() - started_at
@@ -151,7 +157,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             record = {
                 "phase": self.current_phase,
                 "rollout_index": self.rollout_index,
-                "formal_update": self.current_formal_update,
+                "formal_update": self.rollout_for_update,
+                "rollout_for_update": self.rollout_for_update,
+                "rollout_policy_update": self.rollout_policy_update,
                 "scenario_id": str(info["scenario_id"]),
                 "env_role": str(info["env_role"]),
                 "episode_outcome": str(info["episode_outcome"]),
@@ -260,8 +268,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "rollout_wall_seconds": self.rollout_wall_seconds,
             "train_wall_seconds": train_wall_seconds,
         }
-        self.recorder.record_metrics(metrics)
         checkpoint_path = self.recorder.save_warmup_critic(self.policy.value_net.state_dict())
+        metrics["critic_checkpoint"] = str(checkpoint_path)
+        self.recorder.record_metrics(metrics)
         self.logger.record("warmup/epochs", epoch + 1)
         self.logger.record("warmup/best_validation_loss", best_loss)
         print(f"Warm-up complete: best_validation_loss={best_loss:.6f}, checkpoint={checkpoint_path}", flush=True)
@@ -345,6 +354,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         metrics = {
             "phase": "formal",
             "update": update,
+            "rollout_policy_update": update - 1,
+            "checkpoint_update": update,
             "num_timesteps": self.num_timesteps,
             "total_collected_timesteps": self.num_timesteps,
             "formal_training_timesteps": update * self.n_envs * self.n_steps,
@@ -368,8 +379,10 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "mean_episode_return": float(np.mean([record["episode_return"] for record in episodes])) if episodes else 0.0,
             "mean_collision_time": float(np.mean(collision_times)) if collision_times else 0.0,
         }
-        self.recorder.record_metrics(metrics)
         actor_path, critic_path = self.recorder.save_formal_checkpoints(update, self.policy.actor_checkpoint_state_dict(), self.policy.value_net.state_dict())
+        metrics["actor_checkpoint"] = str(actor_path)
+        metrics["critic_checkpoint"] = str(critic_path)
+        self.recorder.record_metrics(metrics)
         self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
         self.logger.record("train/policy_gradient_loss", policy_gradient_loss)
         self.logger.record("train/value_loss", value_loss_mean)
