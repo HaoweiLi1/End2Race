@@ -6,13 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import yaml
-
 from ppo.reward import ProgressProjector, wrapped_progress_delta
 
-
-with Path(__file__).with_name("ppo_config.yaml").open("r", encoding="utf-8") as file:
-    PPO_CONFIG = yaml.safe_load(file)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PRIVILEGED_FEATURE_SIZE = 12
@@ -27,9 +22,11 @@ PRIVILEGED_FEATURE_NAMES = (
     "ego_yaw_rate",
     "relative_yaw_rate",
     "obb_clearance",
-    "track_margin",
+    "body_track_margin",
     "raceline_curvature",
 )
+PRIVILEGED_FEATURE_LOWS = (-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 0.0, 0.0, -1.0)
+PRIVILEGED_FEATURE_HIGHS = (1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 DELTA_S_SCALE_M = 10.0
 RELATIVE_LATERAL_SCALE_M = 2.0
 LONGITUDINAL_VELOCITY_SCALE_MPS = 10.0
@@ -37,8 +34,8 @@ LATERAL_VELOCITY_SCALE_MPS = 5.0
 EGO_SPEED_SCALE_MPS = 10.0
 YAW_RATE_SCALE_RADPS = 5.0
 CLEARANCE_SCALE_M = 2.0
-TRACK_MARGIN_SCALE_M = float(PPO_CONFIG["privileged_track_margin_scale"])
-CURVATURE_SCALE_RADPM = float(PPO_CONFIG["privileged_curvature_scale"])
+CURVATURE_SCALE_PERCENTILE = 95.0
+DYNAMIC_MODEL_SPEED_THRESHOLD_MPS = 0.5
 
 
 class BoundaryDistanceReference:
@@ -60,8 +57,14 @@ class BoundaryDistanceReference:
         if np.any(self._segment_norm_sq <= 0.0):
             raise ValueError(f"Lane CSV contains a zero-length cyclic segment: {lane_path}")
 
-    def boundary_margin(self, point_xy: np.ndarray) -> float:
-        """Return the distance from ``point_xy`` to the nearest track boundary in meters."""
+    def normalized_body_margin(
+        self,
+        point_xy: np.ndarray,
+        heading: float,
+        vehicle_length: float,
+        vehicle_width: float,
+    ) -> float:
+        """Return remaining lateral body clearance as a fraction of local capacity."""
 
         point = np.asarray(point_xy, dtype=np.float64).reshape(2)
         offset = point - self.points
@@ -76,7 +79,18 @@ class BoundaryDistanceReference:
         weight = fraction[index]
         width_left = (1.0 - weight) * self.width_left[index] + weight * self.width_left[next_index]
         width_right = (1.0 - weight) * self.width_right[index] + weight * self.width_right[next_index]
-        return float(min(width_left - signed_offset, width_right + signed_offset))
+        lane_heading = float(np.arctan2(direction[1], direction[0]))
+        relative_heading = float(heading) - lane_heading
+        lateral_extent = 0.5 * (
+            float(vehicle_length) * abs(float(np.sin(relative_heading)))
+            + float(vehicle_width) * abs(float(np.cos(relative_heading)))
+        )
+        body_margin = min(
+            width_left - signed_offset - lateral_extent,
+            width_right + signed_offset - lateral_extent,
+        )
+        local_capacity = max(min(width_left, width_right) - lateral_extent, np.finfo(np.float64).eps)
+        return float(np.clip(body_margin / local_capacity, 0.0, 1.0))
 
 
 class PrivilegedStateExtractor:
@@ -101,6 +115,11 @@ class PrivilegedStateExtractor:
         self.projector = projector
         self._curvature_s = raceline[:, 0]
         self._curvature = raceline[:, 4]
+        self._curvature_scale = float(
+            np.percentile(np.abs(self._curvature), CURVATURE_SCALE_PERCENTILE)
+        )
+        if not np.isfinite(self._curvature_scale) or self._curvature_scale <= np.finfo(np.float64).eps:
+            raise ValueError(f"Ego raceline must provide a positive curvature scale: {ego_raceline}")
         self.boundary = BoundaryDistanceReference(track_dir / f"{ego_raceline.replace('raceline', 'lane', 1)}.csv")
         self.vehicle_length = float(vehicle_length)
         self.vehicle_width = float(vehicle_width)
@@ -117,6 +136,18 @@ class PrivilegedStateExtractor:
         yaw_rate = float(np.asarray(raw_observation["ang_vels_z"])[index])
         return position, heading, speed, yaw_rate
 
+    @staticmethod
+    def _world_velocity(heading: float, speed: float, slip_angle: float) -> np.ndarray:
+        """Match the simulator's kinematic/dynamic velocity direction switch."""
+
+        velocity_heading = float(heading)
+        if abs(float(speed)) >= DYNAMIC_MODEL_SPEED_THRESHOLD_MPS:
+            velocity_heading += float(slip_angle)
+        return float(speed) * np.asarray(
+            (np.cos(velocity_heading), np.sin(velocity_heading)),
+            dtype=np.float64,
+        )
+
     def _obb_clearance(self, ego_pose: np.ndarray, opponent_pose: np.ndarray) -> float:
         from latticeplanner.utils import distance as gjk_distance, get_vertices
 
@@ -127,9 +158,20 @@ class PrivilegedStateExtractor:
             direction = np.asarray((1.0, 0.0), dtype=np.float64)
         return float(gjk_distance(ego_vertices, opponent_vertices, direction))
 
-    def features(self, raw_observation: dict[str, Any], *, ego_index: int, opponent_index: int) -> np.ndarray:
+    def features(
+        self,
+        raw_observation: dict[str, Any],
+        *,
+        ego_index: int,
+        opponent_index: int,
+        ego_slip_angle: float,
+        opponent_slip_angle: float,
+    ) -> np.ndarray:
         ego_position, ego_heading, ego_speed, ego_yaw_rate = self._agent_state(raw_observation, ego_index)
         opponent_position, opponent_heading, opponent_speed, opponent_yaw_rate = self._agent_state(raw_observation, opponent_index)
+
+        if not np.isfinite((ego_slip_angle, opponent_slip_angle)).all():
+            raise ValueError("Privileged slip angles must be finite")
 
         ego_progress = self.projector.project(ego_position)
         opponent_progress = self.projector.project(opponent_position)
@@ -140,14 +182,13 @@ class PrivilegedStateExtractor:
         relative_lateral = -sin_ego * relative_position[0] + cos_ego * relative_position[1]
 
         relative_heading = opponent_heading - ego_heading
-        # The simulator reports body-longitudinal speed only (lateral slip is not exposed).
-        velocity_delta_world = np.asarray(
-            (
-                opponent_speed * np.cos(opponent_heading) - ego_speed * cos_ego,
-                opponent_speed * np.sin(opponent_heading) - ego_speed * sin_ego,
-            ),
-            dtype=np.float64,
+        ego_velocity_world = self._world_velocity(ego_heading, ego_speed, ego_slip_angle)
+        opponent_velocity_world = self._world_velocity(
+            opponent_heading,
+            opponent_speed,
+            opponent_slip_angle,
         )
+        velocity_delta_world = opponent_velocity_world - ego_velocity_world
         relative_long_velocity = cos_ego * velocity_delta_world[0] + sin_ego * velocity_delta_world[1]
         relative_lat_velocity = -sin_ego * velocity_delta_world[0] + cos_ego * velocity_delta_world[1]
 
@@ -155,7 +196,12 @@ class PrivilegedStateExtractor:
             np.asarray((ego_position[0], ego_position[1], ego_heading), dtype=np.float64),
             np.asarray((opponent_position[0], opponent_position[1], opponent_heading), dtype=np.float64),
         )
-        margin = self.boundary.boundary_margin(ego_position)
+        margin = self.boundary.normalized_body_margin(
+            ego_position,
+            ego_heading,
+            self.vehicle_length,
+            self.vehicle_width,
+        )
         curvature = float(np.interp(ego_progress, self._curvature_s, self._curvature))
 
         features = np.asarray(
@@ -170,8 +216,8 @@ class PrivilegedStateExtractor:
                 np.clip(ego_yaw_rate / YAW_RATE_SCALE_RADPS, -1.0, 1.0),
                 np.clip((opponent_yaw_rate - ego_yaw_rate) / YAW_RATE_SCALE_RADPS, -1.0, 1.0),
                 np.clip(clearance / CLEARANCE_SCALE_M, 0.0, 1.0),
-                np.clip(margin / TRACK_MARGIN_SCALE_M, 0.0, 1.0),
-                np.clip(curvature / CURVATURE_SCALE_RADPM, -1.0, 1.0),
+                margin,
+                np.clip(curvature / self._curvature_scale, -1.0, 1.0),
             ),
             dtype=np.float32,
         )

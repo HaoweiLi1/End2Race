@@ -152,11 +152,28 @@ class End2RaceGymnasiumEnv(gym.Env):
     def _ego_speed(self, raw_observation: dict[str, Any]) -> float:
         return float(np.asarray(raw_observation["linear_vels_x"])[EGO_INDEX])
 
+    def _privileged_slip_angles(self) -> tuple[float, float]:
+        core = getattr(self.f110_env, "unwrapped", self.f110_env)
+        agents = getattr(getattr(core, "sim", None), "agents", None)
+        if agents is None or len(agents) != NUM_AGENTS:
+            raise RuntimeError("Privileged critic requires simulator agent states")
+        slip_angles = tuple(float(np.asarray(agent.state).reshape(-1)[6]) for agent in agents)
+        if not np.isfinite(slip_angles).all():
+            raise ValueError("Simulator slip angles must be finite")
+        return slip_angles
+
     def _observation(self, raw_observation: dict[str, Any]) -> np.ndarray:
         observation = end2race_observation(self._ego_lidar(raw_observation), self._previous_ego_speed)
         if self.privileged_extractor is None:
             return observation
-        features = self.privileged_extractor.features(raw_observation, ego_index=EGO_INDEX, opponent_index=OPPONENT_INDEX)
+        ego_slip_angle, opponent_slip_angle = self._privileged_slip_angles()
+        features = self.privileged_extractor.features(
+            raw_observation,
+            ego_index=EGO_INDEX,
+            opponent_index=OPPONENT_INDEX,
+            ego_slip_angle=ego_slip_angle,
+            opponent_slip_angle=opponent_slip_angle,
+        )
         return np.concatenate((observation, features))
 
     def reset(

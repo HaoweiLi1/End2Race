@@ -8,11 +8,8 @@ import json
 import math
 import numbers
 from pathlib import Path
-import platform
 from typing import Any, Mapping, Sequence
 
-import sb3_contrib
-import stable_baselines3
 import torch
 
 from model import End2Race
@@ -65,15 +62,12 @@ class TrainingRecorder:
     def _cpu_state_dict(state_dict: Mapping[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         return {name: tensor.detach().cpu() for name, tensor in state_dict.items()}
 
-    def write_run_config(self, args, ppo_config: dict[str, Any], device: torch.device, training_constants: dict[str, Any]) -> None:
+    def write_run_config(self, args, ppo_config: dict[str, Any], training_constants: dict[str, Any]) -> None:
+        recorded_args = dict(vars(args))
+        recorded_args.pop("seed", None)
         payload = {
-            "args": dict(vars(args)),
+            "args": recorded_args,
             "ppo_config": ppo_config,
-            "device": str(device),
-            "python_version": platform.python_version(),
-            "torch_version": torch.__version__,
-            "stable_baselines3_version": stable_baselines3.__version__,
-            "sb3_contrib_version": sb3_contrib.__version__,
             "started_at": self.started_at,
             **training_constants,
         }
@@ -92,10 +86,20 @@ class TrainingRecorder:
     def record_episode(self, record: dict[str, Any]) -> None:
         self._append_jsonl(self.episodes_path, record)
 
+    @classmethod
+    def _require_finite_metrics(cls, name: str, value: Any) -> None:
+        if isinstance(value, numbers.Real) and not isinstance(value, bool):
+            require_finite_number(name, value)
+        elif isinstance(value, Mapping):
+            for child_name, child_value in value.items():
+                cls._require_finite_metrics(f"{name}.{child_name}", child_value)
+        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            for index, child_value in enumerate(value):
+                cls._require_finite_metrics(f"{name}[{index}]", child_value)
+
     def record_metrics(self, record: dict[str, Any]) -> None:
         for name, value in record.items():
-            if isinstance(value, numbers.Real) and not isinstance(value, bool):
-                require_finite_number(name, value)
+            self._require_finite_metrics(name, value)
         self._append_jsonl(self.metrics_path, record)
 
     def _save_actor(self, path: Path, state_dict: Mapping[str, torch.Tensor]) -> Path:

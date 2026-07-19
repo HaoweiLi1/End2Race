@@ -18,7 +18,7 @@ from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution
 
 
-CRITIC_VARIANTS = ("raw", "hidden", "recurrent", "privileged")
+CRITIC_VARIANTS = ("mlp", "detached_gru", "independent_gru", "priviledge_mlp")
 END2RACE_OBSERVATION_SIZE = 361
 END2RACE_LIDAR_SIZE = 360
 END2RACE_ACTION_SIZE = 2
@@ -108,53 +108,82 @@ class GRUWithLSTMStateInterface(nn.Module):
         return output.transpose(0, 1), (next_hidden, torch.zeros_like(next_hidden))
 
 
-class RawCritic(nn.Module):
-    """Single-frame critic over the raw 361D actor observation."""
+class MLPCritic(nn.Module):
+    """Single-frame BC-style critic with the recurrent layer replaced by an MLP."""
 
-    def __init__(self):
+    def __init__(self, actor: End2Race):
         super().__init__()
-        self.network = nn.Sequential(nn.Linear(END2RACE_OBSERVATION_SIZE, 64), nn.SiLU(), nn.Linear(64, 1))
+        self.k = nn.Parameter(actor.k.detach().clone())
+        self.speed_mlp = copy_module.deepcopy(actor.speed_mlp)
+        self.value_head = nn.Sequential(
+            nn.Linear(actor.gru.input_size, 60),
+            nn.ReLU(),
+            nn.Linear(60, 1),
+        )
+        self._initialize_value_head()
+
+    def _initialize_value_head(self) -> None:
+        for module in self.value_head.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                nn.init.zeros_(module.bias)
 
     def forward(self, observation: torch.Tensor) -> torch.Tensor:
-        return self.network(observation)
+        lidar = observation[..., :END2RACE_LIDAR_SIZE]
+        previous_speed = observation[..., END2RACE_LIDAR_SIZE:]
+        pressure = (-1.0 / (1.0 + torch.exp(-self.k * lidar)) + 1.0) * 2.0
+        speed_embedding = self.speed_mlp(previous_speed)
+        return self.value_head(torch.cat((pressure, speed_embedding), dim=-1))
 
 
-class ActorHiddenCritic(nn.Module):
+class DetachedGRUCritic(nn.Module):
     """MLP critic over detached actor GRU hidden states frozen at rollout time."""
 
-    def __init__(self, hidden_size: int):
+    def __init__(self, hidden_size: int, processed_feature_size: int):
         super().__init__()
         self.network = nn.Sequential(
             nn.LayerNorm(hidden_size),
-            nn.Linear(hidden_size, 256),
-            nn.SiLU(),
-            nn.Linear(256, 128),
-            nn.SiLU(),
-            nn.Linear(128, 1),
+            nn.Linear(hidden_size, processed_feature_size),
+            nn.ReLU(),
+            nn.Linear(processed_feature_size, 1),
         )
+        self._initialize_linear_layers()
+
+    def _initialize_linear_layers(self) -> None:
+        for module in self.network.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                nn.init.zeros_(module.bias)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         return self.network(features)
 
 
-class PrivilegedCritic(nn.Module):
+class PriviledgeMLPCritic(nn.Module):
     """MLP critic over the 12D privileged pre-action physical state."""
 
     def __init__(self):
         super().__init__()
         self.network = nn.Sequential(
-            nn.Linear(PRIVILEGED_FEATURE_SIZE, 128),
-            nn.SiLU(),
-            nn.Linear(128, 128),
-            nn.SiLU(),
-            nn.Linear(128, 1),
+            nn.Linear(PRIVILEGED_FEATURE_SIZE, 120),
+            nn.ReLU(),
+            nn.Linear(120, 30),
+            nn.ReLU(),
+            nn.Linear(30, 1),
         )
+        self._initialize_linear_layers()
+
+    def _initialize_linear_layers(self) -> None:
+        for module in self.network.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                nn.init.zeros_(module.bias)
 
     def forward(self, features: torch.Tensor) -> torch.Tensor:
         return self.network(features)
 
 
-class RecurrentCritic(nn.Module):
+class IndependentGRUCritic(nn.Module):
     """Independent BC-initialized pressure/speed/GRU front-end with a value head."""
 
     def __init__(self, actor: End2Race):
@@ -163,14 +192,19 @@ class RecurrentCritic(nn.Module):
         self.speed_mlp = copy_module.deepcopy(actor.speed_mlp)
         self.gru = copy_module.deepcopy(actor.gru)
         self.value_head = nn.Sequential(
-            nn.Linear(self.gru.hidden_size, 256),
-            nn.SiLU(),
-            nn.Linear(256, 128),
-            nn.SiLU(),
-            nn.Linear(128, 1),
+            nn.Linear(self.gru.hidden_size, self.gru.input_size),
+            nn.ReLU(),
+            nn.Linear(self.gru.input_size, 1),
         )
+        self._initialize_value_head()
         for parameter in self.parameters():
             parameter.requires_grad_(True)
+
+    def _initialize_value_head(self) -> None:
+        for module in self.value_head.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                nn.init.zeros_(module.bias)
 
     def step(self, lidar: torch.Tensor, previous_speed: torch.Tensor, hidden: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Run BC-style preprocessing plus one GRU segment and return values with the next hidden."""
@@ -191,7 +225,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lr_schedule: Callable[[float], float],
         checkpoint_path: str | Path,
         hidden_scale: int = 4,
-        critic_variant: str = "raw",
+        critic_variant: str = "mlp",
         gru_learning_rate: float = 5.0e-6,
         head_learning_rate: float = 5.0e-5,
         critic_learning_rate: float = 5.0e-4,
@@ -200,7 +234,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         kwargs.pop("use_sde", None)
         if critic_variant not in CRITIC_VARIANTS:
             raise ValueError(f"critic_variant must be one of {CRITIC_VARIANTS}, got {critic_variant!r}")
-        expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant == "privileged" else 0)
+        expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant == "priviledge_mlp" else 0)
         if tuple(observation_space.shape) != (expected_observation_size,):
             raise ValueError(
                 f"Critic variant {critic_variant!r} requires a {expected_observation_size}D observation space, got {observation_space.shape}"
@@ -218,14 +252,17 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.lstm_hidden_state_shape = (self.end2race_actor.gru.num_layers, 1, self.end2race_actor.gru.hidden_size)
         self.lstm_critic = None
         self.critic = None
-        if critic_variant == "raw":
-            self.value_net = RawCritic()
-        elif critic_variant == "hidden":
-            self.value_net = ActorHiddenCritic(self.end2race_actor.gru.hidden_size)
-        elif critic_variant == "recurrent":
-            self.value_net = RecurrentCritic(self.end2race_actor)
+        if critic_variant == "mlp":
+            self.value_net = MLPCritic(self.end2race_actor)
+        elif critic_variant == "detached_gru":
+            self.value_net = DetachedGRUCritic(
+                self.end2race_actor.gru.hidden_size,
+                self.end2race_actor.gru.input_size,
+            )
+        elif critic_variant == "independent_gru":
+            self.value_net = IndependentGRUCritic(self.end2race_actor)
         else:
-            self.value_net = PrivilegedCritic()
+            self.value_net = PriviledgeMLPCritic()
         self.action_net = nn.Identity()
         self.action_dist = EvaluatorCompatibleJointDistribution()
 
@@ -249,14 +286,14 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.optimizer = self.actor_optimizer
 
     @property
-    def critic_feature_size(self) -> int:
+    def detached_gru_feature_size(self) -> int:
         """Per-transition stored critic feature width, zero when unused."""
 
-        return self.end2race_actor.gru.hidden_size if self.critic_variant == "hidden" else 0
+        return self.end2race_actor.gru.hidden_size if self.critic_variant == "detached_gru" else 0
 
     @property
-    def critic_is_recurrent(self) -> bool:
-        return self.critic_variant == "recurrent"
+    def critic_is_independent_gru(self) -> bool:
+        return self.critic_variant == "independent_gru"
 
     @staticmethod
     def _actor_observation(obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
@@ -359,11 +396,11 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         full = (obs["actor"] if isinstance(obs, dict) else obs).float()
         if full.ndim == 1:
             full = full.unsqueeze(0)
-        if self.critic_variant == "privileged":
+        if self.critic_variant == "priviledge_mlp":
             return full[..., END2RACE_OBSERVATION_SIZE:]
         return full[..., :END2RACE_OBSERVATION_SIZE]
 
-    def _critic_forward_collection(
+    def _independent_gru_forward_collection(
         self,
         obs: torch.Tensor | dict[str, torch.Tensor],
         states: tuple[torch.Tensor, torch.Tensor],
@@ -399,7 +436,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         zero = torch.zeros_like(states[0])
         return zero, zero.clone()
 
-    def supports_actor_hidden_only_buffer(self) -> bool:
+    def supports_end2race_rollout_buffer(self) -> bool:
         return isinstance(self.lstm_actor, GRUWithLSTMStateInterface) and self.lstm_critic is None and self.critic is None
 
     def forward(
@@ -413,17 +450,17 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         distribution = self._distribution(mean_actions)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
-        if self.critic_variant == "hidden":
+        if self.critic_variant == "detached_gru":
             if mean_actions.shape[0] != actor_states[0].shape[1]:
                 raise RuntimeError("Actor-hidden critic collection requires one timestep per sequence slot")
             features = actor_states[0].detach()
             values = self.value_net(features[0])
-            rollout_buffer = getattr(self, "_actor_hidden_rollout_buffer", None)
+            rollout_buffer = getattr(self, "_end2race_rollout_buffer", None)
             if rollout_buffer is not None:
-                rollout_buffer.stage_critic_features(features[0].cpu().numpy())
+                rollout_buffer.stage_detached_gru_features(features[0].cpu().numpy())
             vf_states = (features.clone(), torch.zeros_like(features))
-        elif self.critic_variant == "recurrent":
-            values, vf_states = self._critic_forward_collection(obs, lstm_states.vf, episode_starts)
+        elif self.critic_variant == "independent_gru":
+            values, vf_states = self._independent_gru_forward_collection(obs, lstm_states.vf, episode_starts)
         else:
             values = self.value_net(self._critic_observation(obs))
             vf_states = self._zero_states(lstm_states.vf)
@@ -446,11 +483,11 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     ) -> torch.Tensor:
         """Value for bootstrap targets, continuing the correct hidden state when recurrent."""
 
-        if self.critic_variant == "hidden":
+        if self.critic_variant == "detached_gru":
             _mean_actions, actor_states = self._actor_forward(obs, lstm_states, episode_starts)
             return self.value_net(actor_states[0][0].detach())
-        if self.critic_variant == "recurrent":
-            values, _critic_states = self._critic_forward_collection(obs, lstm_states, episode_starts)
+        if self.critic_variant == "independent_gru":
+            values, _critic_states = self._independent_gru_forward_collection(obs, lstm_states, episode_starts)
             return values
         del lstm_states, episode_starts
         return self.value_net(self._critic_observation(obs))
@@ -462,7 +499,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lstm_states: RNNStates,
         episode_starts: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
-        rollout_buffer = getattr(self, "_actor_hidden_rollout_buffer", None)
+        rollout_buffer = getattr(self, "_end2race_rollout_buffer", None)
         valid_by_timestep = None if rollout_buffer is None else rollout_buffer.current_valid_by_timestep
         mean_actions, _actor_states = self._actor_replay_batched(obs, lstm_states.pi, episode_starts, valid_by_timestep)
         distribution = self._distribution(mean_actions)
@@ -471,15 +508,15 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     def evaluate_values(self, critic_inputs: torch.Tensor) -> torch.Tensor:
         """Feed-forward critic values over observation rows or stored feature rows."""
 
-        if self.critic_variant == "recurrent":
-            raise RuntimeError("Recurrent critic values require evaluate_values_recurrent")
-        if self.critic_variant == "hidden":
+        if self.critic_variant == "independent_gru":
+            raise RuntimeError("Independent-GRU critic values require evaluate_values_independent_gru")
+        if self.critic_variant == "detached_gru":
             if critic_inputs.shape[-1] != self.end2race_actor.gru.hidden_size:
-                raise RuntimeError("Actor-hidden critic expects stored rollout hidden features")
+                raise RuntimeError("detached_gru critic expects stored rollout GRU features")
             return self.value_net(critic_inputs.float())
         return self.value_net(self._critic_observation(critic_inputs))
 
-    def evaluate_values_recurrent(
+    def evaluate_values_independent_gru(
         self,
         obs: torch.Tensor | dict[str, torch.Tensor],
         states: tuple[torch.Tensor, torch.Tensor],
@@ -488,8 +525,8 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     ) -> torch.Tensor:
         """Replay the recurrent critic over padded sequences, one FP32 call per timestep."""
 
-        if self.critic_variant != "recurrent":
-            raise RuntimeError("evaluate_values_recurrent requires the recurrent critic variant")
+        if self.critic_variant != "independent_gru":
+            raise RuntimeError("evaluate_values_independent_gru requires the independent_gru critic variant")
         hidden, dummy_cell = states
         critic_obs = self._actor_observation(obs)
         if critic_obs.ndim == 1:

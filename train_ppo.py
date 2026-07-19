@@ -21,6 +21,7 @@ from ppo.algorithm import (
 )
 from ppo.collision_classification import resolve_collision_scenarios
 from ppo.policy import CRITIC_VARIANTS, SPEED_PHYSICAL_STD, STEERING_LATENT_STD, End2RaceGRUPolicy
+from ppo.privileged import PRIVILEGED_FEATURE_NAMES
 from ppo.scenarios import expanded_scenarios, ordinary_scenarios
 from ppo.training_records import TrainingRecorder
 from ppo.vec_env import CentralScheduleSubprocVecEnv
@@ -44,13 +45,7 @@ def parse_arguments():
 
     # Model configuration
     parser.add_argument("--hidden_scale", type=int, default=4)
-    parser.add_argument(
-        "--critic",
-        type=str,
-        default="raw",
-        choices=list(CRITIC_VARIANTS),
-        help="Critic variant: raw single-frame MLP, detached actor-hidden MLP, independent BC-initialized recurrent critic, or privileged 12D physical-state MLP",
-    )
+    parser.add_argument("--critic", choices=CRITIC_VARIANTS, default="mlp")
 
     # Environment configuration
     parser.add_argument("--map_name", type=str, default="Austin")
@@ -180,7 +175,6 @@ def main() -> None:
     recorder.write_run_config(
         args,
         PPO_CONFIG,
-        device,
         {
             "WARMUP_MAX_EPOCHS": WARMUP_MAX_EPOCHS,
             "WARMUP_PATIENCE": WARMUP_PATIENCE,
@@ -189,6 +183,7 @@ def main() -> None:
             "MAX_GRAD_NORM": MAX_GRAD_NORM,
             "STEERING_LATENT_STD": STEERING_LATENT_STD,
             "SPEED_PHYSICAL_STD": SPEED_PHYSICAL_STD,
+            "PRIVILEGED_FEATURE_NAMES": list(PRIVILEGED_FEATURE_NAMES),
         },
     )
     recorder.write_scenario_pools(
@@ -203,7 +198,7 @@ def main() -> None:
         },
     )
     print("[4/5] Creating vector environments", flush=True)
-    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.env_workers, START_METHOD, args.seed, args.map_name, collision_scenarios, ordinary_scenario_set, privileged=args.critic == "privileged")
+    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.env_workers, START_METHOD, args.seed, args.map_name, collision_scenarios, ordinary_scenario_set, privileged=args.critic == "priviledge_mlp")
     try:
         print("[5/5] Building PPO model", flush=True)
         model = build_model(vector_env, args, device, recorder)

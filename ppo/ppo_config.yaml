@@ -11,12 +11,6 @@ episode_horizon: 8.0
 ego_raceline: raceline1
 opponent_racelines: [raceline0, raceline1, raceline2]
 
-# Privileged Critic Feature Normalization (frozen before experiments)
-# privileged_curvature_scale: 95th percentile of |kappa_radpm| over Austin raceline1.csv
-# privileged_track_margin_scale: Austin nominal half track width in meters
-privileged_curvature_scale: 0.378086
-privileged_track_margin_scale: 1.1
-
 # Ordinary Scenario Generation
 ordinary_startpoint_count: 50
 ordinary_interval_index: 15
