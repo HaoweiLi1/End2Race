@@ -1,0 +1,42 @@
+{
+  "avg_speed": 5.653393501693396,
+  "collision_occurred": false,
+  "collision_scope": "ego",
+  "danger_sectors": {
+    "right": 0.1437
+  },
+  "ego_avg_desired_speed": 5.899560620871078,
+  "ego_collision_occurred": false,
+  "ego_max_abs_steer": 0.330999493598938,
+  "ego_min_lidar": 0.2990094315577386,
+  "episode_key": "ol0_e2010_o2005_s0.6",
+  "final_relative_position_m": 18.68655707917773,
+  "global_min_surface_dist": 0.1437,
+  "max_steer_delta": 0.0881,
+  "max_steer_reversals": 0,
+  "opp_avg_desired_speed": 3.0367601303370786,
+  "opp_avg_speed": 2.7991378561852303,
+  "opp_collision_occurred": false,
+  "opp_max_abs_steer": 0.52,
+  "opp_min_lidar": 0.26425463536765403,
+  "opp_speed_variance": 2.4053095825861517,
+  "opponent_only_collision": false,
+  "outcome": "overtake",
+  "proximity_below_threshold_timesteps": [
+    312,
+    313,
+    314,
+    315,
+    316,
+    317,
+    318,
+    319
+  ],
+  "scenario_id": "evaluation-sp47-ego2010-raceline0-v0.6",
+  "speed_variance": 2.526897925759592,
+  "state": 2,
+  "state_label": "overtake",
+  "steer_autocorr_lag1": 0.9925,
+  "steering_anomaly_timesteps": [],
+  "total_distance": 45.2531594441066
+}

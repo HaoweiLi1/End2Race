@@ -9,7 +9,6 @@ install/
 .remember/
 **/.numba_cache/
 Dataset_*/
-eval_results/
 posttrained/
 runs/ppo/*/checkpoints/
 runs/ppo/quick_pool_3s_v2/*/checkpoints/

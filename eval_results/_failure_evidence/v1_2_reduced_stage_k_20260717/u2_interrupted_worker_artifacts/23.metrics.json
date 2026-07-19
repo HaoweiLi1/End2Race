@@ -1,0 +1,43 @@
+{
+  "avg_speed": 5.469505771295812,
+  "collision_occurred": false,
+  "collision_scope": "ego",
+  "danger_sectors": {
+    "left": 0.1404
+  },
+  "ego_avg_desired_speed": 5.666347936149244,
+  "ego_collision_occurred": false,
+  "ego_max_abs_steer": 0.22657635807991028,
+  "ego_min_lidar": 0.3073911257370563,
+  "episode_key": "ol2_e42_o63_s0.8",
+  "final_relative_position_m": -0.596183266987083,
+  "global_min_surface_dist": 0.1404,
+  "max_steer_delta": 0.0748,
+  "max_steer_reversals": 0,
+  "opp_avg_desired_speed": 5.5293205263420715,
+  "opp_avg_speed": 5.261114519528199,
+  "opp_collision_occurred": false,
+  "opp_max_abs_steer": 0.2477417770093643,
+  "opp_min_lidar": 0.33481665622450774,
+  "opp_speed_variance": 1.0495255423280354,
+  "opponent_only_collision": false,
+  "outcome": "follow",
+  "proximity_below_threshold_timesteps": [
+    738,
+    739,
+    740,
+    741,
+    742,
+    743,
+    744,
+    745,
+    746
+  ],
+  "scenario_id": "evaluation-sp1-ego42-raceline2-v0.8",
+  "speed_variance": 1.1987699814783952,
+  "state": 1,
+  "state_label": "follow",
+  "steer_autocorr_lag1": 0.9943,
+  "steering_anomaly_timesteps": [],
+  "total_distance": 43.78408492747299
+}
