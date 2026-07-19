@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 import multiprocessing as mp
 import os
-import time
 import traceback
 from typing import Any
 import warnings
@@ -40,18 +39,28 @@ def _limit_worker_threads() -> None:
     for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
         os.environ[name] = "1"
     try:
-        from threadpoolctl import threadpool_limits
+        from threadpoolctl import threadpool_info, threadpool_limits
 
         threadpool_limits(limits=1)
     except ImportError:
-        pass
+        threadpool_info = None
     torch.set_num_threads(1)
     try:
         torch.set_num_interop_threads(1)
     except RuntimeError:
-        # A third-party import may already have fixed the inter-op pool.  The
-        # OpenMP/BLAS and intra-op limits above still enforce the required cap.
-        pass
+        if torch.get_num_interop_threads() != 1:
+            raise
+    if torch.get_num_threads() != 1 or torch.get_num_interop_threads() != 1:
+        raise RuntimeError("Simulator worker Torch thread pools must both be limited to one")
+    if any(os.environ.get(name) != "1" for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")):
+        raise RuntimeError("Simulator worker OpenMP/BLAS thread environment must be limited to one")
+    if threadpool_info is not None:
+        oversized = [
+            pool for pool in threadpool_info()
+            if pool.get("num_threads") not in (None, 1)
+        ]
+        if oversized:
+            raise RuntimeError(f"Simulator worker native thread pools exceed one thread: {oversized}")
 
 
 def _worker(
@@ -75,29 +84,17 @@ def _worker(
             if command == "step":
                 results = []
                 for rank, action in data:
-                    start = time.perf_counter()
                     observation, reward, terminated, truncated, info = by_rank[rank].step(action)
-                    results.append(
-                        (
-                            rank,
-                            observation,
-                            reward,
-                            terminated,
-                            truncated,
-                            info,
-                            time.perf_counter() - start,
-                        )
-                    )
+                    results.append((rank, observation, reward, terminated, truncated, info))
                 remote.send(("ok", results))
             elif command == "reset":
                 results = []
                 for rank, seed, spec in data:
-                    start = time.perf_counter()
                     observation, reset_info = by_rank[rank].reset(
                         seed=seed,
                         options={EXTERNAL_RESET_OPTION: spec},
                     )
-                    results.append((rank, observation, reset_info, time.perf_counter() - start))
+                    results.append((rank, observation, reset_info))
                 remote.send(("ok", results))
             elif command == "render":
                 remote.send(("ok", [(rank, by_rank[rank].render()) for rank in data]))
@@ -106,34 +103,6 @@ def _worker(
             elif command == "get_spaces":
                 env = envs[0]
                 remote.send(("ok", (env.observation_space, env.action_space)))
-            elif command == "runtime":
-                try:
-                    from threadpoolctl import threadpool_info
-
-                    pools = [
-                        {
-                            "internal_api": item.get("internal_api"),
-                            "num_threads": item.get("num_threads"),
-                            "prefix": item.get("prefix"),
-                        }
-                        for item in threadpool_info()
-                    ]
-                except ImportError:
-                    pools = []
-                remote.send(
-                    (
-                        "ok",
-                        {
-                            "pid": os.getpid(),
-                            "torch_threads": torch.get_num_threads(),
-                            "torch_interop_threads": torch.get_num_interop_threads(),
-                            "OMP_NUM_THREADS": os.environ.get("OMP_NUM_THREADS"),
-                            "MKL_NUM_THREADS": os.environ.get("MKL_NUM_THREADS"),
-                            "OPENBLAS_NUM_THREADS": os.environ.get("OPENBLAS_NUM_THREADS"),
-                            "threadpools": pools,
-                        },
-                    )
-                )
             elif command == "env_method":
                 results = []
                 for rank, method_name, method_args, method_kwargs in data:
@@ -256,7 +225,6 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         worker_count: int | None = None,
         start_method: str | None = None,
     ) -> None:
-        startup_start = time.perf_counter()
         if torch.cuda.is_initialized():
             raise RuntimeError("Subprocess environments must be created before CUDA initialization")
         n_envs = len(env_fns)
@@ -268,24 +236,6 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         self.actions: np.ndarray | None = None
         self.worker_count = count
         self.scheduler = CentralEpisodeScheduler(sampler, config, seed, n_envs)
-        self.profile: dict[str, float] = {
-            "process_startup_s": 0.0,
-            "step_send_s": 0.0,
-            "step_wait_s": 0.0,
-            "step_batches": 0.0,
-            "step_calls": 0.0,
-            "worker_step_sum_s": 0.0,
-            "worker_step_critical_s": 0.0,
-            "step_ipc_serialization_s": 0.0,
-            "reset_schedule_s": 0.0,
-            "reset_send_s": 0.0,
-            "reset_wait_s": 0.0,
-            "reset_batches": 0.0,
-            "reset_calls": 0.0,
-            "worker_reset_sum_s": 0.0,
-            "worker_reset_critical_s": 0.0,
-            "reset_ipc_serialization_s": 0.0,
-        }
         if start_method is None:
             start_method = "forkserver" if "forkserver" in mp.get_all_start_methods() else "spawn"
         self.start_method = start_method
@@ -324,12 +274,6 @@ class CentralScheduleSubprocVecEnv(VecEnv):
             self.remotes[0].send(("get_spaces", None))
             observation_space, action_space = self._recv_checked(0)
             super().__init__(n_envs, observation_space, action_space)
-            for remote in self.remotes:
-                remote.send(("runtime", None))
-            self.worker_runtime = [
-                self._recv_checked(worker_index)
-                for worker_index in range(count)
-            ]
         except BaseException:
             for name, value in previous_thread_env.items():
                 if value is None:
@@ -338,7 +282,6 @@ class CentralScheduleSubprocVecEnv(VecEnv):
                     os.environ[name] = value
             self._terminate_workers()
             raise
-        self.profile["process_startup_s"] = time.perf_counter() - startup_start
 
     def _recv_checked(self, worker_index: int) -> Any:
         try:
@@ -369,34 +312,19 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         return grouped
 
     def _reset_round(self, indices: list[int], seeds: list[int | None]) -> list[VecEnvObs]:
-        schedule_start = time.perf_counter()
         entries = [(rank, seed, self.scheduler.next(rank, seed)) for rank, seed in zip(indices, seeds)]
-        self.profile["reset_schedule_s"] += time.perf_counter() - schedule_start
         grouped = self._group_entries(entries)
-        send_start = time.perf_counter()
         for worker_index, worker_entries in grouped.items():
             self.remotes[worker_index].send(("reset", worker_entries))
-        send_elapsed = time.perf_counter() - send_start
-        receive_start = time.perf_counter()
         worker_results = {
             worker_index: self._recv_checked(worker_index)
             for worker_index in grouped
         }
-        receive_elapsed = time.perf_counter() - receive_start
         flattened = [result for results in worker_results.values() for result in results]
         by_rank = {int(result[0]): result for result in flattened}
-        worker_sums = [sum(float(result[3]) for result in results) for results in worker_results.values()]
-        critical = max(worker_sums, default=0.0)
-        self.profile["reset_send_s"] += send_elapsed
-        self.profile["reset_wait_s"] += receive_elapsed
-        self.profile["reset_batches"] += 1
-        self.profile["reset_calls"] += len(indices)
-        self.profile["worker_reset_sum_s"] += sum(worker_sums)
-        self.profile["worker_reset_critical_s"] += critical
-        self.profile["reset_ipc_serialization_s"] += max(0.0, send_elapsed + receive_elapsed - critical)
         observations = []
         for rank in indices:
-            _rank, observation, reset_info, _worker_time = by_rank[rank]
+            _rank, observation, reset_info = by_rank[rank]
             self.reset_infos[rank] = reset_info
             observations.append(observation)
         return observations
@@ -412,16 +340,12 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         self.actions = actions
         entries = [(rank, action) for rank, action in enumerate(actions)]
         grouped = self._group_entries(entries)
-        start = time.perf_counter()
         for worker_index, worker_entries in grouped.items():
             self.remotes[worker_index].send(("step", worker_entries))
-        self.profile["step_send_s"] += time.perf_counter() - start
         self.waiting = True
 
     def step_wait(self) -> VecEnvStepReturn:
-        start = time.perf_counter()
         worker_results = [self._recv_checked(index) for index in range(self.worker_count)]
-        receive_elapsed = time.perf_counter() - start
         self.waiting = False
         flattened = [result for results in worker_results for result in results]
         by_rank = {int(result[0]): result for result in flattened}
@@ -430,14 +354,6 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         terminated = np.asarray([by_rank[rank][3] for rank in range(self.num_envs)], dtype=bool)
         truncated = np.asarray([by_rank[rank][4] for rank in range(self.num_envs)], dtype=bool)
         infos = [by_rank[rank][5] for rank in range(self.num_envs)]
-        worker_sums = [sum(float(result[6]) for result in results) for results in worker_results]
-        critical = max(worker_sums, default=0.0)
-        self.profile["step_wait_s"] += receive_elapsed
-        self.profile["step_batches"] += 1
-        self.profile["step_calls"] += self.num_envs
-        self.profile["worker_step_sum_s"] += sum(worker_sums)
-        self.profile["worker_step_critical_s"] += critical
-        self.profile["step_ipc_serialization_s"] += max(0.0, receive_elapsed - critical)
         dones = np.logical_or(terminated, truncated)
 
         reset_indices: list[int] = []
@@ -456,14 +372,6 @@ class CentralScheduleSubprocVecEnv(VecEnv):
             dones,
             tuple(infos),
         )
-
-    def get_pipeline_profile(self) -> dict[str, Any]:
-        return {
-            **self.profile,
-            "worker_count": self.worker_count,
-            "start_method": self.start_method,
-            "worker_runtime": self.worker_runtime,
-        }
 
     def close(self) -> None:
         if self.closed:

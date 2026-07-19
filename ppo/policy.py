@@ -407,9 +407,13 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         obs: torch.Tensor | dict[str, torch.Tensor],
         states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
-        valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
-        """Return actor means, final state, and each timestep's actor hidden."""
+        """Return actor means, final state, and each timestep's actor hidden.
+
+        Collection path only.  Every real transition runs through the exact
+        batch-size-one GRU kernel so collected actions, log-probs, and stored
+        hidden states keep the deployment-identical numerics.
+        """
 
         hidden, _dummy_cell = states
         obs = self._actor_observation(obs)
@@ -423,31 +427,139 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
         means: list[torch.Tensor] = []
         timestep_hidden: list[torch.Tensor] = []
-        for timestep, (step_obs, episode_start) in enumerate(zip(obs_sequence, start_sequence)):
+        for step_obs, episode_start in zip(obs_sequence, start_sequence):
             # Reset only the env/sequence slots marked as new episodes.
             hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
             lidar = step_obs[:, :END2RACE_LIDAR_SIZE].unsqueeze(1)
             previous_speed = step_obs[:, END2RACE_LIDAR_SIZE:].unsqueeze(1)
-            # Use the same batch-size-one GRU kernel during collection and
-            # replay.  This removes n_seq-dependent BLAS rounding while still
-            # preserving a differentiable recurrent graph within each sequence.
             slot_means: list[torch.Tensor] = []
             slot_hidden: list[torch.Tensor] = []
             for sequence_index in range(n_seq):
-                valid = valid_by_timestep is None or valid_by_timestep[timestep][sequence_index]
-                if valid:
-                    action_sequence, next_hidden = self.end2race_actor(
-                        lidar[sequence_index : sequence_index + 1],
-                        previous_speed[sequence_index : sequence_index + 1],
-                        hidden[:, sequence_index : sequence_index + 1],
-                    )
-                    slot_means.append(action_sequence[:, -1, :])
-                    slot_hidden.append(next_hidden)
-                else:
-                    slot_means.append(torch.zeros((1, END2RACE_ACTION_SIZE), device=obs.device))
-                    slot_hidden.append(hidden[:, sequence_index : sequence_index + 1])
+                action_sequence, next_hidden = self.end2race_actor(
+                    lidar[sequence_index : sequence_index + 1],
+                    previous_speed[sequence_index : sequence_index + 1],
+                    hidden[:, sequence_index : sequence_index + 1],
+                )
+                slot_means.append(action_sequence[:, -1, :])
+                slot_hidden.append(next_hidden)
             hidden = torch.cat(slot_hidden, dim=1)
             means.append(torch.cat(slot_means, dim=0))
+            timestep_hidden.append(hidden.squeeze(0))
+
+        mean_actions = torch.stack(means).transpose(0, 1).reshape(-1, END2RACE_ACTION_SIZE)
+        actor_features = torch.stack(timestep_hidden).transpose(0, 1).reshape(-1, self.actor_hidden_size)
+        return mean_actions, (hidden, torch.zeros_like(hidden)), actor_features
+
+    def _actor_replay_batched(
+        self,
+        obs: torch.Tensor | dict[str, torch.Tensor],
+        states: tuple[torch.Tensor, torch.Tensor],
+        episode_starts: torch.Tensor,
+        valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
+        """Training replay: one FP32 GRU call per timestep over active slots.
+
+        Requires TF32 disabled so the batched GEMMs stay in true FP32; the
+        numerical contract against the batch-size-one path was validated under
+        that setting.  Invalid padded tail positions never enter the actor and
+        their hidden state is carried unchanged; their means stay exactly zero
+        and are excluded from every loss term by the sequence mask.
+        """
+
+        hidden, dummy_cell = states
+        obs = self._actor_observation(obs)
+        if obs.ndim == 1:
+            obs = obs.unsqueeze(0)
+
+        if obs.dtype != torch.float32:
+            raise RuntimeError(f"Batched replay actor input must be float32, got {obs.dtype}")
+        if hidden.dtype != torch.float32 or dummy_cell.dtype != torch.float32:
+            raise RuntimeError(
+                "Batched replay recurrent transport tensors must be float32, "
+                f"got hidden={hidden.dtype}, cell={dummy_cell.dtype}"
+            )
+        if episode_starts.dtype != torch.float32:
+            raise RuntimeError(
+                f"Batched replay episode_starts must be float32, got {episode_starts.dtype}"
+            )
+        if hidden.shape != dummy_cell.shape or hidden.ndim != 3:
+            raise RuntimeError(
+                "Batched replay hidden/cell shapes must match and be rank 3, "
+                f"got hidden={tuple(hidden.shape)}, cell={tuple(dummy_cell.shape)}"
+            )
+        if obs.device != hidden.device or episode_starts.device != obs.device:
+            raise RuntimeError(
+                "Batched replay actor input, hidden, and episode_starts must share one device"
+            )
+        actor_parameters = tuple(self.end2race_actor.parameters())
+        if any(parameter.dtype != torch.float32 for parameter in actor_parameters):
+            raise RuntimeError("Batched replay actor parameters must all be float32")
+        if any(parameter.device != obs.device for parameter in actor_parameters):
+            raise RuntimeError("Batched replay actor parameters and input must share one device")
+        if obs.is_cuda:
+            if torch.backends.cudnn.allow_tf32 or torch.backends.cuda.matmul.allow_tf32:
+                raise RuntimeError("Batched CUDA replay requires cuDNN and matmul TF32 disabled")
+            if torch.get_float32_matmul_precision() != "highest":
+                raise RuntimeError("Batched CUDA replay requires float32 matmul precision 'highest'")
+            if torch.backends.cudnn.benchmark:
+                raise RuntimeError("Batched CUDA replay requires cuDNN benchmark disabled")
+
+        n_seq = hidden.shape[1]
+        if n_seq <= 0 or obs.ndim != 2 or obs.shape[1] != END2RACE_OBSERVATION_SIZE:
+            raise RuntimeError(
+                f"Invalid batched replay actor layout: obs={tuple(obs.shape)}, n_seq={n_seq}"
+            )
+        if obs.shape[0] % n_seq != 0:
+            raise RuntimeError(
+                f"Batched replay rows {obs.shape[0]} are not divisible by n_seq={n_seq}"
+            )
+        max_length = obs.shape[0] // n_seq
+        if episode_starts.numel() != obs.shape[0]:
+            raise RuntimeError(
+                "Batched replay episode_starts count must match padded observation rows"
+            )
+        if valid_by_timestep is not None:
+            if len(valid_by_timestep) != max_length:
+                raise RuntimeError(
+                    "valid_by_timestep timestep count does not match the padded batch: "
+                    f"{len(valid_by_timestep)} != {max_length}"
+                )
+            if any(len(row) != n_seq for row in valid_by_timestep):
+                raise RuntimeError(
+                    "Every valid_by_timestep row must contain exactly one entry per sequence"
+                )
+
+        obs_sequence = obs.reshape(n_seq, max_length, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
+        start_sequence = episode_starts.reshape(n_seq, max_length).swapaxes(0, 1)
+
+        means: list[torch.Tensor] = []
+        timestep_hidden: list[torch.Tensor] = []
+        for timestep, (step_obs, episode_start) in enumerate(zip(obs_sequence, start_sequence)):
+            # Reset only the env/sequence slots marked as new episodes.
+            hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
+            active = (
+                list(range(n_seq))
+                if valid_by_timestep is None
+                else [index for index, valid in enumerate(valid_by_timestep[timestep]) if valid]
+            )
+            next_by_slot = [hidden[:, index : index + 1] for index in range(n_seq)]
+            means_by_slot = [
+                torch.zeros((1, END2RACE_ACTION_SIZE), dtype=obs.dtype, device=obs.device)
+                for _ in range(n_seq)
+            ]
+            if active:
+                indices = torch.as_tensor(active, dtype=torch.long, device=obs.device)
+                action_sequence, next_hidden = self.end2race_actor(
+                    step_obs[indices, :END2RACE_LIDAR_SIZE].unsqueeze(1),
+                    step_obs[indices, END2RACE_LIDAR_SIZE:].unsqueeze(1),
+                    hidden[:, indices],
+                )
+                active_means = action_sequence[:, -1, :]
+                for offset, slot in enumerate(active):
+                    next_by_slot[slot] = next_hidden[:, offset : offset + 1]
+                    means_by_slot[slot] = active_means[offset : offset + 1]
+            hidden = torch.cat(next_by_slot, dim=1)
+            means.append(torch.cat(means_by_slot, dim=0))
             timestep_hidden.append(hidden.squeeze(0))
 
         mean_actions = torch.stack(means).transpose(0, 1).reshape(-1, END2RACE_ACTION_SIZE)
@@ -466,7 +578,22 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         return means, next_states
 
     def _distribution(self, mean_actions: torch.Tensor) -> EvaluatorCompatibleJointDistribution:
+        if mean_actions.dtype != torch.float32 or self.log_std.dtype != torch.float32:
+            raise RuntimeError(
+                "PPO actor distribution tensors must remain float32, "
+                f"got means={mean_actions.dtype}, log_std={self.log_std.dtype}"
+            )
         return self.action_dist.proba_distribution(mean_actions, self.log_std)
+
+    def supports_actor_hidden_only_buffer(self) -> bool:
+        """Return whether the explicit C0 recurrent-state contract still holds."""
+
+        return (
+            self.critic_profile == "C0_RAW_SINGLE_FRAME"
+            and isinstance(self.lstm_actor, GRUWithLSTMStateInterface)
+            and self.lstm_critic is None
+            and self.critic is None
+        )
 
     def _critic_input(
         self,
@@ -552,7 +679,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         rollout_buffer = getattr(self, "_actor_hidden_rollout_buffer", None)
         if rollout_buffer is not None:
             valid_by_timestep = rollout_buffer.current_valid_by_timestep
-        mean_actions, _actor_states, actor_features = self._actor_forward(
+        mean_actions, _actor_states, actor_features = self._actor_replay_batched(
             obs,
             lstm_states.pi,
             episode_starts,
@@ -601,7 +728,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             raise ValueError("Policy must subclass RecurrentActorCriticPolicy")
         if isinstance(self.observation_space, spaces.Dict):
             buffer_class = RecurrentDictRolloutBuffer
-        elif self.policy.critic_profile == "C0_RAW_SINGLE_FRAME":
+        elif self.policy.supports_actor_hidden_only_buffer():
             buffer_class = ActorHiddenRolloutBuffer
         else:
             buffer_class = RecurrentRolloutBuffer

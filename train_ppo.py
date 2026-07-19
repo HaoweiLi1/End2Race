@@ -15,7 +15,6 @@ from typing import Any
 import numpy as np
 import torch
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.vec_env.base_vec_env import VecEnv
 
 from model import End2Race
@@ -25,6 +24,18 @@ from ppo.policy import End2RaceGRUPolicy, End2RaceRecurrentPPO
 from ppo.reward import PPOTransitionReward, ProgressProjector
 from ppo.scenarios import FixedMixtureScenarioSampler, load_hard_pool, training_scenarios
 from ppo.vec_env import CentralScheduleSubprocVecEnv
+
+def _configure_ppo_training_numerics() -> None:
+    """Install the single supported FP32/TF32-off PPO training contract."""
+
+    torch.backends.cudnn.allow_tf32 = False
+    torch.backends.cuda.matmul.allow_tf32 = False
+    torch.set_float32_matmul_precision("highest")
+    torch.backends.cudnn.benchmark = False
+
+
+# Set at import before any production entry point can construct a CUDA model.
+_configure_ppo_training_numerics()
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -571,6 +582,7 @@ def build_model(
     seed: int,
 ) -> End2RaceRecurrentPPO:
     """Build the fixed recurrent PPO algorithm and optimizer groups."""
+    _configure_ppo_training_numerics()
     return End2RaceRecurrentPPO(
         End2RaceGRUPolicy,
         vector_env,
@@ -609,25 +621,21 @@ def build_training_vector_env(
     config: ppo_config.PPOConfig,
     seed: int,
     *,
-    subprocess: bool = True,
     worker_count: int = ppo_config.ENV_WORKERS,
 ) -> VecEnv:
-    """Build the training VecEnv without changing the scenario scheduler."""
-    if subprocess:
-        factories = [
-            make_subprocess_training_env(rank, config, seed)
-            for rank in range(ppo_config.N_ENVS)
-        ]
-        return CentralScheduleSubprocVecEnv(
-            factories,
-            sampler=sampler,
-            config=config,
-            seed=seed,
-            worker_count=worker_count,
-            start_method=ppo_config.ENV_START_METHOD,
-        )
-    factories = [make_training_env(rank, sampler, config, seed) for rank in range(ppo_config.N_ENVS)]
-    return DummyVecEnv(factories)
+    """Build the only production VecEnv: parent-scheduled simulator workers."""
+    factories = [
+        make_subprocess_training_env(rank, config, seed)
+        for rank in range(ppo_config.N_ENVS)
+    ]
+    return CentralScheduleSubprocVecEnv(
+        factories,
+        sampler=sampler,
+        config=config,
+        seed=seed,
+        worker_count=worker_count,
+        start_method=ppo_config.ENV_START_METHOD,
+    )
 
 
 def save_actor(model: End2RaceRecurrentPPO, destination: Path) -> str:

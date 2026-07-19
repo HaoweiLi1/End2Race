@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "git_head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+  "verdict": "READY_FOR_DEFAULT_PPO_TRAINING",
+  "runtime": {
+    "python_executable": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "python": "3.10.19",
+    "numpy": "1.26.4",
+    "pytorch": "2.7.0+cu128",
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "stable_baselines3": "2.7.1",
+    "sb3_contrib": "2.7.1",
+    "cpu": "Intel(R) Core(TM) i5-14600KF",
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "gpu_driver": "580.159.03"
+  },
+  "config": {
+    "name": "N1-H1F-p50",
+    "seed": 20260917,
+    "n_envs": 16,
+    "workers": 6,
+    "start_method": "forkserver",
+    "n_steps": 1600,
+    "batch_size": 6400,
+    "n_epochs": 1,
+    "transitions": 25600,
+    "critic_profile": "C0_RAW_SINGLE_FRAME",
+    "fixed_hard_env_count": 8
+  },
+  "t1_static_and_contract": {
+    "python_compile_import": "PASS",
+    "git_diff_check": "PASS",
+    "cudnn_tf32_off": true,
+    "cuda_matmul_tf32_off": true,
+    "float32_matmul_precision": "highest",
+    "cudnn_benchmark": false,
+    "dtype_fail_closed_tests": "PASS",
+    "tf32_fail_closed_test": "PASS",
+    "bc_checkpoint_strict_12_key_load": "PASS"
+  },
+  "t2_phase1_to_phase4": {
+    "fixed_action_environment_replay": "PASS",
+    "environment_replay_sha256": "92a23f6f7dde9acd0b9a45d00ce418daf405a0222e14de280ab3b1c4c8ff9cea",
+    "worker_normal_close": "PASS",
+    "worker_exception_cleanup": "PASS",
+    "planner_cache_fresh_state": "PASS",
+    "c0_actor_hidden_only_buffer": "PASS",
+    "non_c0_stock_buffer_fallback": "PASS",
+    "padding_and_mask": "PASS",
+    "zero_lr_parameter_delta_exact_zero": "PASS",
+    "zero_lr_checkpoint_strict_load": "PASS"
+  },
+  "t3_phase5b": {
+    "framework": "unittest",
+    "passed": 8,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "t4_full_suite": {
+    "command": "/home/haowei/miniconda3/envs/end2race/bin/python -m unittest discover -s tests -v",
+    "passed": 21,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "t5_full_update": {
+    "protocol": "one warm-up then one measured repeat",
+    "warmup": {
+      "rollout_s": 19.31927342400013,
+      "train_s": 3.454790593998041,
+      "total_update_s": 22.97908850699605,
+      "total_transitions_per_s": 1114.0563731327293
+    },
+    "measured": {
+      "rollout_s": 18.95221645499987,
+      "rollout_transitions_per_s": 1350.7654928269008,
+      "train_s": 3.4728981950029265,
+      "train_valid_transitions_per_s": 7371.36494148756,
+      "total_update_s": 22.627972559988848,
+      "total_transitions_per_s": 1131.3430724795176,
+      "completed_episodes": 35,
+      "completed_episodes_per_rollout_s": 1.8467496972242785,
+      "padding_ratio": 1.5,
+      "optimizer_steps": 4,
+      "torch_peak_allocated_mib": 797.4521484375,
+      "torch_peak_reserved_mib": 1058.0,
+      "rss_median_mib": 8011.25390625,
+      "gpu_sm_median_pct": 20.0,
+      "outcomes": {"ego_collision": 13, "follow": 9, "overtake": 13},
+      "checkpoint_sha256": "315739f22272a189495ad2a31589f3a85142e1a5bc49d0bb01770b848b34f1e3",
+      "checkpoint_strict_12_key_load": true,
+      "finite": true,
+      "workers_closed": true,
+      "zombies": 0
+    },
+    "phase1_to_phase4_reference": {
+      "artifact": "ppo_experiments/performance_optimization/phase4_skip_padding_repeat1.json",
+      "sha256": "f76124c93df6ca060a9e4f4f94223e5b20ed98423426a0386afb8a1ebb81f554",
+      "rollout_s": 19.02370978900217,
+      "train_s": 15.182089729998552,
+      "total_update_s": 34.43214699999953,
+      "total_transitions_per_s": 743.4912496162481
+    },
+    "gates": {
+      "train_improvement_pct": 77.12503181863846,
+      "train_required_pct": 65.0,
+      "train_pass": true,
+      "total_update_improvement_pct": 34.28242345738953,
+      "total_update_required_pct": 25.0,
+      "total_update_pass": true,
+      "rollout_improvement_pct": 0.37581173596134865,
+      "throughput_improvement_pct": 52.166292886897956
+    }
+  },
+  "artifact_hashes": {
+    "fresh_lifecycle_capture": "b86d7cc08b0b635f73c749e7505875588a34e896af54fc85d5e7fbcc25a33eab",
+    "fresh_environment_replay": "92a23f6f7dde9acd0b9a45d00ce418daf405a0222e14de280ab3b1c4c8ff9cea",
+    "fresh_zero_lr_capture": "c081c4f10dd2c0cfbf12db000fd3ab7881c29bf3727b3ab9d7c5a50822977056",
+    "fresh_performance_warmup": "ca32750ae148cbae67d3c913fc798439c269ad7e5217b2288e2b0f216da31b88",
+    "fresh_performance_repeat1": "745c2ed71ff051f9f316543de09b39aa8c4bdcddf56f405b7eececd9a2709506"
+  },
+  "resolved_preflight_notes": [
+    "The formal environment has no pytest; the repository's unittest runner was used without modifying site-packages.",
+    "An initial worker-thread preflight incorrectly made optional threadpoolctl mandatory; production was corrected to enforce environment and Torch limits without adding that dependency, then final lifecycle validation passed.",
+    "A root-level unittest discovery invocation found zero tests; the valid tests-root discovery command ran all 21 tests and passed."
+  ],
+  "repository_integrity": {
+    "tracked_production_files_modified": [
+      "ppo/buffer.py",
+      "ppo/policy.py",
+      "ppo/vec_env.py",
+      "train_ppo.py"
+    ],
+    "new_test_file": "tests/test_ppo_batched_replay.py",
+    "site_packages_modified": false,
+    "evaluator_modified": false,
+    "committed": false,
+    "pushed": false,
+    "staged": false,
+    "worker_or_zombie_processes_remaining": 0
+  }
+}

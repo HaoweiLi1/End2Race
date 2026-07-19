@@ -19,6 +19,7 @@ class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
     def reset(self) -> None:
         RolloutBuffer.reset(self)
         self.hidden_states_pi = np.zeros(self.hidden_state_shape, dtype=np.float32)
+        self.current_valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None
 
     def add(self, *args, lstm_states: RNNStates, **kwargs) -> None:
         self.hidden_states_pi[self.pos] = np.array(lstm_states.pi[0].cpu().numpy())
