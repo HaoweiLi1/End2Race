@@ -20,7 +20,7 @@ from ppo.algorithm import (
     End2RaceRecurrentPPO,
 )
 from ppo.collision_classification import resolve_collision_scenarios
-from ppo.policy import SPEED_PHYSICAL_STD, STEERING_LATENT_STD, End2RaceGRUPolicy
+from ppo.policy import CRITIC_VARIANTS, SPEED_PHYSICAL_STD, STEERING_LATENT_STD, End2RaceGRUPolicy
 from ppo.scenarios import expanded_scenarios, ordinary_scenarios
 from ppo.training_records import TrainingRecorder
 from ppo.vec_env import CentralScheduleSubprocVecEnv
@@ -44,6 +44,13 @@ def parse_arguments():
 
     # Model configuration
     parser.add_argument("--hidden_scale", type=int, default=4)
+    parser.add_argument(
+        "--critic",
+        type=str,
+        default="raw",
+        choices=list(CRITIC_VARIANTS),
+        help="Critic variant: raw single-frame MLP, detached actor-hidden MLP, independent BC-initialized recurrent critic, or privileged 12D physical-state MLP",
+    )
 
     # Environment configuration
     parser.add_argument("--map_name", type=str, default="Austin")
@@ -60,10 +67,10 @@ def parse_arguments():
 
     # Training configuration
     parser.add_argument("--actor_epochs", type=int, default=3)
-    parser.add_argument("--critic_epochs", type=int, default=8)
-    parser.add_argument("--gru_learning_rate", type=float, default=1.0e-6)
-    parser.add_argument("--head_learning_rate", type=float, default=1.0e-5)
-    parser.add_argument("--critic_learning_rate", type=float, default=3.0e-4)
+    parser.add_argument("--critic_epochs", type=int, default=10)
+    parser.add_argument("--gru_learning_rate", type=float, default=5.0e-6)
+    parser.add_argument("--head_learning_rate", type=float, default=5.0e-5)
+    parser.add_argument("--critic_learning_rate", type=float, default=5.0e-4)
 
     # PPO configuration
     parser.add_argument("--gamma", type=float, default=0.999)
@@ -138,6 +145,7 @@ def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2Rac
         policy_kwargs={
             "checkpoint_path": args.pretrained_model_path,
             "hidden_scale": args.hidden_scale,
+            "critic_variant": args.critic,
             "gru_learning_rate": args.gru_learning_rate,
             "head_learning_rate": args.head_learning_rate,
             "critic_learning_rate": args.critic_learning_rate,
@@ -155,7 +163,7 @@ def main() -> None:
 
     print(
         f"PPO training configuration: output_dir={Path(args.output_dir).expanduser().resolve()}, pretrained_model_path={Path(args.pretrained_model_path).expanduser().resolve()}, "
-        f"map={args.map_name}, n_envs={args.n_envs}, env_workers={args.env_workers}, n_steps={args.n_steps}, "
+        f"map={args.map_name}, critic={args.critic}, n_envs={args.n_envs}, env_workers={args.env_workers}, n_steps={args.n_steps}, "
         f"batch_size={args.batch_size}, num_updates={args.num_updates}, seed={args.seed}",
         flush=True,
     )
@@ -195,7 +203,7 @@ def main() -> None:
         },
     )
     print("[4/5] Creating vector environments", flush=True)
-    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.env_workers, START_METHOD, args.seed, args.map_name, collision_scenarios, ordinary_scenario_set)
+    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.env_workers, START_METHOD, args.seed, args.map_name, collision_scenarios, ordinary_scenario_set, privileged=args.critic == "privileged")
     try:
         print("[5/5] Building PPO model", flush=True)
         model = build_model(vector_env, args, device, recorder)

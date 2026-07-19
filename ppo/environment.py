@@ -13,6 +13,7 @@ import numpy as np
 import yaml
 
 from ppo.policy import END2RACE_LIDAR_SIZE, END2RACE_OBSERVATION_SIZE, NOOP_SPEED_BOUND, STEERING_BOUND, end2race_observation
+from ppo.privileged import PRIVILEGED_FEATURE_SIZE, PrivilegedStateExtractor
 from ppo.reward import PPOTransitionReward
 from ppo.scenarios import EpisodeResetSpec
 
@@ -96,15 +97,34 @@ class End2RaceGymnasiumEnv(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"]}
 
-    def __init__(self, f110_env: Any, reset_provider: Callable[[np.random.Generator], EpisodeResetSpec], map_name: str, ego_raceline: str) -> None:
+    def __init__(
+        self,
+        f110_env: Any,
+        reset_provider: Callable[[np.random.Generator], EpisodeResetSpec],
+        map_name: str,
+        ego_raceline: str,
+        privileged: bool = False,
+    ) -> None:
         super().__init__()
         self.f110_env = f110_env
         self.reset_provider = reset_provider
         self.opponent_controller = LatticePlannerOpponentController()
         self.transition_reward = PPOTransitionReward(map_name, ego_raceline)
+        if privileged:
+            core_params = getattr(f110_env, "unwrapped", f110_env).params
+            self.privileged_extractor = PrivilegedStateExtractor(
+                map_name,
+                ego_raceline,
+                self.transition_reward.projector,
+                float(core_params["length"]),
+                float(core_params["width"]),
+            )
+        else:
+            self.privileged_extractor = None
+        observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if privileged else 0)
         self.observation_space = spaces.Box(
-            low=np.full((END2RACE_OBSERVATION_SIZE,), -np.inf, dtype=np.float32),
-            high=np.full((END2RACE_OBSERVATION_SIZE,), np.inf, dtype=np.float32),
+            low=np.full((observation_size,), -np.inf, dtype=np.float32),
+            high=np.full((observation_size,), np.inf, dtype=np.float32),
             dtype=np.float32,
         )
         self.action_space = spaces.Box(
@@ -133,7 +153,11 @@ class End2RaceGymnasiumEnv(gym.Env):
         return float(np.asarray(raw_observation["linear_vels_x"])[EGO_INDEX])
 
     def _observation(self, raw_observation: dict[str, Any]) -> np.ndarray:
-        return end2race_observation(self._ego_lidar(raw_observation), self._previous_ego_speed)
+        observation = end2race_observation(self._ego_lidar(raw_observation), self._previous_ego_speed)
+        if self.privileged_extractor is None:
+            return observation
+        features = self.privileged_extractor.features(raw_observation, ego_index=EGO_INDEX, opponent_index=OPPONENT_INDEX)
+        return np.concatenate((observation, features))
 
     def reset(
         self,
@@ -269,7 +293,7 @@ def _external_reset_required(_rng: np.random.Generator) -> EpisodeResetSpec:
     raise RuntimeError("Subprocess resets must be supplied by the parent scheduler")
 
 
-def make_environment(seed: int, map_name: str) -> Callable[[], End2RaceGymnasiumEnv]:
+def make_environment(seed: int, map_name: str, privileged: bool = False) -> Callable[[], End2RaceGymnasiumEnv]:
 
     def factory() -> End2RaceGymnasiumEnv:
         import gym
@@ -284,6 +308,6 @@ def make_environment(seed: int, map_name: str) -> Callable[[], End2RaceGymnasium
             integrator=Integrator.RK4,
             seed=seed,
         )
-        return End2RaceGymnasiumEnv(core, _external_reset_required, map_name, EGO_RACELINE)
+        return End2RaceGymnasiumEnv(core, _external_reset_required, map_name, EGO_RACELINE, privileged=privileged)
 
     return factory

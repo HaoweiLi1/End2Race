@@ -1,7 +1,8 @@
-"""End2Race actor adapter, fixed exploration distribution, and C0 critic."""
+"""End2Race actor adapter, fixed exploration distribution, and selectable critics."""
 
 from __future__ import annotations
 
+import copy as copy_module
 from pathlib import Path
 from typing import Any, Callable
 
@@ -11,11 +12,13 @@ from gymnasium import spaces
 from torch import nn
 
 from model import End2Race
+from ppo.privileged import PRIVILEGED_FEATURE_SIZE
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution
 
 
+CRITIC_VARIANTS = ("raw", "hidden", "recurrent", "privileged")
 END2RACE_OBSERVATION_SIZE = 361
 END2RACE_LIDAR_SIZE = 360
 END2RACE_ACTION_SIZE = 2
@@ -105,15 +108,77 @@ class GRUWithLSTMStateInterface(nn.Module):
         return output.transpose(0, 1), (next_hidden, torch.zeros_like(next_hidden))
 
 
-class Critic(nn.Module):
-    """Single-frame C0 critic fixed by the PPO training plan."""
+class RawCritic(nn.Module):
+    """Single-frame critic over the raw 361D actor observation."""
 
     def __init__(self):
         super().__init__()
-        self.network = nn.Sequential(nn.Linear(END2RACE_OBSERVATION_SIZE, 64), nn.Tanh(), nn.Linear(64, 1))
+        self.network = nn.Sequential(nn.Linear(END2RACE_OBSERVATION_SIZE, 64), nn.SiLU(), nn.Linear(64, 1))
 
     def forward(self, observation: torch.Tensor) -> torch.Tensor:
         return self.network(observation)
+
+
+class ActorHiddenCritic(nn.Module):
+    """MLP critic over detached actor GRU hidden states frozen at rollout time."""
+
+    def __init__(self, hidden_size: int):
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.LayerNorm(hidden_size),
+            nn.Linear(hidden_size, 256),
+            nn.SiLU(),
+            nn.Linear(256, 128),
+            nn.SiLU(),
+            nn.Linear(128, 1),
+        )
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return self.network(features)
+
+
+class PrivilegedCritic(nn.Module):
+    """MLP critic over the 12D privileged pre-action physical state."""
+
+    def __init__(self):
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(PRIVILEGED_FEATURE_SIZE, 128),
+            nn.SiLU(),
+            nn.Linear(128, 128),
+            nn.SiLU(),
+            nn.Linear(128, 1),
+        )
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return self.network(features)
+
+
+class RecurrentCritic(nn.Module):
+    """Independent BC-initialized pressure/speed/GRU front-end with a value head."""
+
+    def __init__(self, actor: End2Race):
+        super().__init__()
+        self.k = nn.Parameter(actor.k.detach().clone())
+        self.speed_mlp = copy_module.deepcopy(actor.speed_mlp)
+        self.gru = copy_module.deepcopy(actor.gru)
+        self.value_head = nn.Sequential(
+            nn.Linear(self.gru.hidden_size, 256),
+            nn.SiLU(),
+            nn.Linear(256, 128),
+            nn.SiLU(),
+            nn.Linear(128, 1),
+        )
+        for parameter in self.parameters():
+            parameter.requires_grad_(True)
+
+    def step(self, lidar: torch.Tensor, previous_speed: torch.Tensor, hidden: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run BC-style preprocessing plus one GRU segment and return values with the next hidden."""
+
+        pressure = (-1.0 / (1.0 + torch.exp(-self.k * lidar)) + 1.0) * 2.0
+        speed_embedding = self.speed_mlp(previous_speed)
+        gru_output, next_hidden = self.gru(torch.cat((pressure, speed_embedding), dim=2), hidden)
+        return self.value_head(gru_output[:, -1, :]), next_hidden
 
 
 class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
@@ -126,14 +191,23 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lr_schedule: Callable[[float], float],
         checkpoint_path: str | Path,
         hidden_scale: int = 4,
-        gru_learning_rate: float = 1.0e-6,
-        head_learning_rate: float = 1.0e-5,
-        critic_learning_rate: float = 3.0e-4,
+        critic_variant: str = "raw",
+        gru_learning_rate: float = 5.0e-6,
+        head_learning_rate: float = 5.0e-5,
+        critic_learning_rate: float = 5.0e-4,
         **kwargs: Any,
     ):
         kwargs.pop("use_sde", None)
+        if critic_variant not in CRITIC_VARIANTS:
+            raise ValueError(f"critic_variant must be one of {CRITIC_VARIANTS}, got {critic_variant!r}")
+        expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant == "privileged" else 0)
+        if tuple(observation_space.shape) != (expected_observation_size,):
+            raise ValueError(
+                f"Critic variant {critic_variant!r} requires a {expected_observation_size}D observation space, got {observation_space.shape}"
+            )
         super().__init__(observation_space, action_space, lr_schedule, net_arch=[], ortho_init=False, use_sde=False, log_std_init=0.0, lstm_hidden_size=1, n_lstm_layers=1, shared_lstm=False, enable_critic_lstm=False, **kwargs)
 
+        self.critic_variant = critic_variant
         self.end2race_actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
         checkpoint = Path(checkpoint_path).expanduser().resolve()
         self.end2race_actor.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True), strict=True)
@@ -144,7 +218,14 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.lstm_hidden_state_shape = (self.end2race_actor.gru.num_layers, 1, self.end2race_actor.gru.hidden_size)
         self.lstm_critic = None
         self.critic = None
-        self.value_net = Critic()
+        if critic_variant == "raw":
+            self.value_net = RawCritic()
+        elif critic_variant == "hidden":
+            self.value_net = ActorHiddenCritic(self.end2race_actor.gru.hidden_size)
+        elif critic_variant == "recurrent":
+            self.value_net = RecurrentCritic(self.end2race_actor)
+        else:
+            self.value_net = PrivilegedCritic()
         self.action_net = nn.Identity()
         self.action_dist = EvaluatorCompatibleJointDistribution()
 
@@ -167,9 +248,20 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.critic_optimizer = self.optimizer_class(self.critic_parameters, lr=critic_learning_rate, **self.optimizer_kwargs)
         self.optimizer = self.actor_optimizer
 
+    @property
+    def critic_feature_size(self) -> int:
+        """Per-transition stored critic feature width, zero when unused."""
+
+        return self.end2race_actor.gru.hidden_size if self.critic_variant == "hidden" else 0
+
+    @property
+    def critic_is_recurrent(self) -> bool:
+        return self.critic_variant == "recurrent"
+
     @staticmethod
     def _actor_observation(obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
-        return obs["actor"] if isinstance(obs, dict) else obs
+        full = obs["actor"] if isinstance(obs, dict) else obs
+        return full[..., :END2RACE_OBSERVATION_SIZE]
 
     def _actor_forward(
         self,
@@ -261,11 +353,46 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             raise RuntimeError("PPO actor distribution tensors must remain float32")
         return self.action_dist.proba_distribution(mean_actions, self.log_std)
 
-    def _critic_values(self, obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
-        actor_obs = self._actor_observation(obs).float()
-        if actor_obs.ndim == 1:
-            actor_obs = actor_obs.unsqueeze(0)
-        return self.value_net(actor_obs)
+    def _critic_observation(self, obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
+        """Slice flat observation rows into the feed-forward critic input."""
+
+        full = (obs["actor"] if isinstance(obs, dict) else obs).float()
+        if full.ndim == 1:
+            full = full.unsqueeze(0)
+        if self.critic_variant == "privileged":
+            return full[..., END2RACE_OBSERVATION_SIZE:]
+        return full[..., :END2RACE_OBSERVATION_SIZE]
+
+    def _critic_forward_collection(
+        self,
+        obs: torch.Tensor | dict[str, torch.Tensor],
+        states: tuple[torch.Tensor, torch.Tensor],
+        episode_starts: torch.Tensor,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        """Single-timestep recurrent critic step preserving batch-size-one execution."""
+
+        hidden, _dummy_cell = states
+        critic_obs = self._actor_observation(obs).float()
+        if critic_obs.ndim == 1:
+            critic_obs = critic_obs.unsqueeze(0)
+        n_seq = hidden.shape[1]
+        if critic_obs.shape[0] != n_seq:
+            raise RuntimeError("Recurrent critic collection requires one timestep per sequence slot")
+        hidden = hidden * (1.0 - episode_starts.float()).view(1, n_seq, 1)
+        lidar = critic_obs[:, :END2RACE_LIDAR_SIZE].unsqueeze(1)
+        previous_speed = critic_obs[:, END2RACE_LIDAR_SIZE:].unsqueeze(1)
+        slot_values: list[torch.Tensor] = []
+        slot_hidden: list[torch.Tensor] = []
+        for sequence_index in range(n_seq):
+            values, next_hidden = self.value_net.step(
+                lidar[sequence_index : sequence_index + 1],
+                previous_speed[sequence_index : sequence_index + 1],
+                hidden[:, sequence_index : sequence_index + 1],
+            )
+            slot_values.append(values)
+            slot_hidden.append(next_hidden)
+        next_hidden = torch.cat(slot_hidden, dim=1)
+        return torch.cat(slot_values, dim=0), (next_hidden, torch.zeros_like(next_hidden))
 
     @staticmethod
     def _zero_states(states: tuple[torch.Tensor, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -285,7 +412,22 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         mean_actions, actor_states = self._actor_forward(obs, lstm_states.pi, episode_starts)
         distribution = self._distribution(mean_actions)
         actions = distribution.get_actions(deterministic=deterministic)
-        return actions, self._critic_values(obs), distribution.log_prob(actions), RNNStates(actor_states, self._zero_states(lstm_states.vf))
+        log_prob = distribution.log_prob(actions)
+        if self.critic_variant == "hidden":
+            if mean_actions.shape[0] != actor_states[0].shape[1]:
+                raise RuntimeError("Actor-hidden critic collection requires one timestep per sequence slot")
+            features = actor_states[0].detach()
+            values = self.value_net(features[0])
+            rollout_buffer = getattr(self, "_actor_hidden_rollout_buffer", None)
+            if rollout_buffer is not None:
+                rollout_buffer.stage_critic_features(features[0].cpu().numpy())
+            vf_states = (features.clone(), torch.zeros_like(features))
+        elif self.critic_variant == "recurrent":
+            values, vf_states = self._critic_forward_collection(obs, lstm_states.vf, episode_starts)
+        else:
+            values = self.value_net(self._critic_observation(obs))
+            vf_states = self._zero_states(lstm_states.vf)
+        return actions, values, log_prob, RNNStates(actor_states, vf_states)
 
     def get_distribution(
         self,
@@ -302,8 +444,16 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lstm_states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
     ) -> torch.Tensor:
+        """Value for bootstrap targets, continuing the correct hidden state when recurrent."""
+
+        if self.critic_variant == "hidden":
+            _mean_actions, actor_states = self._actor_forward(obs, lstm_states, episode_starts)
+            return self.value_net(actor_states[0][0].detach())
+        if self.critic_variant == "recurrent":
+            values, _critic_states = self._critic_forward_collection(obs, lstm_states, episode_starts)
+            return values
         del lstm_states, episode_starts
-        return self._critic_values(obs)
+        return self.value_net(self._critic_observation(obs))
 
     def evaluate_actor_actions(
         self,
@@ -318,18 +468,71 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         distribution = self._distribution(mean_actions)
         return distribution.log_prob(actions), distribution.entropy()
 
-    def evaluate_values(self, obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
-        return self._critic_values(obs)
+    def evaluate_values(self, critic_inputs: torch.Tensor) -> torch.Tensor:
+        """Feed-forward critic values over observation rows or stored feature rows."""
 
-    def evaluate_actions(
+        if self.critic_variant == "recurrent":
+            raise RuntimeError("Recurrent critic values require evaluate_values_recurrent")
+        if self.critic_variant == "hidden":
+            if critic_inputs.shape[-1] != self.end2race_actor.gru.hidden_size:
+                raise RuntimeError("Actor-hidden critic expects stored rollout hidden features")
+            return self.value_net(critic_inputs.float())
+        return self.value_net(self._critic_observation(critic_inputs))
+
+    def evaluate_values_recurrent(
         self,
         obs: torch.Tensor | dict[str, torch.Tensor],
-        actions: torch.Tensor,
-        lstm_states: RNNStates,
+        states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
-        log_prob, entropy = self.evaluate_actor_actions(obs, actions, lstm_states, episode_starts)
-        return self.evaluate_values(obs), log_prob, entropy
+        valid_by_timestep: tuple[tuple[bool, ...], ...] | None,
+    ) -> torch.Tensor:
+        """Replay the recurrent critic over padded sequences, one FP32 call per timestep."""
+
+        if self.critic_variant != "recurrent":
+            raise RuntimeError("evaluate_values_recurrent requires the recurrent critic variant")
+        hidden, dummy_cell = states
+        critic_obs = self._actor_observation(obs)
+        if critic_obs.ndim == 1:
+            critic_obs = critic_obs.unsqueeze(0)
+        if critic_obs.dtype != torch.float32 or hidden.dtype != torch.float32 or dummy_cell.dtype != torch.float32 or episode_starts.dtype != torch.float32:
+            raise RuntimeError("Recurrent critic replay tensors must remain float32")
+        if hidden.shape != dummy_cell.shape or hidden.ndim != 3:
+            raise RuntimeError("Critic replay hidden and dummy cell shapes must match and be rank 3")
+        if critic_obs.device != hidden.device or episode_starts.device != critic_obs.device:
+            raise RuntimeError("Critic replay tensors must share one device")
+        if critic_obs.is_cuda and (torch.backends.cudnn.allow_tf32 or torch.backends.cuda.matmul.allow_tf32 or torch.get_float32_matmul_precision() != "highest" or torch.backends.cudnn.benchmark):
+            raise RuntimeError("CUDA critic replay requires TF32 off, highest FP32 precision, and cuDNN benchmark off")
+
+        n_seq = hidden.shape[1]
+        if n_seq <= 0 or critic_obs.ndim != 2 or critic_obs.shape[1] != END2RACE_OBSERVATION_SIZE or critic_obs.shape[0] % n_seq != 0:
+            raise RuntimeError(f"Invalid critic replay layout: observations={tuple(critic_obs.shape)}, sequences={n_seq}")
+        max_length = critic_obs.shape[0] // n_seq
+        if episode_starts.numel() != critic_obs.shape[0]:
+            raise RuntimeError("Critic replay episode starts must match observation rows")
+        if valid_by_timestep is not None and (len(valid_by_timestep) != max_length or any(len(row) != n_seq for row in valid_by_timestep)):
+            raise RuntimeError("Critic replay padding mask does not match the padded batch")
+
+        obs_sequence = critic_obs.reshape(n_seq, max_length, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
+        start_sequence = episode_starts.reshape(n_seq, max_length).swapaxes(0, 1)
+        values: list[torch.Tensor] = []
+        for timestep, (step_obs, episode_start) in enumerate(zip(obs_sequence, start_sequence)):
+            hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
+            active = list(range(n_seq)) if valid_by_timestep is None else [index for index, valid in enumerate(valid_by_timestep[timestep]) if valid]
+            next_by_slot = [hidden[:, index : index + 1] for index in range(n_seq)]
+            values_by_slot = [torch.zeros((1, 1), dtype=critic_obs.dtype, device=critic_obs.device) for _ in range(n_seq)]
+            if active:
+                indices = torch.as_tensor(active, dtype=torch.long, device=critic_obs.device)
+                step_values, next_hidden = self.value_net.step(
+                    step_obs[indices, :END2RACE_LIDAR_SIZE].unsqueeze(1),
+                    step_obs[indices, END2RACE_LIDAR_SIZE:].unsqueeze(1),
+                    hidden[:, indices],
+                )
+                for offset, slot in enumerate(active):
+                    next_by_slot[slot] = next_hidden[:, offset : offset + 1]
+                    values_by_slot[slot] = step_values[offset : offset + 1]
+            hidden = torch.cat(next_by_slot, dim=1)
+            values.append(torch.cat(values_by_slot, dim=0))
+        return torch.stack(values).transpose(0, 1).reshape(-1, 1)
 
     def actor_checkpoint_state_dict(self) -> dict[str, torch.Tensor]:
         return self.end2race_actor.state_dict()

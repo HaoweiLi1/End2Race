@@ -109,7 +109,7 @@ def _worker(
 
 class CentralScheduleSubprocVecEnv(VecEnv):
 
-    def __init__(self, n_envs: int, worker_count: int, start_method: str, seed: int, map_name: str, collision_scenarios: Sequence[ScenarioSpec], ordinary_scenarios: Sequence[ScenarioSpec]) -> None:
+    def __init__(self, n_envs: int, worker_count: int, start_method: str, seed: int, map_name: str, collision_scenarios: Sequence[ScenarioSpec], ordinary_scenarios: Sequence[ScenarioSpec], privileged: bool = False) -> None:
         if worker_count <= 0 or n_envs < worker_count or n_envs % 2 != 0:
             raise ValueError("n_envs must be even and at least worker_count, and worker_count must be positive")
         if torch.cuda.is_initialized():
@@ -123,7 +123,7 @@ class CentralScheduleSubprocVecEnv(VecEnv):
             int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
             for rank in range(n_envs)
         ]
-        env_fns = [make_environment(logical_seeds[rank], map_name) for rank in range(n_envs)]
+        env_fns = [make_environment(logical_seeds[rank], map_name, privileged) for rank in range(n_envs)]
         self.worker_env_indices = [[] for _ in range(self.worker_count)]
         for rank in range(n_envs):
             self.worker_env_indices[rank % self.worker_count].append(rank)
