@@ -1,4 +1,4 @@
-"""Recurrent PPO policy for the unchanged End2Race GRU actor."""
+"""End2Race actor adapter, fixed exploration distribution, and C0 critic."""
 
 from __future__ import annotations
 
@@ -10,49 +10,25 @@ import torch
 from gymnasium import spaces
 from torch import nn
 
-from model import End2Race
-from ppo.config import (
-    BC_CHECKPOINT,
-    CRITIC_LR,
-    GRU_LR,
-    HEAD_LR,
-    SPEED_PHYSICAL_STD,
-    STEERING_LATENT_STD,
-)
+from model import *
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
-from sb3_contrib.common.recurrent.buffers import RecurrentDictRolloutBuffer, RecurrentRolloutBuffer
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
-from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.distributions import Distribution
-from stable_baselines3.common.torch_layers import CombinedExtractor
-from torch.optim import Optimizer
-
-from ppo.buffer import ActorHiddenRolloutBuffer
 
 
 END2RACE_OBSERVATION_SIZE = 361
 END2RACE_LIDAR_SIZE = 360
 END2RACE_ACTION_SIZE = 2
-EVALUATOR_STEER_BOUND = 0.52
+STEERING_BOUND = 0.52
 NOOP_SPEED_BOUND = float(np.finfo(np.float32).max)
-CRITIC_PROFILES = (
-    "C0_RAW_SINGLE_FRAME",
-    "C1_FROZEN_BC_FEATURE",
-    "C2_DETACHED_ACTOR_HIDDEN",
-    "C3_PRIVILEGED_PHYSICAL",
-)
+STEERING_LATENT_STD = 0.03
+SPEED_PHYSICAL_STD = 0.15
 
 
 class EvaluatorCompatibleJointDistribution(Distribution):
-    """Physical ``[steering, speed]`` distribution matching deployment.
+    """Squashed latent steering Gaussian plus physical speed Gaussian."""
 
-    Steering is a scaled tanh transform of a Gaussian latent.  Speed remains a
-    Gaussian in physical m/s.  The supplied means are the unchanged raw
-    End2Race outputs; the deterministic steering mode matches evaluator
-    clipping up to ``steer_bound * inverse_tanh_epsilon``.
-    """
-
-    def __init__(self, steer_bound: float = EVALUATOR_STEER_BOUND, inverse_tanh_epsilon: float = 1e-6):
+    def __init__(self, steer_bound: float = STEERING_BOUND, inverse_tanh_epsilon: float = 1e-6):
         super().__init__()
         self.steer_bound = float(steer_bound)
         self.inverse_tanh_epsilon = float(inverse_tanh_epsilon)
@@ -69,167 +45,52 @@ class EvaluatorCompatibleJointDistribution(Distribution):
     def _atanh(value: torch.Tensor) -> torch.Tensor:
         return 0.5 * (torch.log1p(value) - torch.log1p(-value))
 
-    def proba_distribution(
-        self,
-        raw_mean_actions: torch.Tensor,
-        log_std: torch.Tensor,
-    ) -> "EvaluatorCompatibleJointDistribution":
-        normalized_mode = (raw_mean_actions[:, 0] / self.steer_bound).clamp(
-            -1.0 + self.inverse_tanh_epsilon,
-            1.0 - self.inverse_tanh_epsilon,
-        )
-        latent_steer_mean = self._atanh(normalized_mode)
-        std = log_std.exp()
+    def proba_distribution(self, raw_mean_actions: torch.Tensor, log_std: torch.Tensor) -> "EvaluatorCompatibleJointDistribution":
+        normalized_mode = (raw_mean_actions[:, 0] / self.steer_bound).clamp(-1.0 + self.inverse_tanh_epsilon, 1.0 - self.inverse_tanh_epsilon)
         self.raw_mean_actions = raw_mean_actions
-        self.latent_steer_mean = latent_steer_mean
-        self.steer_distribution = torch.distributions.Normal(latent_steer_mean, std[0])
+        self.latent_steer_mean = self._atanh(normalized_mode)
+        std = log_std.exp()
+        self.steer_distribution = torch.distributions.Normal(self.latent_steer_mean, std[0])
         self.speed_distribution = torch.distributions.Normal(raw_mean_actions[:, 1], std[1])
         self.distribution = (self.steer_distribution, self.speed_distribution)
         return self
 
-    def _require_parameters(
-        self,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.distributions.Normal, torch.distributions.Normal]:
-        return (
-            self.raw_mean_actions,
-            self.latent_steer_mean,
-            self.steer_distribution,
-            self.speed_distribution,
-        )
+    def _parameters(self) -> tuple[torch.Tensor, torch.Tensor, torch.distributions.Normal, torch.distributions.Normal]:
+        if self.raw_mean_actions is None or self.latent_steer_mean is None or self.steer_distribution is None or self.speed_distribution is None:
+            raise RuntimeError("Action distribution parameters have not been set")
+        return self.raw_mean_actions, self.latent_steer_mean, self.steer_distribution, self.speed_distribution
 
     def log_prob(self, actions: torch.Tensor) -> torch.Tensor:
-        _raw_means, _latent_mean, steer_distribution, speed_distribution = self._require_parameters()
-        # The larger configured epsilon is only for constructing a finite
-        # deterministic latent mean at evaluator clipping boundaries.  Replay
-        # inversion must retain every representable interior physical action.
-        action_epsilon = torch.finfo(actions.dtype).eps
-        normalized_steer = (actions[:, 0] / self.steer_bound).clamp(
-            -1.0 + action_epsilon,
-            1.0 - action_epsilon,
-        )
+        _raw_means, _latent_mean, steer_distribution, speed_distribution = self._parameters()
+        epsilon = torch.finfo(actions.dtype).eps
+        normalized_steer = (actions[:, 0] / self.steer_bound).clamp(-1.0 + epsilon, 1.0 - epsilon)
         latent_steer = self._atanh(normalized_steer)
-        # y = steer_bound * tanh(z), so log|dy/dz| is the sum below.
-        log_abs_det_jacobian = torch.log(
-            torch.as_tensor(self.steer_bound, dtype=actions.dtype, device=actions.device)
-        ) + torch.log1p(-normalized_steer.square())
-        steer_log_prob = steer_distribution.log_prob(latent_steer) - log_abs_det_jacobian
-        speed_log_prob = speed_distribution.log_prob(actions[:, 1])
-        return steer_log_prob + speed_log_prob
+        scale = torch.as_tensor(self.steer_bound, dtype=actions.dtype, device=actions.device)
+        log_abs_det_jacobian = torch.log(scale) + torch.log1p(-normalized_steer.square())
+        return steer_distribution.log_prob(latent_steer) - log_abs_det_jacobian + speed_distribution.log_prob(actions[:, 1])
 
     def entropy(self) -> None:
         return None
 
     def sample(self) -> torch.Tensor:
-        _raw_means, _latent_mean, steer_distribution, speed_distribution = self._require_parameters()
+        _raw_means, _latent_mean, steer_distribution, speed_distribution = self._parameters()
         steering = self.steer_bound * torch.tanh(steer_distribution.rsample())
-        speed = speed_distribution.rsample()
-        return torch.stack((steering, speed), dim=1)
+        return torch.stack((steering, speed_distribution.rsample()), dim=1)
 
     def mode(self) -> torch.Tensor:
-        raw_means, latent_mean, _steer_distribution, _speed_distribution = self._require_parameters()
-        steering = self.steer_bound * torch.tanh(latent_mean)
-        return torch.stack((steering, raw_means[:, 1]), dim=1)
+        raw_means, latent_mean, _steer_distribution, _speed_distribution = self._parameters()
+        return torch.stack((self.steer_bound * torch.tanh(latent_mean), raw_means[:, 1]), dim=1)
 
-    def actions_from_params(
-        self,
-        raw_mean_actions: torch.Tensor,
-        log_std: torch.Tensor,
-        deterministic: bool = False,
-    ) -> torch.Tensor:
+    def actions_from_params(self, raw_mean_actions: torch.Tensor, log_std: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
         return self.proba_distribution(raw_mean_actions, log_std).get_actions(deterministic=deterministic)
 
-    def log_prob_from_params(
-        self,
-        raw_mean_actions: torch.Tensor,
-        log_std: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        actions = self.actions_from_params(raw_mean_actions, log_std)
-        return actions, self.log_prob(actions)
-
-
-class EvaluatorClippedPhysicalGaussianDistribution(Distribution):
-    """Use a regular physical steering Gaussian and let SB3 clip for the env.
-
-    The End2Race actor already emits steering in physical radians and the
-    evaluator clips that raw output to ``[-steer_bound, steer_bound]``.  SB3
-    stores the unclipped Gaussian sample in its rollout buffer and clips only
-    the action sent to the environment, so replay likelihood remains exact.
-
-    The physical steering standard deviation is ``steer_bound * latent_std``.
-    This preserves the squashed distribution's local exploration scale around
-    zero while removing the singular ``atanh(raw_mean / steer_bound)`` map at
-    the evaluator boundary.
-    """
-
-    def __init__(self, steer_bound: float = EVALUATOR_STEER_BOUND):
-        super().__init__()
-        self.steer_bound = float(steer_bound)
-        self.raw_mean_actions: torch.Tensor | None = None
-        self.steer_distribution: torch.distributions.Normal | None = None
-        self.speed_distribution: torch.distributions.Normal | None = None
-
-    def proba_distribution_net(self, *args: Any, **kwargs: Any) -> nn.Module:
-        del args, kwargs
-        return nn.Identity()
-
-    def proba_distribution(
-        self,
-        raw_mean_actions: torch.Tensor,
-        log_std: torch.Tensor,
-    ) -> "EvaluatorClippedPhysicalGaussianDistribution":
-        std = log_std.exp()
-        self.raw_mean_actions = raw_mean_actions
-        self.steer_distribution = torch.distributions.Normal(
-            raw_mean_actions[:, 0],
-            std[0] * self.steer_bound,
-        )
-        self.speed_distribution = torch.distributions.Normal(raw_mean_actions[:, 1], std[1])
-        self.distribution = (self.steer_distribution, self.speed_distribution)
-        return self
-
-    def _require_parameters(
-        self,
-    ) -> tuple[torch.Tensor, torch.distributions.Normal, torch.distributions.Normal]:
-        return self.raw_mean_actions, self.steer_distribution, self.speed_distribution
-
-    def log_prob(self, actions: torch.Tensor) -> torch.Tensor:
-        _raw_means, steer_distribution, speed_distribution = self._require_parameters()
-        return steer_distribution.log_prob(actions[:, 0]) + speed_distribution.log_prob(actions[:, 1])
-
-    def entropy(self) -> None:
-        return None
-
-    def sample(self) -> torch.Tensor:
-        _raw_means, steer_distribution, speed_distribution = self._require_parameters()
-        return torch.stack((steer_distribution.rsample(), speed_distribution.rsample()), dim=1)
-
-    def mode(self) -> torch.Tensor:
-        raw_means, _steer_distribution, _speed_distribution = self._require_parameters()
-        return raw_means
-
-    def actions_from_params(
-        self,
-        raw_mean_actions: torch.Tensor,
-        log_std: torch.Tensor,
-        deterministic: bool = False,
-    ) -> torch.Tensor:
-        return self.proba_distribution(raw_mean_actions, log_std).get_actions(deterministic=deterministic)
-
-    def log_prob_from_params(
-        self,
-        raw_mean_actions: torch.Tensor,
-        log_std: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def log_prob_from_params(self, raw_mean_actions: torch.Tensor, log_std: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         actions = self.actions_from_params(raw_mean_actions, log_std)
         return actions, self.log_prob(actions)
 
 
 class GRUWithLSTMStateInterface(nn.Module):
-    """Expose a batch-first GRU through SB3's time-major ``(h, c)`` API.
-
-    ``h`` is the only real recurrent state. ``c`` is shape-compatible transport
-    data and is ignored on input and returned as zeros on output.
-    """
+    """Expose the actor GRU through SB3's recurrent ``(h, c)`` interface."""
 
     def __init__(self, gru: nn.GRU):
         super().__init__()
@@ -238,165 +99,73 @@ class GRUWithLSTMStateInterface(nn.Module):
         self.hidden_size = gru.hidden_size
         self.num_layers = gru.num_layers
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        states: tuple[torch.Tensor, torch.Tensor],
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
-        """Run time-major ``x`` like ``nn.LSTM`` while ignoring dummy ``c``."""
-
+    def forward(self, x: torch.Tensor, states: tuple[torch.Tensor, torch.Tensor]) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         hidden, _cell = states
-        batch_first_output, next_hidden = self.gru(x.transpose(0, 1), hidden)
-        time_major_output = batch_first_output.transpose(0, 1)
-        return time_major_output, (next_hidden, torch.zeros_like(next_hidden))
+        output, next_hidden = self.gru(x.transpose(0, 1), hidden)
+        return output.transpose(0, 1), (next_hidden, torch.zeros_like(next_hidden))
+
+
+class Critic(nn.Module):
+    """Single-frame C0 critic fixed by the PPO training plan."""
+
+    def __init__(self):
+        super().__init__()
+        self.network = nn.Sequential(nn.Linear(END2RACE_OBSERVATION_SIZE, 64), nn.Tanh(), nn.Linear(64, 1))
+
+    def forward(self, observation: torch.Tensor) -> torch.Tensor:
+        return self.network(observation)
 
 
 class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
-    """Use the original End2Race GRU actor with stock SB3 recurrent PPO.
-
-    Observation layout is ``[lidar_0, ..., lidar_359, previous_ego_speed]``.
-    The Gaussian mean is exactly the two-dimensional output of ``End2Race``.
-    """
+    """Use the original End2Race actor unchanged inside recurrent PPO."""
 
     def __init__(
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
         lr_schedule: Callable[[float], float],
-        checkpoint_path: str | Path = BC_CHECKPOINT,
+        checkpoint_path: str | Path,
         hidden_scale: int = 4,
-        critic_hidden_size: int = 64,
-        steer_bound: float = EVALUATOR_STEER_BOUND,
-        inverse_tanh_epsilon: float = 1e-6,
-        critic_profile: str = "C0_RAW_SINGLE_FRAME",
-        gru_lr: float = GRU_LR,
-        head_lr: float = HEAD_LR,
-        steering_distribution: str = "squashed_latent",
-        steering_latent_std: float = STEERING_LATENT_STD,
-        speed_physical_std: float = SPEED_PHYSICAL_STD,
+        gru_learning_rate: float = 1.0e-6,
+        head_learning_rate: float = 1.0e-5,
+        critic_learning_rate: float = 3.0e-4,
         **kwargs: Any,
-    ) -> None:
-        self.critic_profile = str(critic_profile)
-        if self.critic_profile not in CRITIC_PROFILES:
-            raise ValueError(f"Unknown critic profile: {self.critic_profile}")
-        if self.critic_profile == "C3_PRIVILEGED_PHYSICAL":
-            kwargs["features_extractor_class"] = CombinedExtractor
-        # SB3 always injects use_sde; End2Race uses its own transformed joint
-        # distribution, so drop the injected copy before the parent constructor.
+    ):
         kwargs.pop("use_sde", None)
-
-        # The parent's tiny placeholder recurrent module is replaced below.  A
-        # size of one avoids allocating an unused 1680-wide LSTM during setup.
-        super().__init__(
-            observation_space,
-            action_space,
-            lr_schedule,
-            net_arch=[],
-            ortho_init=False,
-            use_sde=False,
-            log_std_init=0.0,
-            lstm_hidden_size=1,
-            n_lstm_layers=1,
-            shared_lstm=False,
-            enable_critic_lstm=False,
-            **kwargs,
-        )
+        super().__init__(observation_space, action_space, lr_schedule, net_arch=[], ortho_init=False, use_sde=False, log_std_init=0.0, lstm_hidden_size=1, n_lstm_layers=1, shared_lstm=False, enable_critic_lstm=False, **kwargs)
 
         self.end2race_actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
         checkpoint = Path(checkpoint_path).expanduser().resolve()
-        state_dict = torch.load(checkpoint, map_location="cpu", weights_only=True)
-        self.end2race_actor.load_state_dict(state_dict, strict=True)
-        self.bc_checkpoint_path = str(checkpoint)
+        self.end2race_actor.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True), strict=True)
+        self.pretrained_model_path = str(checkpoint)
 
-        # RecurrentPPO reads num_layers/hidden_size from policy.lstm_actor to
-        # size its stock recurrent rollout buffer.
         self.lstm_actor = GRUWithLSTMStateInterface(self.end2race_actor.gru)
         self.lstm_output_dim = self.end2race_actor.gru.hidden_size
-        self.lstm_hidden_state_shape = (
-            self.end2race_actor.gru.num_layers,
-            1,
-            self.end2race_actor.gru.hidden_size,
-        )
-
-        # The critic is deliberately independent and feed-forward.  Its RNNStates
-        # entries remain zero transport tensors and never affect actor output.
+        self.lstm_hidden_state_shape = (self.end2race_actor.gru.num_layers, 1, self.end2race_actor.gru.hidden_size)
         self.lstm_critic = None
         self.critic = None
-        if self.critic_profile == "C0_RAW_SINGLE_FRAME":
-            self.value_net = nn.Sequential(
-                nn.Linear(END2RACE_OBSERVATION_SIZE, critic_hidden_size),
-                nn.Tanh(),
-                nn.Linear(critic_hidden_size, 1),
-            )
-        elif self.critic_profile == "C1_FROZEN_BC_FEATURE":
-            self.value_net = nn.Sequential(
-                nn.Linear(420, 128),
-                nn.SiLU(),
-                nn.Linear(128, 128),
-                nn.SiLU(),
-                nn.Linear(128, 1),
-            )
-        elif self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN":
-            self.value_net = nn.Sequential(
-                nn.LayerNorm(self.lstm_output_dim),
-                nn.Linear(self.lstm_output_dim, 256),
-                nn.SiLU(),
-                nn.Linear(256, 128),
-                nn.SiLU(),
-                nn.Linear(128, 1),
-            )
-        else:
-            self.value_net = nn.Sequential(
-                nn.Linear(12, 128),
-                nn.SiLU(),
-                nn.Linear(128, 128),
-                nn.SiLU(),
-                nn.Linear(128, 1),
-            )
-
-        self.log_std.data.copy_(
-            torch.tensor(
-                [np.log(steering_latent_std), np.log(speed_physical_std)],
-                dtype=self.log_std.dtype,
-                device=self.log_std.device,
-            )
-        )
-        self.log_std.requires_grad_(False)
-        self.steering_distribution = str(steering_distribution)
-        if self.steering_distribution == "squashed_latent":
-            self.action_dist = EvaluatorCompatibleJointDistribution(
-                steer_bound=steer_bound,
-                inverse_tanh_epsilon=inverse_tanh_epsilon,
-            )
-        elif self.steering_distribution == "physical_gaussian":
-            self.action_dist = EvaluatorClippedPhysicalGaussianDistribution(steer_bound=steer_bound)
-        else:
-            raise ValueError(f"Unknown steering distribution: {self.steering_distribution}")
-        # The parent head is not used by any custom actor path.  Replacing it
-        # with a parameter-free module prevents dead parameters in the optimizer.
+        self.value_net = Critic()
         self.action_net = nn.Identity()
+        self.action_dist = EvaluatorCompatibleJointDistribution()
+
+        self.log_std.data.copy_(torch.tensor([np.log(STEERING_LATENT_STD), np.log(SPEED_PHYSICAL_STD)], dtype=self.log_std.dtype, device=self.log_std.device))
+        self.log_std.requires_grad_(False)
         for parameter in self.end2race_actor.parameters():
             parameter.requires_grad_(False)
         for parameter in self.end2race_actor.gru.parameters():
             parameter.requires_grad_(True)
         for parameter in self.end2race_actor.output_layer.parameters():
             parameter.requires_grad_(True)
-        for parameter in self.value_net.parameters():
-            parameter.requires_grad_(True)
 
-        gru_parameters = list(self.end2race_actor.gru.parameters())
-        head_parameters = list(self.end2race_actor.output_layer.parameters())
-        critic_parameters = list(self.value_net.parameters())
-        groups = [
-            {"params": gru_parameters, "lr": gru_lr, "name": "gru", "base_lr": gru_lr},
-            {"params": head_parameters, "lr": head_lr, "name": "head", "base_lr": head_lr},
-            {"params": critic_parameters, "lr": CRITIC_LR, "name": "critic", "base_lr": CRITIC_LR},
+        self.actor_parameters = tuple(self.end2race_actor.gru.parameters()) + tuple(self.end2race_actor.output_layer.parameters())
+        self.critic_parameters = tuple(self.value_net.parameters())
+        actor_groups = [
+            {"params": self.end2race_actor.gru.parameters(), "lr": gru_learning_rate},
+            {"params": self.end2race_actor.output_layer.parameters(), "lr": head_learning_rate},
         ]
-        self.optimizer = self.optimizer_class(groups, lr=lr_schedule(1), **self.optimizer_kwargs)
-
-    @property
-    def actor_hidden_size(self) -> int:
-        return self.end2race_actor.gru.hidden_size
+        self.actor_optimizer = self.optimizer_class(actor_groups, lr=gru_learning_rate, **self.optimizer_kwargs)
+        self.critic_optimizer = self.optimizer_class(self.critic_parameters, lr=critic_learning_rate, **self.optimizer_kwargs)
+        self.optimizer = self.actor_optimizer
 
     @staticmethod
     def _actor_observation(obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
@@ -407,227 +176,104 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         obs: torch.Tensor | dict[str, torch.Tensor],
         states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
-        """Return actor means, final state, and each timestep's actor hidden.
-
-        Collection path only.  Every real transition runs through the exact
-        batch-size-one GRU kernel so collected actions, log-probs, and stored
-        hidden states keep the deployment-identical numerics.
-        """
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        """Collection path preserving batch-size-one actor execution."""
 
         hidden, _dummy_cell = states
-        obs = self._actor_observation(obs)
-        obs = obs.float()
-        if obs.ndim == 1:
-            obs = obs.unsqueeze(0)
-
+        actor_obs = self._actor_observation(obs).float()
+        if actor_obs.ndim == 1:
+            actor_obs = actor_obs.unsqueeze(0)
         n_seq = hidden.shape[1]
-        obs_sequence = obs.reshape(n_seq, -1, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
+        obs_sequence = actor_obs.reshape(n_seq, -1, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
         start_sequence = episode_starts.float().reshape(n_seq, -1).swapaxes(0, 1)
-
         means: list[torch.Tensor] = []
-        timestep_hidden: list[torch.Tensor] = []
         for step_obs, episode_start in zip(obs_sequence, start_sequence):
-            # Reset only the env/sequence slots marked as new episodes.
             hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
             lidar = step_obs[:, :END2RACE_LIDAR_SIZE].unsqueeze(1)
             previous_speed = step_obs[:, END2RACE_LIDAR_SIZE:].unsqueeze(1)
             slot_means: list[torch.Tensor] = []
             slot_hidden: list[torch.Tensor] = []
             for sequence_index in range(n_seq):
-                action_sequence, next_hidden = self.end2race_actor(
-                    lidar[sequence_index : sequence_index + 1],
-                    previous_speed[sequence_index : sequence_index + 1],
-                    hidden[:, sequence_index : sequence_index + 1],
-                )
+                action_sequence, next_hidden = self.end2race_actor(lidar[sequence_index : sequence_index + 1], previous_speed[sequence_index : sequence_index + 1], hidden[:, sequence_index : sequence_index + 1])
                 slot_means.append(action_sequence[:, -1, :])
                 slot_hidden.append(next_hidden)
             hidden = torch.cat(slot_hidden, dim=1)
             means.append(torch.cat(slot_means, dim=0))
-            timestep_hidden.append(hidden.squeeze(0))
-
         mean_actions = torch.stack(means).transpose(0, 1).reshape(-1, END2RACE_ACTION_SIZE)
-        actor_features = torch.stack(timestep_hidden).transpose(0, 1).reshape(-1, self.actor_hidden_size)
-        return mean_actions, (hidden, torch.zeros_like(hidden)), actor_features
+        return mean_actions, (hidden, torch.zeros_like(hidden))
 
     def _actor_replay_batched(
         self,
         obs: torch.Tensor | dict[str, torch.Tensor],
         states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
-        valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
-        """Training replay: one FP32 GRU call per timestep over active slots.
-
-        Requires TF32 disabled so the batched GEMMs stay in true FP32; the
-        numerical contract against the batch-size-one path was validated under
-        that setting.  Invalid padded tail positions never enter the actor and
-        their hidden state is carried unchanged; their means stay exactly zero
-        and are excluded from every loss term by the sequence mask.
-        """
+        valid_by_timestep: tuple[tuple[bool, ...], ...] | None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        """Replay one FP32 actor call per timestep over only valid sequence slots."""
 
         hidden, dummy_cell = states
-        obs = self._actor_observation(obs)
-        if obs.ndim == 1:
-            obs = obs.unsqueeze(0)
-
-        if obs.dtype != torch.float32:
-            raise RuntimeError(f"Batched replay actor input must be float32, got {obs.dtype}")
-        if hidden.dtype != torch.float32 or dummy_cell.dtype != torch.float32:
-            raise RuntimeError(
-                "Batched replay recurrent transport tensors must be float32, "
-                f"got hidden={hidden.dtype}, cell={dummy_cell.dtype}"
-            )
-        if episode_starts.dtype != torch.float32:
-            raise RuntimeError(
-                f"Batched replay episode_starts must be float32, got {episode_starts.dtype}"
-            )
+        actor_obs = self._actor_observation(obs)
+        if actor_obs.ndim == 1:
+            actor_obs = actor_obs.unsqueeze(0)
+        if actor_obs.dtype != torch.float32 or hidden.dtype != torch.float32 or dummy_cell.dtype != torch.float32 or episode_starts.dtype != torch.float32:
+            raise RuntimeError("PPO actor replay tensors must remain float32")
         if hidden.shape != dummy_cell.shape or hidden.ndim != 3:
-            raise RuntimeError(
-                "Batched replay hidden/cell shapes must match and be rank 3, "
-                f"got hidden={tuple(hidden.shape)}, cell={tuple(dummy_cell.shape)}"
-            )
-        if obs.device != hidden.device or episode_starts.device != obs.device:
-            raise RuntimeError(
-                "Batched replay actor input, hidden, and episode_starts must share one device"
-            )
-        actor_parameters = tuple(self.end2race_actor.parameters())
-        if any(parameter.dtype != torch.float32 for parameter in actor_parameters):
-            raise RuntimeError("Batched replay actor parameters must all be float32")
-        if any(parameter.device != obs.device for parameter in actor_parameters):
-            raise RuntimeError("Batched replay actor parameters and input must share one device")
-        if obs.is_cuda:
-            if torch.backends.cudnn.allow_tf32 or torch.backends.cuda.matmul.allow_tf32:
-                raise RuntimeError("Batched CUDA replay requires cuDNN and matmul TF32 disabled")
-            if torch.get_float32_matmul_precision() != "highest":
-                raise RuntimeError("Batched CUDA replay requires float32 matmul precision 'highest'")
-            if torch.backends.cudnn.benchmark:
-                raise RuntimeError("Batched CUDA replay requires cuDNN benchmark disabled")
+            raise RuntimeError("Actor replay hidden and dummy cell shapes must match and be rank 3")
+        if actor_obs.device != hidden.device or episode_starts.device != actor_obs.device:
+            raise RuntimeError("Actor replay tensors must share one device")
+        parameters = tuple(self.end2race_actor.parameters())
+        if any(parameter.dtype != torch.float32 or parameter.device != actor_obs.device for parameter in parameters):
+            raise RuntimeError("Actor parameters and replay tensors must share FP32 dtype and device")
+        if actor_obs.is_cuda and (torch.backends.cudnn.allow_tf32 or torch.backends.cuda.matmul.allow_tf32 or torch.get_float32_matmul_precision() != "highest" or torch.backends.cudnn.benchmark):
+            raise RuntimeError("CUDA actor replay requires TF32 off, highest FP32 precision, and cuDNN benchmark off")
 
         n_seq = hidden.shape[1]
-        if n_seq <= 0 or obs.ndim != 2 or obs.shape[1] != END2RACE_OBSERVATION_SIZE:
-            raise RuntimeError(
-                f"Invalid batched replay actor layout: obs={tuple(obs.shape)}, n_seq={n_seq}"
-            )
-        if obs.shape[0] % n_seq != 0:
-            raise RuntimeError(
-                f"Batched replay rows {obs.shape[0]} are not divisible by n_seq={n_seq}"
-            )
-        max_length = obs.shape[0] // n_seq
-        if episode_starts.numel() != obs.shape[0]:
-            raise RuntimeError(
-                "Batched replay episode_starts count must match padded observation rows"
-            )
-        if valid_by_timestep is not None:
-            if len(valid_by_timestep) != max_length:
-                raise RuntimeError(
-                    "valid_by_timestep timestep count does not match the padded batch: "
-                    f"{len(valid_by_timestep)} != {max_length}"
-                )
-            if any(len(row) != n_seq for row in valid_by_timestep):
-                raise RuntimeError(
-                    "Every valid_by_timestep row must contain exactly one entry per sequence"
-                )
+        if n_seq <= 0 or actor_obs.ndim != 2 or actor_obs.shape[1] != END2RACE_OBSERVATION_SIZE or actor_obs.shape[0] % n_seq != 0:
+            raise RuntimeError(f"Invalid actor replay layout: observations={tuple(actor_obs.shape)}, sequences={n_seq}")
+        max_length = actor_obs.shape[0] // n_seq
+        if episode_starts.numel() != actor_obs.shape[0]:
+            raise RuntimeError("Actor replay episode starts must match observation rows")
+        if valid_by_timestep is not None and (len(valid_by_timestep) != max_length or any(len(row) != n_seq for row in valid_by_timestep)):
+            raise RuntimeError("Actor replay padding mask does not match the padded batch")
 
-        obs_sequence = obs.reshape(n_seq, max_length, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
+        obs_sequence = actor_obs.reshape(n_seq, max_length, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
         start_sequence = episode_starts.reshape(n_seq, max_length).swapaxes(0, 1)
-
         means: list[torch.Tensor] = []
-        timestep_hidden: list[torch.Tensor] = []
         for timestep, (step_obs, episode_start) in enumerate(zip(obs_sequence, start_sequence)):
-            # Reset only the env/sequence slots marked as new episodes.
             hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
-            active = (
-                list(range(n_seq))
-                if valid_by_timestep is None
-                else [index for index, valid in enumerate(valid_by_timestep[timestep]) if valid]
-            )
+            active = list(range(n_seq)) if valid_by_timestep is None else [index for index, valid in enumerate(valid_by_timestep[timestep]) if valid]
             next_by_slot = [hidden[:, index : index + 1] for index in range(n_seq)]
-            means_by_slot = [
-                torch.zeros((1, END2RACE_ACTION_SIZE), dtype=obs.dtype, device=obs.device)
-                for _ in range(n_seq)
-            ]
+            means_by_slot = [torch.zeros((1, END2RACE_ACTION_SIZE), dtype=actor_obs.dtype, device=actor_obs.device) for _ in range(n_seq)]
             if active:
-                indices = torch.as_tensor(active, dtype=torch.long, device=obs.device)
-                action_sequence, next_hidden = self.end2race_actor(
-                    step_obs[indices, :END2RACE_LIDAR_SIZE].unsqueeze(1),
-                    step_obs[indices, END2RACE_LIDAR_SIZE:].unsqueeze(1),
-                    hidden[:, indices],
-                )
+                indices = torch.as_tensor(active, dtype=torch.long, device=actor_obs.device)
+                action_sequence, next_hidden = self.end2race_actor(step_obs[indices, :END2RACE_LIDAR_SIZE].unsqueeze(1), step_obs[indices, END2RACE_LIDAR_SIZE:].unsqueeze(1), hidden[:, indices])
                 active_means = action_sequence[:, -1, :]
                 for offset, slot in enumerate(active):
                     next_by_slot[slot] = next_hidden[:, offset : offset + 1]
                     means_by_slot[slot] = active_means[offset : offset + 1]
             hidden = torch.cat(next_by_slot, dim=1)
             means.append(torch.cat(means_by_slot, dim=0))
-            timestep_hidden.append(hidden.squeeze(0))
-
         mean_actions = torch.stack(means).transpose(0, 1).reshape(-1, END2RACE_ACTION_SIZE)
-        actor_features = torch.stack(timestep_hidden).transpose(0, 1).reshape(-1, self.actor_hidden_size)
-        return mean_actions, (hidden, torch.zeros_like(hidden)), actor_features
-
-    def actor_mean(
-        self,
-        obs: torch.Tensor | dict[str, torch.Tensor],
-        states: tuple[torch.Tensor, torch.Tensor],
-        episode_starts: torch.Tensor,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
-        """Return exact End2Race means and updated ``(real_h, zero_dummy_c)``."""
-
-        means, next_states, _actor_features = self._actor_forward(obs, states, episode_starts)
-        return means, next_states
+        return mean_actions, (hidden, torch.zeros_like(hidden))
 
     def _distribution(self, mean_actions: torch.Tensor) -> EvaluatorCompatibleJointDistribution:
         if mean_actions.dtype != torch.float32 or self.log_std.dtype != torch.float32:
-            raise RuntimeError(
-                "PPO actor distribution tensors must remain float32, "
-                f"got means={mean_actions.dtype}, log_std={self.log_std.dtype}"
-            )
+            raise RuntimeError("PPO actor distribution tensors must remain float32")
         return self.action_dist.proba_distribution(mean_actions, self.log_std)
 
-    def supports_actor_hidden_only_buffer(self) -> bool:
-        """Return whether the explicit C0 recurrent-state contract still holds."""
-
-        return (
-            self.critic_profile == "C0_RAW_SINGLE_FRAME"
-            and isinstance(self.lstm_actor, GRUWithLSTMStateInterface)
-            and self.lstm_critic is None
-            and self.critic is None
-        )
-
-    def _critic_input(
-        self,
-        obs: torch.Tensor | dict[str, torch.Tensor],
-        actor_features: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+    def _critic_values(self, obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
         actor_obs = self._actor_observation(obs).float()
         if actor_obs.ndim == 1:
             actor_obs = actor_obs.unsqueeze(0)
-        if self.critic_profile == "C0_RAW_SINGLE_FRAME":
-            return actor_obs
-        if self.critic_profile == "C1_FROZEN_BC_FEATURE":
-            lidar = actor_obs[:, :END2RACE_LIDAR_SIZE]
-            speed = actor_obs[:, END2RACE_LIDAR_SIZE:]
-            processed_lidar = (-1.0 / (1.0 + torch.exp(-self.end2race_actor.k * lidar)) + 1.0) * 2.0
-            speed_embedding = self.end2race_actor.speed_mlp(speed)
-            return torch.cat((processed_lidar, speed_embedding), dim=1).detach()
-        if self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN":
-            return actor_features.detach()
-        critic = obs["critic"].float()
-        return critic.unsqueeze(0) if critic.ndim == 1 else critic
-
-    def _critic_values(
-        self,
-        obs: torch.Tensor | dict[str, torch.Tensor],
-        actor_features: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        return self.value_net(self._critic_input(obs, actor_features))
+        return self.value_net(actor_obs)
 
     @staticmethod
-    def _zero_vf_states(states: tuple[torch.Tensor, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
-        hidden, _cell = states
-        zero = torch.zeros_like(hidden)
+    def _zero_states(states: tuple[torch.Tensor, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
+        zero = torch.zeros_like(states[0])
         return zero, zero.clone()
+
+    def supports_actor_hidden_only_buffer(self) -> bool:
+        return isinstance(self.lstm_actor, GRUWithLSTMStateInterface) and self.lstm_critic is None and self.critic is None
 
     def forward(
         self,
@@ -636,17 +282,10 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         episode_starts: torch.Tensor,
         deterministic: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, RNNStates]:
-        mean_actions, actor_states, actor_features = self._actor_forward(obs, lstm_states.pi, episode_starts)
+        mean_actions, actor_states = self._actor_forward(obs, lstm_states.pi, episode_starts)
         distribution = self._distribution(mean_actions)
         actions = distribution.get_actions(deterministic=deterministic)
-        log_prob = distribution.log_prob(actions)
-        values = self._critic_values(obs, actor_features)
-        vf_states = (
-            tuple(state.detach() for state in actor_states)
-            if self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN"
-            else self._zero_vf_states(lstm_states.vf)
-        )
-        return actions, values, log_prob, RNNStates(actor_states, vf_states)
+        return actions, self._critic_values(obs), distribution.log_prob(actions), RNNStates(actor_states, self._zero_states(lstm_states.vf))
 
     def get_distribution(
         self,
@@ -654,7 +293,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lstm_states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
     ) -> tuple[Distribution, tuple[torch.Tensor, torch.Tensor]]:
-        mean_actions, actor_states = self.actor_mean(obs, lstm_states, episode_starts)
+        mean_actions, actor_states = self._actor_forward(obs, lstm_states, episode_starts)
         return self._distribution(mean_actions), actor_states
 
     def predict_values(
@@ -663,9 +302,23 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lstm_states: tuple[torch.Tensor, torch.Tensor],
         episode_starts: torch.Tensor,
     ) -> torch.Tensor:
-        if self.critic_profile == "C2_DETACHED_ACTOR_HIDDEN":
-            _means, _states, actor_features = self._actor_forward(obs, lstm_states, episode_starts)
-            return self._critic_values(obs, actor_features)
+        del lstm_states, episode_starts
+        return self._critic_values(obs)
+
+    def evaluate_actor_actions(
+        self,
+        obs: torch.Tensor | dict[str, torch.Tensor],
+        actions: torch.Tensor,
+        lstm_states: RNNStates,
+        episode_starts: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        rollout_buffer = getattr(self, "_actor_hidden_rollout_buffer", None)
+        valid_by_timestep = None if rollout_buffer is None else rollout_buffer.current_valid_by_timestep
+        mean_actions, _actor_states = self._actor_replay_batched(obs, lstm_states.pi, episode_starts, valid_by_timestep)
+        distribution = self._distribution(mean_actions)
+        return distribution.log_prob(actions), distribution.entropy()
+
+    def evaluate_values(self, obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
         return self._critic_values(obs)
 
     def evaluate_actions(
@@ -675,101 +328,17 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         lstm_states: RNNStates,
         episode_starts: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
-        valid_by_timestep = None
-        rollout_buffer = getattr(self, "_actor_hidden_rollout_buffer", None)
-        if rollout_buffer is not None:
-            valid_by_timestep = rollout_buffer.current_valid_by_timestep
-        mean_actions, _actor_states, actor_features = self._actor_replay_batched(
-            obs,
-            lstm_states.pi,
-            episode_starts,
-            valid_by_timestep,
-        )
-        distribution = self._distribution(mean_actions)
-        log_prob = distribution.log_prob(actions)
-        entropy = distribution.entropy()
-        values = self._critic_values(obs, actor_features)
-        return values, log_prob, entropy
+        log_prob, entropy = self.evaluate_actor_actions(obs, actions, lstm_states, episode_starts)
+        return self.evaluate_values(obs), log_prob, entropy
 
     def actor_checkpoint_state_dict(self) -> dict[str, torch.Tensor]:
-        """Return only the unchanged BC-compatible End2Race actor schema."""
-
         return self.end2race_actor.state_dict()
 
 
 def end2race_observation(lidar: np.ndarray, previous_ego_speed: float) -> np.ndarray:
-    """Construct the only actor observation admitted by this POC."""
+    """Build ``[360 LiDAR values, previous ego speed]`` for the actor."""
 
     lidar = np.asarray(lidar, dtype=np.float32).reshape(-1)
     if lidar.size != END2RACE_LIDAR_SIZE:
         raise ValueError(f"Expected {END2RACE_LIDAR_SIZE} LiDAR values, got {lidar.size}")
     return np.concatenate((lidar, np.asarray([previous_ego_speed], dtype=np.float32)))
-
-
-class End2RaceRecurrentPPO(RecurrentPPO):
-    """Keep the three named optimizer-group learning rates fixed."""
-
-    def _setup_model(self) -> None:
-        """Use actor-only recurrent storage for C0 without changing sampling."""
-
-        from stable_baselines3.common.utils import FloatSchedule
-
-        self._setup_lr_schedule()
-        self.set_random_seed(self.seed)
-        self.policy = self.policy_class(
-            self.observation_space,
-            self.action_space,
-            self.lr_schedule,
-            use_sde=self.use_sde,
-            **self.policy_kwargs,
-        )
-        self.policy = self.policy.to(self.device)
-        if not isinstance(self.policy, RecurrentActorCriticPolicy):
-            raise ValueError("Policy must subclass RecurrentActorCriticPolicy")
-        if isinstance(self.observation_space, spaces.Dict):
-            buffer_class = RecurrentDictRolloutBuffer
-        elif self.policy.supports_actor_hidden_only_buffer():
-            buffer_class = ActorHiddenRolloutBuffer
-        else:
-            buffer_class = RecurrentRolloutBuffer
-        lstm = self.policy.lstm_actor
-        single_hidden_state_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
-        self._last_lstm_states = RNNStates(
-            (
-                torch.zeros(single_hidden_state_shape, device=self.device),
-                torch.zeros(single_hidden_state_shape, device=self.device),
-            ),
-            (
-                torch.zeros(single_hidden_state_shape, device=self.device),
-                torch.zeros(single_hidden_state_shape, device=self.device),
-            ),
-        )
-        hidden_state_buffer_shape = (
-            self.n_steps,
-            lstm.num_layers,
-            self.n_envs,
-            lstm.hidden_size,
-        )
-        self.rollout_buffer = buffer_class(
-            self.n_steps,
-            self.observation_space,
-            self.action_space,
-            hidden_state_buffer_shape,
-            self.device,
-            gamma=self.gamma,
-            gae_lambda=self.gae_lambda,
-            n_envs=self.n_envs,
-        )
-        self.policy._actor_hidden_rollout_buffer = (
-            self.rollout_buffer if isinstance(self.rollout_buffer, ActorHiddenRolloutBuffer) else None
-        )
-        self.clip_range = FloatSchedule(self.clip_range)
-        if self.clip_range_vf is not None:
-            if isinstance(self.clip_range_vf, (float, int)):
-                assert self.clip_range_vf > 0, "`clip_range_vf` must be positive, pass `None` to deactivate vf clipping"
-            self.clip_range_vf = FloatSchedule(self.clip_range_vf)
-
-    def _update_learning_rate(self, optimizers: list[Optimizer] | Optimizer) -> None:
-        for optimizer in optimizers if isinstance(optimizers, list) else [optimizers]:
-            for group in optimizer.param_groups:
-                group["lr"] = group["base_lr"]

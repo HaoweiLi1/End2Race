@@ -1,211 +1,53 @@
-"""Gymnasium integration for the legacy multi-agent F1Tenth environment.
-
-Only the ego action belongs to PPO.  Opponent actions are produced by fixed,
-episode-local controllers and never enter the actor observation or optimizer.
-"""
+"""Fixed Austin simulator environment and subprocess vector environment."""
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 import copy
-from dataclasses import dataclass
+import multiprocessing as mp
+import os
 from pathlib import Path
-from typing import Any, Callable
+import traceback
+from typing import Any
+import warnings
 
 import gymnasium as gym
-import numpy as np
 from gymnasium import spaces
-
-from ppo.policy import (
-    END2RACE_LIDAR_SIZE,
-    EVALUATOR_STEER_BOUND,
-    NOOP_SPEED_BOUND,
-    end2race_observation,
+import numpy as np
+import torch
+from stable_baselines3.common.vec_env.base_vec_env import (
+    CloudpickleWrapper,
+    VecEnv,
+    VecEnvIndices,
+    VecEnvObs,
+    VecEnvStepReturn,
 )
-from ppo.reward import ProgressProjector, wrapped_progress_delta
+from stable_baselines3.common.vec_env.patch_gym import _patch_env
 
+from ppo.policy import *
+from ppo.reward import *
+from ppo.scenarios import *
+
+
+ENV_WORKERS = 6
+SIMULATOR_TIMESTEP = 0.01
+EPISODE_HORIZON = 8.0
+EGO_INDEX = 0
+NUM_AGENTS = 2
+EXTERNAL_RESET_OPTION = "end2race_episode_reset_spec"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-AUSTIN_DIRECTORY = PROJECT_ROOT / "f1tenth_racetracks" / "Austin"
-VEHICLE_LENGTH_M = 0.58
-VEHICLE_WIDTH_M = 0.31
 _PLANNER_TEMPLATE_CACHE: dict[tuple[str, str], Any] = {}
 
 
-def _rectangle_vertices(x: float, y: float, heading: float) -> np.ndarray:
-    local = np.asarray(
-        [
-            [VEHICLE_LENGTH_M / 2, VEHICLE_WIDTH_M / 2],
-            [VEHICLE_LENGTH_M / 2, -VEHICLE_WIDTH_M / 2],
-            [-VEHICLE_LENGTH_M / 2, -VEHICLE_WIDTH_M / 2],
-            [-VEHICLE_LENGTH_M / 2, VEHICLE_WIDTH_M / 2],
-        ],
-        dtype=np.float64,
-    )
-    rotation = np.asarray([[np.cos(heading), -np.sin(heading)], [np.sin(heading), np.cos(heading)]])
-    return local @ rotation.T + np.asarray([x, y])
-
-
-def _point_segment_distance(point: np.ndarray, start: np.ndarray, end: np.ndarray) -> float:
-    vector = end - start
-    denominator = float(np.dot(vector, vector))
-    fraction = 0.0 if denominator == 0.0 else float(np.clip(np.dot(point - start, vector) / denominator, 0.0, 1.0))
-    return float(np.linalg.norm(point - (start + fraction * vector)))
-
-
-def oriented_rectangle_clearance(first_pose: np.ndarray, second_pose: np.ndarray) -> float:
-    """Return zero for overlap, otherwise the exact minimum edge distance."""
-
-    first = _rectangle_vertices(*map(float, first_pose))
-    second = _rectangle_vertices(*map(float, second_pose))
-    for polygon in (first, second):
-        for edge_index in range(4):
-            edge = polygon[(edge_index + 1) % 4] - polygon[edge_index]
-            axis = np.asarray([-edge[1], edge[0]], dtype=np.float64)
-            axis /= np.linalg.norm(axis)
-            projection_first = first @ axis
-            projection_second = second @ axis
-            if projection_first.max() < projection_second.min() or projection_second.max() < projection_first.min():
-                break
-        else:
-            continue
-        break
-    else:
-        return 0.0
-    distances = []
-    for polygon_a, polygon_b in ((first, second), (second, first)):
-        for point in polygon_a:
-            for index in range(4):
-                distances.append(_point_segment_distance(point, polygon_b[index], polygon_b[(index + 1) % 4]))
-    return float(min(distances))
-
-
-@dataclass(frozen=True)
-class PrivilegedFeatureManifest:
-    curvature_scale: float
-    curvature_statistic: str = "p95_abs_austin_raceline1_unique"
-    vehicle_length_m: float = VEHICLE_LENGTH_M
-    vehicle_width_m: float = VEHICLE_WIDTH_M
-
-    def to_dict(self) -> dict[str, float | str]:
-        return {
-            "curvature_scale": self.curvature_scale,
-            "curvature_statistic": self.curvature_statistic,
-            "vehicle_length_m": self.vehicle_length_m,
-            "vehicle_width_m": self.vehicle_width_m,
-        }
-
-
-class AustinPrivilegedFeatureExtractor:
-    """Build the fixed 12D feature from one current pre-action simulator state."""
+class LatticePlannerOpponentController:
 
     def __init__(self) -> None:
-        center = np.loadtxt(AUSTIN_DIRECTORY / "raceline1.csv", delimiter=";", comments="#", dtype=np.float64)
-        inner = np.loadtxt(AUSTIN_DIRECTORY / "raceline0.csv", delimiter=";", comments="#", dtype=np.float64)
-        outer = np.loadtxt(AUSTIN_DIRECTORY / "raceline2.csv", delimiter=";", comments="#", dtype=np.float64)
-        self.center = center[:-1]
-        self.inner_xy = inner[:-1, 1:3]
-        self.outer_xy = outer[:-1, 1:3]
-        self.projector = ProgressProjector(center[:, 0], center[:, 1:3], float(center[-1, 0]))
-        scale = float(np.percentile(np.abs(self.center[:, 4]), 95.0))
-        if not np.isfinite(scale) or scale <= 0.0:
-            raise ValueError("Austin curvature scale must be finite and positive")
-        self.manifest = PrivilegedFeatureManifest(curvature_scale=scale)
-
-    @staticmethod
-    def _array(raw: dict[str, Any], name: str) -> np.ndarray:
-        return np.asarray(raw[name], dtype=np.float64).reshape(-1)
-
-    def __call__(self, raw: dict[str, Any], ego_index: int = 0) -> np.ndarray:
-        if ego_index != 0:
-            raise ValueError("Privileged physical features require ego index 0")
-        opponent_index = 1
-        x = self._array(raw, "poses_x")
-        y = self._array(raw, "poses_y")
-        heading = self._array(raw, "poses_theta")
-        speed = self._array(raw, "linear_vels_x")
-        yaw_rate = self._array(raw, "ang_vels_z")
-
-        ego_xy = np.asarray([x[ego_index], y[ego_index]])
-        opponent_xy = np.asarray([x[opponent_index], y[opponent_index]])
-        ego_progress = self.projector.project(ego_xy)
-        opponent_progress = self.projector.project(opponent_xy)
-        relative_progress = wrapped_progress_delta(opponent_progress, ego_progress, self.projector.track_length)
-
-        delta_xy = opponent_xy - ego_xy
-        cosine, sine = np.cos(heading[ego_index]), np.sin(heading[ego_index])
-        relative_longitudinal = cosine * delta_xy[0] + sine * delta_xy[1]
-        relative_lateral = -sine * delta_xy[0] + cosine * delta_xy[1]
-        ego_velocity = speed[ego_index] * np.asarray([cosine, sine])
-        opponent_velocity = speed[opponent_index] * np.asarray([np.cos(heading[opponent_index]), np.sin(heading[opponent_index])])
-        relative_velocity = opponent_velocity - ego_velocity
-        relative_longitudinal_velocity = cosine * relative_velocity[0] + sine * relative_velocity[1]
-        relative_lateral_velocity = -sine * relative_velocity[0] + cosine * relative_velocity[1]
-        relative_heading = heading[opponent_index] - heading[ego_index]
-
-        center_index = int(np.argmin(np.linalg.norm(self.center[:, 1:3] - ego_xy, axis=1)))
-        center_xy = self.center[center_index, 1:3]
-        track_heading = float(self.center[center_index, 3])
-        normal = np.asarray([-np.sin(track_heading), np.cos(track_heading)])
-        signed_offset = float(np.dot(ego_xy - center_xy, normal))
-        inner_distance = float(np.min(np.linalg.norm(self.inner_xy - center_xy, axis=1)))
-        outer_distance = float(np.min(np.linalg.norm(self.outer_xy - center_xy, axis=1)))
-        local_half_width = max(0.5 * (inner_distance + outer_distance), 1e-6)
-        normalized_lateral_offset = signed_offset / local_half_width
-        curvature = float(self.center[center_index, 4])
-        clearance = oriented_rectangle_clearance(
-            np.asarray([x[ego_index], y[ego_index], heading[ego_index]]),
-            np.asarray([x[opponent_index], y[opponent_index], heading[opponent_index]]),
-        )
-
-        features = np.asarray(
-            [
-                np.clip(relative_progress / 10.0, -1.0, 1.0),
-                np.clip(relative_lateral / 2.0, -1.0, 1.0),
-                np.clip(relative_longitudinal_velocity / 10.0, -1.0, 1.0),
-                np.clip(relative_lateral_velocity / 5.0, -1.0, 1.0),
-                np.sin(relative_heading),
-                np.cos(relative_heading),
-                np.clip(speed[ego_index] / 10.0, 0.0, 1.0),
-                np.clip(yaw_rate[ego_index] / 5.0, -1.0, 1.0),
-                np.clip(yaw_rate[opponent_index] / 5.0, -1.0, 1.0),
-                np.clip(clearance / 2.0, 0.0, 1.0),
-                np.clip(normalized_lateral_offset, -1.0, 1.0),
-                np.tanh(curvature / self.manifest.curvature_scale),
-            ],
-            dtype=np.float32,
-        )
-        return features
-
-
-@dataclass
-class EpisodeResetSpec:
-    """Complete scenario information needed for one legacy F1Tenth reset."""
-
-    poses: np.ndarray
-    initial_speed_feature: float
-    scenario: dict[str, Any]
-
-
-EpisodeResetProvider = Callable[[np.random.Generator], EpisodeResetSpec]
-EXTERNAL_RESET_OPTION = "end2race_episode_reset_spec"
-
-
-class LatticePlannerOpponentController:
-    """Run fresh fixed Lattice Planners at the original evaluator frequency."""
-
-    def __init__(self, planner_factory: Callable[[str, str], Any] | None = None) -> None:
-        self._planner_factory = planner_factory
-        self._planners: dict[int, Any] = {}
-        self._trajectories: dict[int, np.ndarray | None] = {}
-        self._tracker_counts: dict[int, int] = {}
-        self._speed_scales: dict[int, float] = {}
-        self._ego_index = 0
-        self._num_agents = 0
+        self.planner = None
+        self.trajectory = None
+        self.tracker_count = 0
+        self.speed_scale = 1.0
 
     def _create_planner(self, map_name: str, raceline: str) -> Any:
-        if self._planner_factory is not None:
-            return self._planner_factory(map_name, raceline)
-        # Lazy import keeps the basic wrapper usable without importing the old
-        # Gym stack until a real lattice-planner opponent is requested.
         from demonstration import setup_opp_planner
 
         key = (map_name, raceline)
@@ -213,10 +55,6 @@ class LatticePlannerOpponentController:
         if template is None:
             template = setup_opp_planner(map_name, raceline)
             _PLANNER_TEMPLATE_CACHE[key] = template
-
-        # Map/raceline/config arrays are immutable during planning and remain
-        # shared.  All episode-local planner and tracker state is recreated to
-        # the exact values produced by a fresh constructor.
         planner = copy.copy(template)
         planner.best_traj = None
         planner.best_traj_ref_v = 0.0
@@ -236,178 +74,71 @@ class LatticePlannerOpponentController:
         planner.tracker.prev_error = 0.0
         return planner
 
-    @staticmethod
-    def _per_opponent_value(
-        scenario: dict[str, Any],
-        singular_key: str,
-        plural_key: str,
-        opponent_index: int,
-        opponent_position: int,
-    ) -> Any:
-        if plural_key not in scenario:
-            return scenario[singular_key]
-        values = scenario[plural_key]
-        if isinstance(values, dict):
-            if opponent_index in values:
-                return values[opponent_index]
-            return values[str(opponent_index)]
-        return values[opponent_position]
+    def reset(self, spec: EpisodeResetSpec) -> None:
+        self.planner = self._create_planner(str(spec.scenario["map_name"]), str(spec.scenario["opp_raceline"]))
+        self.trajectory = None
+        self.tracker_count = 0
+        self.speed_scale = float(spec.scenario["opp_speedscale"])
 
-    def reset(self, spec: EpisodeResetSpec, num_agents: int, ego_index: int) -> None:
-        self._planners = {}
-        self._trajectories = {}
-        self._tracker_counts = {}
-        self._speed_scales = {}
-        self._ego_index = int(ego_index)
-        self._num_agents = int(num_agents)
-        scenario = dict(spec.scenario)
-        map_name = str(scenario["map_name"])
-        opponent_indices = [index for index in range(num_agents) if index != ego_index]
-        for position, opponent_index in enumerate(opponent_indices):
-            raceline = str(
-                self._per_opponent_value(
-                    scenario,
-                    "opp_raceline",
-                    "opponent_racelines",
-                    opponent_index,
-                    position,
-                )
-            )
-            speed_scale = float(
-                self._per_opponent_value(
-                    scenario,
-                    "opp_speedscale",
-                    "opponent_speed_scales",
-                    opponent_index,
-                    position,
-                )
-            )
-            planner = self._create_planner(map_name, raceline)
-            self._planners[opponent_index] = planner
-            self._trajectories[opponent_index] = None
-            self._tracker_counts[opponent_index] = 0
-            self._speed_scales[opponent_index] = speed_scale
-
-    def actions(self, raw_observation: dict[str, Any]) -> np.ndarray:
+    def action(self, raw_observation: dict[str, Any]) -> np.ndarray:
         from latticeplanner.utils import obsDict2oppoArray
 
-        joint_actions = np.zeros((self._num_agents, 2), dtype=np.float32)
-        for opponent_index, planner in self._planners.items():
-            pose_x = float(np.asarray(raw_observation["poses_x"])[opponent_index])
-            pose_y = float(np.asarray(raw_observation["poses_y"])[opponent_index])
-            pose_theta = float(np.asarray(raw_observation["poses_theta"])[opponent_index])
-            speed = float(np.asarray(raw_observation["linear_vels_x"])[opponent_index])
-            if self._tracker_counts[opponent_index] == 0 or self._trajectories[opponent_index] is None:
-                opponent_poses = obsDict2oppoArray(raw_observation, opponent_index)
-                self._trajectories[opponent_index] = planner.plan(
-                    pose_x,
-                    pose_y,
-                    pose_theta,
-                    opponent_poses,
-                    speed,
-                )
-            steering, desired_speed = planner.tracker.plan(
-                pose_x,
-                pose_y,
-                pose_theta,
-                speed,
-                self._trajectories[opponent_index],
-            )
-            joint_actions[opponent_index] = (
-                np.clip(steering, -EVALUATOR_STEER_BOUND, EVALUATOR_STEER_BOUND),
-                desired_speed * self._speed_scales[opponent_index],
-            )
-            tracker_steps = int(planner.conf.tracker_steps)
-            self._tracker_counts[opponent_index] = (self._tracker_counts[opponent_index] + 1) % tracker_steps
-        return joint_actions
+        opponent_index = 1
+        pose_x = float(np.asarray(raw_observation["poses_x"])[opponent_index])
+        pose_y = float(np.asarray(raw_observation["poses_y"])[opponent_index])
+        pose_theta = float(np.asarray(raw_observation["poses_theta"])[opponent_index])
+        speed = float(np.asarray(raw_observation["linear_vels_x"])[opponent_index])
+        if self.tracker_count == 0 or self.trajectory is None:
+            opponent_poses = obsDict2oppoArray(raw_observation, opponent_index)
+            self.trajectory = self.planner.plan(pose_x, pose_y, pose_theta, opponent_poses, speed)
+        steering, desired_speed = self.planner.tracker.plan(
+            pose_x, pose_y, pose_theta, speed, self.trajectory
+        )
+        self.tracker_count = (self.tracker_count + 1) % int(self.planner.conf.tracker_steps)
+        return np.asarray(
+            (np.clip(steering, -STEERING_BOUND, STEERING_BOUND), desired_speed * self.speed_scale),
+            dtype=np.float32,
+        )
 
 
 class End2RaceGymnasiumEnv(gym.Env):
-    """Convert legacy F1Tenth results to the exact ego deployment contract."""
 
     metadata = {"render_modes": ["human", "rgb_array"]}
 
-    def __init__(
-        self,
-        f110_env: Any,
-        sim_duration: float,
-        reset_provider: EpisodeResetProvider,
-        ego_index: int = 0,
-        opponent_controller: Any | None = None,
-        transition_reward: Any | None = None,
-        privileged_critic: bool = False,
-        privileged_feature_extractor: AustinPrivilegedFeatureExtractor | None = None,
-    ) -> None:
+    def __init__(self, f110_env: Any, reset_provider: Callable[[np.random.Generator], EpisodeResetSpec]) -> None:
         super().__init__()
         self.f110_env = f110_env
-        self.sim_duration = float(sim_duration)
-        self.ego_index = int(ego_index)
         self.reset_provider = reset_provider
-        self.opponent_controller = opponent_controller
-        self.transition_reward = transition_reward
-        self.privileged_critic = bool(privileged_critic)
-        self.privileged_feature_extractor = (
-            privileged_feature_extractor
-            if privileged_feature_extractor is not None
-            else (AustinPrivilegedFeatureExtractor() if self.privileged_critic else None)
-        )
-        actor_space = spaces.Box(
-            low=np.full((END2RACE_LIDAR_SIZE + 1,), -np.inf, dtype=np.float32),
-            high=np.full((END2RACE_LIDAR_SIZE + 1,), np.inf, dtype=np.float32),
+        self.opponent_controller = LatticePlannerOpponentController()
+        self.transition_reward = PPOTransitionReward()
+        self.observation_space = spaces.Box(
+            low=np.full((END2RACE_OBSERVATION_SIZE,), -np.inf, dtype=np.float32),
+            high=np.full((END2RACE_OBSERVATION_SIZE,), np.inf, dtype=np.float32),
             dtype=np.float32,
         )
-        self.observation_space = (
-            spaces.Dict(
-                {
-                    "actor": actor_space,
-                    "critic": spaces.Box(low=-1.0, high=1.0, shape=(12,), dtype=np.float32),
-                }
-            )
-            if self.privileged_critic
-            else actor_space
-        )
         self.action_space = spaces.Box(
-            low=np.asarray((-EVALUATOR_STEER_BOUND, -NOOP_SPEED_BOUND), dtype=np.float32),
-            high=np.asarray((EVALUATOR_STEER_BOUND, NOOP_SPEED_BOUND), dtype=np.float32),
+            low=np.asarray((-STEERING_BOUND, -NOOP_SPEED_BOUND), dtype=np.float32),
+            high=np.asarray((STEERING_BOUND, NOOP_SPEED_BOUND), dtype=np.float32),
             dtype=np.float32,
         )
         self._reset_rng = np.random.default_rng()
         self._elapsed_time = 0.0
         self._previous_ego_speed = 0.0
-        self._raw_observation: dict[str, Any] | None = None
-        self._current_spec: EpisodeResetSpec | None = None
+        self._raw_observation = None
+        self._current_spec = None
         self._episode_return = 0.0
-        self._next_policy_update_index = 0
-        self._episode_policy_update_index = 0
-
-    @property
-    def num_agents(self) -> int:
-        return int(getattr(self.f110_env, "unwrapped", self.f110_env).num_agents)
-
-    def set_policy_update_index(self, update: int) -> None:
-        """Set the policy version attached to episodes beginning after this call."""
-        if int(update) <= 0:
-            raise ValueError("policy update index must be positive")
-        self._next_policy_update_index = int(update)
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
-        scan = np.asarray(raw_observation["scans"][self.ego_index]).reshape(-1)
+        scan = np.asarray(raw_observation["scans"][EGO_INDEX]).reshape(-1)
         if scan.size > END2RACE_LIDAR_SIZE:
-            indices = np.linspace(0, scan.size - 1, END2RACE_LIDAR_SIZE, dtype=int)
-            scan = scan[indices]
+            scan = scan[np.linspace(0, scan.size - 1, END2RACE_LIDAR_SIZE, dtype=int)]
         return np.asarray(scan, dtype=np.float32)
 
     def _ego_speed(self, raw_observation: dict[str, Any]) -> float:
-        return float(np.asarray(raw_observation["linear_vels_x"])[self.ego_index])
+        return float(np.asarray(raw_observation["linear_vels_x"])[EGO_INDEX])
 
-    def _actor_observation(self, raw_observation: dict[str, Any]) -> np.ndarray:
+    def _observation(self, raw_observation: dict[str, Any]) -> np.ndarray:
         return end2race_observation(self._ego_lidar(raw_observation), self._previous_ego_speed)
-
-    def _observation(self, raw_observation: dict[str, Any]) -> np.ndarray | dict[str, np.ndarray]:
-        actor = self._actor_observation(raw_observation)
-        if not self.privileged_critic:
-            return actor
-        return {"actor": actor, "critic": self.privileged_feature_extractor(raw_observation, self.ego_index)}
 
     def reset(
         self,
@@ -418,142 +149,446 @@ class End2RaceGymnasiumEnv(gym.Env):
         super().reset(seed=seed)
         if seed is not None:
             self._reset_rng = np.random.default_rng(seed)
-        # The fixed sampler fully specifies every reset, so DummyVecEnv auto-reset
-        # never needs options and cannot accidentally omit poses.
-        external_spec = None if options is None else options.get(EXTERNAL_RESET_OPTION)
-        if external_spec is not None and not isinstance(external_spec, EpisodeResetSpec):
+        spec = None if options is None else options.get(EXTERNAL_RESET_OPTION)
+        if spec is not None and not isinstance(spec, EpisodeResetSpec):
             raise TypeError(f"{EXTERNAL_RESET_OPTION} must contain an EpisodeResetSpec")
-        spec = external_spec if external_spec is not None else self.reset_provider(self._reset_rng)
+        if spec is None:
+            spec = self.reset_provider(self._reset_rng)
         raw_observation, _, _, base_info = self.f110_env.reset(poses=spec.poses.copy())
+        if int(getattr(getattr(self.f110_env, "unwrapped", self.f110_env), "num_agents")) != NUM_AGENTS:
+            raise RuntimeError("PPO environment requires exactly two agents")
         self._elapsed_time = 0.0
         self._episode_return = 0.0
-        self._episode_policy_update_index = self._next_policy_update_index
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
         scenario_id = str(spec.scenario["scenario_id"])
-        if self.transition_reward is not None:
-            self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=self.ego_index)
-        if self.num_agents > 1:
-            self.opponent_controller.reset(spec, self.num_agents, self.ego_index)
-        info = {
-            "ego_collision": False,
-            "opponent_collision": False,
-            "base_terminated": False,
-            "base_truncated": False,
-            "timeout": False,
-            "elapsed_time": 0.0,
-            "termination_reason": None,
-            "scenario": dict(spec.scenario),
-            "scenario_id": scenario_id,
-            "sampler_branch": spec.scenario["sampler_branch"],
-            "hard_pool_id": spec.scenario["hard_pool_id"],
-            "hard_sampling_mode": spec.scenario["hard_sampling_mode"],
-            "env_role": spec.scenario["env_role"],
-            "pair_group": spec.scenario.get("pair_group"),
-            "pair_member": spec.scenario.get("pair_member"),
-            "pair_episode_ordinal": spec.scenario.get("pair_episode_ordinal"),
-            "policy_update_index": self._episode_policy_update_index,
-            "episode_outcome": None,
-            "episode_return": self._episode_return,
-            "base_info": base_info,
-        }
+        self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=EGO_INDEX)
+        self.opponent_controller.reset(spec)
+        info = self._info(False, False, False, False, None, None, base_info, {})
         return self._observation(raw_observation), info
 
-    def _joint_action(self, ego_action: np.ndarray) -> np.ndarray:
-        ego_action = np.asarray(ego_action, dtype=np.float32).reshape(2)
-        if self.num_agents == 1:
-            return ego_action.reshape(1, 2)
-        joint_action = np.asarray(self.opponent_controller.actions(self._raw_observation), dtype=np.float32).copy()
-        joint_action[self.ego_index] = ego_action
-        return joint_action
-
-    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
-        # Deployment evaluator updates prev_speed from the decision observation
-        # before stepping, then pairs it with the next LiDAR observation.
-        previous_raw_observation = self._raw_observation
-        pre_step_ego_speed = self._ego_speed(previous_raw_observation)
-        joint_action = self._joint_action(action)
-        # The legacy F1Tenth step returns (obs, reward, done, info); its reward is
-        # the physics timestep, so it doubles as the elapsed-time increment.
-        raw_observation, simulator_reward, base_terminated, base_info = self.f110_env.step(joint_action)
-        base_truncated = False
-        self._elapsed_time += float(simulator_reward)
-
-        collisions = np.asarray(raw_observation["collisions"], dtype=bool).reshape(-1)
-        ego_collision = bool(collisions[self.ego_index])
-        opponent_collision = bool(
-            any(bool(collisions[index]) for index in range(collisions.size) if index != self.ego_index)
-        )
-        timeout = self._elapsed_time + 1e-12 >= self.sim_duration
-        if ego_collision or base_terminated:
-            terminated, truncated = True, False
-            reason = "ego_collision" if ego_collision else "base_terminated"
-        elif base_truncated or timeout:
-            terminated, truncated = False, True
-            reason = "base_truncated" if base_truncated else "timeout"
-        else:
-            terminated, truncated, reason = False, False, None
-
+    def _info(
+        self,
+        ego_collision: bool,
+        opponent_collision: bool,
+        base_terminated: bool,
+        timeout: bool,
+        reason: str | None,
+        outcome: str | None,
+        base_info: dict[str, Any],
+        reward_info: dict[str, Any],
+    ) -> dict[str, Any]:
         scenario = dict(self._current_spec.scenario)
-        scenario_id = str(scenario["scenario_id"])
-        reward_info: dict[str, Any] = {}
-        if self.transition_reward is None:
-            reward = float(simulator_reward)
-        else:
-            reward_result = self.transition_reward.step(
-                previous_raw_observation,
-                raw_observation,
-                ego_collision=ego_collision,
-                opponent_collision=opponent_collision,
-                scenario_id=scenario_id,
-                ego_index=self.ego_index,
-            )
-            reward_info = dict(reward_result.to_info())
-            reward = float(reward_info["reward_total"])
-
-        self._episode_return += reward
-        episode_outcome = None
-        if terminated or truncated:
-            if ego_collision:
-                episode_outcome = "ego_collision"
-            elif float(reward_info.get("relative_position_m", 0.0)) > 0.0:
-                episode_outcome = "overtake"
-            else:
-                episode_outcome = "follow"
-
-        self._raw_observation = raw_observation
-        self._previous_ego_speed = pre_step_ego_speed
-        observation = self._observation(raw_observation)
-
-        info = {
+        return {
             "ego_collision": ego_collision,
             "opponent_collision": opponent_collision,
-            "base_terminated": bool(base_terminated),
-            "base_truncated": bool(base_truncated),
+            "base_terminated": base_terminated,
+            "base_truncated": False,
             "timeout": timeout,
             "elapsed_time": self._elapsed_time,
             "termination_reason": reason,
             "scenario": scenario,
-            "scenario_id": scenario_id,
-            "sampler_branch": scenario["sampler_branch"],
-            "hard_pool_id": scenario["hard_pool_id"],
-            "hard_sampling_mode": scenario["hard_sampling_mode"],
-            "env_role": scenario["env_role"],
-            "pair_group": scenario.get("pair_group"),
-            "pair_member": scenario.get("pair_member"),
-            "pair_episode_ordinal": scenario.get("pair_episode_ordinal"),
-            "policy_update_index": self._episode_policy_update_index,
-            "episode_outcome": episode_outcome,
+            "scenario_id": str(scenario["scenario_id"]),
+            "sampler_branch": str(scenario["env_role"]),
+            "env_role": str(scenario["env_role"]),
+            "episode_outcome": outcome,
             "episode_return": self._episode_return,
-            "simulator_reward": float(simulator_reward),
             "base_info": base_info,
             **reward_info,
         }
-        return observation, float(reward), terminated, truncated, info
+
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+        previous_raw_observation = self._raw_observation
+        previous_ego_speed = self._ego_speed(previous_raw_observation)
+        joint_action = np.stack(
+            (np.asarray(action, dtype=np.float32).reshape(2), self.opponent_controller.action(previous_raw_observation))
+        )
+        raw_observation, simulator_reward, base_terminated, base_info = self.f110_env.step(joint_action)
+        self._elapsed_time += float(simulator_reward)
+        collisions = np.asarray(raw_observation["collisions"], dtype=bool).reshape(-1)
+        ego_collision = bool(collisions[EGO_INDEX])
+        opponent_collision = bool(collisions[1])
+        timeout = self._elapsed_time + 1e-12 >= EPISODE_HORIZON
+        if ego_collision or (base_terminated and not opponent_collision):
+            terminated, truncated = True, False
+            reason = "ego_collision" if ego_collision else "base_terminated"
+        elif timeout:
+            terminated, truncated, reason = False, True, "timeout"
+        else:
+            terminated, truncated, reason = False, False, None
+        scenario_id = str(self._current_spec.scenario["scenario_id"])
+        reward_result = self.transition_reward.step(
+            previous_raw_observation,
+            raw_observation,
+            ego_collision=ego_collision,
+            opponent_collision=opponent_collision,
+            scenario_id=scenario_id,
+            ego_index=EGO_INDEX,
+        )
+        reward_info = reward_result.to_info()
+        reward = float(reward_info["reward_total"])
+        self._episode_return += reward
+        outcome = None
+        if terminated or truncated:
+            if ego_collision:
+                outcome = "ego_collision"
+            elif float(reward_info["relative_position_m"]) > 0.0:
+                outcome = "overtake"
+            else:
+                outcome = "follow"
+        self._raw_observation = raw_observation
+        self._previous_ego_speed = previous_ego_speed
+        info = self._info(
+            ego_collision,
+            opponent_collision,
+            bool(base_terminated),
+            timeout,
+            reason,
+            outcome,
+            base_info,
+            {"simulator_reward": float(simulator_reward), **reward_info},
+        )
+        return self._observation(raw_observation), reward, terminated, truncated, info
 
     def render(self) -> Any:
         return self.f110_env.render()
 
     def close(self) -> None:
         self.f110_env.close()
+
+
+def _external_reset_required(_rng: np.random.Generator) -> EpisodeResetSpec:
+    raise RuntimeError("Subprocess resets must be supplied by the parent scheduler")
+
+
+def make_environment(seed: int) -> Callable[[], End2RaceGymnasiumEnv]:
+
+    def factory() -> End2RaceGymnasiumEnv:
+        import gym
+        from f110_gym.envs.base_classes import Integrator
+
+        core = gym.make(
+            "f110-v0",
+            map=str(PROJECT_ROOT / "f1tenth_racetracks" / "Austin" / "Austin_map"),
+            map_ext=".png",
+            num_agents=NUM_AGENTS,
+            timestep=SIMULATOR_TIMESTEP,
+            integrator=Integrator.RK4,
+            seed=seed,
+        )
+        return End2RaceGymnasiumEnv(core, _external_reset_required)
+
+    return factory
+
+
+def _limit_worker_threads() -> None:
+    for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        os.environ[name] = "1"
+    try:
+        from threadpoolctl import threadpool_limits
+
+        threadpool_limits(limits=1)
+    except ImportError:
+        pass
+    torch.set_num_threads(1)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        if torch.get_num_interop_threads() != 1:
+            raise
+
+
+def _worker(
+    remote: Any,
+    parent_remote: Any,
+    env_fn_wrappers: list[CloudpickleWrapper],
+    env_indices: list[int],
+) -> None:
+    from stable_baselines3.common.env_util import is_wrapped
+
+    parent_remote.close()
+    envs = []
+    try:
+        _limit_worker_threads()
+        envs = [_patch_env(wrapper.var()) for wrapper in env_fn_wrappers]
+        by_rank = dict(zip(env_indices, envs))
+        while True:
+            command, data = remote.recv()
+            if command == "step":
+                results = []
+                for rank, action in data:
+                    observation, reward, terminated, truncated, info = by_rank[rank].step(action)
+                    results.append((rank, observation, reward, terminated, truncated, info))
+                remote.send(("ok", results))
+            elif command == "reset":
+                results = []
+                for rank, seed, spec in data:
+                    observation, reset_info = by_rank[rank].reset(
+                        seed=seed,
+                        options={EXTERNAL_RESET_OPTION: spec},
+                    )
+                    results.append((rank, observation, reset_info))
+                remote.send(("ok", results))
+            elif command == "render":
+                remote.send(("ok", [(rank, by_rank[rank].render()) for rank in data]))
+            elif command == "close":
+                break
+            elif command == "get_spaces":
+                remote.send(("ok", (envs[0].observation_space, envs[0].action_space)))
+            elif command == "env_method":
+                results = []
+                for rank, method_name, method_args, method_kwargs in data:
+                    method = by_rank[rank].get_wrapper_attr(method_name)
+                    results.append((rank, method(*method_args, **method_kwargs)))
+                remote.send(("ok", results))
+            elif command == "get_attr":
+                remote.send(("ok", [(rank, by_rank[rank].get_wrapper_attr(name)) for rank, name in data]))
+            elif command == "has_attr":
+                results = []
+                for rank, name in data:
+                    try:
+                        by_rank[rank].get_wrapper_attr(name)
+                        result = True
+                    except AttributeError:
+                        result = False
+                    results.append((rank, result))
+                remote.send(("ok", results))
+            elif command == "set_attr":
+                for rank, name, value in data:
+                    setattr(by_rank[rank], name, value)
+                remote.send(("ok", [(rank, None) for rank, _name, _value in data]))
+            elif command == "is_wrapped":
+                remote.send(("ok", [(rank, is_wrapped(by_rank[rank], wrapper)) for rank, wrapper in data]))
+            else:
+                raise NotImplementedError(command)
+    except (EOFError, KeyboardInterrupt):
+        pass
+    except BaseException:
+        try:
+            remote.send(("error", traceback.format_exc()))
+        except (BrokenPipeError, EOFError, OSError):
+            pass
+    finally:
+        for env in envs:
+            try:
+                env.close()
+            except BaseException:
+                pass
+        remote.close()
+
+
+class CentralScheduleSubprocVecEnv(VecEnv):
+
+    def __init__(self, n_envs: int, seed: int) -> None:
+        if n_envs < ENV_WORKERS or n_envs % 2 != 0:
+            raise ValueError(f"n_envs must be even and at least {ENV_WORKERS}")
+        if torch.cuda.is_initialized():
+            raise RuntimeError("Subprocess environments must be created before CUDA initialization")
+        self.waiting = False
+        self.closed = False
+        self.actions = None
+        self.worker_count = ENV_WORKERS
+        self.scheduler = ScenarioScheduler(seed)
+        logical_seeds = [
+            int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
+            for rank in range(n_envs)
+        ]
+        env_fns = [make_environment(logical_seeds[rank]) for rank in range(n_envs)]
+        self.worker_env_indices = [[] for _ in range(self.worker_count)]
+        for rank in range(n_envs):
+            self.worker_env_indices[rank % self.worker_count].append(rank)
+        self.env_to_worker = {
+            rank: worker_index
+            for worker_index, ranks in enumerate(self.worker_env_indices)
+            for rank in ranks
+        }
+        context = mp.get_context("forkserver")
+        self.remotes, work_remotes = zip(*[context.Pipe() for _ in range(self.worker_count)])
+        self.processes = []
+        previous = {name: os.environ.get(name) for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")}
+        for name in previous:
+            os.environ[name] = "1"
+        try:
+            for worker_index, (work_remote, remote) in enumerate(zip(work_remotes, self.remotes)):
+                ranks = self.worker_env_indices[worker_index]
+                wrappers = [CloudpickleWrapper(env_fns[rank]) for rank in ranks]
+                process = context.Process(target=_worker, args=(work_remote, remote, wrappers, ranks), daemon=True)
+                process.start()
+                self.processes.append(process)
+                work_remote.close()
+            self.remotes[0].send(("get_spaces", None))
+            observation_space, action_space = self._recv_checked(0)
+            super().__init__(n_envs, observation_space, action_space)
+            self.seed(seed)
+        except BaseException:
+            self._terminate_workers()
+            raise
+        finally:
+            for name, value in previous.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+
+    def seed(self, seed: int | None = None) -> list[int | None]:
+        if seed is None:
+            seed = 0
+        self._seeds = [
+            int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
+            for rank in range(self.num_envs)
+        ]
+        return self._seeds
+
+    def _recv_checked(self, worker_index: int) -> Any:
+        try:
+            status, payload = self.remotes[worker_index].recv()
+        except (EOFError, BrokenPipeError, OSError) as error:
+            self._terminate_workers()
+            raise RuntimeError(f"environment worker {worker_index} exited unexpectedly") from error
+        if status != "ok":
+            self._terminate_workers()
+            raise RuntimeError(f"environment worker {worker_index} failed:\n{payload}")
+        return payload
+
+    def _terminate_workers(self) -> None:
+        for process in getattr(self, "processes", []):
+            if process.is_alive():
+                process.terminate()
+        for process in getattr(self, "processes", []):
+            process.join(timeout=2.0)
+            if process.is_alive():
+                process.kill()
+                process.join(timeout=2.0)
+        self.closed = True
+
+    def _group_entries(self, entries: list[tuple[Any, ...]]) -> dict[int, list[tuple[Any, ...]]]:
+        grouped = {}
+        for entry in entries:
+            grouped.setdefault(self.env_to_worker[int(entry[0])], []).append(entry)
+        return grouped
+
+    def _reset_round(self, indices: list[int], seeds: list[int | None]) -> list[VecEnvObs]:
+        entries = [(rank, seed, self.scheduler.next(rank)) for rank, seed in zip(indices, seeds)]
+        grouped = self._group_entries(entries)
+        for worker_index, worker_entries in grouped.items():
+            self.remotes[worker_index].send(("reset", worker_entries))
+        results = {
+            worker_index: self._recv_checked(worker_index)
+            for worker_index in grouped
+        }
+        by_rank = {int(row[0]): row for rows in results.values() for row in rows}
+        observations = []
+        for rank in indices:
+            _rank, observation, reset_info = by_rank[rank]
+            self.reset_infos[rank] = reset_info
+            observations.append(observation)
+        return observations
+
+    def reset(self) -> VecEnvObs:
+        indices = list(range(self.num_envs))
+        observations = self._reset_round(indices, list(self._seeds))
+        self._reset_seeds()
+        self._reset_options()
+        return np.stack(observations)
+
+    def step_async(self, actions: np.ndarray) -> None:
+        self.actions = actions
+        grouped = self._group_entries([(rank, action) for rank, action in enumerate(actions)])
+        for worker_index, worker_entries in grouped.items():
+            self.remotes[worker_index].send(("step", worker_entries))
+        self.waiting = True
+
+    def step_wait(self) -> VecEnvStepReturn:
+        worker_results = [self._recv_checked(index) for index in range(self.worker_count)]
+        self.waiting = False
+        by_rank = {int(row[0]): row for rows in worker_results for row in rows}
+        observations = [by_rank[rank][1] for rank in range(self.num_envs)]
+        rewards = np.asarray([by_rank[rank][2] for rank in range(self.num_envs)], dtype=np.float32)
+        terminated = np.asarray([by_rank[rank][3] for rank in range(self.num_envs)], dtype=bool)
+        truncated = np.asarray([by_rank[rank][4] for rank in range(self.num_envs)], dtype=bool)
+        infos = [by_rank[rank][5] for rank in range(self.num_envs)]
+        dones = np.logical_or(terminated, truncated)
+        reset_indices = []
+        for rank, done in enumerate(dones):
+            infos[rank]["TimeLimit.truncated"] = bool(truncated[rank] and not terminated[rank])
+            if done:
+                infos[rank]["terminal_observation"] = observations[rank]
+                reset_indices.append(rank)
+        if reset_indices:
+            reset_observations = self._reset_round(reset_indices, [None] * len(reset_indices))
+            for rank, observation in zip(reset_indices, reset_observations):
+                observations[rank] = observation
+        return np.stack(observations), rewards, dones, tuple(infos)
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        if self.waiting:
+            for worker_index in range(self.worker_count):
+                self._recv_checked(worker_index)
+            self.waiting = False
+        for remote in self.remotes:
+            try:
+                remote.send(("close", None))
+            except (BrokenPipeError, EOFError, OSError):
+                pass
+        for process in self.processes:
+            process.join(timeout=5.0)
+        if any(process.is_alive() for process in self.processes):
+            self._terminate_workers()
+            raise RuntimeError("Environment workers did not exit normally")
+        self.closed = True
+
+    def _request_by_rank(self, command: str, entries: list[tuple[Any, ...]], ranks: list[int]) -> list[Any]:
+        grouped = self._group_entries(entries)
+        for worker_index, worker_entries in grouped.items():
+            self.remotes[worker_index].send((command, worker_entries))
+        flattened = [row for worker_index in grouped for row in self._recv_checked(worker_index)]
+        by_rank = {int(rank): value for rank, value in flattened}
+        return [by_rank[rank] for rank in ranks]
+
+    def get_images(self) -> Sequence[np.ndarray | None]:
+        if self.render_mode != "rgb_array":
+            warnings.warn(f"render_mode is {self.render_mode}, not rgb_array")
+            return [None] * self.num_envs
+        ranks = list(range(self.num_envs))
+        grouped = self._group_entries([(rank,) for rank in ranks])
+        for worker_index, entries in grouped.items():
+            self.remotes[worker_index].send(("render", [entry[0] for entry in entries]))
+        flattened = [row for worker_index in grouped for row in self._recv_checked(worker_index)]
+        by_rank = dict(flattened)
+        return [by_rank[rank] for rank in ranks]
+
+    def has_attr(self, attr_name: str) -> bool:
+        ranks = list(range(self.num_envs))
+        return all(self._request_by_rank("has_attr", [(rank, attr_name) for rank in ranks], ranks))
+
+    def get_attr(self, attr_name: str, indices: VecEnvIndices = None) -> list[Any]:
+        ranks = self._get_indices(indices)
+        return self._request_by_rank("get_attr", [(rank, attr_name) for rank in ranks], ranks)
+
+    def set_attr(self, attr_name: str, value: Any, indices: VecEnvIndices = None) -> None:
+        ranks = self._get_indices(indices)
+        self._request_by_rank("set_attr", [(rank, attr_name, value) for rank in ranks], ranks)
+
+    def env_method(
+        self,
+        method_name: str,
+        *method_args: Any,
+        indices: VecEnvIndices = None,
+        **method_kwargs: Any,
+    ) -> list[Any]:
+        ranks = self._get_indices(indices)
+        entries = [(rank, method_name, method_args, method_kwargs) for rank in ranks]
+        return self._request_by_rank("env_method", entries, ranks)
+
+    def env_is_wrapped(self, wrapper_class: type[gym.Wrapper], indices: VecEnvIndices = None) -> list[bool]:
+        ranks = self._get_indices(indices)
+        return self._request_by_rank("is_wrapped", [(rank, wrapper_class) for rank in ranks], ranks)
+
+    def state_dict(self) -> dict[str, Any]:
+        return {"scheduler": self.scheduler.state_dict()}
+
+    def load_state_dict(self, state: dict[str, Any]) -> None:
+        self.scheduler.load_state_dict(state["scheduler"])

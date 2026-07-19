@@ -1,4 +1,5 @@
-__pycache__
+__pycache__/
+*.py[cod]
 
 build/
 install/
@@ -9,33 +10,4 @@ install/
 .remember/
 **/.numba_cache/
 Dataset_*/
-posttrained/
-runs/ppo/*/checkpoints/
-runs/ppo/quick_pool_3s_v2/*/checkpoints/
-
-# Experiment-generated datasets and model weights.
-# Curated assets outside runs/ppo remain trackable.
-*.pth
-!/pretrained/end2race.pth
-/ppo_experiments/**/*.npz
-/ppo_experiments/**/*.pt
-/runs/ppo/**/*.npz
-/runs/ppo/**/*.pt
-/runs/ppo/**/*.pth
-/runs/ppo/**/*.ckpt
-/runs/ppo/**/*.onnx
-/runs/ppo/**/*.safetensors
-/runs/ppo/**/*.zip
-
-runs/ppo/v1_3_b_seed*/
-runs/ppo/v1_3_b_logs/
-runs/ppo/v1_3_b_baseline/
-runs/ppo/v1_3_a_seed*/
-runs/ppo/v1_3_a_logs/
-runs/ppo/v1_3_a_baseline/
-runs/ppo/v1_3_c_seed*/
-runs/ppo/v1_3_c_logs/
-runs/ppo/v1_3_c_baseline/
-runs/ppo/v1_3_d_seed*/
-runs/ppo/v1_3_d_logs/
-runs/ppo/v1_3_d_baseline/
+post-trained/

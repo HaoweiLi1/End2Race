@@ -1,9 +1,0 @@
-Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
-Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
-See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
-Traceback (most recent call last):
-  File "/home/haowei/Documents/End2Race/generate_demo_repair.py", line 457, in <module>
-    raise SystemExit(main())
-  File "/home/haowei/Documents/End2Race/generate_demo_repair.py", line 372, in main
-    raise FileExistsError(f"Refusing to overwrite non-empty output directory: {output_root}")
-FileExistsError: Refusing to overwrite non-empty output directory: runs/ppo/DR_B2_20260717

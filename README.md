@@ -20,9 +20,11 @@ https://github.com/user-attachments/assets/5369f5ea-13fa-44c3-a6aa-5b3c2b59b10c
 end2race/
 ├── pretrained/
 │   └── end2race.pth           # Pretrained model weights
-├── posttrained/               # Selected PPO actor-only checkpoints
-├── ppo/                       # Formal PPO policy, environment, reward, and scenarios
-├── ppo_experiments/           # Concise reproducibility and experiment evidence
+├── ppo/
+│   ├── policy.py              # PPO actor adapter and critic
+│   ├── environment.py         # Austin environment and vector environment
+│   ├── scenarios.py           # Fixed hard/ordinary scenarios and queues
+│   └── reward.py              # Fixed PPO reward
 ├── f1tenth_gym/               # F1Tenth simulator environment
 ├── f1tenth_racetracks/        # Track data with pre-generated lanes and racelines
 │   └── generate_raceline.py   # Raceline generation tool
@@ -164,16 +166,16 @@ python train.py \
 
 ### PPO training
 
-Run one named PPO configuration. The default run directory is
-`runs/ppo/<config_name>_seed<seed>` and training fails if that directory already
-exists.
+Train from the pretrained End2Race actor and write one deployable PPO actor checkpoint:
 
 ```bash
-python train_ppo.py --config v1_2_h0_control --seed 20260715
+python train_ppo.py \
+    --pretrained_model_path pretrained/end2race.pth \
+    --ppo_model_path end2race_ppo.pth \
+    --n_envs 16
 ```
 
-Training writes actor-only checkpoints after the configured updates. Evaluation
-is a separate post-training step and is never run by `train_ppo.py`.
+The output remains the original 12-key `End2Race` actor state dict. The critic and optimizer states are training-only.
 
 ### Post-training PPO checkpoint evaluation
 
@@ -181,16 +183,7 @@ After training has completed, evaluate one checkpoint through the existing
 multi-agent batch evaluation path:
 
 ```bash
-MODEL_PATH=<checkpoint> COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NUM_WORKERS=8 bash evaluate.sh
-```
-
-Evaluate every uniquely named checkpoint in one completed run directory with:
-
-```bash
-run_dir=runs/ppo/v1_2_h0_control_seed20260715
-for model in "$run_dir"/checkpoints/*.pth; do
-    MODEL_PATH="$model" COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NUM_WORKERS=8 bash evaluate.sh
-done
+MODEL_PATH=end2race_ppo.pth COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NUM_WORKERS=8 bash evaluate.sh
 ```
 
 ## Raceline Generation (Optional)

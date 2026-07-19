@@ -1,907 +1,389 @@
 #!/usr/bin/env python3
-"""Train one fixed End2Race PPO experiment profile."""
+"""Train the fixed End2Race PPO pipeline."""
 
 from __future__ import annotations
 
 import argparse
-from collections import Counter
-from dataclasses import asdict
-import hashlib
-import json
+from collections.abc import Generator
+import copy
 from pathlib import Path
 import random
-from typing import Any
+from typing import Optional
 
 import numpy as np
 import torch
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.vec_env.base_vec_env import VecEnv
+from sb3_contrib import RecurrentPPO
+from sb3_contrib.common.recurrent.buffers import RecurrentRolloutBuffer, create_sequencers
+from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
+from sb3_contrib.common.recurrent.type_aliases import RecurrentRolloutBufferSamples, RNNStates
+from stable_baselines3.common.buffers import RolloutBuffer
+from stable_baselines3.common.utils import FloatSchedule, explained_variance
+from stable_baselines3.common.vec_env import VecNormalize
 
-from model import End2Race
-from ppo import config as ppo_config
-from ppo.environment import End2RaceGymnasiumEnv, LatticePlannerOpponentController
-from ppo.policy import End2RaceGRUPolicy, End2RaceRecurrentPPO
-from ppo.reward import PPOTransitionReward, ProgressProjector
-from ppo.scenarios import FixedMixtureScenarioSampler, load_hard_pool, training_scenarios
-from ppo.vec_env import CentralScheduleSubprocVecEnv
+from model import *
+from ppo.environment import *
+from ppo.policy import *
 
-def _configure_ppo_training_numerics() -> None:
-    """Install the single supported FP32/TF32-off PPO training contract."""
 
+WARMUP_MAX_EPOCHS = 20
+WARMUP_PATIENCE = 3
+WARMUP_TRAIN_FRACTION = 0.8
+VALUE_LOSS_COEFFICIENT = 0.5
+MAX_GRAD_NORM = 0.5
+
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Train End2Race PPO")
+
+    # Model paths
+    parser.add_argument("--pretrained_model_path", type=str, default="pretrained/end2race.pth")
+    parser.add_argument("--ppo_model_path", type=str, default="end2race_ppo.pth")
+
+    # Model configuration
+    parser.add_argument("--hidden_scale", type=int, default=4)
+
+    # Environment configuration
+    parser.add_argument("--n_envs", type=int, default=16)
+    parser.add_argument("--seed", type=int, default=0)
+
+    # Rollout configuration
+    parser.add_argument("--n_steps", type=int, default=6400)
+    parser.add_argument("--batch_size", type=int, default=12800)
+    parser.add_argument("--num_updates", type=int, default=20)
+
+    # Training configuration
+    parser.add_argument("--actor_epochs", type=int, default=3)
+    parser.add_argument("--critic_epochs", type=int, default=8)
+    parser.add_argument("--gru_learning_rate", type=float, default=1.0e-6)
+    parser.add_argument("--head_learning_rate", type=float, default=1.0e-5)
+    parser.add_argument("--critic_learning_rate", type=float, default=3.0e-4)
+
+    # PPO configuration
+    parser.add_argument("--gamma", type=float, default=0.999)
+    parser.add_argument("--gae_lambda", type=float, default=0.995)
+    parser.add_argument("--clip_range", type=float, default=0.10)
+    return parser.parse_args()
+
+
+def configure_training_numerics() -> None:
     torch.backends.cudnn.allow_tf32 = False
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.set_float32_matmul_precision("highest")
     torch.backends.cudnn.benchmark = False
 
 
-# Set at import before any production entry point can construct a CUDA model.
-_configure_ppo_training_numerics()
+class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
+    """Store the real actor GRU hidden state and materialize dummy states per batch."""
+
+    def __init__(self, *args, seed: int, **kwargs):
+        self.rng = np.random.default_rng(seed)
+        super().__init__(*args, **kwargs)
+
+    def reset(self) -> None:
+        RolloutBuffer.reset(self)
+        self.hidden_states_pi = np.zeros(self.hidden_state_shape, dtype=np.float32)
+        self.current_valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None
+
+    def add(self, *args, lstm_states: RNNStates, **kwargs) -> None:
+        self.hidden_states_pi[self.pos] = np.asarray(lstm_states.pi[0].cpu().numpy())
+        RolloutBuffer.add(self, *args, **kwargs)
+
+    def get(self, batch_size: Optional[int] = None) -> Generator[RecurrentRolloutBufferSamples, None, None]:
+        if not self.full:
+            raise RuntimeError("Rollout buffer must be full before training")
+        if not self.generator_ready:
+            self.hidden_states_pi = self.hidden_states_pi.swapaxes(1, 2)
+            for name in ("observations", "actions", "values", "log_probs", "advantages", "returns", "hidden_states_pi", "episode_starts"):
+                self.__dict__[name] = self.swap_and_flatten(self.__dict__[name])
+            self.generator_ready = True
+        total = self.buffer_size * self.n_envs
+        batch_size = total if batch_size is None else batch_size
+        split_index = int(self.rng.integers(total))
+        indices = np.concatenate((np.arange(total)[split_index:], np.arange(total)[:split_index]))
+        env_change = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        env_change[0, :] = 1.0
+        env_change = self.swap_and_flatten(env_change)
+        for start in range(0, total, batch_size):
+            yield self._get_samples(indices[start : start + batch_size], env_change)
+
+    def _get_samples(self, batch_inds: np.ndarray, env_change: np.ndarray, env: Optional[VecNormalize] = None) -> RecurrentRolloutBufferSamples:
+        del env
+        self.seq_start_indices, self.pad, self.pad_and_flatten = create_sequencers(self.episode_starts[batch_inds], env_change[batch_inds], self.device)
+        n_seq = len(self.seq_start_indices)
+        max_length = self.pad(self.actions[batch_inds]).shape[1]
+        padded_batch_size = n_seq * max_length
+        sequence_lengths = np.diff(np.concatenate((self.seq_start_indices, np.asarray([len(batch_inds)]))))
+        self.current_valid_by_timestep = tuple(tuple(step < int(length) for length in sequence_lengths) for step in range(max_length))
+        actor_hidden = self.to_torch(self.hidden_states_pi[batch_inds][self.seq_start_indices].swapaxes(0, 1)).contiguous()
+        actor_cell = torch.zeros_like(actor_hidden)
+        critic_hidden = torch.zeros_like(actor_hidden)
+        critic_cell = torch.zeros_like(actor_hidden)
+        return RecurrentRolloutBufferSamples(
+            observations=self.pad(self.observations[batch_inds]).reshape((padded_batch_size, *self.obs_shape)),
+            actions=self.pad(self.actions[batch_inds]).reshape((padded_batch_size, *self.actions.shape[1:])),
+            old_values=self.pad_and_flatten(self.values[batch_inds]),
+            old_log_prob=self.pad_and_flatten(self.log_probs[batch_inds]),
+            advantages=self.pad_and_flatten(self.advantages[batch_inds]),
+            returns=self.pad_and_flatten(self.returns[batch_inds]),
+            lstm_states=RNNStates((actor_hidden, actor_cell), (critic_hidden, critic_cell)),
+            episode_starts=self.pad_and_flatten(self.episode_starts[batch_inds]),
+            mask=self.pad_and_flatten(np.ones_like(self.returns[batch_inds])),
+        )
 
 
-def parse_arguments() -> argparse.Namespace:
-    """Parse the three supported run arguments."""
-    parser = argparse.ArgumentParser(description="Train End2Race PPO")
-    parser.add_argument("--config", required=True, choices=ppo_config.CONFIGS)
-    parser.add_argument("--seed", type=int, default=20260715)
-    parser.add_argument("--output_dir", type=Path, default=None)
-    parser.add_argument(
-        "--screen-pause",
-        action="store_true",
-        help="Pause after the config's first checkpoint and read continue/stop from stdin.",
-    )
-    return parser.parse_args()
+class End2RaceRecurrentPPO(RecurrentPPO):
+    """Run critic warm-up, then separate actor and critic PPO phases."""
 
+    def __init__(self, *args, actor_epochs: int, critic_epochs: int, **kwargs):
+        self.actor_epochs = actor_epochs
+        self.critic_epochs = critic_epochs
+        self.warmup_completed = False
+        kwargs["n_epochs"] = actor_epochs
+        super().__init__(*args, **kwargs)
 
-def set_random_seed(seed: int) -> None:
-    """Seed every RNG used by the formal run."""
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    def _setup_model(self) -> None:
+        self._setup_lr_schedule()
+        self.set_random_seed(self.seed)
+        self.policy = self.policy_class(self.observation_space, self.action_space, self.lr_schedule, use_sde=self.use_sde, **self.policy_kwargs).to(self.device)
+        if not isinstance(self.policy, RecurrentActorCriticPolicy) or not self.policy.supports_actor_hidden_only_buffer():
+            raise TypeError("End2Race PPO requires the actor-hidden-only recurrent policy")
 
+        lstm = self.policy.lstm_actor
+        single_hidden_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
+        self._last_lstm_states = RNNStates(
+            (torch.zeros(single_hidden_shape, device=self.device), torch.zeros(single_hidden_shape, device=self.device)),
+            (torch.zeros(single_hidden_shape, device=self.device), torch.zeros(single_hidden_shape, device=self.device)),
+        )
+        hidden_buffer_shape = (self.n_steps, lstm.num_layers, self.n_envs, lstm.hidden_size)
+        minibatch_seed = int(np.random.SeedSequence([self.seed, 2]).generate_state(1)[0])
+        self.rollout_buffer = ActorHiddenRolloutBuffer(self.n_steps, self.observation_space, self.action_space, hidden_buffer_shape, self.device, gamma=self.gamma, gae_lambda=self.gae_lambda, n_envs=self.n_envs, seed=minibatch_seed)
+        self.policy._actor_hidden_rollout_buffer = self.rollout_buffer
+        self.clip_range = FloatSchedule(self.clip_range)
+        if self.clip_range_vf is not None:
+            self.clip_range_vf = FloatSchedule(self.clip_range_vf)
 
-def write_json(path: Path, value: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as handle:
-        json.dump(value, handle, indent=2, sort_keys=True, allow_nan=False)
-        handle.write("\n")
+        action_seed = int(np.random.SeedSequence([self.seed, 3]).generate_state(1)[0])
+        torch.manual_seed(action_seed)
+        if self.device.type == "cuda":
+            torch.cuda.manual_seed_all(action_seed)
 
+    def _warmup_split(self) -> tuple[np.ndarray, np.ndarray]:
+        starts = self.rollout_buffer.episode_starts
+        sequences = {"hard": [], "ordinary": []}
+        for env_index in range(self.n_envs):
+            if starts[0, env_index] <= 0.5:
+                raise RuntimeError("Warm-up rollout must begin with freshly reset environments")
+            role = "hard" if env_index % 2 == 0 else "ordinary"
+            boundaries = np.flatnonzero(starts[:, env_index] > 0.5).tolist()
+            boundaries.append(self.n_steps)
+            for start, end in zip(boundaries[:-1], boundaries[1:]):
+                if end == self.n_steps and not bool(self._last_episode_starts[env_index]):
+                    continue
+                if end > start:
+                    sequences[role].append((env_index, start, end))
 
-def write_json_atomic(path: Path, value: Any) -> None:
-    """Atomically replace a small JSON status file in its destination directory."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    with temporary.open("w", encoding="utf-8") as handle:
-        json.dump(value, handle, indent=2, sort_keys=True, allow_nan=False)
-        handle.write("\n")
-    temporary.replace(path)
+        train_indices: list[int] = []
+        validation_indices: list[int] = []
+        for role in ("hard", "ordinary"):
+            role_sequences = sequences[role]
+            if len(role_sequences) < 2:
+                raise RuntimeError(f"Warm-up requires at least two {role} recurrent sequences")
+            order = self.rollout_buffer.rng.permutation(len(role_sequences))
+            train_count = min(max(int(len(order) * WARMUP_TRAIN_FRACTION), 1), len(order) - 1)
+            for destination, selected in ((train_indices, order[:train_count]), (validation_indices, order[train_count:])):
+                for sequence_index in selected:
+                    env_index, start, end = role_sequences[int(sequence_index)]
+                    destination.extend(np.arange(start, end) * self.n_envs + env_index)
+        return np.asarray(train_indices, dtype=np.int64), np.asarray(validation_indices, dtype=np.int64)
 
+    def _critic_batch_loss(self, flat_observations: np.ndarray, flat_returns: np.ndarray, indices: np.ndarray) -> torch.Tensor:
+        observations = torch.as_tensor(flat_observations[indices], dtype=torch.float32, device=self.device)
+        returns = torch.as_tensor(flat_returns[indices], dtype=torch.float32, device=self.device)
+        return torch.nn.functional.mse_loss(self.policy.evaluate_values(observations).flatten(), returns)
 
-def append_json(path: Path, value: dict[str, Any]) -> None:
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(value, sort_keys=True, allow_nan=False) + "\n")
+    def _validation_loss(self, flat_observations: np.ndarray, flat_returns: np.ndarray, indices: np.ndarray) -> float:
+        losses = []
+        with torch.no_grad():
+            for start in range(0, len(indices), self.batch_size):
+                batch = indices[start : start + self.batch_size]
+                losses.append((float(self._critic_batch_loss(flat_observations, flat_returns, batch).item()), len(batch)))
+        return sum(loss * count for loss, count in losses) / sum(count for _loss, count in losses)
 
-
-def _assert_finite(value: Any, path: str = "metrics") -> None:
-    """Reject any non-finite numeric value in a nested metrics record."""
-    if isinstance(value, dict):
-        for key, child in value.items():
-            _assert_finite(child, f"{path}.{key}")
-    elif isinstance(value, (list, tuple)):
-        for index, child in enumerate(value):
-            _assert_finite(child, f"{path}[{index}]")
-    elif isinstance(value, (float, np.floating)) and not np.isfinite(value):
-        raise RuntimeError(f"Non-finite value at {path}: {value!r}")
-
-
-def _optimizer_step(model: End2RaceRecurrentPPO, *, require_initialized: bool) -> dict[str, int]:
-    """Read the common Adam step of every active optimizer parameter."""
-    steps: list[int] = []
-    missing = 0
-    active = 0
-    for group in model.policy.optimizer.param_groups:
-        for parameter in group["params"]:
-            if not parameter.requires_grad:
-                continue
-            active += 1
-            state = model.policy.optimizer.state.get(parameter, {})
-            if "step" not in state:
-                missing += 1
-                continue
-            raw_step = state["step"]
-            step = float(raw_step.detach().cpu().item() if torch.is_tensor(raw_step) else raw_step)
-            if not np.isfinite(step) or step < 0.0 or not step.is_integer():
-                raise RuntimeError(f"Invalid optimizer step value: {step!r}")
-            steps.append(int(step))
-    if active == 0:
-        raise RuntimeError("Optimizer has no active parameters")
-    if steps and missing:
-        raise RuntimeError(f"Optimizer state is initialized for only {len(steps)}/{active} active parameters")
-    if require_initialized and missing:
-        raise RuntimeError(f"Optimizer state is missing for {missing}/{active} active parameters")
-    if not steps:
-        return {"min": 0, "max": 0, "active_parameters": active}
-    minimum, maximum = min(steps), max(steps)
-    if minimum != maximum:
-        raise RuntimeError(f"Active optimizer parameters have inconsistent steps: {minimum}..{maximum}")
-    return {"min": minimum, "max": maximum, "active_parameters": active}
-
-
-def _parameter_delta_statistics(
-    candidate: dict[str, torch.Tensor],
-    reference: dict[str, torch.Tensor],
-    prefixes: tuple[str, ...],
-) -> dict[str, float | int]:
-    """Summarize one named actor parameter group's displacement from BC."""
-    names = sorted(name for name in reference if name.startswith(prefixes))
-    if not names:
-        raise RuntimeError(f"No actor parameters match prefixes {prefixes}")
-    squared_delta = 0.0
-    squared_reference = 0.0
-    maximum = 0.0
-    count = 0
-    for name in names:
-        current = candidate[name].detach().cpu().double()
-        baseline = reference[name].detach().cpu().double()
-        delta = current - baseline
-        squared_delta += float(delta.square().sum().item())
-        squared_reference += float(baseline.square().sum().item())
-        maximum = max(maximum, float(delta.abs().max().item()))
-        count += delta.numel()
-    rms_delta = float(np.sqrt(squared_delta / count))
-    rms_reference = float(np.sqrt(squared_reference / count))
-    return {
-        "parameter_tensors": len(names),
-        "parameter_elements": count,
-        "max_abs_delta_from_bc": maximum,
-        "rms_delta_from_bc": rms_delta,
-        "relative_rms_delta_from_bc": rms_delta / max(rms_reference, 1e-12),
-    }
-
-
-def _parameter_previous_delta_statistics(
-    candidate: dict[str, torch.Tensor],
-    previous: dict[str, torch.Tensor],
-    prefixes: tuple[str, ...],
-) -> dict[str, float]:
-    """Summarize one actor parameter group's displacement from the previous update."""
-    names = sorted(name for name in previous if name.startswith(prefixes))
-    if not names:
-        raise RuntimeError(f"No actor parameters match prefixes {prefixes}")
-    squared_delta = 0.0
-    squared_previous = 0.0
-    maximum = 0.0
-    count = 0
-    for name in names:
-        current = candidate[name].detach().cpu().double()
-        reference = previous[name].detach().cpu().double()
-        delta = current - reference
-        squared_delta += float(delta.square().sum().item())
-        squared_previous += float(reference.square().sum().item())
-        maximum = max(maximum, float(delta.abs().max().item()))
-        count += delta.numel()
-    rms_delta = float(np.sqrt(squared_delta / count))
-    rms_previous = float(np.sqrt(squared_previous / count))
-    return {
-        "max_abs_delta_from_previous": maximum,
-        "rms_delta_from_previous": rms_delta,
-        "relative_rms_delta_from_previous": rms_delta / max(rms_previous, 1e-12),
-    }
-
-
-def _actor_delta_record(
-    model: End2RaceRecurrentPPO,
-    bc_state: dict[str, torch.Tensor],
-    previous_actor_state: dict[str, torch.Tensor],
-    initial_log_std: torch.Tensor,
-) -> dict[str, Any]:
-    actor_state = model.policy.actor_checkpoint_state_dict()
-    def group(prefixes: tuple[str, ...]) -> dict[str, float | int]:
-        return {
-            **_parameter_delta_statistics(actor_state, bc_state, prefixes),
-            **_parameter_previous_delta_statistics(actor_state, previous_actor_state, prefixes),
-        }
-    return {
-        "gru": group(("gru.",)),
-        "output_layer": group(("output_layer.",)),
-        "frozen_actor": group(("k", "dummy_embedding", "speed_mlp.")),
-        "log_std_max_abs_delta_from_initial": float(
-            (model.policy.log_std.detach().cpu() - initial_log_std).abs().max().item()
-        ),
-    }
-
-
-class PPOTrainingCallback(BaseCallback):
-    """Collect one concise metrics record per rollout update."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.update = 0
-        self.latest: dict[str, Any] = {}
-
-    def _on_rollout_start(self) -> None:
-        self.current_update = self.update + 1
-        self.transitions = 0
-        self.completed = Counter()
-        self.completed_by_branch = Counter()
-        self.completed_by_role = Counter()
-        self.branches = Counter()
-        self.roles = Counter()
-        self.reward_sums = Counter()
-        self.reward_sums_by_role = Counter()
-        self.scenario_ids: set[str] = set()
-        self.hard_scenario_ids: set[str] = set()
-        self.episode_length_steps_by_role = Counter()
-        self.hard_truncations = 0
-        self.action_count = 0
-        self.action_sum = np.zeros(2, dtype=np.float64)
-        self.action_sum_squares = np.zeros(2, dtype=np.float64)
-        self.action_min = np.full(2, np.inf, dtype=np.float64)
-        self.action_max = np.full(2, -np.inf, dtype=np.float64)
-        self.paired_completed: list[dict[str, Any]] = []
-        self.paired_cross_update_keys: set[tuple[int, int, int, str]] = set()
-
-    def _on_step(self) -> bool:
-        infos = list(self.locals["infos"])
-        dones = np.asarray(self.locals["dones"], dtype=bool)
-        actions = np.asarray(self.locals["actions"], dtype=np.float64).reshape(len(infos), -1)
-        if actions.shape[1] != 2:
-            raise RuntimeError(f"Expected two PPO action dimensions, got {actions.shape[1]}")
-        self.action_count += actions.shape[0]
-        self.action_sum += actions.sum(axis=0)
-        self.action_sum_squares += np.square(actions).sum(axis=0)
-        self.action_min = np.minimum(self.action_min, actions.min(axis=0))
-        self.action_max = np.maximum(self.action_max, actions.max(axis=0))
-        for index, info in enumerate(infos):
-            self.transitions += 1
-            branch = str(info["sampler_branch"])
-            role = str(info["scenario"]["env_role"])
-            scenario_id = str(info["scenario_id"])
-            self.branches[branch] += 1
-            self.roles[role] += 1
-            self.scenario_ids.add(scenario_id)
-            if branch in {"bc_ego_collision", "hard_pool"}:
-                self.hard_scenario_ids.add(scenario_id)
-            for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total"):
-                self.reward_sums[key] += float(info[key])
-                self.reward_sums_by_role[(role, key)] += float(info[key])
-            if dones[index]:
-                if bool(info["ego_collision"]):
-                    outcome = "ego_collision"
-                elif float(info["relative_position_m"]) > 0.0:
-                    outcome = "overtake"
-                else:
-                    outcome = "follow"
-                self.completed[outcome] += 1
-                self.completed_by_branch[(branch, outcome)] += 1
-                self.completed_by_role[(role, outcome)] += 1
-                self.episode_length_steps_by_role[role] += int(round(float(info["elapsed_time"]) / 0.01))
-                if role == "hard" and bool(info["timeout"]):
-                    self.hard_truncations += 1
-                if info.get("pair_group") is not None:
-                    pair_record = {
-                        "pair_group": int(info["pair_group"]),
-                        "pair_member": int(info["pair_member"]),
-                        "pair_episode_ordinal": int(info["pair_episode_ordinal"]),
-                        "scenario_id": scenario_id,
-                        "policy_update_index": int(info["policy_update_index"]),
-                        "episode_outcome": str(info["episode_outcome"]),
-                        "episode_return": float(info["episode_return"]),
-                        "elapsed_time": float(info["elapsed_time"]),
-                    }
-                    pair_key = (
-                        pair_record["pair_group"],
-                        pair_record["pair_episode_ordinal"],
-                        pair_record["policy_update_index"],
-                        pair_record["scenario_id"],
-                    )
-                    if pair_record["policy_update_index"] == self.current_update:
-                        self.paired_completed.append(pair_record)
-                    else:
-                        self.paired_cross_update_keys.add(pair_key)
-        return True
-
-    @staticmethod
-    def _difference_statistics(values: list[float]) -> dict[str, float | int | None]:
-        if not values:
-            return {"count": 0, "mean": None, "mean_absolute": None, "min": None, "max": None}
-        array = np.asarray(values, dtype=np.float64)
-        return {
-            "count": len(values),
-            "mean": float(array.mean()),
-            "mean_absolute": float(np.abs(array).mean()),
-            "min": float(array.min()),
-            "max": float(array.max()),
-        }
-
-    def _paired_telemetry(self) -> dict[str, Any]:
-        grouped: dict[tuple[int, int, int, str], list[dict[str, Any]]] = {}
-        for record in self.paired_completed:
-            key = (
-                record["pair_group"],
-                record["pair_episode_ordinal"],
-                record["policy_update_index"],
-                record["scenario_id"],
-            )
-            grouped.setdefault(key, []).append(record)
-        complete: list[tuple[dict[str, Any], dict[str, Any]]] = []
-        incomplete = 0
-        for records in grouped.values():
-            by_member = {record["pair_member"]: record for record in records}
-            if len(records) == 2 and set(by_member) == {0, 1}:
-                complete.append((by_member[0], by_member[1]))
+    def _warmup_critic(self) -> None:
+        observations = self.rollout_buffer.observations.reshape(-1, *self.rollout_buffer.obs_shape)
+        returns = self.rollout_buffer.returns.reshape(-1)
+        train_indices, validation_indices = self._warmup_split()
+        best_loss = float("inf")
+        best_critic = None
+        best_optimizer = None
+        stale_epochs = 0
+        for epoch in range(WARMUP_MAX_EPOCHS):
+            shuffled = self.rollout_buffer.rng.permutation(train_indices)
+            for start in range(0, len(shuffled), self.batch_size):
+                loss = VALUE_LOSS_COEFFICIENT * self._critic_batch_loss(observations, returns, shuffled[start : start + self.batch_size])
+                self.policy.critic_optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.policy.critic_parameters, MAX_GRAD_NORM)
+                self.policy.critic_optimizer.step()
+            validation_loss = self._validation_loss(observations, returns, validation_indices)
+            if validation_loss < best_loss:
+                best_loss = validation_loss
+                best_critic = copy.deepcopy(self.policy.value_net.state_dict())
+                best_optimizer = copy.deepcopy(self.policy.critic_optimizer.state_dict())
+                stale_epochs = 0
             else:
-                incomplete += 1
-        outcomes = [
-            (first["episode_outcome"], second["episode_outcome"])
-            for first, second in complete
-        ]
-        discordant = sum((left == "ego_collision") != (right == "ego_collision") for left, right in outcomes)
-        both_collision = sum(left == right == "ego_collision" for left, right in outcomes)
-        both_safe = sum(left != "ego_collision" and right != "ego_collision" for left, right in outcomes)
-        return_differences = [
-            second["episode_return"] - first["episode_return"] for first, second in complete
-        ]
-        collision_time_differences = [
-            second["elapsed_time"] - first["elapsed_time"]
-            for first, second in complete
-            if first["episode_outcome"] == second["episode_outcome"] == "ego_collision"
-        ]
-        complete_count = len(complete)
-        return {
-            "complete_same_update_pairs": complete_count,
-            "incomplete_pairs": incomplete + len(self.paired_cross_update_keys),
-            "cross_update_incomplete_pairs": len(self.paired_cross_update_keys),
-            "discordant_pairs": discordant,
-            "discordant_pair_rate": discordant / complete_count if complete_count else 0.0,
-            "both_collision_pairs": both_collision,
-            "both_safe_pairs": both_safe,
-            "paired_return_difference_member1_minus_member0": self._difference_statistics(return_differences),
-            "paired_collision_time_difference_member1_minus_member0": self._difference_statistics(
-                collision_time_differences
-            ),
-            "paired_scenario_coverage": len(
-                {first["scenario_id"] for first, _second in complete}
-            ),
-        }
+                stale_epochs += 1
+                if stale_epochs >= WARMUP_PATIENCE:
+                    break
+        if best_critic is None or best_optimizer is None:
+            raise RuntimeError("Critic warm-up did not produce a valid checkpoint")
+        self.policy.value_net.load_state_dict(best_critic)
+        self.policy.critic_optimizer.load_state_dict(best_optimizer)
+        self.warmup_completed = True
+        self.logger.record("warmup/epochs", epoch + 1)
+        self.logger.record("warmup/best_validation_loss", best_loss)
 
-    def _action_statistics(self, index: int) -> dict[str, float]:
-        if self.action_count == 0:
-            raise RuntimeError("PPO rollout produced no actions")
-        mean = self.action_sum[index] / self.action_count
-        variance = max(self.action_sum_squares[index] / self.action_count - mean * mean, 0.0)
-        values = {
-            "mean": float(mean),
-            "std": float(np.sqrt(variance)),
-            "min": float(self.action_min[index]),
-            "max": float(self.action_max[index]),
-        }
-        if not all(np.isfinite(value) for value in values.values()):
-            raise RuntimeError(f"Non-finite PPO action statistics: {values}")
-        return values
+    def train(self) -> None:
+        self.policy.set_training_mode(True)
+        if not self.warmup_completed:
+            self._warmup_critic()
+            return
 
-    def _on_rollout_end(self) -> None:
-        self.update += 1
-        outcomes = ("ego_collision", "follow", "overtake")
-        self.latest = {
-            "update": self.update,
-            "transitions": self.transitions,
-            "completed_episodes": dict(sorted(self.completed.items())),
-            "completed_episodes_by_sampler_branch": {
-                branch: {
-                    outcome: int(self.completed_by_branch[(branch, outcome)])
-                    for outcome in outcomes
-                }
-                for branch in sorted(self.branches)
-            },
-            "completed_episodes_by_env_role": {
-                role: {
-                    outcome: int(self.completed_by_role[(role, outcome)])
-                    for outcome in outcomes
-                }
-                for role in ("hard", "ordinary")
-            },
-            "sampler_branch_transitions": dict(sorted(self.branches.items())),
-            "env_role_transitions": {
-                role: int(self.roles[role]) for role in ("hard", "ordinary")
-            },
-            "unique_scenario_count": len(self.scenario_ids),
-            "unique_hard_scenario_count": len(self.hard_scenario_ids),
-            "action_statistics": {
-                "steering": self._action_statistics(0),
-                "speed": self._action_statistics(1),
-            },
-            "reward_component_means": {
-                key: float(self.reward_sums[key] / self.transitions)
-                for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total")
-            },
-            "reward_component_sums": {
-                key: float(self.reward_sums[key])
-                for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total")
-            },
-            "reward_component_sums_by_env_role": {
-                role: {
-                    key: float(self.reward_sums_by_role[(role, key)])
-                    for key in ("reward_progress", "reward_relative", "reward_margin", "reward_collision", "reward_total")
-                }
-                for role in ("hard", "ordinary")
-            },
-            "hard_truncations": int(self.hard_truncations),
-            "mean_episode_length_steps_by_env_role": {
-                role: (
-                    float(self.episode_length_steps_by_role[role])
-                    / max(sum(self.completed_by_role[(role, outcome)] for outcome in outcomes), 1)
-                )
-                for role in ("hard", "ordinary")
-            },
-            "paired_telemetry": self._paired_telemetry(),
-        }
+        clip_range = self.clip_range(self._current_progress_remaining)
+        policy_losses = []
+        value_losses = []
+        clip_fractions = []
+        approximate_kls = []
+
+        for parameter in self.policy.critic_parameters:
+            parameter.requires_grad_(False)
+        for _epoch in range(self.actor_epochs):
+            for rollout_data in self.rollout_buffer.get(self.batch_size):
+                mask = rollout_data.mask > 1e-8
+                advantages = rollout_data.advantages
+                if self.normalize_advantage:
+                    valid_advantages = advantages[mask]
+                    advantages = (advantages - valid_advantages.mean()) / (valid_advantages.std() + 1e-8)
+                log_prob, _entropy = self.policy.evaluate_actor_actions(rollout_data.observations, rollout_data.actions, rollout_data.lstm_states, rollout_data.episode_starts)
+                ratio = torch.exp(log_prob - rollout_data.old_log_prob)
+                policy_loss = -torch.min(advantages * ratio, advantages * torch.clamp(ratio, 1 - clip_range, 1 + clip_range))[mask].mean()
+                self.policy.actor_optimizer.zero_grad()
+                policy_loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.policy.actor_parameters, MAX_GRAD_NORM)
+                self.policy.actor_optimizer.step()
+                with torch.no_grad():
+                    log_ratio = log_prob - rollout_data.old_log_prob
+                    approximate_kls.append(float(((torch.exp(log_ratio) - 1) - log_ratio)[mask].mean().cpu().item()))
+                    clip_fractions.append(float((torch.abs(ratio - 1) > clip_range)[mask].float().mean().cpu().item()))
+                policy_losses.append(float(policy_loss.item()))
+        for parameter in self.policy.critic_parameters:
+            parameter.requires_grad_(True)
+
+        for parameter in self.policy.actor_parameters:
+            parameter.requires_grad_(False)
+        for _epoch in range(self.critic_epochs):
+            for rollout_data in self.rollout_buffer.get(self.batch_size):
+                mask = rollout_data.mask > 1e-8
+                values = self.policy.evaluate_values(rollout_data.observations).flatten()
+                value_loss = torch.nn.functional.mse_loss(values[mask], rollout_data.returns[mask])
+                self.policy.critic_optimizer.zero_grad()
+                (VALUE_LOSS_COEFFICIENT * value_loss).backward()
+                torch.nn.utils.clip_grad_norm_(self.policy.critic_parameters, MAX_GRAD_NORM)
+                self.policy.critic_optimizer.step()
+                value_losses.append(float(value_loss.item()))
+        for parameter in self.policy.actor_parameters:
+            parameter.requires_grad_(True)
+
+        self._n_updates += 1
+        self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
+        self.logger.record("train/policy_gradient_loss", np.mean(policy_losses))
+        self.logger.record("train/value_loss", np.mean(value_losses))
+        self.logger.record("train/approx_kl", np.mean(approximate_kls))
+        self.logger.record("train/clip_fraction", np.mean(clip_fractions))
+        self.logger.record("train/explained_variance", explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten()))
 
 
-def build_sampler(config: ppo_config.PPOConfig) -> FixedMixtureScenarioSampler:
-    full_pool = training_scenarios()
-    hard_scenarios, hard_ids, manifest = load_hard_pool(
-        config.hard_pool,
-        config.hard_pool_manifest,
-    )
-    return FixedMixtureScenarioSampler(
-        full_pool,
-        hard_ids,
-        collision_probability=config.hard_sampling_probability,
-        hard_scenarios=hard_scenarios,
-        hard_pool_id=str(manifest["pool_id"]),
-        hard_sampling_mode=config.hard_sampling_mode,
-    )
+def validate_arguments(args) -> None:
+    pretrained_path = Path(args.pretrained_model_path).expanduser().resolve()
+    ppo_path = Path(args.ppo_model_path).expanduser().resolve()
+    if not pretrained_path.is_file():
+        raise FileNotFoundError(f"Pretrained model does not exist: {pretrained_path}")
+    if pretrained_path == ppo_path:
+        raise ValueError("PPO model path must not overwrite the pretrained model")
+    if args.n_envs < ENV_WORKERS or args.n_envs % 2 != 0:
+        raise ValueError(f"n_envs must be even and at least {ENV_WORKERS}")
+    for name in ("hidden_scale", "n_steps", "batch_size", "num_updates", "actor_epochs", "critic_epochs"):
+        if getattr(args, name) <= 0:
+            raise ValueError(f"{name} must be positive")
+    if args.n_envs * args.n_steps % args.batch_size != 0:
+        raise ValueError("n_envs * n_steps must be divisible by batch_size")
+    for name in ("gru_learning_rate", "head_learning_rate", "critic_learning_rate", "gamma", "gae_lambda", "clip_range"):
+        if getattr(args, name) <= 0:
+            raise ValueError(f"{name} must be positive")
 
 
-def make_training_env(
-    rank: int,
-    sampler: FixedMixtureScenarioSampler,
-    config: ppo_config.PPOConfig,
-    seed: int,
-):
-    """Build one legacy F110 simulator behind the frozen Gymnasium contract."""
-    def factory() -> End2RaceGymnasiumEnv:
-        import gym
-        from f110_gym.envs.base_classes import Integrator
-
-        core = gym.make(
-            "f110-v0",
-            map=str(ppo_config.PROJECT_ROOT / "f1tenth_racetracks" / "Austin" / "Austin_map"),
-            map_ext=".png",
-            num_agents=2,
-            timestep=0.01,
-            integrator=Integrator.RK4,
-            seed=seed + rank,
-        )
-        fixed_role = None
-        if config.fixed_hard_env_count is not None:
-            fixed_role = "hard" if rank < config.fixed_hard_env_count else "ordinary"
-        horizon = (
-            config.hard_horizon_s if fixed_role == "hard" else config.ordinary_horizon_s
-        )
-        reset_provider = (
-            _fixed_reset_provider(rank, sampler, config, seed, fixed_role)
-            if fixed_role is not None
-            else sampler
-        )
-        return End2RaceGymnasiumEnv(
-            core,
-            sim_duration=horizon,
-            reset_provider=reset_provider,
-            ego_index=0,
-            opponent_controller=LatticePlannerOpponentController(),
-            transition_reward=PPOTransitionReward(
-                ProgressProjector.from_csv(),
-                margin_weight=config.margin_weight,
-                margin_threshold=config.margin_threshold,
-            ),
-            privileged_critic=config.critic_profile == "C3_PRIVILEGED_PHYSICAL",
-        )
-
-    return factory
-
-
-def _external_reset_required(_rng: np.random.Generator):
-    """Reject unscheduled worker resets without capturing a sampler object."""
-
-    raise RuntimeError("Subprocess training resets must be supplied by the parent scheduler")
-
-
-def make_subprocess_training_env(
-    rank: int,
-    config: ppo_config.PPOConfig,
-    seed: int,
-):
-    """Build one worker env that contains no sampler or visit-count state."""
-
-    def factory() -> End2RaceGymnasiumEnv:
-        import gym
-        from f110_gym.envs.base_classes import Integrator
-
-        core = gym.make(
-            "f110-v0",
-            map=str(ppo_config.PROJECT_ROOT / "f1tenth_racetracks" / "Austin" / "Austin_map"),
-            map_ext=".png",
-            num_agents=2,
-            timestep=0.01,
-            integrator=Integrator.RK4,
-            seed=seed + rank,
-        )
-        fixed_role = None
-        if config.fixed_hard_env_count is not None:
-            fixed_role = "hard" if rank < config.fixed_hard_env_count else "ordinary"
-        horizon = config.hard_horizon_s if fixed_role == "hard" else config.ordinary_horizon_s
-        return End2RaceGymnasiumEnv(
-            core,
-            sim_duration=horizon,
-            reset_provider=_external_reset_required,
-            ego_index=0,
-            opponent_controller=LatticePlannerOpponentController(),
-            transition_reward=PPOTransitionReward(
-                ProgressProjector.from_csv(),
-                margin_weight=config.margin_weight,
-                margin_threshold=config.margin_threshold,
-            ),
-            privileged_critic=config.critic_profile == "C3_PRIVILEGED_PHYSICAL",
-        )
-
-    return factory
-
-
-def _fixed_reset_provider(
-    rank: int,
-    sampler: FixedMixtureScenarioSampler,
-    config: ppo_config.PPOConfig,
-    seed: int,
-    fixed_role: str,
-):
-    pair_episode_ordinal = 0
-
-    def provider(rng: np.random.Generator):
-        nonlocal pair_episode_ordinal
-        if config.paired_hard_sampling and fixed_role == "hard":
-            spec = sampler.reset_spec(
-                rng,
-                env_role="hard",
-                pair_seed=seed,
-                pair_group=rank // config.hard_pair_size,
-                pair_member=rank % config.hard_pair_size,
-                pair_episode_ordinal=pair_episode_ordinal,
-            )
-            pair_episode_ordinal += 1
-            return spec
-        return sampler.reset_spec(rng, env_role=fixed_role)
-
-    return provider
-
-
-def build_model(
-    vector_env: VecEnv,
-    config: ppo_config.PPOConfig,
-    seed: int,
-) -> End2RaceRecurrentPPO:
-    """Build the fixed recurrent PPO algorithm and optimizer groups."""
-    _configure_ppo_training_numerics()
+def build_model(vector_env, args, device) -> End2RaceRecurrentPPO:
     return End2RaceRecurrentPPO(
         End2RaceGRUPolicy,
         vector_env,
+        actor_epochs=args.actor_epochs,
+        critic_epochs=args.critic_epochs,
         learning_rate=1.0,
-        n_steps=config.n_steps,
-        batch_size=config.batch_size,
-        n_epochs=config.n_epochs,
-        gamma=ppo_config.GAMMA,
-        gae_lambda=ppo_config.GAE_LAMBDA,
-        clip_range=ppo_config.CLIP_RANGE,
-        clip_range_vf=ppo_config.CLIP_RANGE_VF,
-        normalize_advantage=ppo_config.NORMALIZE_ADVANTAGE,
-        vf_coef=ppo_config.VF_COEF,
-        ent_coef=ppo_config.ENT_COEF,
-        max_grad_norm=ppo_config.MAX_GRAD_NORM,
-        target_kl=config.target_kl,
-        seed=seed,
-        device=ppo_config.DEVICE,
+        n_steps=args.n_steps,
+        batch_size=args.batch_size,
+        gamma=args.gamma,
+        gae_lambda=args.gae_lambda,
+        clip_range=args.clip_range,
+        clip_range_vf=None,
+        normalize_advantage=True,
+        ent_coef=0.0,
+        vf_coef=VALUE_LOSS_COEFFICIENT,
+        max_grad_norm=MAX_GRAD_NORM,
+        target_kl=None,
+        seed=args.seed,
+        device=device,
         policy_kwargs={
-            "checkpoint_path": ppo_config.BC_CHECKPOINT,
-            "hidden_scale": 4,
-            "critic_hidden_size": 64,
-            "critic_profile": config.critic_profile,
-            "gru_lr": config.gru_lr,
-            "head_lr": config.head_lr,
-            "steering_distribution": config.steering_distribution,
-            "steering_latent_std": config.steering_latent_std,
-            "speed_physical_std": config.speed_physical_std,
+            "checkpoint_path": args.pretrained_model_path,
+            "hidden_scale": args.hidden_scale,
+            "gru_learning_rate": args.gru_learning_rate,
+            "head_learning_rate": args.head_learning_rate,
+            "critic_learning_rate": args.critic_learning_rate,
         },
         verbose=1,
     )
 
 
-def build_training_vector_env(
-    sampler: FixedMixtureScenarioSampler,
-    config: ppo_config.PPOConfig,
-    seed: int,
-    *,
-    worker_count: int = ppo_config.ENV_WORKERS,
-) -> VecEnv:
-    """Build the only production VecEnv: parent-scheduled simulator workers."""
-    factories = [
-        make_subprocess_training_env(rank, config, seed)
-        for rank in range(ppo_config.N_ENVS)
-    ]
-    return CentralScheduleSubprocVecEnv(
-        factories,
-        sampler=sampler,
-        config=config,
-        seed=seed,
-        worker_count=worker_count,
-        start_method=ppo_config.ENV_START_METHOD,
-    )
+def save_actor(model: End2RaceRecurrentPPO, path: Path, hidden_scale: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    state_dict = {name: tensor.detach().cpu() for name, tensor in model.policy.actor_checkpoint_state_dict().items()}
+    if len(state_dict) != 12:
+        raise RuntimeError(f"Expected a 12-key actor checkpoint, got {len(state_dict)} keys")
+    torch.save(state_dict, path)
+    actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
+    actor.load_state_dict(torch.load(path, map_location="cpu", weights_only=True), strict=True)
 
 
-def save_actor(model: End2RaceRecurrentPPO, destination: Path) -> str:
-    """Save, validate, and hash one BC-compatible actor checkpoint."""
-    if destination.exists():
-        raise FileExistsError(f"Checkpoint already exists: {destination}")
-    state = {name: tensor.detach().cpu() for name, tensor in model.policy.actor_checkpoint_state_dict().items()}
-    bc_state = torch.load(ppo_config.BC_CHECKPOINT, map_location="cpu", weights_only=True)
-    if set(state) != set(bc_state):
-        raise RuntimeError("Saved actor keys do not match the BC checkpoint schema")
-    for name, tensor in state.items():
-        if tensor.shape != bc_state[name].shape or tensor.dtype != bc_state[name].dtype:
-            raise RuntimeError(f"Saved actor tensor does not match the BC checkpoint schema: {name}")
-    torch.save(state, destination)
-    fresh = End2Race(mask_prob=0.0, hidden_scale=4)
-    fresh.load_state_dict(torch.load(destination, map_location="cpu", weights_only=True), strict=True)
-    digest = hashlib.sha256()
-    with destination.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def main() -> None:
+    args = parse_arguments()
+    validate_arguments(args)
+    configure_training_numerics()
+    random.seed(args.seed)
+    np.random.seed(args.seed)
 
-
-def _resolved_record(
-    config: ppo_config.PPOConfig,
-    seed: int,
-    output_dir: Path,
-) -> dict[str, Any]:
-    record = asdict(config)
-    record.update(
-        {
-            "seed": seed,
-            "output_dir": str(output_dir),
-            "device": ppo_config.DEVICE,
-            "n_envs": ppo_config.N_ENVS,
-            "env_workers": ppo_config.ENV_WORKERS,
-            "env_start_method": ppo_config.ENV_START_METHOD,
-            "n_epochs": config.n_epochs,
-            "gamma": ppo_config.GAMMA,
-            "gae_lambda": ppo_config.GAE_LAMBDA,
-            "clip_range": ppo_config.CLIP_RANGE,
-            "clip_range_vf": ppo_config.CLIP_RANGE_VF,
-            "normalize_advantage": ppo_config.NORMALIZE_ADVANTAGE,
-            "vf_coef": ppo_config.VF_COEF,
-            "ent_coef": ppo_config.ENT_COEF,
-            "max_grad_norm": ppo_config.MAX_GRAD_NORM,
-            "target_kl": config.target_kl,
-            "gru_lr": config.gru_lr,
-            "head_lr": config.head_lr,
-            "critic_lr": ppo_config.CRITIC_LR,
-            "steering_latent_std": config.steering_latent_std,
-            "speed_physical_std": config.speed_physical_std,
-            "sim_duration": ppo_config.SIM_DURATION,
-            "bc_checkpoint": str(ppo_config.BC_CHECKPOINT),
-        }
-    )
-    record["transitions_per_update"] = ppo_config.N_ENVS * config.n_steps
-    record["minibatches_per_epoch"] = ppo_config.N_ENVS * config.n_steps // config.batch_size
-    record["minibatches_per_update"] = record["minibatches_per_epoch"]
-    record["planned_optimizer_steps_per_update"] = record["minibatches_per_epoch"] * config.n_epochs
-    record["total_optimizer_steps"] = record["planned_optimizer_steps_per_update"] * config.updates
-    return record
-
-
-def _sampler_summary(
-    config: ppo_config.PPOConfig,
-    sampler: FixedMixtureScenarioSampler,
-) -> dict[str, Any]:
-    visit_counts = dict(sorted(sampler.visit_counts.items()))
-    visits = np.asarray(list(visit_counts.values()), dtype=np.float64)
-    visited = int(np.count_nonzero(visits))
-    return {
-        "hard_pool": config.hard_pool,
-        "hard_pool_id": sampler.hard_pool_id,
-        "hard_pool_size": len(visit_counts),
-        "hard_sampling_probability": config.hard_sampling_probability,
-        "hard_sampling_mode": config.hard_sampling_mode,
-        "visited_hard_scenarios": visited,
-        "unvisited_hard_scenarios": len(visit_counts) - visited,
-        "visit_min": int(visits.min()),
-        "visit_max": int(visits.max()),
-        "visit_mean": float(visits.mean()),
-        "visit_std": float(visits.std()),
-        "visit_counts": visit_counts,
-    }
-
-
-def train(
-    config: ppo_config.PPOConfig,
-    seed: int,
-    output_dir: Path,
-    *,
-    screen_pause: bool = False,
-) -> Path:
-    """Run one fresh profile in a new output directory."""
-
-    if not ppo_config.BC_CHECKPOINT.is_file():
-        raise FileNotFoundError(f"BC checkpoint does not exist: {ppo_config.BC_CHECKPOINT}")
-    if output_dir.exists():
-        raise FileExistsError(f"Output directory already exists: {output_dir}")
-    sampler = build_sampler(config)
-    output_dir.mkdir(parents=True, exist_ok=False)
-    checkpoint_dir = output_dir / "checkpoints"
-    checkpoint_dir.mkdir()
-    write_json(output_dir / "resolved_config.json", _resolved_record(config, seed, output_dir))
-    checkpoint_manifest: dict[str, Any] = {
-        "config": config.name,
-        "seed": seed,
-        "checkpoints": [],
-    }
-    write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
-    status_path = output_dir / "run_status.json"
-    run_status: dict[str, Any] = {
-        "schema_version": 1,
-        "experiment": config.name,
-        "status": "RUNNING",
-        "config": config.name,
-        "seed": seed,
-        "last_completed_update": 0,
-        "stop_reason": None,
-    }
-    write_json_atomic(status_path, run_status)
-    set_random_seed(seed)
-
-    vector_env: VecEnv | None = None
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.seed)
     try:
-        vector_env = build_training_vector_env(sampler, config, seed)
-        vector_env.seed(seed)
-        model = build_model(vector_env, config, seed)
-        callback = PPOTrainingCallback()
-        bc_state = torch.load(ppo_config.BC_CHECKPOINT, map_location="cpu", weights_only=True)
-        previous_actor_state = {name: tensor.detach().cpu().clone() for name, tensor in bc_state.items()}
-        initial_log_std = model.policy.log_std.detach().cpu().clone()
-        minibatches_per_epoch = ppo_config.N_ENVS * config.n_steps // config.batch_size
-        planned_optimizer_steps = minibatches_per_epoch * config.n_epochs
-        for update in range(1, config.updates + 1):
-            vector_env.env_method("set_policy_update_index", update)
-            optimizer_before = _optimizer_step(model, require_initialized=update > 1)
-            with torch.autograd.set_multithreading_enabled(config.autograd_multithreading):
-                model.learn(
-                    total_timesteps=ppo_config.N_ENVS * config.n_steps,
-                    callback=callback,
-                    log_interval=None,
-                    reset_num_timesteps=update == 1,
-                    progress_bar=False,
-                )
-            optimizer_after = _optimizer_step(model, require_initialized=True)
-            actual_optimizer_steps = optimizer_after["max"] - optimizer_before["max"]
-            if actual_optimizer_steps <= 0 or actual_optimizer_steps > planned_optimizer_steps:
-                raise RuntimeError(
-                    f"Invalid optimizer-step count at update {update}: "
-                    f"{actual_optimizer_steps} not in [1, {planned_optimizer_steps}]"
-                )
-            actor_delta = _actor_delta_record(model, bc_state, previous_actor_state, initial_log_std)
-            if (
-                actor_delta["frozen_actor"]["max_abs_delta_from_bc"] != 0.0
-                or actor_delta["log_std_max_abs_delta_from_initial"] != 0.0
-            ):
-                raise RuntimeError(f"Frozen actor state drifted at update {update}")
-            metrics = {
-                "update": update,
-                "num_timesteps": int(model.num_timesteps),
-                "rollout": callback.latest,
-                "planned_optimizer_steps": planned_optimizer_steps,
-                "actual_optimizer_steps": actual_optimizer_steps,
-                "optimizer_step_min": optimizer_after["min"],
-                "optimizer_step_max": optimizer_after["max"],
-                "optimizer_active_parameters": optimizer_after["active_parameters"],
-                "target_kl_early_stop": actual_optimizer_steps < planned_optimizer_steps,
-                "effective_epoch_fraction": actual_optimizer_steps / minibatches_per_epoch,
-                "actor_delta_from_bc": actor_delta,
-            }
-            for key in ("loss", "policy_gradient_loss", "value_loss", "approx_kl", "clip_fraction", "explained_variance"):
-                logger_key = f"train/{key}"
-                if logger_key in model.logger.name_to_value:
-                    metrics[key] = float(model.logger.name_to_value[logger_key])
-            if "approx_kl" not in metrics:
-                raise RuntimeError(f"PPO logger did not report approx_kl at update {update}")
-            _assert_finite(metrics)
-            append_json(output_dir / "training_metrics.jsonl", metrics)
-            previous_actor_state = {
-                name: tensor.detach().cpu().clone()
-                for name, tensor in model.policy.actor_checkpoint_state_dict().items()
-            }
-            run_status["last_completed_update"] = update
-            if (
-                config.update_kl_guardrail is not None
-                and metrics["approx_kl"] > config.update_kl_guardrail
-            ):
-                run_status.update(
-                    {
-                        "status": "STOPPED_KL_GUARDRAIL",
-                        "stop_reason": (
-                            f"approx_kl {metrics['approx_kl']:.9g} exceeds "
-                            f"{config.update_kl_guardrail:.9g}"
-                        ),
-                    }
-                )
-                write_json_atomic(status_path, run_status)
-                break
-            if update in config.checkpoint_updates:
-                filename = f"end2race_ppo_{config.name}_u{update:04d}_s{seed}.pth"
-                actor_path = checkpoint_dir / filename
-                checkpoint_manifest["checkpoints"].append(
-                    {
-                        "update": update,
-                        "path": actor_path.relative_to(output_dir).as_posix(),
-                        "sha256": save_actor(model, actor_path),
-                    }
-                )
-                write_json(output_dir / "checkpoint_manifest.json", checkpoint_manifest)
-            if screen_pause and update == config.checkpoint_updates[0]:
-                write_json(output_dir / "sampler_summary.json", _sampler_summary(config, sampler))
-                run_status["status"] = "PAUSED_SCREEN"
-                write_json_atomic(status_path, run_status)
-                print("SCREEN_PAUSED: enter continue or stop", flush=True)
-                decision = input().strip().lower()
-                if decision == "stop":
-                    run_status.update(
-                        {
-                            "status": "STOPPED_SCREEN",
-                            "stop_reason": "Stopped by fixed screen-stage decision",
-                        }
-                    )
-                    write_json_atomic(status_path, run_status)
-                    break
-                if decision != "continue":
-                    raise ValueError(f"Unknown screen decision: {decision!r}")
-                run_status["status"] = "RUNNING"
-                write_json_atomic(status_path, run_status)
-            run_status["status"] = "COMPLETED" if update == config.updates else "RUNNING"
-            write_json_atomic(status_path, run_status)
-    except Exception as error:
-        if run_status["status"] != "STOPPED_KL_GUARDRAIL":
-            message = f"{type(error).__name__}: {error}"
-            if "Non-finite" in message:
-                failure_status = "FAILED_NONFINITE"
-            elif "checkpoint" in message.lower() or "actor tensor" in message.lower():
-                failure_status = "FAILED_CHECKPOINT"
-            else:
-                failure_status = "FAILED_RUNTIME"
-            run_status.update(
-                {
-                    "status": failure_status,
-                    "stop_reason": message,
-                }
-            )
-            write_json_atomic(status_path, run_status)
-        raise
+        model = build_model(vector_env, args, device)
+        total_rollouts = args.num_updates + 1
+        model.learn(total_timesteps=args.n_envs * args.n_steps * total_rollouts, log_interval=1, progress_bar=False)
+        output_path = Path(args.ppo_model_path).expanduser().resolve()
+        save_actor(model, output_path, args.hidden_scale)
+        print(f"PPO model saved: {output_path}")
     finally:
-        if vector_env is not None:
-            vector_env.close()
-        write_json(output_dir / "sampler_summary.json", _sampler_summary(config, sampler))
-
-    return output_dir
+        vector_env.close()
 
 
 if __name__ == "__main__":
-    args = parse_arguments()
-    config = ppo_config.get_config(args.config)
-    output_dir = args.output_dir or (
-        ppo_config.PROJECT_ROOT / "runs" / "ppo" / f"{config.name}_seed{args.seed}"
-    )
-    run_dir = train(config, args.seed, output_dir, screen_pause=args.screen_pause)
-    print(f"PPO_RUN_DIR={run_dir}")
-    with (run_dir / "run_status.json").open("r", encoding="utf-8") as handle:
-        final_status = json.load(handle)
-    if final_status["status"] not in {"COMPLETED", "STOPPED_SCREEN"}:
-        raise SystemExit(2)
+    main()

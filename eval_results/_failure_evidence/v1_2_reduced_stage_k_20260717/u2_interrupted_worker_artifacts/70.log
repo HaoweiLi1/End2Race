@@ -1,9 +1,0 @@
-Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
-Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
-See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
-/home/haowei/miniconda3/envs/end2race/lib/python3.10/site-packages/f110_gym/envs/base_classes.py:93: UserWarning: Chosen integrator is RK4. This is different from previous versions of the gym.
-  warnings.warn(f"Chosen integrator is RK4. This is different from previous versions of the gym.")
-STATE=2
-AVG_SPEED=5.596
-SPEED_VARIANCE=1.735
-TOTAL_DISTANCE=44.791

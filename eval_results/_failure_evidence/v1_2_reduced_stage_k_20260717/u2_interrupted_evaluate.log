@@ -1,5 +1,0 @@
-Starting batch evaluation of 600 segments
-Model: runs/ppo/AK-L1-kl010_seed20260715/checkpoints/end2race_ppo_AK-L1-kl010_u0002_s20260715.pth
-Map: Austin
-Workers: 8
-Noise level: 0.0

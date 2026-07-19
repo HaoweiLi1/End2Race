@@ -1,5 +1,0 @@
-Starting batch evaluation of 600 segments
-Model: runs/ppo/BE-E3-speed-low_seed20260715/checkpoints/end2race_ppo_BE-E3-speed-low_u0002_s20260715.pth
-Map: Austin
-Workers: 8
-Noise level: 0.0
