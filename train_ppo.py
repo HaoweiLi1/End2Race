@@ -7,9 +7,12 @@ import argparse
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 import copy as copy_module
+from dataclasses import asdict
+import json
 import multiprocessing as mp
 from pathlib import Path
 import random
+import time
 from typing import Optional
 
 import numpy as np
@@ -57,6 +60,8 @@ def parse_arguments():
     parser.add_argument("--n_envs", type=int, default=16)
     parser.add_argument("--env_workers", type=int, default=8)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/default")
+    parser.add_argument("--reclassify_collisions", action="store_true")
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -123,23 +128,221 @@ def _classify_collision_candidate(task: tuple[int, ScenarioSpec]) -> tuple[int, 
         raise RuntimeError(f"Collision classification failed for {scenario.scenario_id}") from error
 
 
-def classify_collision_scenarios(pretrained_model_path: str | Path, hidden_scale: int, map_name: str, env_workers: int) -> tuple[ScenarioSpec, ...]:
-    candidates = expanded_scenarios(map_name)
+def classify_collision_scenarios(
+    pretrained_model_path: str | Path,
+    hidden_scale: int,
+    map_name: str,
+    env_workers: int,
+    candidates: tuple[ScenarioSpec, ...],
+) -> tuple[tuple[ScenarioSpec, ...], list[dict], dict]:
+    candidate_count = len(candidates)
     context = mp.get_context(START_METHOD)
     collisions = []
+    outcomes = []
+    collision_count = 0
     invalid_count = 0
+    started_at = time.perf_counter()
     with ProcessPoolExecutor(max_workers=env_workers, mp_context=context, initializer=_collision_worker_init, initargs=(str(Path(pretrained_model_path).expanduser().resolve()), hidden_scale, map_name)) as executor:
         for completed, (index, outcome) in enumerate(executor.map(_classify_collision_candidate, enumerate(candidates), chunksize=4), start=1):
+            if index != completed - 1 or outcome not in {"ego_collision", "other", "invalid"}:
+                raise RuntimeError(f"Invalid classification result at candidate {completed - 1}/{candidate_count}")
+            outcomes.append({"candidate_index": index, "scenario_id": candidates[index].scenario_id, "outcome": outcome})
             if outcome == "ego_collision":
                 collisions.append(candidates[index])
+                collision_count += 1
             elif outcome == "invalid":
                 invalid_count += 1
-            if completed % 100 == 0 or completed == len(candidates):
-                print(f"Collision classification: {completed}/{len(candidates)}")
+            if completed % 100 == 0 or completed == candidate_count:
+                elapsed = time.perf_counter() - started_at
+                rate = completed / elapsed
+                eta = (candidate_count - completed) / rate
+                print(f"Collision classification: {completed}/{candidate_count}, collision={collision_count}, invalid={invalid_count}, rate={rate:.2f}/s, ETA={eta:.1f}s", flush=True)
     if not collisions:
-        raise RuntimeError("The pretrained model produced no ego-collision scenarios")
-    print(f"Collision classification complete: {len(collisions)} collisions, {invalid_count} invalid")
-    return tuple(collisions)
+        raise RuntimeError(f"The pretrained model produced no ego-collision scenarios from {candidate_count} candidates")
+    wall_seconds = time.perf_counter() - started_at
+    summary = {
+        "candidate_count": candidate_count,
+        "collision_count": collision_count,
+        "other_count": candidate_count - collision_count - invalid_count,
+        "invalid_count": invalid_count,
+        "env_workers": env_workers,
+        "wall_seconds": wall_seconds,
+        "scenarios_per_second": candidate_count / wall_seconds,
+    }
+    return tuple(collisions), outcomes, summary
+
+
+def collision_classification_config(args, candidate_count: int) -> dict:
+    return {
+        "classification_schema": 1,
+        "pretrained_model_path": str(Path(args.pretrained_model_path).expanduser().resolve()),
+        "hidden_scale": int(args.hidden_scale),
+        "map_name": str(args.map_name),
+        "ego_raceline": str(PPO_CONFIG["ego_raceline"]),
+        "opponent_racelines": [str(value) for value in PPO_CONFIG["opponent_racelines"]],
+        "collision_startpoint_count": int(PPO_CONFIG["collision_startpoint_count"]),
+        "collision_interval_indices": [int(value) for value in PPO_CONFIG["collision_interval_indices"]],
+        "collision_speed_scales": [float(value) for value in PPO_CONFIG["collision_speed_scales"]],
+        "collision_startpoint_min_distance": float(PPO_CONFIG["collision_startpoint_min_distance"]),
+        "simulator_timestep": float(PPO_CONFIG["simulator_timestep"]),
+        "episode_horizon": float(PPO_CONFIG["episode_horizon"]),
+        "candidate_count": candidate_count,
+    }
+
+
+def _write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2)
+        file.write("\n")
+
+
+def _collision_cache_exists(cache_dir: Path) -> bool:
+    required_paths = (
+        cache_dir / "classification_config.json",
+        cache_dir / "candidate_outcomes.jsonl",
+        cache_dir / "collision_scenarios.json",
+        cache_dir / "classification_summary.json",
+    )
+    existing_count = sum(path.exists() for path in required_paths)
+    if existing_count not in (0, len(required_paths)):
+        raise RuntimeError("Collision classification cache is incomplete; use --reclassify_collisions")
+    return existing_count == len(required_paths)
+
+
+def write_collision_cache(cache_dir: Path, config: dict, outcomes: list[dict], collision_scenarios: tuple[ScenarioSpec, ...], summary: dict) -> None:
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    _write_json(cache_dir / "classification_config.json", config)
+    with (cache_dir / "candidate_outcomes.jsonl").open("w", encoding="utf-8") as file:
+        for outcome in outcomes:
+            file.write(json.dumps(outcome) + "\n")
+    _write_json(cache_dir / "collision_scenarios.json", [asdict(scenario) for scenario in collision_scenarios])
+    _write_json(cache_dir / "classification_summary.json", summary)
+
+
+def _load_candidate_outcomes(path: Path, candidates: tuple[ScenarioSpec, ...]) -> list[dict]:
+    with path.open("r", encoding="utf-8") as file:
+        outcomes = [json.loads(line) for line in file]
+    candidate_count = len(candidates)
+    if len(outcomes) != candidate_count:
+        raise RuntimeError(f"Collision cache has {len(outcomes)} outcomes for {candidate_count} candidates")
+    expected_keys = {"candidate_index", "scenario_id", "outcome"}
+    for candidate_index, (outcome, candidate) in enumerate(zip(outcomes, candidates)):
+        if set(outcome) != expected_keys or type(outcome["candidate_index"]) is not int or outcome["candidate_index"] != candidate_index:
+            raise RuntimeError(f"Collision cache candidate_index must be 0 through {candidate_count - 1}")
+        if outcome["scenario_id"] != candidate.scenario_id:
+            raise RuntimeError(f"Collision cache scenario_id mismatch at candidate {candidate_index}/{candidate_count}")
+        if outcome["outcome"] not in {"ego_collision", "other", "invalid"}:
+            raise RuntimeError(f"Collision cache has an invalid outcome at candidate {candidate_index}/{candidate_count}")
+    return outcomes
+
+
+def _load_collision_scenarios(path: Path, candidates: tuple[ScenarioSpec, ...], outcomes: list[dict]) -> tuple[ScenarioSpec, ...]:
+    with path.open("r", encoding="utf-8") as file:
+        records = json.load(file)
+    if not isinstance(records, list) or not records:
+        raise RuntimeError("Collision cache must contain at least one collision ScenarioSpec")
+    candidate_by_id = {candidate.scenario_id: candidate for candidate in candidates}
+    expected_ids = [outcome["scenario_id"] for outcome in outcomes if outcome["outcome"] == "ego_collision"]
+    actual_ids = [record.get("scenario_id") for record in records if isinstance(record, dict)]
+    if len(actual_ids) != len(records) or len(set(actual_ids)) != len(actual_ids):
+        raise RuntimeError("Collision cache collision scenario IDs must be unique")
+    if actual_ids != expected_ids:
+        raise RuntimeError("Collision cache collision scenarios do not match ego_collision outcomes")
+    collision_scenarios = []
+    expected_fields = set(asdict(candidates[0]))
+    for record in records:
+        if set(record) != expected_fields:
+            raise RuntimeError(f"Collision cache ScenarioSpec fields are invalid for {record['scenario_id']}")
+        scenario = ScenarioSpec(**record)
+        current_candidate = candidate_by_id.get(scenario.scenario_id)
+        if current_candidate is None:
+            raise RuntimeError(f"Collision cache ScenarioSpec does not match current candidate {scenario.scenario_id}")
+        current_record = asdict(current_candidate)
+        if any(type(record[name]) is not type(current_record[name]) or record[name] != current_record[name] for name in expected_fields):
+            raise RuntimeError(f"Collision cache ScenarioSpec does not match current candidate {scenario.scenario_id}")
+        collision_scenarios.append(scenario)
+    return tuple(collision_scenarios)
+
+
+def _validate_classification_summary(path: Path, outcomes: list[dict], candidate_count: int) -> None:
+    with path.open("r", encoding="utf-8") as file:
+        summary = json.load(file)
+    collision_count = sum(outcome["outcome"] == "ego_collision" for outcome in outcomes)
+    invalid_count = sum(outcome["outcome"] == "invalid" for outcome in outcomes)
+    expected_counts = {
+        "candidate_count": candidate_count,
+        "collision_count": collision_count,
+        "other_count": candidate_count - collision_count - invalid_count,
+        "invalid_count": invalid_count,
+    }
+    expected_keys = set(expected_counts) | {"env_workers", "wall_seconds", "scenarios_per_second"}
+    if not isinstance(summary, dict) or set(summary) != expected_keys or any(type(summary[name]) is not int or summary[name] != value for name, value in expected_counts.items()):
+        raise RuntimeError(f"Collision cache summary does not match {candidate_count} candidate outcomes")
+    if type(summary["env_workers"]) is not int or summary["env_workers"] <= 0:
+        raise RuntimeError("Collision cache summary has invalid env_workers")
+    for name in ("wall_seconds", "scenarios_per_second"):
+        value = summary[name]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value < 0:
+            raise RuntimeError(f"Collision cache summary has invalid {name}")
+
+
+def load_collision_cache(cache_dir: Path, current_config: dict, candidates: tuple[ScenarioSpec, ...]) -> tuple[ScenarioSpec, ...]:
+    with (cache_dir / "classification_config.json").open("r", encoding="utf-8") as file:
+        cached_config = json.load(file)
+    candidate_count = len(candidates)
+    if json.dumps(cached_config, sort_keys=True) != json.dumps(current_config, sort_keys=True):
+        raise RuntimeError(f"Collision cache configuration does not match the current {candidate_count} candidates; use --reclassify_collisions")
+    outcomes = _load_candidate_outcomes(cache_dir / "candidate_outcomes.jsonl", candidates)
+    collision_scenarios = _load_collision_scenarios(cache_dir / "collision_scenarios.json", candidates, outcomes)
+    _validate_classification_summary(cache_dir / "classification_summary.json", outcomes, candidate_count)
+    return collision_scenarios
+
+
+def resolve_collision_scenarios(args, candidates: tuple[ScenarioSpec, ...]) -> tuple[tuple[ScenarioSpec, ...], bool, bool]:
+    candidate_count = len(candidates)
+    if candidate_count == 0:
+        raise RuntimeError("Collision candidate set is empty")
+    cache_dir = Path(args.collision_cache_dir).expanduser().resolve()
+    current_config = collision_classification_config(args, candidate_count)
+    if args.reclassify_collisions:
+        print(f"Rebuilding collision classification cache for {candidate_count} candidates", flush=True)
+    elif _collision_cache_exists(cache_dir):
+        collision_scenarios = load_collision_cache(cache_dir, current_config, candidates)
+        print(f"Collision cache hit: loaded {len(collision_scenarios)} collision scenarios from {candidate_count} candidates", flush=True)
+        return collision_scenarios, True, False
+    else:
+        print(f"Collision cache miss: classifying {candidate_count} candidates", flush=True)
+    collision_scenarios, outcomes, summary = classify_collision_scenarios(args.pretrained_model_path, args.hidden_scale, args.map_name, args.env_workers, candidates)
+    write_collision_cache(cache_dir, current_config, outcomes, collision_scenarios, summary)
+    return collision_scenarios, False, bool(args.reclassify_collisions)
+
+
+def _training_run_directory(ppo_model_path: str | Path) -> Path:
+    output_path = Path(ppo_model_path).expanduser().resolve()
+    post_trained_dir = (Path.cwd() / "post-trained").resolve()
+    try:
+        relative_output = output_path.relative_to(post_trained_dir)
+    except ValueError:
+        run_name = output_path.stem
+    else:
+        run_name = relative_output.parts[0] if len(relative_output.parts) > 1 else output_path.stem
+    return post_trained_dir / run_name
+
+
+def write_run_collision_records(args, collision_scenarios: tuple[ScenarioSpec, ...], cache_hit: bool, reclassified: bool, candidate_count: int) -> None:
+    run_dir = _training_run_directory(args.ppo_model_path)
+    _write_json(run_dir / "collision_scenarios.json", [asdict(scenario) for scenario in collision_scenarios])
+    _write_json(
+        run_dir / "collision_cache_info.json",
+        {
+            "cache_dir": str(Path(args.collision_cache_dir).expanduser().resolve()),
+            "cache_hit": cache_hit,
+            "reclassified": reclassified,
+            "candidate_count": candidate_count,
+            "collision_count": len(collision_scenarios),
+        },
+    )
 
 
 class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
@@ -383,6 +586,8 @@ def validate_arguments(args) -> None:
         raise ValueError("PPO model path must not overwrite the pretrained model")
     if not args.map_name.strip():
         raise ValueError("map_name must not be empty")
+    if not args.collision_cache_dir.strip():
+        raise ValueError("collision_cache_dir must not be empty")
     if args.env_workers <= 0 or args.n_envs < args.env_workers or args.n_envs % 2 != 0:
         raise ValueError("n_envs must be even and at least env_workers, and env_workers must be positive")
     for name in ("hidden_scale", "n_steps", "batch_size", "num_updates", "actor_epochs", "critic_epochs"):
@@ -443,7 +648,10 @@ def main() -> None:
     random.seed(args.seed)
     np.random.seed(args.seed)
 
-    collision_scenarios = classify_collision_scenarios(args.pretrained_model_path, args.hidden_scale, args.map_name, args.env_workers)
+    candidates = expanded_scenarios(args.map_name)
+    candidate_count = len(candidates)
+    collision_scenarios, cache_hit, reclassified = resolve_collision_scenarios(args, candidates)
+    write_run_collision_records(args, collision_scenarios, cache_hit, reclassified, candidate_count)
     ordinary_scenario_set = ordinary_scenarios(args.map_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
