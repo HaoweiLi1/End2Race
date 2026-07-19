@@ -16,6 +16,7 @@ with Path(__file__).with_name("ppo_config.yaml").open("r", encoding="utf-8") as 
 
 EGO_RACELINE = str(PPO_CONFIG["ego_raceline"])
 OPPONENT_RACELINES = tuple(PPO_CONFIG["opponent_racelines"])
+EVALUATION_STARTPOINT_COUNT = 50
 ORDINARY_SPEED_SCALES = tuple(float(value) for value in PPO_CONFIG["ordinary_speed_scales"])
 ORDINARY_INTERVAL_INDEX = int(PPO_CONFIG["ordinary_interval_index"])
 ORDINARY_STARTPOINT_COUNT = int(PPO_CONFIG["ordinary_startpoint_count"])
@@ -68,11 +69,16 @@ def _raceline_data(map_name: str) -> np.ndarray:
     return data
 
 
-def generate_training_startpoints(map_name: str, startpoint_count: int, minimum_evaluation_distance: float) -> tuple[int, ...]:
-    """Generate mid-gap training points away from the evaluation panel."""
+def evaluation_startpoints(map_name: str) -> tuple[int, ...]:
+    data = _raceline_data(map_name)
+    indices = np.arange(EVALUATION_STARTPOINT_COUNT) * (len(data) - 1) // (EVALUATION_STARTPOINT_COUNT - 1)
+    return tuple(int(index) for index in indices)
+
+
+def generate_separated_startpoints(map_name: str, startpoint_count: int, minimum_evaluation_distance: float) -> tuple[int, ...]:
     data = _raceline_data(map_name)
     unique = data[:-1]
-    evaluation_indices = np.arange(ORDINARY_STARTPOINT_COUNT) * (len(data) - 1) // (ORDINARY_STARTPOINT_COUNT - 1)
+    evaluation_indices = np.asarray(evaluation_startpoints(map_name), dtype=np.int64)
     evaluation_xy = unique[evaluation_indices % len(unique), 1:3]
     distances = np.linalg.norm(unique[:, None, 1:3] - evaluation_xy[None, :, :], axis=2)
     allowed = np.flatnonzero(np.min(distances, axis=1) >= minimum_evaluation_distance - 1e-12)
@@ -89,12 +95,19 @@ def generate_training_startpoints(map_name: str, startpoint_count: int, minimum_
     return tuple(sorted(selected, key=lambda index: float(unique[index, 0])))
 
 
+def ordinary_startpoints(map_name: str) -> tuple[int, ...]:
+    return generate_separated_startpoints(map_name, ORDINARY_STARTPOINT_COUNT, ORDINARY_STARTPOINT_MIN_DISTANCE)
+
+
+def collision_candidate_startpoints(map_name: str) -> tuple[int, ...]:
+    return generate_separated_startpoints(map_name, COLLISION_STARTPOINT_COUNT, COLLISION_STARTPOINT_MIN_DISTANCE)
+
+
 def ordinary_scenarios(map_name: str) -> tuple[ScenarioSpec, ...]:
     ego_waypoints = load_raceline_waypoints(map_name, f"{EGO_RACELINE}.csv")
     opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
     scenarios = []
-    startpoints = generate_training_startpoints(map_name, ORDINARY_STARTPOINT_COUNT, ORDINARY_STARTPOINT_MIN_DISTANCE)
-    for ordinal, ego_idx in enumerate(startpoints):
+    for ordinal, ego_idx in enumerate(ordinary_startpoints(map_name)):
         ego_waypoint = ego_waypoints[ego_idx]
         for opp_raceline in OPPONENT_RACELINES:
             mapped_index = ego_idx if opp_raceline == EGO_RACELINE else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
@@ -112,8 +125,7 @@ def expanded_scenarios(map_name: str) -> tuple[ScenarioSpec, ...]:
     ego_waypoints = load_raceline_waypoints(map_name, f"{EGO_RACELINE}.csv")
     opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
     scenarios = []
-    startpoints = generate_training_startpoints(map_name, COLLISION_STARTPOINT_COUNT, COLLISION_STARTPOINT_MIN_DISTANCE)
-    for ordinal, ego_idx in enumerate(startpoints):
+    for ordinal, ego_idx in enumerate(collision_candidate_startpoints(map_name)):
         ego_waypoint = ego_waypoints[ego_idx]
         for opp_raceline in OPPONENT_RACELINES:
             mapped_index = ego_idx if opp_raceline == EGO_RACELINE else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
