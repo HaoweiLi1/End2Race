@@ -118,6 +118,10 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._raw_observation = None
         self._current_spec = None
         self._episode_return = 0.0
+        self._episode_steps = 0
+        self._episode_reward_progress = 0.0
+        self._episode_reward_relative = 0.0
+        self._episode_reward_collision = 0.0
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][EGO_INDEX]).reshape(-1)
@@ -150,6 +154,10 @@ class End2RaceGymnasiumEnv(gym.Env):
             raise RuntimeError("PPO environment requires exactly two agents")
         self._elapsed_time = 0.0
         self._episode_return = 0.0
+        self._episode_steps = 0
+        self._episode_reward_progress = 0.0
+        self._episode_reward_relative = 0.0
+        self._episode_reward_collision = 0.0
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
@@ -185,6 +193,10 @@ class End2RaceGymnasiumEnv(gym.Env):
             "env_role": str(scenario["env_role"]),
             "episode_outcome": outcome,
             "episode_return": self._episode_return,
+            "episode_steps": self._episode_steps,
+            "episode_reward_progress": self._episode_reward_progress,
+            "episode_reward_relative": self._episode_reward_relative,
+            "episode_reward_collision": self._episode_reward_collision,
             "base_info": base_info,
             **reward_info,
         }
@@ -220,6 +232,10 @@ class End2RaceGymnasiumEnv(gym.Env):
         reward_info = reward_result.to_info()
         reward = float(reward_info["reward_total"])
         self._episode_return += reward
+        self._episode_steps += 1
+        self._episode_reward_progress += float(reward_info["reward_progress"])
+        self._episode_reward_relative += float(reward_info["reward_relative"])
+        self._episode_reward_collision += float(reward_info["reward_collision"])
         outcome = None
         if terminated or truncated:
             if ego_collision:

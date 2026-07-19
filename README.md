@@ -173,11 +173,11 @@ Train from the pretrained End2Race actor and write one deployable PPO actor chec
 ```bash
 python train_ppo.py \
     --pretrained_model_path pretrained/end2race.pth \
-    --ppo_model_path end2race_ppo.pth \
+    --output_dir post-trained/ppo_run \
     --n_envs 16
 ```
 
-The output remains the original 12-key `End2Race` actor state dict. The critic and optimizer states are training-only.
+The deployable checkpoint is written to `post-trained/ppo_run/actor_final.pth` as the original 12-key `End2Race` actor state dict. Per-update actor/critic checkpoints and JSON/JSONL training records are stored in the same run directory; optimizer state is not saved.
 
 ### Post-training PPO checkpoint evaluation
 
@@ -185,7 +185,7 @@ After training has completed, evaluate one checkpoint through the existing
 multi-agent batch evaluation path:
 
 ```bash
-MODEL_PATH=end2race_ppo.pth COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NUM_WORKERS=8 bash evaluate.sh
+MODEL_PATH=post-trained/ppo_run/actor_final.pth COLLISION_SCOPE=ego RENDER=false SAVE_TRACE=false NUM_WORKERS=8 bash evaluate.sh
 ```
 
 ## Raceline Generation (Optional)

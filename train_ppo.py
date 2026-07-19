@@ -7,8 +7,6 @@ import argparse
 from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 import copy as copy_module
-from dataclasses import asdict
-import json
 import multiprocessing as mp
 from pathlib import Path
 import random
@@ -28,8 +26,9 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 from model import End2Race
 from ppo.environment import EXTERNAL_RESET_OPTION, make_environment
-from ppo.policy import END2RACE_LIDAR_SIZE, STEERING_BOUND, End2RaceGRUPolicy
-from ppo.scenarios import ScenarioSpec, expanded_scenarios, ordinary_scenarios
+from ppo.policy import END2RACE_LIDAR_SIZE, SPEED_PHYSICAL_STD, STEERING_BOUND, STEERING_LATENT_STD, End2RaceGRUPolicy
+from ppo.scenarios import ScenarioSpec, collision_cache_exists, collision_classification_config, expanded_scenarios, load_collision_cache, ordinary_scenarios, write_collision_cache
+from ppo.training_records import TrainingRecorder, require_finite_number, require_finite_tensor
 from ppo.vec_env import CentralScheduleSubprocVecEnv, _limit_worker_threads
 
 
@@ -50,7 +49,7 @@ def parse_arguments():
 
     # Model paths
     parser.add_argument("--pretrained_model_path", type=str, default="pretrained/end2race.pth")
-    parser.add_argument("--ppo_model_path", type=str, default="end2race_ppo.pth")
+    parser.add_argument("--output_dir", type=str, default="post-trained/ppo_run")
 
     # Model configuration
     parser.add_argument("--hidden_scale", type=int, default=4)
@@ -172,133 +171,6 @@ def classify_collision_scenarios(
     return tuple(collisions), outcomes, summary
 
 
-def collision_classification_config(args, candidate_count: int) -> dict:
-    return {
-        "classification_schema": 1,
-        "pretrained_model_path": str(Path(args.pretrained_model_path).expanduser().resolve()),
-        "hidden_scale": int(args.hidden_scale),
-        "map_name": str(args.map_name),
-        "ego_raceline": str(PPO_CONFIG["ego_raceline"]),
-        "opponent_racelines": [str(value) for value in PPO_CONFIG["opponent_racelines"]],
-        "collision_startpoint_count": int(PPO_CONFIG["collision_startpoint_count"]),
-        "collision_interval_indices": [int(value) for value in PPO_CONFIG["collision_interval_indices"]],
-        "collision_speed_scales": [float(value) for value in PPO_CONFIG["collision_speed_scales"]],
-        "collision_startpoint_min_distance": float(PPO_CONFIG["collision_startpoint_min_distance"]),
-        "simulator_timestep": float(PPO_CONFIG["simulator_timestep"]),
-        "episode_horizon": float(PPO_CONFIG["episode_horizon"]),
-        "candidate_count": candidate_count,
-    }
-
-
-def _write_json(path: Path, payload) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        json.dump(payload, file, indent=2)
-        file.write("\n")
-
-
-def _collision_cache_exists(cache_dir: Path) -> bool:
-    required_paths = (
-        cache_dir / "classification_config.json",
-        cache_dir / "candidate_outcomes.jsonl",
-        cache_dir / "collision_scenarios.json",
-        cache_dir / "classification_summary.json",
-    )
-    existing_count = sum(path.exists() for path in required_paths)
-    if existing_count not in (0, len(required_paths)):
-        raise RuntimeError("Collision classification cache is incomplete; use --reclassify_collisions")
-    return existing_count == len(required_paths)
-
-
-def write_collision_cache(cache_dir: Path, config: dict, outcomes: list[dict], collision_scenarios: tuple[ScenarioSpec, ...], summary: dict) -> None:
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(cache_dir / "classification_config.json", config)
-    with (cache_dir / "candidate_outcomes.jsonl").open("w", encoding="utf-8") as file:
-        for outcome in outcomes:
-            file.write(json.dumps(outcome) + "\n")
-    _write_json(cache_dir / "collision_scenarios.json", [asdict(scenario) for scenario in collision_scenarios])
-    _write_json(cache_dir / "classification_summary.json", summary)
-
-
-def _load_candidate_outcomes(path: Path, candidates: tuple[ScenarioSpec, ...]) -> list[dict]:
-    with path.open("r", encoding="utf-8") as file:
-        outcomes = [json.loads(line) for line in file]
-    candidate_count = len(candidates)
-    if len(outcomes) != candidate_count:
-        raise RuntimeError(f"Collision cache has {len(outcomes)} outcomes for {candidate_count} candidates")
-    expected_keys = {"candidate_index", "scenario_id", "outcome"}
-    for candidate_index, (outcome, candidate) in enumerate(zip(outcomes, candidates)):
-        if set(outcome) != expected_keys or type(outcome["candidate_index"]) is not int or outcome["candidate_index"] != candidate_index:
-            raise RuntimeError(f"Collision cache candidate_index must be 0 through {candidate_count - 1}")
-        if outcome["scenario_id"] != candidate.scenario_id:
-            raise RuntimeError(f"Collision cache scenario_id mismatch at candidate {candidate_index}/{candidate_count}")
-        if outcome["outcome"] not in {"ego_collision", "other", "invalid"}:
-            raise RuntimeError(f"Collision cache has an invalid outcome at candidate {candidate_index}/{candidate_count}")
-    return outcomes
-
-
-def _load_collision_scenarios(path: Path, candidates: tuple[ScenarioSpec, ...], outcomes: list[dict]) -> tuple[ScenarioSpec, ...]:
-    with path.open("r", encoding="utf-8") as file:
-        records = json.load(file)
-    if not isinstance(records, list) or not records:
-        raise RuntimeError("Collision cache must contain at least one collision ScenarioSpec")
-    candidate_by_id = {candidate.scenario_id: candidate for candidate in candidates}
-    expected_ids = [outcome["scenario_id"] for outcome in outcomes if outcome["outcome"] == "ego_collision"]
-    actual_ids = [record.get("scenario_id") for record in records if isinstance(record, dict)]
-    if len(actual_ids) != len(records) or len(set(actual_ids)) != len(actual_ids):
-        raise RuntimeError("Collision cache collision scenario IDs must be unique")
-    if actual_ids != expected_ids:
-        raise RuntimeError("Collision cache collision scenarios do not match ego_collision outcomes")
-    collision_scenarios = []
-    expected_fields = set(asdict(candidates[0]))
-    for record in records:
-        if set(record) != expected_fields:
-            raise RuntimeError(f"Collision cache ScenarioSpec fields are invalid for {record['scenario_id']}")
-        scenario = ScenarioSpec(**record)
-        current_candidate = candidate_by_id.get(scenario.scenario_id)
-        if current_candidate is None:
-            raise RuntimeError(f"Collision cache ScenarioSpec does not match current candidate {scenario.scenario_id}")
-        current_record = asdict(current_candidate)
-        if any(type(record[name]) is not type(current_record[name]) or record[name] != current_record[name] for name in expected_fields):
-            raise RuntimeError(f"Collision cache ScenarioSpec does not match current candidate {scenario.scenario_id}")
-        collision_scenarios.append(scenario)
-    return tuple(collision_scenarios)
-
-
-def _validate_classification_summary(path: Path, outcomes: list[dict], candidate_count: int) -> None:
-    with path.open("r", encoding="utf-8") as file:
-        summary = json.load(file)
-    collision_count = sum(outcome["outcome"] == "ego_collision" for outcome in outcomes)
-    invalid_count = sum(outcome["outcome"] == "invalid" for outcome in outcomes)
-    expected_counts = {
-        "candidate_count": candidate_count,
-        "collision_count": collision_count,
-        "other_count": candidate_count - collision_count - invalid_count,
-        "invalid_count": invalid_count,
-    }
-    expected_keys = set(expected_counts) | {"env_workers", "wall_seconds", "scenarios_per_second"}
-    if not isinstance(summary, dict) or set(summary) != expected_keys or any(type(summary[name]) is not int or summary[name] != value for name, value in expected_counts.items()):
-        raise RuntimeError(f"Collision cache summary does not match {candidate_count} candidate outcomes")
-    if type(summary["env_workers"]) is not int or summary["env_workers"] <= 0:
-        raise RuntimeError("Collision cache summary has invalid env_workers")
-    for name in ("wall_seconds", "scenarios_per_second"):
-        value = summary[name]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value < 0:
-            raise RuntimeError(f"Collision cache summary has invalid {name}")
-
-
-def load_collision_cache(cache_dir: Path, current_config: dict, candidates: tuple[ScenarioSpec, ...]) -> tuple[ScenarioSpec, ...]:
-    with (cache_dir / "classification_config.json").open("r", encoding="utf-8") as file:
-        cached_config = json.load(file)
-    candidate_count = len(candidates)
-    if json.dumps(cached_config, sort_keys=True) != json.dumps(current_config, sort_keys=True):
-        raise RuntimeError(f"Collision cache configuration does not match the current {candidate_count} candidates; use --reclassify_collisions")
-    outcomes = _load_candidate_outcomes(cache_dir / "candidate_outcomes.jsonl", candidates)
-    collision_scenarios = _load_collision_scenarios(cache_dir / "collision_scenarios.json", candidates, outcomes)
-    _validate_classification_summary(cache_dir / "classification_summary.json", outcomes, candidate_count)
-    return collision_scenarios
-
-
 def resolve_collision_scenarios(args, candidates: tuple[ScenarioSpec, ...]) -> tuple[tuple[ScenarioSpec, ...], bool, bool]:
     candidate_count = len(candidates)
     if candidate_count == 0:
@@ -307,7 +179,7 @@ def resolve_collision_scenarios(args, candidates: tuple[ScenarioSpec, ...]) -> t
     current_config = collision_classification_config(args, candidate_count)
     if args.reclassify_collisions:
         print(f"Rebuilding collision classification cache for {candidate_count} candidates", flush=True)
-    elif _collision_cache_exists(cache_dir):
+    elif collision_cache_exists(cache_dir):
         collision_scenarios = load_collision_cache(cache_dir, current_config, candidates)
         print(f"Collision cache hit: loaded {len(collision_scenarios)} collision scenarios from {candidate_count} candidates", flush=True)
         return collision_scenarios, True, False
@@ -316,33 +188,6 @@ def resolve_collision_scenarios(args, candidates: tuple[ScenarioSpec, ...]) -> t
     collision_scenarios, outcomes, summary = classify_collision_scenarios(args.pretrained_model_path, args.hidden_scale, args.map_name, args.env_workers, candidates)
     write_collision_cache(cache_dir, current_config, outcomes, collision_scenarios, summary)
     return collision_scenarios, False, bool(args.reclassify_collisions)
-
-
-def _training_run_directory(ppo_model_path: str | Path) -> Path:
-    output_path = Path(ppo_model_path).expanduser().resolve()
-    post_trained_dir = (Path.cwd() / "post-trained").resolve()
-    try:
-        relative_output = output_path.relative_to(post_trained_dir)
-    except ValueError:
-        run_name = output_path.stem
-    else:
-        run_name = relative_output.parts[0] if len(relative_output.parts) > 1 else output_path.stem
-    return post_trained_dir / run_name
-
-
-def write_run_collision_records(args, collision_scenarios: tuple[ScenarioSpec, ...], cache_hit: bool, reclassified: bool, candidate_count: int) -> None:
-    run_dir = _training_run_directory(args.ppo_model_path)
-    _write_json(run_dir / "collision_scenarios.json", [asdict(scenario) for scenario in collision_scenarios])
-    _write_json(
-        run_dir / "collision_cache_info.json",
-        {
-            "cache_dir": str(Path(args.collision_cache_dir).expanduser().resolve()),
-            "cache_hit": cache_hit,
-            "reclassified": reclassified,
-            "candidate_count": candidate_count,
-            "collision_count": len(collision_scenarios),
-        },
-    )
 
 
 class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
@@ -403,10 +248,16 @@ class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
 class End2RaceRecurrentPPO(RecurrentPPO):
     """Run critic warm-up, then separate actor and critic PPO phases."""
 
-    def __init__(self, *args, actor_epochs: int, critic_epochs: int, **kwargs):
+    def __init__(self, *args, actor_epochs: int, critic_epochs: int, recorder: TrainingRecorder, **kwargs):
         self.actor_epochs = actor_epochs
         self.critic_epochs = critic_epochs
+        self.recorder = recorder
         self.warmup_completed = False
+        self.rollout_index = 0
+        self.current_phase = "warmup"
+        self.current_formal_update = 0
+        self.rollout_wall_seconds = 0.0
+        self._rollout_episode_records: list[dict] = []
         kwargs["n_epochs"] = actor_epochs
         super().__init__(*args, **kwargs)
 
@@ -440,6 +291,44 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         torch.manual_seed(action_seed)
         if self.device.type == "cuda":
             torch.cuda.manual_seed_all(action_seed)
+
+    def collect_rollouts(self, env, callback, rollout_buffer, n_rollout_steps: int) -> bool:
+        self.rollout_index += 1
+        self.current_phase = "warmup" if not self.warmup_completed else "formal"
+        self.current_formal_update = 0 if not self.warmup_completed else self._n_updates + 1
+        self._rollout_episode_records = []
+        print(f"Rollout {self.rollout_index} start: phase={self.current_phase}, formal_update={self.current_formal_update}", flush=True)
+        started_at = time.perf_counter()
+        completed = super().collect_rollouts(env, callback, rollout_buffer, n_rollout_steps)
+        self.rollout_wall_seconds = time.perf_counter() - started_at
+        print(f"Rollout {self.rollout_index} complete: {self.rollout_wall_seconds:.2f}s", flush=True)
+        return completed
+
+    def _update_info_buffer(self, infos: list[dict], dones: Optional[np.ndarray] = None) -> None:
+        super()._update_info_buffer(infos, dones)
+        if dones is None:
+            dones = np.zeros(len(infos), dtype=bool)
+        for info, done in zip(infos, dones):
+            if not done:
+                continue
+            record = {
+                "phase": self.current_phase,
+                "rollout_index": self.rollout_index,
+                "formal_update": self.current_formal_update,
+                "scenario_id": str(info["scenario_id"]),
+                "env_role": str(info["env_role"]),
+                "episode_outcome": str(info["episode_outcome"]),
+                "episode_return": float(info["episode_return"]),
+                "episode_steps": int(info["episode_steps"]),
+                "elapsed_time": float(info["elapsed_time"]),
+                "ego_collision": bool(info["ego_collision"]),
+                "relative_position_m": float(info["relative_position_m"]),
+                "episode_reward_progress": float(info["episode_reward_progress"]),
+                "episode_reward_relative": float(info["episode_reward_relative"]),
+                "episode_reward_collision": float(info["episode_reward_collision"]),
+            }
+            self.recorder.record_episode(record)
+            self._rollout_episode_records.append(record)
 
     def _warmup_split(self) -> tuple[np.ndarray, np.ndarray]:
         starts = self.rollout_buffer.episode_starts
@@ -484,6 +373,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         return sum(loss * count for loss, count in losses) / sum(count for _loss, count in losses)
 
     def _warmup_critic(self) -> None:
+        train_started_at = time.perf_counter()
         observations = self.rollout_buffer.observations.reshape(-1, *self.rollout_buffer.obs_shape)
         returns = self.rollout_buffer.returns.reshape(-1)
         train_indices, validation_indices = self._warmup_split()
@@ -491,15 +381,21 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         best_critic = None
         best_optimizer = None
         stale_epochs = 0
+        critic_grad_norms = []
         for epoch in range(WARMUP_MAX_EPOCHS):
             shuffled = self.warmup_shuffle_rng.permutation(train_indices)
             for start in range(0, len(shuffled), self.batch_size):
                 loss = VALUE_LOSS_COEFFICIENT * self._critic_batch_loss(observations, returns, shuffled[start : start + self.batch_size])
+                require_finite_tensor("Warm-up loss", loss)
                 self.policy.critic_optimizer.zero_grad()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.policy.critic_parameters, MAX_GRAD_NORM)
+                grad_norm = torch.nn.utils.clip_grad_norm_(self.policy.critic_parameters, MAX_GRAD_NORM)
+                require_finite_tensor("Warm-up critic gradient norm", grad_norm)
+                critic_grad_norms.append(float(grad_norm.detach().cpu().item()))
                 self.policy.critic_optimizer.step()
             validation_loss = self._validation_loss(observations, returns, validation_indices)
+            require_finite_number("Warm-up validation loss", validation_loss)
+            print(f"Warm-up epoch {epoch + 1}: validation_loss={validation_loss:.6f}", flush=True)
             if validation_loss < best_loss:
                 best_loss = validation_loss
                 best_critic = copy_module.deepcopy(self.policy.value_net.state_dict())
@@ -514,8 +410,21 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.policy.value_net.load_state_dict(best_critic)
         self.policy.critic_optimizer.load_state_dict(best_optimizer)
         self.warmup_completed = True
+        train_wall_seconds = time.perf_counter() - train_started_at
+        metrics = {
+            "phase": "warmup",
+            "epochs": epoch + 1,
+            "best_validation_loss": best_loss,
+            "critic_grad_norm_mean": float(np.mean(critic_grad_norms)),
+            "critic_grad_norm_max": float(np.max(critic_grad_norms)),
+            "rollout_wall_seconds": self.rollout_wall_seconds,
+            "train_wall_seconds": train_wall_seconds,
+        }
+        self.recorder.record_metrics(metrics)
+        checkpoint_path = self.recorder.save_warmup_critic(self.policy.value_net.state_dict())
         self.logger.record("warmup/epochs", epoch + 1)
         self.logger.record("warmup/best_validation_loss", best_loss)
+        print(f"Warm-up complete: best_validation_loss={best_loss:.6f}, checkpoint={checkpoint_path}", flush=True)
 
     def train(self) -> None:
         self.policy.set_training_mode(True)
@@ -528,7 +437,12 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         value_losses = []
         clip_fractions = []
         approximate_kls = []
+        actor_grad_norms = []
+        critic_grad_norms = []
+        update = self._n_updates + 1
 
+        print(f"Formal update {update}: actor phase start", flush=True)
+        actor_started_at = time.perf_counter()
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(False)
         for _epoch in range(self.actor_epochs):
@@ -541,9 +455,12 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 log_prob, _entropy = self.policy.evaluate_actor_actions(rollout_data.observations, rollout_data.actions, rollout_data.lstm_states, rollout_data.episode_starts)
                 ratio = torch.exp(log_prob - rollout_data.old_log_prob)
                 policy_loss = -torch.min(advantages * ratio, advantages * torch.clamp(ratio, 1 - clip_range, 1 + clip_range))[mask].mean()
+                require_finite_tensor("Policy loss", policy_loss)
                 self.policy.actor_optimizer.zero_grad()
                 policy_loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.policy.actor_parameters, MAX_GRAD_NORM)
+                grad_norm = torch.nn.utils.clip_grad_norm_(self.policy.actor_parameters, MAX_GRAD_NORM)
+                require_finite_tensor("Actor gradient norm", grad_norm)
+                actor_grad_norms.append(float(grad_norm.detach().cpu().item()))
                 self.policy.actor_optimizer.step()
                 with torch.no_grad():
                     log_ratio = log_prob - rollout_data.old_log_prob
@@ -552,7 +469,11 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 policy_losses.append(float(policy_loss.item()))
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(True)
+        actor_train_wall_seconds = time.perf_counter() - actor_started_at
+        print(f"Formal update {update}: actor phase complete in {actor_train_wall_seconds:.2f}s", flush=True)
 
+        print(f"Formal update {update}: critic phase start", flush=True)
+        critic_started_at = time.perf_counter()
         for parameter in self.policy.actor_parameters:
             parameter.requires_grad_(False)
         for _epoch in range(self.critic_epochs):
@@ -560,30 +481,72 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 mask = rollout_data.mask > 1e-8
                 values = self.policy.evaluate_values(rollout_data.observations).flatten()
                 value_loss = torch.nn.functional.mse_loss(values[mask], rollout_data.returns[mask])
+                require_finite_tensor("Value loss", value_loss)
                 self.policy.critic_optimizer.zero_grad()
                 (VALUE_LOSS_COEFFICIENT * value_loss).backward()
-                torch.nn.utils.clip_grad_norm_(self.policy.critic_parameters, MAX_GRAD_NORM)
+                grad_norm = torch.nn.utils.clip_grad_norm_(self.policy.critic_parameters, MAX_GRAD_NORM)
+                require_finite_tensor("Critic gradient norm", grad_norm)
+                critic_grad_norms.append(float(grad_norm.detach().cpu().item()))
                 self.policy.critic_optimizer.step()
                 value_losses.append(float(value_loss.item()))
         for parameter in self.policy.actor_parameters:
             parameter.requires_grad_(True)
+        critic_train_wall_seconds = time.perf_counter() - critic_started_at
+        print(f"Formal update {update}: critic phase complete in {critic_train_wall_seconds:.2f}s", flush=True)
 
         self._n_updates += 1
+        policy_gradient_loss = float(np.mean(policy_losses))
+        value_loss_mean = float(np.mean(value_losses))
+        approximate_kl = float(np.mean(approximate_kls))
+        clip_fraction = float(np.mean(clip_fractions))
+        explained_variance_value = float(explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten()))
+        episodes = self._rollout_episode_records
+        collision_times = [record["elapsed_time"] for record in episodes if record["episode_outcome"] == "ego_collision"]
+        metrics = {
+            "update": update,
+            "num_timesteps": self.num_timesteps,
+            "policy_gradient_loss": policy_gradient_loss,
+            "value_loss": value_loss_mean,
+            "approx_kl": approximate_kl,
+            "clip_fraction": clip_fraction,
+            "explained_variance": explained_variance_value,
+            "actor_grad_norm_mean": float(np.mean(actor_grad_norms)),
+            "actor_grad_norm_max": float(np.max(actor_grad_norms)),
+            "critic_grad_norm_mean": float(np.mean(critic_grad_norms)),
+            "critic_grad_norm_max": float(np.max(critic_grad_norms)),
+            "rollout_wall_seconds": self.rollout_wall_seconds,
+            "actor_train_wall_seconds": actor_train_wall_seconds,
+            "critic_train_wall_seconds": critic_train_wall_seconds,
+            "collision_episode_count": sum(record["env_role"] == "collision" for record in episodes),
+            "ordinary_episode_count": sum(record["env_role"] == "ordinary" for record in episodes),
+            "ego_collision_count": sum(record["episode_outcome"] == "ego_collision" for record in episodes),
+            "overtake_count": sum(record["episode_outcome"] == "overtake" for record in episodes),
+            "follow_count": sum(record["episode_outcome"] == "follow" for record in episodes),
+            "mean_episode_return": float(np.mean([record["episode_return"] for record in episodes])) if episodes else 0.0,
+            "mean_collision_time": float(np.mean(collision_times)) if collision_times else 0.0,
+        }
+        self.recorder.record_metrics(metrics)
+        actor_path, critic_path = self.recorder.save_formal_checkpoints(update, self.policy.actor_checkpoint_state_dict(), self.policy.value_net.state_dict())
         self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
-        self.logger.record("train/policy_gradient_loss", np.mean(policy_losses))
-        self.logger.record("train/value_loss", np.mean(value_losses))
-        self.logger.record("train/approx_kl", np.mean(approximate_kls))
-        self.logger.record("train/clip_fraction", np.mean(clip_fractions))
-        self.logger.record("train/explained_variance", explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten()))
+        self.logger.record("train/policy_gradient_loss", policy_gradient_loss)
+        self.logger.record("train/value_loss", value_loss_mean)
+        self.logger.record("train/approx_kl", approximate_kl)
+        self.logger.record("train/clip_fraction", clip_fraction)
+        self.logger.record("train/explained_variance", explained_variance_value)
+        print(
+            f"Formal update {update}: policy_gradient_loss={policy_gradient_loss:.6f}, value_loss={value_loss_mean:.6f}, "
+            f"approx_kl={approximate_kl:.6f}, clip_fraction={clip_fraction:.6f}, explained_variance={explained_variance_value:.6f}",
+            flush=True,
+        )
+        print(f"Formal update {update}: actor_checkpoint={actor_path}, critic_checkpoint={critic_path}", flush=True)
 
 
 def validate_arguments(args) -> None:
     pretrained_path = Path(args.pretrained_model_path).expanduser().resolve()
-    ppo_path = Path(args.ppo_model_path).expanduser().resolve()
     if not pretrained_path.is_file():
         raise FileNotFoundError(f"Pretrained model does not exist: {pretrained_path}")
-    if pretrained_path == ppo_path:
-        raise ValueError("PPO model path must not overwrite the pretrained model")
+    if not args.output_dir.strip():
+        raise ValueError("output_dir must not be empty")
     if not args.map_name.strip():
         raise ValueError("map_name must not be empty")
     if not args.collision_cache_dir.strip():
@@ -595,17 +558,20 @@ def validate_arguments(args) -> None:
             raise ValueError(f"{name} must be positive")
     if args.n_envs * args.n_steps % args.batch_size != 0:
         raise ValueError("n_envs * n_steps must be divisible by batch_size")
+    if args.batch_size % (2 * args.n_steps) != 0:
+        raise ValueError("batch_size must be divisible by 2 * n_steps so each env-major recurrent minibatch has equal collision and ordinary transitions")
     for name in ("gru_learning_rate", "head_learning_rate", "critic_learning_rate", "gamma", "gae_lambda", "clip_range"):
         if getattr(args, name) <= 0:
             raise ValueError(f"{name} must be positive")
 
 
-def build_model(vector_env, args, device) -> End2RaceRecurrentPPO:
+def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2RaceRecurrentPPO:
     return End2RaceRecurrentPPO(
         End2RaceGRUPolicy,
         vector_env,
         actor_epochs=args.actor_epochs,
         critic_epochs=args.critic_epochs,
+        recorder=recorder,
         learning_rate=1.0,
         n_steps=args.n_steps,
         batch_size=args.batch_size,
@@ -631,16 +597,6 @@ def build_model(vector_env, args, device) -> End2RaceRecurrentPPO:
     )
 
 
-def save_actor(model: End2RaceRecurrentPPO, path: Path, hidden_scale: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    state_dict = {name: tensor.detach().cpu() for name, tensor in model.policy.actor_checkpoint_state_dict().items()}
-    if len(state_dict) != 12:
-        raise RuntimeError(f"Expected a 12-key actor checkpoint, got {len(state_dict)} keys")
-    torch.save(state_dict, path)
-    actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
-    actor.load_state_dict(torch.load(path, map_location="cpu", weights_only=True), strict=True)
-
-
 def main() -> None:
     args = parse_arguments()
     validate_arguments(args)
@@ -648,21 +604,56 @@ def main() -> None:
     random.seed(args.seed)
     np.random.seed(args.seed)
 
+    recorder = TrainingRecorder(args.output_dir, args.hidden_scale)
+    print(
+        f"PPO training configuration: output_dir={recorder.output_dir}, pretrained_model_path={Path(args.pretrained_model_path).expanduser().resolve()}, "
+        f"map={args.map_name}, n_envs={args.n_envs}, env_workers={args.env_workers}, n_steps={args.n_steps}, "
+        f"batch_size={args.batch_size}, num_updates={args.num_updates}, seed={args.seed}",
+        flush=True,
+    )
+    print("[1/5] Building collision candidates", flush=True)
     candidates = expanded_scenarios(args.map_name)
     candidate_count = len(candidates)
+    print("[2/5] Loading or classifying collision pool", flush=True)
     collision_scenarios, cache_hit, reclassified = resolve_collision_scenarios(args, candidates)
-    write_run_collision_records(args, collision_scenarios, cache_hit, reclassified, candidate_count)
+    print("[3/5] Building ordinary scenarios", flush=True)
     ordinary_scenario_set = ordinary_scenarios(args.map_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    print(f"Using device: {device}", flush=True)
+    recorder.write_run_config(
+        args,
+        PPO_CONFIG,
+        device,
+        {
+            "WARMUP_MAX_EPOCHS": WARMUP_MAX_EPOCHS,
+            "WARMUP_PATIENCE": WARMUP_PATIENCE,
+            "WARMUP_TRAIN_FRACTION": WARMUP_TRAIN_FRACTION,
+            "VALUE_LOSS_COEFFICIENT": VALUE_LOSS_COEFFICIENT,
+            "MAX_GRAD_NORM": MAX_GRAD_NORM,
+            "STEERING_LATENT_STD": STEERING_LATENT_STD,
+            "SPEED_PHYSICAL_STD": SPEED_PHYSICAL_STD,
+        },
+    )
+    recorder.write_scenario_pools(
+        collision_scenarios,
+        ordinary_scenario_set,
+        {
+            "cache_dir": str(Path(args.collision_cache_dir).expanduser().resolve()),
+            "cache_hit": cache_hit,
+            "reclassified": reclassified,
+            "candidate_count": candidate_count,
+            "collision_count": len(collision_scenarios),
+        },
+    )
+    print("[4/5] Creating vector environments", flush=True)
     vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.env_workers, START_METHOD, args.seed, args.map_name, collision_scenarios, ordinary_scenario_set)
     try:
-        model = build_model(vector_env, args, device)
+        print("[5/5] Building PPO model", flush=True)
+        model = build_model(vector_env, args, device, recorder)
         total_rollouts = args.num_updates + 1
         model.learn(total_timesteps=args.n_envs * args.n_steps * total_rollouts, log_interval=1, progress_bar=False)
-        output_path = Path(args.ppo_model_path).expanduser().resolve()
-        save_actor(model, output_path, args.hidden_scale)
-        print(f"PPO model saved: {output_path}")
+        final_actor_path = recorder.save_final_actor(model.policy.actor_checkpoint_state_dict())
+        print(f"PPO final actor saved: {final_actor_path}", flush=True)
     finally:
         vector_env.close()
 
