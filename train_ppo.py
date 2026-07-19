@@ -55,7 +55,7 @@ def parse_arguments():
     # Environment configuration
     parser.add_argument("--map_name", type=str, default="Austin")
     parser.add_argument("--n_envs", type=int, default=16)
-    parser.add_argument("--env_workers", type=int, default=6)
+    parser.add_argument("--env_workers", type=int, default=8)
     parser.add_argument("--seed", type=int, default=0)
 
     # Rollout configuration
@@ -129,7 +129,7 @@ def classify_collision_scenarios(pretrained_model_path: str | Path, hidden_scale
     collisions = []
     invalid_count = 0
     with ProcessPoolExecutor(max_workers=env_workers, mp_context=context, initializer=_collision_worker_init, initargs=(str(Path(pretrained_model_path).expanduser().resolve()), hidden_scale, map_name)) as executor:
-        for completed, (index, outcome) in enumerate(executor.map(_classify_collision_candidate, enumerate(candidates), chunksize=1), start=1):
+        for completed, (index, outcome) in enumerate(executor.map(_classify_collision_candidate, enumerate(candidates), chunksize=4), start=1):
             if outcome == "ego_collision":
                 collisions.append(candidates[index])
             elif outcome == "invalid":

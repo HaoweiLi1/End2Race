@@ -156,7 +156,7 @@ def intersect_point(point, radius, trajectory, t=0.0, wrap=False):
     trajectory = np.ascontiguousarray(trajectory)
     for i in range(start_i, trajectory.shape[0] - 1):
         start = trajectory[i, :]
-        end = trajectory[i + 1, :] + 1e-6
+        end = trajectory[i + 1, :]
         V = np.ascontiguousarray(end - start)
 
         a = np.dot(V, V)
@@ -197,7 +197,7 @@ def intersect_point(point, radius, trajectory, t=0.0, wrap=False):
     if wrap and first_p is None:
         for i in range(-1, start_i):
             start = trajectory[i % trajectory.shape[0], :]
-            end = trajectory[(i + 1) % trajectory.shape[0], :] + 1e-6
+            end = trajectory[(i + 1) % trajectory.shape[0], :]
             V = end - start
 
             a = np.dot(V, V)
@@ -459,6 +459,8 @@ def get_actuation(pose_theta, lookahead_point, position, lookahead_distance, whe
 def get_actuation_PD(pose_theta, lookahead_point, position, lookahead_distance, wheelbase, prev_error, P, D):
     waypoint_y = np.dot(np.array([np.sin(-pose_theta), np.cos(-pose_theta)]), lookahead_point[0:2] - position)
     speed = lookahead_point[2]
+    if lookahead_distance < 1e-6:
+        return speed, 0., 0.
     error = 2.0 * waypoint_y / lookahead_distance ** 2
     if np.abs(waypoint_y) < 1e-4:
         return speed, 0., error
