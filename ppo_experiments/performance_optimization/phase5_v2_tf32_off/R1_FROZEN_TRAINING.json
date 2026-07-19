@@ -1,0 +1,199 @@
+{
+  "backend": "R1 batch-1 recurrent replay",
+  "batch_or_microbatch": 1,
+  "bc_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "checkpoint": {
+    "keys": [
+      "dummy_embedding",
+      "gru.bias_hh_l0",
+      "gru.bias_ih_l0",
+      "gru.weight_hh_l0",
+      "gru.weight_ih_l0",
+      "k",
+      "output_layer.0.bias",
+      "output_layer.0.weight",
+      "output_layer.2.bias",
+      "output_layer.2.weight",
+      "speed_mlp.0.bias",
+      "speed_mlp.0.weight"
+    ],
+    "path": "R1_frozen_actor_checkpoint.pth",
+    "sha256": "75821d0d814baea25c521bb63c99b9139a7a5c140287e9a45f1971bf1140f9ef",
+    "strict_12_key_load": true
+  },
+  "checkpoint_hash": "75821d0d814baea25c521bb63c99b9139a7a5c140287e9a45f1971bf1140f9ef",
+  "config": "N1-H1F-p50",
+  "flags": {
+    "cuda_matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": false,
+    "deterministic_algorithms": false,
+    "float32_matmul_precision": "highest"
+  },
+  "git_head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+  "hard_pool_manifest_sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+  "minibatch_order_hash": "d2155c247ecdc05367a26640526f40d98b622b76032efeeff4669a6c15bd295b",
+  "model_initial_hash": "9b2feab66b34caa6c94f3038c18c0b99bcd7c9e7230ee2be259abf46fa79bbf8",
+  "numerical_metrics": {
+    "minibatches": [
+      {
+        "approx_kl": 0.0,
+        "clip_fraction": 0.0,
+        "entropy_loss": 3.257826566696167,
+        "finite": true,
+        "padded_samples": 10400,
+        "policy_loss": 5.960464122267695e-09,
+        "ratio_max": 1.0,
+        "ratio_min": 1.0,
+        "total_loss": 0.08967360854148865,
+        "valid_samples": 6400,
+        "value_loss": 0.1793472021818161
+      },
+      {
+        "approx_kl": 0.0047265952453017235,
+        "clip_fraction": 0.2829687297344208,
+        "entropy_loss": 3.2348480224609375,
+        "finite": true,
+        "padded_samples": 9600,
+        "policy_loss": 0.004112572409212589,
+        "ratio_max": 1.5071165561676025,
+        "ratio_min": 0.6216028928756714,
+        "total_loss": 0.07560113072395325,
+        "valid_samples": 6400,
+        "value_loss": 0.14297711849212646
+      },
+      {
+        "approx_kl": 0.00514958007261157,
+        "clip_fraction": 0.15437500178813934,
+        "entropy_loss": 3.2535808086395264,
+        "finite": true,
+        "padded_samples": 8000,
+        "policy_loss": 0.004593550227582455,
+        "ratio_max": 1.7238200902938843,
+        "ratio_min": 2.2216148863662966e-05,
+        "total_loss": 0.06589541584253311,
+        "valid_samples": 6400,
+        "value_loss": 0.12260373681783676
+      },
+      {
+        "approx_kl": 0.0007759369909763336,
+        "clip_fraction": 0.030937498435378075,
+        "entropy_loss": 3.2482707500457764,
+        "finite": true,
+        "padded_samples": 10400,
+        "policy_loss": -0.0005083965952508152,
+        "ratio_max": 1.2847533226013184,
+        "ratio_min": 0.7221575379371643,
+        "total_loss": 0.10426155477762222,
+        "valid_samples": 6400,
+        "value_loss": 0.20953990519046783
+      }
+    ]
+  },
+  "optimizer_initial_hash": "104e720666be943109e4a888dc8285a667998bb66c5e531c82b9a3bac60b2dee",
+  "rng_initial_hash": {
+    "numpy": "feb67b5d609829d4f45b2115e212fcc23c1d5c8563510efbc82ec3cfbf1a4608",
+    "python": "217e82c0c8bcc125dcf1d2690fadb2fcba65bf8d66f1743a690fd5f08cd48bfb",
+    "torch_cpu": "488902a269463ad25b515722b12da51ffa05b5087069b60bc48f5a4b5a3adb7f",
+    "torch_cuda": [
+      "47992111c801eaef39570084b3cbf8f2b8dc1b642ccb14c19a7b4f636dda0776"
+    ]
+  },
+  "rollout_hash": "f64819004506e018ef972205ae16b6a80aef24b0ca6d42bedc47fefd26746f6a",
+  "runtime": {
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "numpy": "1.26.4",
+    "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+    "python_executable": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "pytorch": "2.7.0+cu128",
+    "sb3": "2.7.1",
+    "sb3_contrib": "2.7.1"
+  },
+  "schema_version": 1,
+  "seed": 20260917,
+  "source_hashes": {
+    "model.py": "0c34a5b4f26d3dfa158a9c187b911e209504cbb4cfea5ed41b0f283e09134eb3",
+    "ppo/buffer.py": "6fce9e10cff431f9cfdda318526d05785266c353b6637b3a78290806b185c0da",
+    "ppo/config.py": "7125b62c99ec9fd7b03092e73edfac55f3a88a92fb84e17ea78139f0ab8d8d68",
+    "ppo/environment.py": "c55fa36f20a234f01f037f29176e0d888e9c423fe0883b28dfabcee7c2dff7ec",
+    "ppo/hard_pools/h1_expanded_det.json": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+    "ppo/policy.py": "a78e3a551e4e77af5d73382c5c05aeb327410628cc478419c26da09224b8ad72",
+    "ppo/vec_env.py": "b91366af88de80e17def840356098c4ae7d318409dc43135547d6e0b4b4e8855",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "train_ppo.py": "676afc8cdec903ae1d51b22556b4d3c192e77499d13a710be1127721f5db7637"
+  },
+  "timing_metrics": {
+    "all_four_actor_cuda_ms": 3644.6474609375,
+    "first_logical_minibatch_actor_cuda_ms": 914.4575805664062,
+    "ppo_train_wall_s": 15.293165718998353,
+    "resources": {
+      "gpu_framebuffer_mib_device": {
+        "max": 1878.0,
+        "mean": 1757.625,
+        "median": 1810.0
+      },
+      "gpu_memory_activity_pct_device": {
+        "max": 97.0,
+        "mean": 77.0625,
+        "median": 95.0
+      },
+      "gpu_power_w": {
+        "max": 201.0,
+        "mean": 173.125,
+        "median": 170.0
+      },
+      "gpu_sm_pct_device": {
+        "max": 98.0,
+        "mean": 83.625,
+        "median": 98.0
+      },
+      "involuntary_context_switches": {
+        "max": 16.0,
+        "mean": 8.450704225352112,
+        "median": 7.0
+      },
+      "process_cpu_pct": {
+        "max": 113.6,
+        "mean": 104.7,
+        "median": 107.0
+      },
+      "processes": {
+        "max": 1.0,
+        "mean": 1.0,
+        "median": 1.0
+      },
+      "pss_mib": {
+        "max": 3313.3388671875,
+        "mean": 3228.8524977992956,
+        "median": 3230.7060546875
+      },
+      "rss_mib": {
+        "max": 3314.10546875,
+        "mean": 3234.2135783450703,
+        "median": 3236.1328125
+      },
+      "system_cpu_pct": {
+        "max": 12.6,
+        "mean": 5.881690140845071,
+        "median": 5.7
+      },
+      "threads": {
+        "max": 7.0,
+        "mean": 7.0,
+        "median": 7.0
+      },
+      "voluntary_context_switches": {
+        "max": 4445.0,
+        "mean": 2886.0985915492956,
+        "median": 2740.0
+      }
+    },
+    "torch_peak_allocated_mib": 1003.853515625,
+    "torch_peak_reserved_mib": 1208.0
+  },
+  "verdict": "R1_FROZEN_TRAINING_REFERENCE",
+  "worktree": "production tracked files clean; experiment artifacts and pre-existing patch untracked"
+}

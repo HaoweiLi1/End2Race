@@ -1,0 +1,182 @@
+{
+  "backend": "TF32 causal audit",
+  "batch_or_microbatch": {
+    "A": 16,
+    "B": "all active",
+    "C": "packed"
+  },
+  "bc_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "checkpoint_hash": null,
+  "config": "N1-H1F-p50",
+  "flags": {
+    "cuda_matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": false,
+    "deterministic_algorithms": false,
+    "float32_matmul_precision": "highest"
+  },
+  "git_head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+  "hard_pool_manifest_sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+  "logp_absolute_error_gate": {
+    "A": {
+      "cosine": 0.9999999999999784,
+      "count": 16,
+      "finite": true,
+      "max_abs": 2.384185791015625e-06,
+      "mean_abs": 4.172325134277344e-07,
+      "p50_abs": 0.0,
+      "p95_abs": 1.3113021850585938e-06,
+      "p99_abs": 2.1696090698242182e-06,
+      "relative_l2": 2.2148055580394864e-07
+    },
+    "B": {
+      "cosine": 0.9999999999999925,
+      "count": 192,
+      "finite": true,
+      "max_abs": 3.337860107421875e-06,
+      "mean_abs": 1.5832483768463135e-07,
+      "p50_abs": 0.0,
+      "p95_abs": 7.152557373046875e-07,
+      "p99_abs": 1.5163421630859408e-06,
+      "relative_l2": 1.2232494017343307e-07
+    },
+    "C": {
+      "cosine": 0.9999999999999922,
+      "count": 136,
+      "finite": true,
+      "max_abs": 2.384185791015625e-06,
+      "mean_abs": 1.849497065824621e-07,
+      "p50_abs": 0.0,
+      "p95_abs": 9.5367431640625e-07,
+      "p99_abs": 1.8239021301269545e-06,
+      "relative_l2": 1.266927229890366e-07
+    },
+    "passed": true,
+    "threshold_max_abs": 1e-05
+  },
+  "model_initial_hash": "9b2feab66b34caa6c94f3038c18c0b99bcd7c9e7230ee2be259abf46fa79bbf8",
+  "numerical_metrics": {
+    "A": {
+      "gru_output": {
+        "shrink_factor": 939.1739130434783,
+        "tf32_off_max_abs": 3.427267074584961e-07,
+        "tf32_on_max_abs": 0.0003218799829483032
+      },
+      "log_probability": {
+        "shrink_factor": 10.0,
+        "tf32_off_max_abs": 2.384185791015625e-06,
+        "tf32_on_max_abs": 2.384185791015625e-05
+      },
+      "next_hidden": {
+        "shrink_factor": 939.1739130434783,
+        "tf32_off_max_abs": 3.427267074584961e-07,
+        "tf32_on_max_abs": 0.0003218799829483032
+      },
+      "raw_physical_mean": {
+        "shrink_factor": 279.5,
+        "tf32_off_max_abs": 9.5367431640625e-07,
+        "tf32_on_max_abs": 0.0002665519714355469
+      },
+      "transformed_latent_steering_mean": {
+        "shrink_factor": 410.14285714285717,
+        "tf32_off_max_abs": 1.564621925354004e-07,
+        "tf32_on_max_abs": 6.417185068130493e-05
+      }
+    },
+    "B": {
+      "gru_output": {
+        "shrink_factor": 355.6907894736842,
+        "tf32_off_max_abs": 4.5299530029296875e-06,
+        "tf32_on_max_abs": 0.001611262559890747
+      },
+      "log_probability": {
+        "shrink_factor": 20.571428571428573,
+        "tf32_off_max_abs": 3.337860107421875e-06,
+        "tf32_on_max_abs": 6.866455078125e-05
+      },
+      "next_hidden": {
+        "shrink_factor": 355.6907894736842,
+        "tf32_off_max_abs": 4.5299530029296875e-06,
+        "tf32_on_max_abs": 0.001611262559890747
+      },
+      "raw_physical_mean": {
+        "shrink_factor": 732.5,
+        "tf32_off_max_abs": 9.5367431640625e-07,
+        "tf32_on_max_abs": 0.0006985664367675781
+      },
+      "transformed_latent_steering_mean": {
+        "shrink_factor": 661.8064516129032,
+        "tf32_off_max_abs": 2.3096799850463867e-07,
+        "tf32_on_max_abs": 0.00015285611152648926
+      }
+    },
+    "C": {
+      "gru_output": {
+        "shrink_factor": 591.4489795918367,
+        "tf32_off_max_abs": 2.9206275939941406e-06,
+        "tf32_on_max_abs": 0.0017274022102355957
+      },
+      "log_probability": {
+        "shrink_factor": 28.8,
+        "tf32_off_max_abs": 2.384185791015625e-06,
+        "tf32_on_max_abs": 6.866455078125e-05
+      },
+      "next_hidden": {
+        "shrink_factor": 591.4489795918367,
+        "tf32_off_max_abs": 2.9206275939941406e-06,
+        "tf32_on_max_abs": 0.0017274022102355957
+      },
+      "raw_physical_mean": {
+        "shrink_factor": 656.0,
+        "tf32_off_max_abs": 1.430511474609375e-06,
+        "tf32_on_max_abs": 0.00093841552734375
+      },
+      "transformed_latent_steering_mean": {
+        "shrink_factor": 482.7294117647059,
+        "tf32_off_max_abs": 3.166496753692627e-07,
+        "tf32_on_max_abs": 0.00015285611152648926
+      }
+    }
+  },
+  "optimizer_initial_hash": "104e720666be943109e4a888dc8285a667998bb66c5e531c82b9a3bac60b2dee",
+  "owner_override": "Ratio-based logp shrink gate withdrawn near FP32 floor; absolute max <= 1e-5 is authoritative.",
+  "rng_initial_hash": {
+    "numpy": "feb67b5d609829d4f45b2115e212fcc23c1d5c8563510efbc82ec3cfbf1a4608",
+    "oracle_input_generator_seed": 7319,
+    "python": "217e82c0c8bcc125dcf1d2690fadb2fcba65bf8d66f1743a690fd5f08cd48bfb",
+    "torch_cpu": "488902a269463ad25b515722b12da51ffa05b5087069b60bc48f5a4b5a3adb7f",
+    "torch_cuda": [
+      "21d2ab86ced40b3e4493362edc04aa7565ff7a3784e732751a3a80adef92848f"
+    ]
+  },
+  "rollout_hash": "f64819004506e018ef972205ae16b6a80aef24b0ca6d42bedc47fefd26746f6a",
+  "runtime": {
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "numpy": "1.26.4",
+    "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+    "python_executable": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "pytorch": "2.7.0+cu128",
+    "sb3": "2.7.1",
+    "sb3_contrib": "2.7.1"
+  },
+  "seed": 20260917,
+  "source_hashes": {
+    "model.py": "0c34a5b4f26d3dfa158a9c187b911e209504cbb4cfea5ed41b0f283e09134eb3",
+    "ppo/buffer.py": "6fce9e10cff431f9cfdda318526d05785266c353b6637b3a78290806b185c0da",
+    "ppo/config.py": "7125b62c99ec9fd7b03092e73edfac55f3a88a92fb84e17ea78139f0ab8d8d68",
+    "ppo/environment.py": "c55fa36f20a234f01f037f29176e0d888e9c423fe0883b28dfabcee7c2dff7ec",
+    "ppo/hard_pools/h1_expanded_det.json": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+    "ppo/policy.py": "a78e3a551e4e77af5d73382c5c05aeb327410628cc478419c26da09224b8ad72",
+    "ppo/vec_env.py": "b91366af88de80e17def840356098c4ae7d318409dc43135547d6e0b4b4e8855",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "train_ppo.py": "676afc8cdec903ae1d51b22556b4d3c192e77499d13a710be1127721f5db7637"
+  },
+  "tf32_core_causal_gate_pass": true,
+  "tf32_dominant_cause_confirmed": true,
+  "timing_metrics": {},
+  "verdict": "TF32_DOMINANT_FOR_CORE_FORWARD_NUMERICS / LOGP_ABSOLUTE_ERROR_PASS",
+  "worktree": "production tracked files clean; experiment artifacts and pre-existing patch untracked"
+}

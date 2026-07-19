@@ -1,0 +1,360 @@
+{
+  "episodes": [
+    {
+      "ego_collision": true,
+      "elapsed_time": 3.089999999999978,
+      "env_rank": 11,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "training-sp10-ego0440-raceline0-v050",
+      "step": 309,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 3.3899999999999717,
+      "env_rank": 2,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp022-ego0476-raceline0-i10-v070",
+      "step": 339,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 3.839999999999962,
+      "env_rank": 14,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "training-sp16-ego0692-raceline0-v070",
+      "step": 384,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 5.179999999999934,
+      "env_rank": 4,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp007-ego0157-raceline0-i15-v080",
+      "step": 518,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 5.209999999999933,
+      "env_rank": 6,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp007-ego0157-raceline0-i15-v080",
+      "step": 521,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 5.489999999999927,
+      "env_rank": 0,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp043-ego0912-raceline0-i08-v080",
+      "step": 549,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 2.8799999999999826,
+      "env_rank": 2,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp021-ego0451-raceline0-i08-v070",
+      "step": 627,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 6.519999999999905,
+      "env_rank": 1,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp071-ego1503-raceline1-i15-v065",
+      "step": 652,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 7.70999999999988,
+      "env_rank": 5,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp069-ego1459-raceline1-i10-v050",
+      "step": 771,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 2.53999999999999,
+      "env_rank": 6,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp099-ego2086-raceline2-i08-v085",
+      "step": 775,
+      "timeout": false
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 3,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "v12-sp047-ego0996-raceline0-i12-v070",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 7,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "v12-sp029-ego0618-raceline1-i15-v055",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 8,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp37-ego1567-raceline2-v070",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 9,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp42-ego1787-raceline0-v050",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 10,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp27-ego1149-raceline0-v060",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 12,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp10-ego0440-raceline2-v050",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 13,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp29-ego1234-raceline0-v070",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 15,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "training-sp25-ego1064-raceline1-v070",
+      "step": 800,
+      "timeout": true
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 3.4899999999999696,
+      "env_rank": 0,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp065-ego1374-raceline2-i12-v080",
+      "step": 898,
+      "timeout": false
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 11,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "training-sp26-ego1106-raceline1-v070",
+      "step": 1109,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 14,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp21-ego0904-raceline0-v070",
+      "step": 1184,
+      "timeout": true
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 3.329999999999973,
+      "env_rank": 0,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp010-ego0220-raceline1-i15-v060",
+      "step": 1231,
+      "timeout": false
+    },
+    {
+      "ego_collision": true,
+      "elapsed_time": 4.839999999999941,
+      "env_rank": 7,
+      "opponent_collision": true,
+      "outcome": "ego_collision",
+      "scenario_id": "v12-sp008-ego0178-raceline0-i10-v075",
+      "step": 1284,
+      "timeout": false
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 4,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "v12-sp072-ego1520-raceline0-i12-v085",
+      "step": 1318,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 2,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "v12-sp072-ego1520-raceline1-i10-v050",
+      "step": 1427,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 1,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "v12-sp098-ego2065-raceline1-i15-v075",
+      "step": 1452,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 5,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "v12-sp099-ego2086-raceline2-i10-v060",
+      "step": 1571,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 6,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "v12-sp094-ego1981-raceline0-i15-v085",
+      "step": 1575,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 3,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "v12-sp006-ego0136-raceline1-i10-v045",
+      "step": 1600,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 8,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "training-sp07-ego0319-raceline2-v080",
+      "step": 1600,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 9,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp41-ego1745-raceline2-v070",
+      "step": 1600,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 10,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp04-ego0189-raceline2-v070",
+      "step": 1600,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 12,
+      "opponent_collision": false,
+      "outcome": "follow",
+      "scenario_id": "training-sp17-ego0739-raceline1-v070",
+      "step": 1600,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 13,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp20-ego0861-raceline2-v070",
+      "step": 1600,
+      "timeout": true
+    },
+    {
+      "ego_collision": false,
+      "elapsed_time": 7.999999999999874,
+      "env_rank": 15,
+      "opponent_collision": false,
+      "outcome": "overtake",
+      "scenario_id": "training-sp48-ego2033-raceline0-v070",
+      "step": 1600,
+      "timeout": true
+    }
+  ],
+  "within_first_threshold": {
+    "action_gt_1e-3": null,
+    "action_gt_1e-4": null,
+    "action_gt_1e-5": null
+  },
+  "within_trajectory": {}
+}

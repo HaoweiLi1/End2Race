@@ -1,0 +1,192 @@
+{
+  "backend": "AB",
+  "batch_or_microbatch": {
+    "collection": 16,
+    "training": "all active"
+  },
+  "bc_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "checkpoint": {
+    "bytes": 45210801,
+    "file_sha256": "f5b521f75c63281df9cbb2707ed7d30a42bfb050c3df9ba6c2ba454ffd2bce2d",
+    "path": "PERF_AB_actor_checkpoint.pth",
+    "sha256": "f5b521f75c63281df9cbb2707ed7d30a42bfb050c3df9ba6c2ba454ffd2bce2d",
+    "strict_12_key_load": true
+  },
+  "checkpoint_hash": "f5b521f75c63281df9cbb2707ed7d30a42bfb050c3df9ba6c2ba454ffd2bce2d",
+  "config": "N1-H1F-p50",
+  "flags": {
+    "cuda_matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": false,
+    "deterministic_algorithms": false,
+    "float32_matmul_precision": "highest"
+  },
+  "git_head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+  "hard_pool_manifest_sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+  "live_full_update": {
+    "completed_episodes": 35,
+    "normal_vector_env_close": true,
+    "outcomes": {
+      "ego_collision": 16,
+      "follow": 6,
+      "overtake": 13
+    },
+    "transitions": 25600
+  },
+  "minibatch_order_hash": "d2155c247ecdc05367a26640526f40d98b622b76032efeeff4669a6c15bd295b",
+  "model_initial_hash": "9b2feab66b34caa6c94f3038c18c0b99bcd7c9e7230ee2be259abf46fa79bbf8",
+  "numerical_metrics": {
+    "collection_A1_gate_pass": true,
+    "collection_A2_gate_pass": true,
+    "collection_closed_loop_classification": "DISTRIBUTIONAL_ONLY_REQUIRES_PRODUCT_TEST",
+    "collection_component_ref": "A_BATCH16.json",
+    "component_composition_note": "Collection A and the selected training backend affect disjoint policy call sites; frozen gradient/delta evidence is the registered B/C component audit.",
+    "training_all_four_minibatch_gate_pass": true,
+    "training_component_ref": "B_TIMESTEP.json",
+    "training_summary": {
+      "delta_cosine_min": 0.9999999996401706,
+      "delta_relative_l2_max": 2.682917573089341e-05,
+      "gradient_cosine_min": 0.9999999994814752,
+      "gradient_relative_l2_max": 3.239773368082329e-05,
+      "hidden_max": 1.1045485734939575e-05,
+      "hidden_p99_max": 4.172325134277344e-07,
+      "logp_max": 0.004265785217285156,
+      "logp_p99_max": 3.195285797119151e-05,
+      "policy_kl_max": 1.0889064649965974e-10,
+      "policy_loss_abs_max": 2.7060741558671e-07
+    }
+  },
+  "optimizer_initial_hash": "104e720666be943109e4a888dc8285a667998bb66c5e531c82b9a3bac60b2dee",
+  "rng_initial_hash": {
+    "numpy": "feb67b5d609829d4f45b2115e212fcc23c1d5c8563510efbc82ec3cfbf1a4608",
+    "python": "217e82c0c8bcc125dcf1d2690fadb2fcba65bf8d66f1743a690fd5f08cd48bfb",
+    "torch_cpu": "488902a269463ad25b515722b12da51ffa05b5087069b60bc48f5a4b5a3adb7f",
+    "torch_cuda": [
+      "21d2ab86ced40b3e4493362edc04aa7565ff7a3784e732751a3a80adef92848f"
+    ]
+  },
+  "rollout_hash": "f64819004506e018ef972205ae16b6a80aef24b0ca6d42bedc47fefd26746f6a",
+  "runtime": {
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "numpy": "1.26.4",
+    "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+    "python_executable": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "pytorch": "2.7.0+cu128",
+    "sb3": "2.7.1",
+    "sb3_contrib": "2.7.1"
+  },
+  "schema_version": 1,
+  "seed": 20260917,
+  "source_hashes": {
+    "model.py": "0c34a5b4f26d3dfa158a9c187b911e209504cbb4cfea5ed41b0f283e09134eb3",
+    "ppo/buffer.py": "6fce9e10cff431f9cfdda318526d05785266c353b6637b3a78290806b185c0da",
+    "ppo/config.py": "7125b62c99ec9fd7b03092e73edfac55f3a88a92fb84e17ea78139f0ab8d8d68",
+    "ppo/environment.py": "c55fa36f20a234f01f037f29176e0d888e9c423fe0883b28dfabcee7c2dff7ec",
+    "ppo/hard_pools/h1_expanded_det.json": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+    "ppo/policy.py": "a78e3a551e4e77af5d73382c5c05aeb327410628cc478419c26da09224b8ad72",
+    "ppo/vec_env.py": "b91366af88de80e17def840356098c4ae7d318409dc43135547d6e0b4b4e8855",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "train_ppo.py": "676afc8cdec903ae1d51b22556b4d3c192e77499d13a710be1127721f5db7637"
+  },
+  "timing_metrics": {
+    "padding_ratio": 1.5,
+    "repeat1": {
+      "actor_forward_calls": {
+        "collection": 1600,
+        "training": 4
+      },
+      "actor_forward_cuda_ms": {
+        "collection": 1121.5800677537918,
+        "training": 1211.3837890625
+      },
+      "completed_episodes": 35,
+      "completed_episodes_per_rollout_s": 2.303949704799195,
+      "ppo_train_wall_s": 3.389338846995088,
+      "resources": {
+        "gpu_framebuffer_mib_device": {
+          "max": 1730.0,
+          "mean": 995.4,
+          "median": 852.0
+        },
+        "gpu_memory_activity_pct_device": {
+          "max": 68.0,
+          "mean": 11.0,
+          "median": 4.0
+        },
+        "gpu_power_w": {
+          "max": 138.0,
+          "mean": 64.7,
+          "median": 56.0
+        },
+        "gpu_sm_pct_device": {
+          "max": 94.0,
+          "mean": 16.35,
+          "median": 7.0
+        },
+        "involuntary_context_switches": {
+          "max": 945.0,
+          "mean": 549.855421686747,
+          "median": 587.0
+        },
+        "process_cpu_pct": {
+          "max": 116.9,
+          "mean": 48.40722891566265,
+          "median": 37.9
+        },
+        "processes": {
+          "max": 9.0,
+          "mean": 9.0,
+          "median": 9.0
+        },
+        "pss_mib": {
+          "max": 6766.4287109375,
+          "mean": 5953.092091020331,
+          "median": 6089.3779296875
+        },
+        "rss_mib": {
+          "max": 8568.8203125,
+          "mean": 7753.78327371988,
+          "median": 7891.64453125
+        },
+        "system_cpu_pct": {
+          "max": 32.8,
+          "mean": 16.110843373493978,
+          "median": 15.6
+        },
+        "threads": {
+          "max": 15.0,
+          "mean": 14.168674698795181,
+          "median": 14.0
+        },
+        "voluntary_context_switches": {
+          "max": 29273.0,
+          "mean": 15516.373493975903,
+          "median": 16352.0
+        }
+      },
+      "rollout_transitions_per_s": 1685.1746412245539,
+      "rollout_wall_s": 15.19130384100572,
+      "startup_s": 2.523410645000695,
+      "torch_peak_allocated_mib": 797.43505859375,
+      "torch_peak_reserved_mib": 1058.0,
+      "total_transitions_per_s": 1348.6914869045577,
+      "total_update_wall_s": 18.98136100699776,
+      "train_valid_transitions_per_s": 7553.095502002224
+    },
+    "repeat1_ref": "PERF_AB_REPEAT1.json",
+    "speedup_vs_R1": {
+      "actor_forward_speedup": 3.690310465576669,
+      "peak_allocated_vram_change_fraction": -0.04236718658379266,
+      "peak_reserved_vram_change_fraction": -0.031135531135531136,
+      "rollout_improvement_fraction": 0.17443159997228316,
+      "total_update_improvement_fraction": 0.4384254450129523,
+      "train_improvement_fraction": 0.7740281766759186
+    },
+    "warmup_ref": "PERF_AB_WARMUP.json"
+  },
+  "verdict": "DISTRIBUTIONAL_ONLY_REQUIRES_PRODUCT_TEST",
+  "worktree": "production tracked files clean; experiment artifacts and pre-existing patch untracked"
+}

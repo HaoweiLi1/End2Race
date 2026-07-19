@@ -1,0 +1,150 @@
+{
+  "backend": "R0",
+  "batch_or_microbatch": 1,
+  "bc_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "checkpoint": null,
+  "checkpoint_hash": null,
+  "config": "N1-H1F-p50",
+  "flags": {
+    "cuda_matmul_allow_tf32": false,
+    "cudnn_allow_tf32": true,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": false,
+    "deterministic_algorithms": false,
+    "float32_matmul_precision": "highest"
+  },
+  "git_head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+  "hard_pool_manifest_sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+  "minibatch_order_hash": "d2155c247ecdc05367a26640526f40d98b622b76032efeeff4669a6c15bd295b",
+  "model_initial_hash": "9b2feab66b34caa6c94f3038c18c0b99bcd7c9e7230ee2be259abf46fa79bbf8",
+  "numerical_metrics": {},
+  "optimizer_initial_hash": "104e720666be943109e4a888dc8285a667998bb66c5e531c82b9a3bac60b2dee",
+  "outcomes": {
+    "ego_collision": 13,
+    "follow": 9,
+    "overtake": 13
+  },
+  "rng_initial_hash": {
+    "numpy": "feb67b5d609829d4f45b2115e212fcc23c1d5c8563510efbc82ec3cfbf1a4608",
+    "python": "217e82c0c8bcc125dcf1d2690fadb2fcba65bf8d66f1743a690fd5f08cd48bfb",
+    "torch_cpu": "488902a269463ad25b515722b12da51ffa05b5087069b60bc48f5a4b5a3adb7f",
+    "torch_cuda": [
+      "21d2ab86ced40b3e4493362edc04aa7565ff7a3784e732751a3a80adef92848f"
+    ]
+  },
+  "roles": {
+    "hard": 12800,
+    "ordinary": 12800
+  },
+  "rollout_hash": "f64819004506e018ef972205ae16b6a80aef24b0ca6d42bedc47fefd26746f6a",
+  "runtime": {
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "numpy": "1.26.4",
+    "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+    "python_executable": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "pytorch": "2.7.0+cu128",
+    "sb3": "2.7.1",
+    "sb3_contrib": "2.7.1"
+  },
+  "schema_version": 1,
+  "seed": 20260917,
+  "source_hashes": {
+    "model.py": "0c34a5b4f26d3dfa158a9c187b911e209504cbb4cfea5ed41b0f283e09134eb3",
+    "ppo/buffer.py": "6fce9e10cff431f9cfdda318526d05785266c353b6637b3a78290806b185c0da",
+    "ppo/config.py": "7125b62c99ec9fd7b03092e73edfac55f3a88a92fb84e17ea78139f0ab8d8d68",
+    "ppo/environment.py": "c55fa36f20a234f01f037f29176e0d888e9c423fe0883b28dfabcee7c2dff7ec",
+    "ppo/hard_pools/h1_expanded_det.json": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+    "ppo/policy.py": "a78e3a551e4e77af5d73382c5c05aeb327410628cc478419c26da09224b8ad72",
+    "ppo/vec_env.py": "b91366af88de80e17def840356098c4ae7d318409dc43135547d6e0b4b4e8855",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "train_ppo.py": "676afc8cdec903ae1d51b22556b4d3c192e77499d13a710be1127721f5db7637"
+  },
+  "timing_metrics": {
+    "actor_forward_calls": {
+      "collection": 1600,
+      "training": 4
+    },
+    "actor_forward_cuda_ms": {
+      "collection": 4163.899973154068,
+      "training": 4177.138244628906
+    },
+    "completed_episodes": 35,
+    "completed_episodes_per_rollout_s": 1.8896592948788247,
+    "ppo_train_wall_s": 14.944466428998567,
+    "resources": {
+      "gpu_framebuffer_mib_device": {
+        "max": 1762.0,
+        "mean": 1164.1764705882354,
+        "median": 852.0
+      },
+      "gpu_memory_activity_pct_device": {
+        "max": 97.0,
+        "mean": 39.11764705882353,
+        "median": 15.0
+      },
+      "gpu_power_w": {
+        "max": 199.0,
+        "mean": 108.26470588235294,
+        "median": 70.5
+      },
+      "gpu_sm_pct_device": {
+        "max": 98.0,
+        "mean": 45.5,
+        "median": 22.5
+      },
+      "involuntary_context_switches": {
+        "max": 962.0,
+        "mean": 677.2925170068028,
+        "median": 878.0
+      },
+      "process_cpu_pct": {
+        "max": 118.3,
+        "mean": 74.57619047619048,
+        "median": 57.1
+      },
+      "processes": {
+        "max": 9.0,
+        "mean": 9.0,
+        "median": 9.0
+      },
+      "pss_mib": {
+        "max": 6862.392578125,
+        "mean": 6212.5438456632655,
+        "median": 6110.919921875
+      },
+      "rss_mib": {
+        "max": 8667.77734375,
+        "mean": 8017.1760469812925,
+        "median": 7916.3046875
+      },
+      "system_cpu_pct": {
+        "max": 31.8,
+        "mean": 11.74625850340136,
+        "median": 12.3
+      },
+      "threads": {
+        "max": 15.0,
+        "mean": 14.408163265306122,
+        "median": 14.0
+      },
+      "voluntary_context_switches": {
+        "max": 36741.0,
+        "mean": 23615.972789115647,
+        "median": 28334.0
+      }
+    },
+    "rollout_transitions_per_s": 1382.1507985399403,
+    "rollout_wall_s": 18.521857403000467,
+    "startup_s": 2.5621394390036585,
+    "torch_peak_allocated_mib": 832.71484375,
+    "torch_peak_reserved_mib": 1092.0,
+    "total_transitions_per_s": 755.9346812768594,
+    "total_update_wall_s": 33.86535984399961,
+    "train_valid_transitions_per_s": 1713.0086324343574
+  },
+  "verdict": "WARMUP_COMPLETE",
+  "warmup": true,
+  "worktree": "production tracked files clean; experiment artifacts and pre-existing patch untracked"
+}

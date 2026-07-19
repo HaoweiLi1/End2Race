@@ -1,0 +1,68 @@
+{
+  "config": "N1-H1F-p50",
+  "label": "b_integrated",
+  "minibatches": 4,
+  "parameter_names": [
+    "end2race_actor.output_layer.0.bias",
+    "end2race_actor.output_layer.0.weight",
+    "end2race_actor.output_layer.2.bias",
+    "end2race_actor.output_layer.2.weight",
+    "lstm_actor.gru.bias_hh_l0",
+    "lstm_actor.gru.bias_ih_l0",
+    "lstm_actor.gru.weight_hh_l0",
+    "lstm_actor.gru.weight_ih_l0",
+    "value_net.0.bias",
+    "value_net.0.weight",
+    "value_net.2.bias",
+    "value_net.2.weight"
+  ],
+  "project_root": "/home/haowei/Documents/End2Race",
+  "seed": 20260917,
+  "tf32": [
+    false,
+    false,
+    false
+  ],
+  "u2_checkpoint": "/home/haowei/Documents/End2Race/ppo_experiments/performance_optimization/b_integration/b_integrated_u2_actor.pth",
+  "u2_checkpoint_sha256": "18942de491c9cbbe6e64cbe557fbb52c31fb71c200679e719a5e24eb99e867f4",
+  "updates": {
+    "1": {
+      "approx_kl": 0.0026627909392118454,
+      "clip_fraction": 0.11707030748948455,
+      "loss": 0.10426180064678192,
+      "optimizer_step": {
+        "active_parameters": 12,
+        "max": 4,
+        "min": 4
+      },
+      "outcomes": {
+        "ego_collision": 13,
+        "follow": 9,
+        "overtake": 13
+      },
+      "policy_gradient_loss": 0.0020495737006385184,
+      "rollout_sha256": "160c8975eddf0f287d388fdf689b530d225419516b4240cf94b4a1643d721645",
+      "value_loss": 0.16361698508262634,
+      "wall_s": 22.4585640219957
+    },
+    "2": {
+      "approx_kl": 0.0004619350074790418,
+      "clip_fraction": 0.011210937111172825,
+      "loss": 0.08424333482980728,
+      "optimizer_step": {
+        "active_parameters": 12,
+        "max": 8,
+        "min": 8
+      },
+      "outcomes": {
+        "ego_collision": 11,
+        "follow": 7,
+        "overtake": 19
+      },
+      "policy_gradient_loss": -9.475797247437967e-05,
+      "rollout_sha256": "53a9df6b177982be6a42dc1e9c39b311d19239baa73af5d379b96d3387a0e197",
+      "value_loss": 0.12937544286251068,
+      "wall_s": 19.615505342997494
+    }
+  }
+}

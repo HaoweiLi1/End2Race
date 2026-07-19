@@ -16,6 +16,10 @@ runs/ppo/quick_pool_3s_v2/*/checkpoints/
 
 # Experiment-generated datasets and model weights.
 # Curated assets outside runs/ppo remain trackable.
+*.pth
+!/pretrained/end2race.pth
+/ppo_experiments/**/*.npz
+/ppo_experiments/**/*.pt
 /runs/ppo/**/*.npz
 /runs/ppo/**/*.pt
 /runs/ppo/**/*.pth

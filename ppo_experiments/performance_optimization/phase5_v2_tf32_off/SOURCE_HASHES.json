@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-07-19T07:25:14+08:00",
+  "git": {
+    "head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+    "tree": "d007a4a47f4145837a8c4ac8a5f804f66d498a3d",
+    "worktree_at_gate": {
+      "production_tracked_clean": true,
+      "cached_clean": true,
+      "preexisting_untracked": [
+        "ppo_performance_optimization.patch"
+      ]
+    }
+  },
+  "runtime": {
+    "python": "3.10.19",
+    "numpy": "1.26.4",
+    "pytorch": "2.7.0+cu128",
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "sb3": "2.7.1",
+    "sb3_contrib": "2.7.1",
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "driver": "580.159.03"
+  },
+  "inputs": {
+    "bc_checkpoint": {
+      "path": "pretrained/end2race.pth",
+      "sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4"
+    },
+    "hard_pool_manifest": {
+      "path": "ppo/hard_pools/h1_expanded_det.json",
+      "sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8"
+    },
+    "preexisting_patch": {
+      "path": "ppo_performance_optimization.patch",
+      "sha256": "bf173d894406493122b24e26fed32afd9a9baef921d13ad1800172e47e943145",
+      "modified": false
+    }
+  },
+  "production_sources": {
+    "model.py": "0c34a5b4f26d3dfa158a9c187b911e209504cbb4cfea5ed41b0f283e09134eb3",
+    "ppo/config.py": "7125b62c99ec9fd7b03092e73edfac55f3a88a92fb84e17ea78139f0ab8d8d68",
+    "ppo/environment.py": "c55fa36f20a234f01f037f29176e0d888e9c423fe0883b28dfabcee7c2dff7ec",
+    "ppo/policy.py": "a78e3a551e4e77af5d73382c5c05aeb327410628cc478419c26da09224b8ad72",
+    "ppo/buffer.py": "6fce9e10cff431f9cfdda318526d05785266c353b6637b3a78290806b185c0da",
+    "ppo/vec_env.py": "b91366af88de80e17def840356098c4ae7d318409dc43135547d6e0b4b4e8855",
+    "train_ppo.py": "676afc8cdec903ae1d51b22556b4d3c192e77499d13a710be1127721f5db7637"
+  },
+  "requested_reuse_artifacts": {
+    "reference_v2_nonzero.json": {
+      "file_sha256": "ba892e91722417e007becb47a62d74bd7fb39b090c9872449489f813a5cb7ebb",
+      "recorded_head": "ef8570bc522fb3b4dc6df2636bbe3a6e9afc4da4",
+      "head_matches_current": false
+    },
+    "reference_v2_zero_lr.json": {
+      "file_sha256": "942e2dde4489b3f2bb665df25a893a0daff6d0691b295cdf6ff253163e505098",
+      "recorded_head": "ef8570bc522fb3b4dc6df2636bbe3a6e9afc4da4",
+      "head_matches_current": false
+    },
+    "reference_actions.npy": {
+      "file_sha256": "48ef771f080f830d4f8e42a7f605a21daac8f1bcd8fbe50c49a088cbf5b848ac",
+      "action_sequence_sha256_from_reference": "8a361be0f698ee55664b0d137bdcf8f82ebd26ba263a154f35945cd918dd5be8",
+      "provenance_head": "ef8570bc522fb3b4dc6df2636bbe3a6e9afc4da4",
+      "head_matches_current": false
+    },
+    "experiment_batched_gru.py": {
+      "file_sha256": "348cbc64abe6d27d3e09cc8f9d671adc91cc9906fa60de83c15af5845d3d1083"
+    },
+    "phase5_collection_a_closed_loop_repeat1.json": {
+      "file_sha256": "ca8ff59fcbc8978c6d2bac0ee77b7ac0f07dda796115f744557652a335774f94",
+      "recorded_head": "ef8570bc522fb3b4dc6df2636bbe3a6e9afc4da4",
+      "head_matches_current": false
+    },
+    "phase5_training_b_c_repeat1.json": {
+      "file_sha256": "69383aa6a73a06ad44c69a756452508d91b5a07616fe22898b6b0ad8cef2eada",
+      "recorded_head": null,
+      "head_matches_current": false,
+      "provenance_error": "required head field missing"
+    }
+  },
+  "current_head_reference_artifacts": {
+    "R0_REFERENCE.json": "2668dbdf48beadcf72ce657efd44b63675f8d6f8535db161ecb290907dd9c7b8",
+    "R1_FP32_REFERENCE.json": "298f0ac08ffb88312003c29cdeb491052819e45a12841ba9541911e4e2e80da5",
+    "ZERO_LR_REFERENCE.json": "901f2a7cb2f7ab104a53887ec0fef1d0883b41f7348fc36eb94ee446cbd3532e",
+    "fixed_actions_r0.npy": "48ef771f080f830d4f8e42a7f605a21daac8f1bcd8fbe50c49a088cbf5b848ac",
+    "fixed_actions_r1.npy": "48ef771f080f830d4f8e42a7f605a21daac8f1bcd8fbe50c49a088cbf5b848ac",
+    "REFERENCE_BUNDLE.json": "de62cbecbeddaf08e45eafae588f2ab8de1cf57ed50377be8178191b3b6b2629",
+    "frozen_rollout_current.npz": "adf84d13beb8da77b9e51df35a3af176eebe571f8fc81bec41b3587deb220162",
+    "frozen_minibatches_current.pt": "e39eeb9e87b63143f78c226f005ae072b2fe313b62a691b93b91685aa328bad6",
+    "initial_state_and_rng_current.pt": "a26500b466a2d2b008530116345b9b0e589c607481b5697c7380a2c135beeae7",
+    "SEMANTIC_ORACLE.json": "10c0de1ca3e9735a27b5b7ecb1fbd017444f9e5e4e40ae10c4d3cc1de8af73c8",
+    "TF32_CAUSAL_AUDIT.json": "12f4e263d03435dc1c2dd60563602467472f9a4f8b758debd7d69569c1d33a01",
+    "A_BATCH16.json": "f59db1f1e87223437d502f05c71d9fde0acdc8479eefff2b03df8227d4b21377",
+    "B_TIMESTEP.json": "47a8b5ac6b43b3c5735f798dc55ed033534965fc37fce9d912888f8ae01cf704",
+    "C_PACKED.json": "ed68c8219aba87a3ac388cc9c0f1897188fceddb568533336a16305b227744d1"
+  },
+  "phase5_v2_final_artifacts": {
+    "AB_COMBINED.json": "0f5527ab3856c86a8a64b008be96ce20c02542a225dcb26a73ba9ab9374481f3",
+    "AC_COMBINED.json": "9fb5f8aee3e61f8854903cff391d08fbc0a989b0001a26b3ad42e8ee919656ef",
+    "R0_R1_SPEED.json": "773eea8e2de3b52f47de626e13b1dd077fe35508404ddc2d9a8e9e6c4be2665e",
+    "PARETO_FRONTIER.json": "88a45da49c0a5fdeb5e78f9c9f3c610804a382b8f60d868aedbd8b643a3f6a0d",
+    "SELECTION.json": "537927e41b9eb73bcbc4978edf58bf54fc99e267da2cac1c554bd8989fba1560",
+    "RUNTIME_FLAGS.json": "3d2da19dbe1381239bb2f0b7a26b7a9e6c4780fd9496fdeabed74edc933022e5",
+    "PLAN.md": "899c10b6bf85e44530ad079870c9e983d4e49abc1304358028c15d2c3a79a3b5",
+    "FINAL_REPORT.md": "2ed81f0c226e255fec8584f99f45437b163263c6619493d9c429da42831cd4a0",
+    "PERF_R0_REPEAT1.json": "9ecd45c5501d665af996c9802852b723bbf18696c7fc202ea51a9a82bdf3a1a2",
+    "PERF_R1_REPEAT1.json": "9b2d94706926825b2660f3a574a3544d4fc27251185dc49bea9c9c8d6eddaf84",
+    "PERF_A_REPEAT1.json": "6c79629eb6f253b7d9a19e130d19299625ad3b32db7289a94afdf47d52117ef8",
+    "PERF_B_REPEAT1.json": "496162345c091eb91638a426ea17308cd8959b7ebc47735b9bca2396236b8a16",
+    "PERF_C_REPEAT1.json": "9fa455604513035019f796680023e33d2790922ce316acd47c0a7810c1a54dba",
+    "PERF_AB_REPEAT1.json": "01eb6fe2626bddf0ae5f0a8a34d8233db1857df4f802106eb15fd577c9f334ca",
+    "PERF_AC_REPEAT1.json": "24d6955aca4147191ed53070db0487c08ef3cc909b9fc98320595a284536b018",
+    "PERF_AB_actor_checkpoint.pth": "f5b521f75c63281df9cbb2707ed7d30a42bfb050c3df9ba6c2ba454ffd2bce2d",
+    "PERF_AC_actor_checkpoint.pth": "bafb7d2c1ac278fe24915a4457fc39a29f2a7dcb746fbdd9674d447d3e7252a7"
+  },
+  "historical_gate": {
+    "label": "STOP_STALE_REFERENCE_ARTIFACTS / NO_MECHANISM_TEST_RUN",
+    "superseded_by_owner_authorization": true,
+    "legacy_artifacts_modified": false
+  },
+  "current_head_reference_gate": {
+    "passed": true,
+    "head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+    "production_hashes_rechecked_after_generation": true,
+    "silent_legacy_reuse_performed": false
+  },
+  "final_integrity_audit": {
+    "checked_at": "2026-07-19T08:30:18+08:00",
+    "git_head_matches": true,
+    "production_tracked_clean": true,
+    "staged_clean": true,
+    "production_source_hashes_pass": 7,
+    "current_reference_file_hashes_pass": 14,
+    "legacy_artifact_hashes_pass": 6,
+    "input_hashes_pass": 3,
+    "json_parse_pass": 35,
+    "python_ast_pass": 9,
+    "four_minibatch_artifacts_pass": 3,
+    "performance_checkpoint_hashes_pass": 7,
+    "actor_checkpoint_strict_12_key_load_pass": 10,
+    "worker_or_zombie_processes_remaining": 0
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "backend": "Pareto analysis",
+  "batch_or_microbatch": null,
+  "bc_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "best_balanced": "AB",
+  "best_low_error": "B",
+  "best_max_speed": "AC",
+  "selection_excludes_reference": true,
+  "checkpoint_hash": null,
+  "collection_frontier": [
+    "A"
+  ],
+  "config": "N1-H1F-p50",
+  "flags": {
+    "cuda_matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": false,
+    "deterministic_algorithms": false,
+    "float32_matmul_precision": "highest"
+  },
+  "full_update_frontier": [
+    "R1",
+    "A",
+    "B",
+    "C",
+    "AB",
+    "AC"
+  ],
+  "git_head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+  "hard_pool_manifest_sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+  "minibatch_order_hash": "d2155c247ecdc05367a26640526f40d98b622b76032efeeff4669a6c15bd295b",
+  "model_initial_hash": "9b2feab66b34caa6c94f3038c18c0b99bcd7c9e7230ee2be259abf46fa79bbf8",
+  "numerical_metrics": {
+    "A": {
+      "numerical": {
+        "action_max": 9.5367431640625e-07,
+        "action_p99": 9.5367431640625e-07,
+        "closed_loop_exact": false,
+        "hidden_max": 7.18235969543457e-06,
+        "hidden_p99": 3.8743019104003906e-07
+      },
+      "total_improvement": 0.08558868337373107,
+      "total_update_s": 30.907332171002054
+    },
+    "AB": {
+      "numerical": {
+        "A": {
+          "action_max": 9.5367431640625e-07,
+          "action_p99": 9.5367431640625e-07,
+          "closed_loop_exact": false,
+          "hidden_max": 7.18235969543457e-06,
+          "hidden_p99": 3.8743019104003906e-07
+        },
+        "B": {
+          "delta_cosine_min": 0.9999999996401706,
+          "delta_relative_l2_max": 2.682917573089341e-05,
+          "gradient_cosine_min": 0.9999999994814752,
+          "gradient_relative_l2_max": 3.239773368082329e-05,
+          "hidden_max": 1.1045485734939575e-05,
+          "hidden_p99_max": 4.172325134277344e-07,
+          "logp_max": 0.004265785217285156,
+          "logp_p99_max": 3.195285797119151e-05,
+          "policy_kl_max": 1.0889064649965974e-10,
+          "policy_loss_abs_max": 2.7060741558671e-07
+        }
+      },
+      "total_improvement": 0.4384254450129523,
+      "total_update_s": 18.98136100699776
+    },
+    "AC": {
+      "numerical": {
+        "A": {
+          "action_max": 9.5367431640625e-07,
+          "action_p99": 9.5367431640625e-07,
+          "closed_loop_exact": false,
+          "hidden_max": 7.18235969543457e-06,
+          "hidden_p99": 3.8743019104003906e-07
+        },
+        "C": {
+          "delta_cosine_min": 0.999999814064831,
+          "delta_relative_l2_max": 0.0006122958691973428,
+          "gradient_cosine_min": 0.9999996691145551,
+          "gradient_relative_l2_max": 0.0008135007603709826,
+          "hidden_max": 1.9252300262451172e-05,
+          "hidden_p99_max": 1.1324882507324219e-06,
+          "logp_max": 0.013479232788085938,
+          "logp_p99_max": 0.00034167528152465867,
+          "policy_kl_max": 5.888273424403678e-09,
+          "policy_loss_abs_max": 3.0281953513622284e-06
+        }
+      },
+      "total_improvement": 0.5295541320120859,
+      "total_update_s": 15.901188497999101
+    },
+    "B": {
+      "numerical": {
+        "delta_cosine_min": 0.9999999996401706,
+        "delta_relative_l2_max": 2.682917573089341e-05,
+        "gradient_cosine_min": 0.9999999994814752,
+        "gradient_relative_l2_max": 3.239773368082329e-05,
+        "hidden_max": 1.1045485734939575e-05,
+        "hidden_p99_max": 4.172325134277344e-07,
+        "logp_max": 0.004265785217285156,
+        "logp_p99_max": 3.195285797119151e-05,
+        "policy_kl_max": 1.0889064649965974e-10,
+        "policy_loss_abs_max": 2.7060741558671e-07
+      },
+      "total_improvement": 0.3343131309144535,
+      "total_update_s": 22.50038337300066
+    },
+    "C": {
+      "numerical": {
+        "delta_cosine_min": 0.999999814064831,
+        "delta_relative_l2_max": 0.0006122958691973428,
+        "gradient_cosine_min": 0.9999996691145551,
+        "gradient_relative_l2_max": 0.0008135007603709826,
+        "hidden_max": 1.9252300262451172e-05,
+        "hidden_p99_max": 1.1324882507324219e-06,
+        "logp_max": 0.013479232788085938,
+        "logp_p99_max": 0.00034167528152465867,
+        "policy_kl_max": 5.888273424403678e-09,
+        "policy_loss_abs_max": 3.0281953513622284e-06
+      },
+      "total_improvement": 0.4313793598571548,
+      "total_update_s": 19.219520455000747
+    },
+    "R1": {
+      "numerical": "exact reference",
+      "total_improvement": 0.0,
+      "total_update_s": 33.800251166001544
+    }
+  },
+  "optimizer_initial_hash": "104e720666be943109e4a888dc8285a667998bb66c5e531c82b9a3bac60b2dee",
+  "rng_initial_hash": {
+    "numpy": "feb67b5d609829d4f45b2115e212fcc23c1d5c8563510efbc82ec3cfbf1a4608",
+    "python": "217e82c0c8bcc125dcf1d2690fadb2fcba65bf8d66f1743a690fd5f08cd48bfb",
+    "torch_cpu": "488902a269463ad25b515722b12da51ffa05b5087069b60bc48f5a4b5a3adb7f",
+    "torch_cuda": [
+      "21d2ab86ced40b3e4493362edc04aa7565ff7a3784e732751a3a80adef92848f"
+    ]
+  },
+  "rollout_hash": "f64819004506e018ef972205ae16b6a80aef24b0ca6d42bedc47fefd26746f6a",
+  "runtime": {
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "numpy": "1.26.4",
+    "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+    "python_executable": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "pytorch": "2.7.0+cu128",
+    "sb3": "2.7.1",
+    "sb3_contrib": "2.7.1"
+  },
+  "schema_version": 1,
+  "seed": 20260917,
+  "source_hashes": {
+    "model.py": "0c34a5b4f26d3dfa158a9c187b911e209504cbb4cfea5ed41b0f283e09134eb3",
+    "ppo/buffer.py": "6fce9e10cff431f9cfdda318526d05785266c353b6637b3a78290806b185c0da",
+    "ppo/config.py": "7125b62c99ec9fd7b03092e73edfac55f3a88a92fb84e17ea78139f0ab8d8d68",
+    "ppo/environment.py": "c55fa36f20a234f01f037f29176e0d888e9c423fe0883b28dfabcee7c2dff7ec",
+    "ppo/hard_pools/h1_expanded_det.json": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+    "ppo/policy.py": "a78e3a551e4e77af5d73382c5c05aeb327410628cc478419c26da09224b8ad72",
+    "ppo/vec_env.py": "b91366af88de80e17def840356098c4ae7d318409dc43135547d6e0b4b4e8855",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "train_ppo.py": "676afc8cdec903ae1d51b22556b4d3c192e77499d13a710be1127721f5db7637"
+  },
+  "timing_metrics": {},
+  "training_frontier": [
+    "B",
+    "C"
+  ],
+  "verdict": "PHASE5_COMBINED_FORWARD_AB_REQUIRES_PRODUCT_TEST",
+  "worktree": "production tracked files clean; experiment artifacts and pre-existing patch untracked"
+}

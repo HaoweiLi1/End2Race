@@ -1,0 +1,302 @@
+{
+  "backend": "R1 frozen rollout and fixed minibatch order",
+  "batch_or_microbatch": 1,
+  "bc_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "capture_wall_s": 18.89403050799592,
+  "checkpoint_hash": null,
+  "config": "N1-H1F-p50",
+  "dtype_assertions": {
+    "actions_float32": true,
+    "hidden_float32": true,
+    "model_float32": true,
+    "observation_float32": true
+  },
+  "files": {
+    "minibatches": {
+      "path": "frozen_minibatches_current.pt",
+      "sha256": "e39eeb9e87b63143f78c226f005ae072b2fe313b62a691b93b91685aa328bad6"
+    },
+    "raw_rollout": {
+      "path": "frozen_rollout_current.npz",
+      "sha256": "adf84d13beb8da77b9e51df35a3af176eebe571f8fc81bec41b3587deb220162"
+    },
+    "state_and_rng": {
+      "path": "initial_state_and_rng_current.pt",
+      "sha256": "a26500b466a2d2b008530116345b9b0e589c607481b5697c7380a2c135beeae7"
+    }
+  },
+  "flags": {
+    "cuda_matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": false,
+    "deterministic_algorithms": false,
+    "float32_matmul_precision": "highest"
+  },
+  "git_head": "e1c0d2b61e4ebc5c619f4c013dad330acf1fdfa0",
+  "hard_pool_manifest_sha256": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+  "initial_rng_hashes": {
+    "numpy": "feb67b5d609829d4f45b2115e212fcc23c1d5c8563510efbc82ec3cfbf1a4608",
+    "python": "217e82c0c8bcc125dcf1d2690fadb2fcba65bf8d66f1743a690fd5f08cd48bfb",
+    "torch_cpu": "488902a269463ad25b515722b12da51ffa05b5087069b60bc48f5a4b5a3adb7f",
+    "torch_cuda": [
+      "21d2ab86ced40b3e4493362edc04aa7565ff7a3784e732751a3a80adef92848f"
+    ]
+  },
+  "minibatch_order_hash": "d2155c247ecdc05367a26640526f40d98b622b76032efeeff4669a6c15bd295b",
+  "minibatches": [
+    {
+      "batch_index": 0,
+      "batch_inds_sha256": "73f67a4d5c8a294c82b9025db6d1a09b98daa0d5c69491f63d9614508703b7b2",
+      "max_length": 800,
+      "n_seq": 13,
+      "padded": 10400,
+      "sample_hashes": {
+        "actions": "769100c25967ea6c80f77663194fbb0a22a6f43fe9da94b5c5b04244701251ee",
+        "advantages": "d0c328cd01c8989f72222db623f7a23cc2df87123932659dd612adf1aa0592ef",
+        "episode_starts": "200d1026913bf59e78e28f06bf1fe926931e8540a2cfbab16139de199fdc418f",
+        "mask": "677646e41e36e651c92047f4b4a0ecc3acafc5104689d72dfb5e5e0317bb9b95",
+        "observations": "a0523dd5f12dc733d9e57a9c3f43e8c2f178c31e99bc44d4a19b0b9ddfa84fbf",
+        "old_log_prob": "19a9bb909a26be990a7c050b506a7164a7962c88b5e9cd6863e897d95bbd26d5",
+        "old_values": "5652e86e73fbc5d3f03cb9a8ea4ce65d0be8dd11c2e8798aaf38e0604e60bbd5",
+        "pi_cell": "484fd5e702c7080d1c9ee8d87190ccb911d0ec44dbbecac3558969017cd1baa0",
+        "pi_hidden": "5886345b1b138e28eefb7a6e68a4590074dfa07ab8e4ae17bee6813486306182",
+        "returns": "3b886f3749cab9ecaf4be40bf8f930e943ac2135b55296efa58a6173f811ae09",
+        "vf_cell": "484fd5e702c7080d1c9ee8d87190ccb911d0ec44dbbecac3558969017cd1baa0",
+        "vf_hidden": "484fd5e702c7080d1c9ee8d87190ccb911d0ec44dbbecac3558969017cd1baa0"
+      },
+      "seq_start_indices": [
+        0,
+        4,
+        292,
+        1092,
+        1265,
+        2065,
+        2865,
+        3383,
+        4183,
+        4465,
+        5236,
+        6036,
+        6065
+      ],
+      "sequence_lengths": [
+        4,
+        288,
+        800,
+        173,
+        800,
+        800,
+        518,
+        800,
+        282,
+        771,
+        800,
+        29,
+        335
+      ],
+      "valid": 6400
+    },
+    {
+      "batch_index": 1,
+      "batch_inds_sha256": "6f3a7cad36ebd0fb8b0ae9787d11ef28268fa7d9bc2021efe588c21455187b21",
+      "max_length": 800,
+      "n_seq": 12,
+      "padded": 9600,
+      "sample_hashes": {
+        "actions": "1238db35572bf6ec57116bbecb8689e5b30f49ad1153aab9ca5bee4fbbdb45b5",
+        "advantages": "b39519a801c4851701c25bf6b1e64b20dad4dca756c5577ee94c5d212658777f",
+        "episode_starts": "636ac415ccbc6ff0c6284e72b604847e34af1a2c3c5d705b10aab8e395482319",
+        "mask": "935d97ced612078528fa499ff38a96763035ac9b175b4dda4d63057b900e2eb9",
+        "observations": "b07490656b7c837b6dff3ebf2ec780669de3d86770d7885279030a2df7b10b7a",
+        "old_log_prob": "acca5749b34b8d8f38ec9562c5e8991295c262b1eee137e1f686c90d70e32594",
+        "old_values": "b6e81dd64fbdc5de3512a6d7f20524f6bcb98f3ba531c7637ba2addea91a0620",
+        "pi_cell": "3cf9eab376cedc8834e919e7d4c9b97ec734de0f48c58427e2e972c6437c025b",
+        "pi_hidden": "299531fca05714830939ca6d4e1eacc477de6c3ff1247863668b02afa8ad3517",
+        "returns": "1e0c6c2d2bb496e64461579df353e743b96ae6be84df65695edc6b0a8bbcf975",
+        "vf_cell": "3cf9eab376cedc8834e919e7d4c9b97ec734de0f48c58427e2e972c6437c025b",
+        "vf_hidden": "3cf9eab376cedc8834e919e7d4c9b97ec734de0f48c58427e2e972c6437c025b"
+      },
+      "seq_start_indices": [
+        0,
+        186,
+        440,
+        1240,
+        1265,
+        2065,
+        2549,
+        2865,
+        3665,
+        4465,
+        5265,
+        6065
+      ],
+      "sequence_lengths": [
+        186,
+        254,
+        800,
+        25,
+        800,
+        484,
+        316,
+        800,
+        800,
+        800,
+        800,
+        335
+      ],
+      "valid": 6400
+    },
+    {
+      "batch_index": 2,
+      "batch_inds_sha256": "864e60a6d53a4b55452d6b95f66b0fd07f137c191c7f52195a4a5622d7599eb0",
+      "max_length": 800,
+      "n_seq": 10,
+      "padded": 8000,
+      "sample_hashes": {
+        "actions": "c8842acc9822878e0ec779ab010f28927b787ca0d7c380d88b11149b66f9cd70",
+        "advantages": "ca895e8df7d7b6852bae6446efd5bbe1360295d691a51afc10f6df36d86fad28",
+        "episode_starts": "6ee926d7882f2dd5317541679bd38dbe7e2fc910478ee58027bf88430190cec4",
+        "mask": "7fae8dc4def33fa57156d12f589fe568dcaa7aebd7ffc89e37a0168b6407f87f",
+        "observations": "a9695581ca631e983cbb06cab6ec5de6021caf73713c36267a6b66fc259e9f1c",
+        "old_log_prob": "dbe562607e1a50fb9175a54983fb5846e4ca0a93df1681ab443f39a381028e1c",
+        "old_values": "9a2cb3f98ad58d636b2f3042640753a1ce2a0b2795f1dd93a54a6bb293f62b11",
+        "pi_cell": "24a0d9994f39ac3e610cc26f4a30ebc6558df7621584002814eb449c2c08056c",
+        "pi_hidden": "f127ed131ce1faaa240503b488188c122776991d7ed78cd16cdb7f0fa9d0d9dc",
+        "returns": "43e847ee25d86883f3e5e91a457d01917241e714b2396e887556024ae7e0dd76",
+        "vf_cell": "24a0d9994f39ac3e610cc26f4a30ebc6558df7621584002814eb449c2c08056c",
+        "vf_hidden": "24a0d9994f39ac3e610cc26f4a30ebc6558df7621584002814eb449c2c08056c"
+      },
+      "seq_start_indices": [
+        0,
+        465,
+        1265,
+        1574,
+        2374,
+        2865,
+        3665,
+        4465,
+        5265,
+        6065
+      ],
+      "sequence_lengths": [
+        465,
+        800,
+        309,
+        800,
+        491,
+        800,
+        800,
+        800,
+        800,
+        335
+      ],
+      "valid": 6400
+    },
+    {
+      "batch_index": 3,
+      "batch_inds_sha256": "99b68b51f2c54f12ffd74f7b7d2357fb9537e0d04cbb043036e38c9e3773ce49",
+      "max_length": 800,
+      "n_seq": 13,
+      "padded": 10400,
+      "sample_hashes": {
+        "actions": "7c4105d3b9b53878ebee1e2360aa6d766615c8ff7163121376d19e5311a4332d",
+        "advantages": "de64b7a8f7c46bdba6613218971a0509c1c0058b34a5e5488135bc95b791049a",
+        "episode_starts": "200d1026913bf59e78e28f06bf1fe926931e8540a2cfbab16139de199fdc418f",
+        "mask": "790a7dc3059be6675952794a68c11a878d431a07b8d7703e5ae2d814e73fb38f",
+        "observations": "88d5848e416bc7fc6c1a88f88615f1b8d0a505bfb4e2fba2d8158db3f1431389",
+        "old_log_prob": "098e17dc42fac1606e6dd77ea512897763cf00a71cbde6944a76bd951ac26365",
+        "old_values": "dd1e7de257d649830bebb825045abf3c06735635d1a2895e38a5085ff0df9d46",
+        "pi_cell": "484fd5e702c7080d1c9ee8d87190ccb911d0ec44dbbecac3558969017cd1baa0",
+        "pi_hidden": "0fe0d062af6554e88d7d9fab672503dbe99357f60ea52b8104c24ec039b17b9e",
+        "returns": "57a0b98b03c54b6ebc6b2725a34f7ae97d6e56997b75667936aa594f5890ed0b",
+        "vf_cell": "484fd5e702c7080d1c9ee8d87190ccb911d0ec44dbbecac3558969017cd1baa0",
+        "vf_hidden": "484fd5e702c7080d1c9ee8d87190ccb911d0ec44dbbecac3558969017cd1baa0"
+      },
+      "seq_start_indices": [
+        0,
+        49,
+        849,
+        1265,
+        2065,
+        2865,
+        3414,
+        3763,
+        4096,
+        4465,
+        5117,
+        5917,
+        6065
+      ],
+      "sequence_lengths": [
+        49,
+        800,
+        416,
+        800,
+        800,
+        549,
+        349,
+        333,
+        369,
+        652,
+        800,
+        148,
+        335
+      ],
+      "valid": 6400
+    }
+  ],
+  "model_initial_hash": "9b2feab66b34caa6c94f3038c18c0b99bcd7c9e7230ee2be259abf46fa79bbf8",
+  "numerical_metrics": {},
+  "optimizer_initial_hash": "104e720666be943109e4a888dc8285a667998bb66c5e531c82b9a3bac60b2dee",
+  "rollout_hash": "f64819004506e018ef972205ae16b6a80aef24b0ca6d42bedc47fefd26746f6a",
+  "rollout_tensor_hashes": {
+    "actions": "8a361be0f698ee55664b0d137bdcf8f82ebd26ba263a154f35945cd918dd5be8",
+    "advantages": "5f83b6b5551d8af3e977f34065abced952c0daf8f870b610daa77333cfa3793d",
+    "episode_starts": "92e7ef7e1d476da17f73c44ce2006cd7a2cb2819844cf241fa50e8d9dc421083",
+    "hidden_states_pi": "b364703f336c13d7fc6fd9d680e58f49a17bd554fccbd8ff5fee27e893b71b5c",
+    "log_probs": "460b97a354f2df035018fbc0977d5abbf1256512117302f11b1566df5080ee65",
+    "observations": "395ce21e5dd7dd55a30eeb4a6605b1ca88cd43a83f506e21a49d78b0e4bf9e9c",
+    "returns": "7fef1b009085eafed12017054a982a6d2ff6a1b260b4ff607ce4c752e0f225e9",
+    "rewards": "94b4a7f55b09f18f58e77f6c872fb09f6a9ac6ff0994f8ad1d74107491bf180f",
+    "values": "01c3c997306bf9a450e9f30114cf4c660e7970cd3086266e61fac7fa38ef2ea4"
+  },
+  "runtime": {
+    "cuda": "12.8",
+    "cudnn": 90701,
+    "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+    "numpy": "1.26.4",
+    "python": "3.10.19 (main, Oct 21 2025, 16:43:05) [GCC 11.2.0]",
+    "python_executable": "/home/haowei/miniconda3/envs/end2race/bin/python",
+    "pytorch": "2.7.0+cu128",
+    "sb3": "2.7.1",
+    "sb3_contrib": "2.7.1"
+  },
+  "schema_version": 1,
+  "seed": 20260917,
+  "source_hashes": {
+    "model.py": "0c34a5b4f26d3dfa158a9c187b911e209504cbb4cfea5ed41b0f283e09134eb3",
+    "ppo/buffer.py": "6fce9e10cff431f9cfdda318526d05785266c353b6637b3a78290806b185c0da",
+    "ppo/config.py": "7125b62c99ec9fd7b03092e73edfac55f3a88a92fb84e17ea78139f0ab8d8d68",
+    "ppo/environment.py": "c55fa36f20a234f01f037f29176e0d888e9c423fe0883b28dfabcee7c2dff7ec",
+    "ppo/hard_pools/h1_expanded_det.json": "ad35a6d56dddfe7c5e0460877f3aeb41ecd428d83c61ca1d1dc82c2b8709b0b8",
+    "ppo/policy.py": "a78e3a551e4e77af5d73382c5c05aeb327410628cc478419c26da09224b8ad72",
+    "ppo/vec_env.py": "b91366af88de80e17def840356098c4ae7d318409dc43135547d6e0b4b4e8855",
+    "pretrained/end2race.pth": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+    "train_ppo.py": "676afc8cdec903ae1d51b22556b4d3c192e77499d13a710be1127721f5db7637"
+  },
+  "timing_metrics": {
+    "capture_wall_s": 18.89403050799592
+  },
+  "training_rng_hashes": {
+    "numpy": "feb67b5d609829d4f45b2115e212fcc23c1d5c8563510efbc82ec3cfbf1a4608",
+    "python": "217e82c0c8bcc125dcf1d2690fadb2fcba65bf8d66f1743a690fd5f08cd48bfb",
+    "torch_cpu": "488902a269463ad25b515722b12da51ffa05b5087069b60bc48f5a4b5a3adb7f",
+    "torch_cuda": [
+      "47992111c801eaef39570084b3cbf8f2b8dc1b642ccb14c19a7b4f636dda0776"
+    ]
+  },
+  "transitions": 25600,
+  "verdict": "CURRENT_HEAD_REFERENCE_BUNDLE_GENERATED",
+  "worktree": "production tracked files clean; experiment artifacts and pre-existing patch untracked"
+}
