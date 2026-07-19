@@ -15,6 +15,7 @@ opponent_racelines: [raceline0, raceline1, raceline2]
 ordinary_startpoint_count: 50
 ordinary_interval_index: 15
 ordinary_speed_scales: [0.5, 0.6, 0.7, 0.8]
+ordinary_startpoint_min_distance: 1.0
 
 # Collision Scenario Generation
 collision_startpoint_count: 100
