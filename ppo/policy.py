@@ -10,7 +10,7 @@ import torch
 from gymnasium import spaces
 from torch import nn
 
-from model import *
+from model import End2Race
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution

@@ -116,6 +116,7 @@ class RewardResult:
     relative_position_m: float
     ego_collision: bool
     opponent_collision: bool
+    opponent_collision_latched: bool
     scenario_id: str
 
     def to_info(self) -> dict[str, Any]:
@@ -133,6 +134,7 @@ class PPOTransitionReward:
         self._previous_ego_progress: float | None = None
         self._previous_opponent_progress: float | None = None
         self._relative_position_m = 0.0
+        self._opponent_collision_latched = False
         self._ego_collision_penalty_applied = False
         self._scenario_id: str | None = None
 
@@ -158,6 +160,7 @@ class PPOTransitionReward:
             opponent_progress,
             self.projector.track_length,
         )
+        self._opponent_collision_latched = False
         self._ego_collision_penalty_applied = False
         self._scenario_id = str(scenario_id)
 
@@ -202,8 +205,10 @@ class PPOTransitionReward:
         self._previous_opponent_progress = opponent_progress
         self._relative_position_m += ego_delta - opponent_delta
 
+        if opponent_collision:
+            self._opponent_collision_latched = True
         reward_progress = PROGRESS_WEIGHT * ego_delta
-        reward_relative = RELATIVE_WEIGHT * (ego_delta - opponent_delta)
+        reward_relative = 0.0 if self._opponent_collision_latched else RELATIVE_WEIGHT * (ego_delta - opponent_delta)
         if ego_collision and not self._ego_collision_penalty_applied:
             reward_collision = COLLISION_PENALTY
             self._ego_collision_penalty_applied = True
@@ -220,5 +225,6 @@ class PPOTransitionReward:
             relative_position_m=float(self._relative_position_m),
             ego_collision=bool(ego_collision),
             opponent_collision=bool(opponent_collision),
+            opponent_collision_latched=bool(self._opponent_collision_latched),
             scenario_id=str(scenario_id),
         )

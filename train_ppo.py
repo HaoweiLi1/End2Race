@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Generator
-import copy
+from collections.abc import Generator, Sequence
+from concurrent.futures import ProcessPoolExecutor
+import copy as copy_module
+import multiprocessing as mp
 from pathlib import Path
 import random
 from typing import Optional
@@ -20,9 +22,11 @@ from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.utils import FloatSchedule, explained_variance
 from stable_baselines3.common.vec_env import VecNormalize
 
-from model import *
-from ppo.environment import *
-from ppo.policy import *
+from model import End2Race
+from ppo.environment import EXTERNAL_RESET_OPTION, make_environment
+from ppo.policy import END2RACE_LIDAR_SIZE, STEERING_BOUND, End2RaceGRUPolicy
+from ppo.scenarios import ScenarioSpec, expanded_scenarios
+from ppo.vec_env import ENV_WORKERS, CentralScheduleSubprocVecEnv, _limit_worker_threads
 
 
 WARMUP_MAX_EPOCHS = 20
@@ -46,6 +50,13 @@ def parse_arguments():
     # Environment configuration
     parser.add_argument("--n_envs", type=int, default=16)
     parser.add_argument("--seed", type=int, default=0)
+
+    # Collision scenario configuration
+    parser.add_argument("--collision_interval_indices", type=int, nargs="+", default=(8, 10, 12, 15), help="Opponent waypoint offsets used in collision classification")
+    parser.add_argument("--collision_speed_scales", type=float, nargs="+", default=(0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85), help="Opponent speed scales used in collision classification")
+    parser.add_argument("--collision_startpoint_count", type=int, default=100, help="Number of collision-classification startpoints")
+    parser.add_argument("--expected_collision_scenario_count", type=int, default=10_800, help="Expected number of generated collision-classification scenarios")
+    parser.add_argument("--evaluation_startpoint_clearance", type=float, default=1.0, help="Minimum distance in metres from evaluation startpoints")
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -73,12 +84,66 @@ def configure_training_numerics() -> None:
     torch.backends.cudnn.benchmark = False
 
 
+_COLLISION_ENV = None
+_COLLISION_ACTOR = None
+
+
+def _collision_worker_init(pretrained_model_path: str, hidden_scale: int) -> None:
+    global _COLLISION_ENV, _COLLISION_ACTOR
+    _limit_worker_threads()
+    _COLLISION_ENV = make_environment(0)()
+    _COLLISION_ACTOR = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
+    _COLLISION_ACTOR.load_state_dict(torch.load(pretrained_model_path, map_location="cpu", weights_only=True), strict=True)
+    _COLLISION_ACTOR.eval()
+
+
+def _classify_collision_candidate(task: tuple[int, ScenarioSpec]) -> tuple[int, str]:
+    index, scenario = task
+    if _COLLISION_ENV is None or _COLLISION_ACTOR is None:
+        raise RuntimeError("Collision classification worker is not initialized")
+    try:
+        observation, _info = _COLLISION_ENV.reset(options={EXTERNAL_RESET_OPTION: scenario.to_reset_spec("hard")})
+        raw = _COLLISION_ENV._raw_observation
+        finite = np.isfinite(observation).all() and all(np.isfinite(np.asarray(value)).all() for value in raw.values() if isinstance(value, (list, tuple, np.ndarray)))
+        if not finite or np.asarray(raw["collisions"], dtype=bool).any():
+            return index, "invalid"
+        hidden = None
+        while True:
+            actor_observation = torch.as_tensor(observation, dtype=torch.float32)
+            with torch.no_grad():
+                actions, hidden = _COLLISION_ACTOR(actor_observation[:END2RACE_LIDAR_SIZE].reshape(1, 1, -1), actor_observation[END2RACE_LIDAR_SIZE:].reshape(1, 1, 1), hidden)
+            action = actions[0, -1].numpy().copy()
+            action[0] = np.clip(action[0], -STEERING_BOUND, STEERING_BOUND)
+            if not np.isfinite(action).all():
+                raise RuntimeError("actor produced a non-finite action")
+            observation, _reward, terminated, truncated, info = _COLLISION_ENV.step(action)
+            if terminated or truncated:
+                return index, "ego_collision" if info["ego_collision"] else "other"
+    except Exception as error:
+        raise RuntimeError(f"Collision classification failed for {scenario.scenario_id}") from error
+
+
+def classify_collision_scenarios(pretrained_model_path: str | Path, hidden_scale: int, interval_indices: Sequence[int], speed_scales: Sequence[float], startpoint_count: int, expected_scenario_count: int, evaluation_clearance: float) -> tuple[ScenarioSpec, ...]:
+    candidates = expanded_scenarios(interval_indices, speed_scales, startpoint_count, expected_scenario_count, evaluation_clearance)
+    context = mp.get_context("forkserver")
+    collisions = []
+    invalid_count = 0
+    with ProcessPoolExecutor(max_workers=ENV_WORKERS, mp_context=context, initializer=_collision_worker_init, initargs=(str(Path(pretrained_model_path).expanduser().resolve()), hidden_scale)) as executor:
+        for completed, (index, outcome) in enumerate(executor.map(_classify_collision_candidate, enumerate(candidates), chunksize=1), start=1):
+            if outcome == "ego_collision":
+                collisions.append(candidates[index])
+            elif outcome == "invalid":
+                invalid_count += 1
+            if completed % 100 == 0 or completed == len(candidates):
+                print(f"Collision classification: {completed}/{len(candidates)}")
+    if not collisions:
+        raise RuntimeError("The pretrained model produced no ego-collision scenarios")
+    print(f"Collision classification complete: {len(collisions)} collisions, {invalid_count} invalid")
+    return tuple(collisions)
+
+
 class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
     """Store the real actor GRU hidden state and materialize dummy states per batch."""
-
-    def __init__(self, *args, seed: int, **kwargs):
-        self.rng = np.random.default_rng(seed)
-        super().__init__(*args, **kwargs)
 
     def reset(self) -> None:
         RolloutBuffer.reset(self)
@@ -89,7 +154,7 @@ class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
         self.hidden_states_pi[self.pos] = np.asarray(lstm_states.pi[0].cpu().numpy())
         RolloutBuffer.add(self, *args, **kwargs)
 
-    def get(self, batch_size: Optional[int] = None) -> Generator[RecurrentRolloutBufferSamples, None, None]:
+    def get(self, batch_size: Optional[int] = None, *, rng: np.random.Generator) -> Generator[RecurrentRolloutBufferSamples, None, None]:
         if not self.full:
             raise RuntimeError("Rollout buffer must be full before training")
         if not self.generator_ready:
@@ -99,7 +164,7 @@ class ActorHiddenRolloutBuffer(RecurrentRolloutBuffer):
             self.generator_ready = True
         total = self.buffer_size * self.n_envs
         batch_size = total if batch_size is None else batch_size
-        split_index = int(self.rng.integers(total))
+        split_index = int(rng.integers(total))
         indices = np.concatenate((np.arange(total)[split_index:], np.arange(total)[:split_index]))
         env_change = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         env_change[0, :] = 1.0
@@ -156,8 +221,13 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             (torch.zeros(single_hidden_shape, device=self.device), torch.zeros(single_hidden_shape, device=self.device)),
         )
         hidden_buffer_shape = (self.n_steps, lstm.num_layers, self.n_envs, lstm.hidden_size)
-        minibatch_seed = int(np.random.SeedSequence([self.seed, 2]).generate_state(1)[0])
-        self.rollout_buffer = ActorHiddenRolloutBuffer(self.n_steps, self.observation_space, self.action_space, hidden_buffer_shape, self.device, gamma=self.gamma, gae_lambda=self.gae_lambda, n_envs=self.n_envs, seed=minibatch_seed)
+        minibatch_root = np.random.SeedSequence([self.seed, 2])
+        warmup_split_seed, warmup_shuffle_seed, actor_minibatch_seed, critic_minibatch_seed = minibatch_root.spawn(4)
+        self.warmup_split_rng = np.random.default_rng(warmup_split_seed)  # Warm-up train/validation sequence split only.
+        self.warmup_shuffle_rng = np.random.default_rng(warmup_shuffle_seed)  # Warm-up critic epoch shuffle only.
+        self.actor_minibatch_rng = np.random.default_rng(actor_minibatch_seed)  # Formal actor minibatch splits only.
+        self.critic_minibatch_rng = np.random.default_rng(critic_minibatch_seed)  # Formal critic minibatch splits only.
+        self.rollout_buffer = ActorHiddenRolloutBuffer(self.n_steps, self.observation_space, self.action_space, hidden_buffer_shape, self.device, gamma=self.gamma, gae_lambda=self.gae_lambda, n_envs=self.n_envs)
         self.policy._actor_hidden_rollout_buffer = self.rollout_buffer
         self.clip_range = FloatSchedule(self.clip_range)
         if self.clip_range_vf is not None:
@@ -189,7 +259,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             role_sequences = sequences[role]
             if len(role_sequences) < 2:
                 raise RuntimeError(f"Warm-up requires at least two {role} recurrent sequences")
-            order = self.rollout_buffer.rng.permutation(len(role_sequences))
+            order = self.warmup_split_rng.permutation(len(role_sequences))
             train_count = min(max(int(len(order) * WARMUP_TRAIN_FRACTION), 1), len(order) - 1)
             for destination, selected in ((train_indices, order[:train_count]), (validation_indices, order[train_count:])):
                 for sequence_index in selected:
@@ -219,7 +289,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         best_optimizer = None
         stale_epochs = 0
         for epoch in range(WARMUP_MAX_EPOCHS):
-            shuffled = self.rollout_buffer.rng.permutation(train_indices)
+            shuffled = self.warmup_shuffle_rng.permutation(train_indices)
             for start in range(0, len(shuffled), self.batch_size):
                 loss = VALUE_LOSS_COEFFICIENT * self._critic_batch_loss(observations, returns, shuffled[start : start + self.batch_size])
                 self.policy.critic_optimizer.zero_grad()
@@ -229,8 +299,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             validation_loss = self._validation_loss(observations, returns, validation_indices)
             if validation_loss < best_loss:
                 best_loss = validation_loss
-                best_critic = copy.deepcopy(self.policy.value_net.state_dict())
-                best_optimizer = copy.deepcopy(self.policy.critic_optimizer.state_dict())
+                best_critic = copy_module.deepcopy(self.policy.value_net.state_dict())
+                best_optimizer = copy_module.deepcopy(self.policy.critic_optimizer.state_dict())
                 stale_epochs = 0
             else:
                 stale_epochs += 1
@@ -259,7 +329,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(False)
         for _epoch in range(self.actor_epochs):
-            for rollout_data in self.rollout_buffer.get(self.batch_size):
+            for rollout_data in self.rollout_buffer.get(self.batch_size, rng=self.actor_minibatch_rng):
                 mask = rollout_data.mask > 1e-8
                 advantages = rollout_data.advantages
                 if self.normalize_advantage:
@@ -283,7 +353,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         for parameter in self.policy.actor_parameters:
             parameter.requires_grad_(False)
         for _epoch in range(self.critic_epochs):
-            for rollout_data in self.rollout_buffer.get(self.batch_size):
+            for rollout_data in self.rollout_buffer.get(self.batch_size, rng=self.critic_minibatch_rng):
                 mask = rollout_data.mask > 1e-8
                 values = self.policy.evaluate_values(rollout_data.observations).flatten()
                 value_loss = torch.nn.functional.mse_loss(values[mask], rollout_data.returns[mask])
@@ -371,9 +441,10 @@ def main() -> None:
     random.seed(args.seed)
     np.random.seed(args.seed)
 
+    hard_scenarios = classify_collision_scenarios(args.pretrained_model_path, args.hidden_scale, args.collision_interval_indices, args.collision_speed_scales, args.collision_startpoint_count, args.expected_collision_scenario_count, args.evaluation_startpoint_clearance)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.seed)
+    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.seed, hard_scenarios)
     try:
         model = build_model(vector_env, args, device)
         total_rollouts = args.num_updates + 1
