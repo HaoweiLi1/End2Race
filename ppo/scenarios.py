@@ -1,4 +1,4 @@
-"""Austin PPO scenario generation and deterministic role queues."""
+"""PPO scenario generation and deterministic role queues."""
 
 from __future__ import annotations
 
@@ -7,17 +7,24 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Sequence
 import numpy as np
+import yaml
+
 from utils import find_corresponding_waypoint, load_positions_and_speeds_from_params, load_raceline_waypoints
 
-MAP_NAME = "Austin"
-EGO_RACELINE = "raceline1"
-OPPONENT_RACELINES = ("raceline0", "raceline1", "raceline2")
-OPPONENT_SPEED_SCALES = (0.5, 0.6, 0.7, 0.8)
-ORDINARY_INTERVAL_IDX = 15
-ORDINARY_STARTPOINT_COUNT = 50
-ORDINARY_SCENARIO_COUNT = 600
-SIM_DURATION = 8.0
-TIMESTEP = 0.01
+with Path(__file__).with_name("ppo_config.yaml").open("r", encoding="utf-8") as file:
+    PPO_CONFIG = yaml.safe_load(file)
+
+EGO_RACELINE = str(PPO_CONFIG["ego_raceline"])
+OPPONENT_RACELINES = tuple(PPO_CONFIG["opponent_racelines"])
+ORDINARY_SPEED_SCALES = tuple(float(value) for value in PPO_CONFIG["ordinary_speed_scales"])
+ORDINARY_INTERVAL_INDEX = int(PPO_CONFIG["ordinary_interval_index"])
+ORDINARY_STARTPOINT_COUNT = int(PPO_CONFIG["ordinary_startpoint_count"])
+COLLISION_INTERVAL_INDICES = tuple(int(value) for value in PPO_CONFIG["collision_interval_indices"])
+COLLISION_SPEED_SCALES = tuple(float(value) for value in PPO_CONFIG["collision_speed_scales"])
+COLLISION_STARTPOINT_COUNT = int(PPO_CONFIG["collision_startpoint_count"])
+COLLISION_STARTPOINT_MIN_DISTANCE = float(PPO_CONFIG["collision_startpoint_min_distance"])
+SIM_DURATION = float(PPO_CONFIG["episode_horizon"])
+TIMESTEP = float(PPO_CONFIG["simulator_timestep"])
 
 @dataclass
 class EpisodeResetSpec:
@@ -36,7 +43,7 @@ class ScenarioSpec:
     opp_raceline: str
     opp_speedscale: float
     interval_idx: int
-    map_name: str = MAP_NAME
+    map_name: str
     ego_raceline: str = EGO_RACELINE
     sim_duration: float = SIM_DURATION
     timestep: float = TIMESTEP
@@ -51,22 +58,22 @@ class ScenarioSpec:
         return EpisodeResetSpec(np.asarray(poses, dtype=np.float64), float(initial_speeds[0] * 0.9), scenario)
 
 
-def _raceline_data() -> np.ndarray:
-    path = Path("f1tenth_racetracks") / MAP_NAME / f"{EGO_RACELINE}.csv"
+def _raceline_data(map_name: str) -> np.ndarray:
+    path = Path("f1tenth_racetracks") / map_name / f"{EGO_RACELINE}.csv"
     data = np.loadtxt(path, delimiter=";", comments="#", dtype=np.float64)
     if np.linalg.norm(data[-1, 1:3] - data[0, 1:3]) > 1e-9:
         raise ValueError(f"{EGO_RACELINE}.csv must contain the duplicated closing endpoint")
     return data
 
 
-def expanded_startpoints(startpoint_count: int, evaluation_clearance: float) -> tuple[int, ...]:
+def expanded_startpoints(map_name: str, startpoint_count: int, collision_startpoint_min_distance: float) -> tuple[int, ...]:
     """Choose progress-spaced points separated from the evaluation points."""
-    data = _raceline_data()
+    data = _raceline_data(map_name)
     unique = data[:-1]
     evaluation_indices = np.arange(ORDINARY_STARTPOINT_COUNT) * (len(data) - 1) // (ORDINARY_STARTPOINT_COUNT - 1)
     evaluation_xy = unique[evaluation_indices % len(unique), 1:3]
     distances = np.linalg.norm(unique[:, None, 1:3] - evaluation_xy[None, :, :], axis=2)
-    allowed = np.flatnonzero(np.min(distances, axis=1) >= evaluation_clearance - 1e-12)
+    allowed = np.flatnonzero(np.min(distances, axis=1) >= collision_startpoint_min_distance - 1e-12)
     track_length = float(data[-1, 0])
     selected = []
     for target in (np.arange(startpoint_count) + 0.5) * track_length / startpoint_count:
@@ -77,9 +84,9 @@ def expanded_startpoints(startpoint_count: int, evaluation_clearance: float) -> 
     return tuple(sorted(selected, key=lambda index: float(unique[index, 0])))
 
 
-def ordinary_scenarios() -> tuple[ScenarioSpec, ...]:
-    ego_waypoints = load_raceline_waypoints(MAP_NAME, f"{EGO_RACELINE}.csv")
-    opponent_waypoints = {raceline: load_raceline_waypoints(MAP_NAME, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
+def ordinary_scenarios(map_name: str) -> tuple[ScenarioSpec, ...]:
+    ego_waypoints = load_raceline_waypoints(map_name, f"{EGO_RACELINE}.csv")
+    opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
     startpoints = np.arange(ORDINARY_STARTPOINT_COUNT) * (len(ego_waypoints) - 2) // (ORDINARY_STARTPOINT_COUNT - 1)
     scenarios = []
     for ordinal, ego_idx in enumerate(startpoints):
@@ -87,30 +94,34 @@ def ordinary_scenarios() -> tuple[ScenarioSpec, ...]:
         ego_waypoint = ego_waypoints[ego_idx]
         for opp_raceline in OPPONENT_RACELINES:
             mapped_index = ego_idx if opp_raceline == EGO_RACELINE else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
-            opp_idx = (mapped_index + ORDINARY_INTERVAL_IDX) % len(opponent_waypoints[opp_raceline])
-            for speed_scale in OPPONENT_SPEED_SCALES:
-                scenario_id = f"training-sp{ordinal:02d}-ego{ego_idx:04d}-{opp_raceline}-v{int(100 * speed_scale):03d}"
-                scenarios.append(ScenarioSpec(scenario_id, "training", ordinal, ego_idx, opp_idx, opp_raceline, speed_scale, ORDINARY_INTERVAL_IDX))
-    if len(scenarios) != ORDINARY_SCENARIO_COUNT or len({row.scenario_id for row in scenarios}) != ORDINARY_SCENARIO_COUNT:
-        raise RuntimeError("Ordinary scenario panel must contain 600 unique scenarios")
+            opp_idx = (mapped_index + ORDINARY_INTERVAL_INDEX) % len(opponent_waypoints[opp_raceline])
+            for speed_scale in ORDINARY_SPEED_SCALES:
+                scenario_id = f"ordinary-sp{ordinal:02d}-ego{ego_idx:04d}-{opp_raceline}-v{int(100 * speed_scale):03d}"
+                scenarios.append(ScenarioSpec(scenario_id, "ordinary", ordinal, ego_idx, opp_idx, opp_raceline, speed_scale, ORDINARY_INTERVAL_INDEX, map_name))
+    expected_count = ORDINARY_STARTPOINT_COUNT * len(OPPONENT_RACELINES) * len(ORDINARY_SPEED_SCALES)
+    if len(scenarios) != expected_count or len({scenario.scenario_id for scenario in scenarios}) != expected_count:
+        raise RuntimeError(f"Ordinary scenario panel must contain {expected_count:,} unique scenarios")
     return tuple(scenarios)
 
 
-def expanded_scenarios(interval_indices: Sequence[int], speed_scales: Sequence[float], startpoint_count: int, expected_scenario_count: int, evaluation_clearance: float) -> tuple[ScenarioSpec, ...]:
-    ego_waypoints = load_raceline_waypoints(MAP_NAME, f"{EGO_RACELINE}.csv")
-    opponent_waypoints = {raceline: load_raceline_waypoints(MAP_NAME, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
+def expanded_scenarios(map_name: str) -> tuple[ScenarioSpec, ...]:
+    ego_waypoints = load_raceline_waypoints(map_name, f"{EGO_RACELINE}.csv")
+    opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
     scenarios = []
-    for ordinal, ego_idx in enumerate(expanded_startpoints(startpoint_count, evaluation_clearance)):
+    for ordinal, ego_idx in enumerate(expanded_startpoints(map_name, COLLISION_STARTPOINT_COUNT, COLLISION_STARTPOINT_MIN_DISTANCE)):
         ego_waypoint = ego_waypoints[ego_idx]
         for opp_raceline in OPPONENT_RACELINES:
             mapped_index = ego_idx if opp_raceline == EGO_RACELINE else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
-            for interval_idx in interval_indices:
+            for interval_idx in COLLISION_INTERVAL_INDICES:
                 opp_idx = (mapped_index + interval_idx) % (len(opponent_waypoints[opp_raceline]) - 1)
-                for speed_scale in speed_scales:
-                    scenario_id = f"v12-sp{ordinal:03d}-ego{ego_idx:04d}-{opp_raceline}-i{interval_idx:02d}-v{round(100 * speed_scale):03d}"
-                    scenarios.append(ScenarioSpec(scenario_id, "train_austin_expanded_v1_2", ordinal, ego_idx, opp_idx, opp_raceline, speed_scale, interval_idx))
-    if len(scenarios) != expected_scenario_count or len({row.scenario_id for row in scenarios}) != expected_scenario_count:
-        raise RuntimeError(f"Collision scenario panel must contain {expected_scenario_count:,} unique scenarios")
+                for speed_scale in COLLISION_SPEED_SCALES:
+                    scenario_id = f"collision-sp{ordinal:03d}-ego{ego_idx:04d}-{opp_raceline}-i{interval_idx:02d}-v{round(100 * speed_scale):03d}"
+                    scenarios.append(ScenarioSpec(scenario_id, "collision", ordinal, ego_idx, opp_idx, opp_raceline, speed_scale, interval_idx, map_name))
+    expected_count = COLLISION_STARTPOINT_COUNT * len(OPPONENT_RACELINES) * len(COLLISION_INTERVAL_INDICES) * len(COLLISION_SPEED_SCALES)
+    if len(scenarios) != expected_count:
+        raise RuntimeError(f"Collision scenario panel must contain {expected_count:,} scenarios")
+    if len({scenario.scenario_id for scenario in scenarios}) != expected_count:
+        raise RuntimeError(f"Collision scenario panel must contain {expected_count:,} unique scenario IDs")
     return tuple(scenarios)
 
 
@@ -155,19 +166,19 @@ class RoleScenarioQueue:
 
 class ScenarioScheduler:
 
-    def __init__(self, seed: int, hard_scenarios: Sequence[ScenarioSpec]):
-        hard_seed, ordinary_seed = np.random.SeedSequence(seed).spawn(2)
-        self.hard = RoleScenarioQueue(hard_scenarios, hard_seed)
-        self.ordinary = RoleScenarioQueue(ordinary_scenarios(), ordinary_seed)
+    def __init__(self, seed: int, collision_scenarios: Sequence[ScenarioSpec], ordinary_scenarios: Sequence[ScenarioSpec]):
+        collision_seed, ordinary_seed = np.random.SeedSequence(seed).spawn(2)
+        self.collision = RoleScenarioQueue(collision_scenarios, collision_seed)
+        self.ordinary = RoleScenarioQueue(ordinary_scenarios, ordinary_seed)
 
     def next(self, rank: int) -> EpisodeResetSpec:
-        env_role = "hard" if rank % 2 == 0 else "ordinary"
-        queue = self.hard if env_role == "hard" else self.ordinary
+        env_role = "collision" if rank % 2 == 0 else "ordinary"
+        queue = self.collision if env_role == "collision" else self.ordinary
         return queue.next().to_reset_spec(env_role)
 
     def state_dict(self) -> dict[str, Any]:
-        return {"hard": self.hard.state_dict(), "ordinary": self.ordinary.state_dict()}
+        return {"collision": self.collision.state_dict(), "ordinary": self.ordinary.state_dict()}
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        self.hard.load_state_dict(state["hard"])
+        self.collision.load_state_dict(state["collision"])
         self.ordinary.load_state_dict(state["ordinary"])

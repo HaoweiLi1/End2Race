@@ -10,15 +10,21 @@ from typing import Any
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+import yaml
 
 from ppo.policy import END2RACE_LIDAR_SIZE, END2RACE_OBSERVATION_SIZE, NOOP_SPEED_BOUND, STEERING_BOUND, end2race_observation
 from ppo.reward import PPOTransitionReward
 from ppo.scenarios import EpisodeResetSpec
 
 
-SIMULATOR_TIMESTEP = 0.01
-EPISODE_HORIZON = 8.0
+with Path(__file__).with_name("ppo_config.yaml").open("r", encoding="utf-8") as file:
+    PPO_CONFIG = yaml.safe_load(file)
+
+SIMULATOR_TIMESTEP = float(PPO_CONFIG["simulator_timestep"])
+EPISODE_HORIZON = float(PPO_CONFIG["episode_horizon"])
+EGO_RACELINE = str(PPO_CONFIG["ego_raceline"])
 EGO_INDEX = 0
+OPPONENT_INDEX = 1
 NUM_AGENTS = 2
 EXTERNAL_RESET_OPTION = "end2race_episode_reset_spec"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -69,13 +75,12 @@ class LatticePlannerOpponentController:
     def action(self, raw_observation: dict[str, Any]) -> np.ndarray:
         from latticeplanner.utils import obsDict2oppoArray
 
-        opponent_index = 1
-        pose_x = float(np.asarray(raw_observation["poses_x"])[opponent_index])
-        pose_y = float(np.asarray(raw_observation["poses_y"])[opponent_index])
-        pose_theta = float(np.asarray(raw_observation["poses_theta"])[opponent_index])
-        speed = float(np.asarray(raw_observation["linear_vels_x"])[opponent_index])
+        pose_x = float(np.asarray(raw_observation["poses_x"])[OPPONENT_INDEX])
+        pose_y = float(np.asarray(raw_observation["poses_y"])[OPPONENT_INDEX])
+        pose_theta = float(np.asarray(raw_observation["poses_theta"])[OPPONENT_INDEX])
+        speed = float(np.asarray(raw_observation["linear_vels_x"])[OPPONENT_INDEX])
         if self.tracker_count == 0 or self.trajectory is None:
-            opponent_poses = obsDict2oppoArray(raw_observation, opponent_index)
+            opponent_poses = obsDict2oppoArray(raw_observation, OPPONENT_INDEX)
             self.trajectory = self.planner.plan(pose_x, pose_y, pose_theta, opponent_poses, speed)
         steering, desired_speed = self.planner.tracker.plan(
             pose_x, pose_y, pose_theta, speed, self.trajectory
@@ -91,12 +96,12 @@ class End2RaceGymnasiumEnv(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"]}
 
-    def __init__(self, f110_env: Any, reset_provider: Callable[[np.random.Generator], EpisodeResetSpec]) -> None:
+    def __init__(self, f110_env: Any, reset_provider: Callable[[np.random.Generator], EpisodeResetSpec], map_name: str, ego_raceline: str) -> None:
         super().__init__()
         self.f110_env = f110_env
         self.reset_provider = reset_provider
         self.opponent_controller = LatticePlannerOpponentController()
-        self.transition_reward = PPOTransitionReward()
+        self.transition_reward = PPOTransitionReward(map_name, ego_raceline)
         self.observation_space = spaces.Box(
             low=np.full((END2RACE_OBSERVATION_SIZE,), -np.inf, dtype=np.float32),
             high=np.full((END2RACE_OBSERVATION_SIZE,), np.inf, dtype=np.float32),
@@ -194,7 +199,7 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._elapsed_time += float(simulator_reward)
         collisions = np.asarray(raw_observation["collisions"], dtype=bool).reshape(-1)
         ego_collision = bool(collisions[EGO_INDEX])
-        opponent_collision = bool(collisions[1])
+        opponent_collision = bool(collisions[OPPONENT_INDEX])
         timeout = self._elapsed_time + 1e-12 >= EPISODE_HORIZON
         if ego_collision or (base_terminated and not opponent_collision):
             terminated, truncated = True, False
@@ -248,7 +253,7 @@ def _external_reset_required(_rng: np.random.Generator) -> EpisodeResetSpec:
     raise RuntimeError("Subprocess resets must be supplied by the parent scheduler")
 
 
-def make_environment(seed: int) -> Callable[[], End2RaceGymnasiumEnv]:
+def make_environment(seed: int, map_name: str) -> Callable[[], End2RaceGymnasiumEnv]:
 
     def factory() -> End2RaceGymnasiumEnv:
         import gym
@@ -256,13 +261,13 @@ def make_environment(seed: int) -> Callable[[], End2RaceGymnasiumEnv]:
 
         core = gym.make(
             "f110-v0",
-            map=str(PROJECT_ROOT / "f1tenth_racetracks" / "Austin" / "Austin_map"),
+            map=str(PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{map_name}_map"),
             map_ext=".png",
             num_agents=NUM_AGENTS,
             timestep=SIMULATOR_TIMESTEP,
             integrator=Integrator.RK4,
             seed=seed,
         )
-        return End2RaceGymnasiumEnv(core, _external_reset_required)
+        return End2RaceGymnasiumEnv(core, _external_reset_required, map_name, EGO_RACELINE)
 
     return factory

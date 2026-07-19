@@ -10,7 +10,6 @@ import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_PROGRESS_REFERENCE = PROJECT_ROOT / "f1tenth_racetracks" / "Austin" / "raceline1.csv"
 MAX_PROGRESS_DELTA_M = 1.0
 PROGRESS_WEIGHT = 0.01
 RELATIVE_WEIGHT = 0.02
@@ -85,7 +84,7 @@ class ProgressProjector:
             raise ValueError("Cyclic raceline contains a non-positive progress segment")
 
     @classmethod
-    def from_csv(cls, path: str | Path = DEFAULT_PROGRESS_REFERENCE) -> "ProgressProjector":
+    def from_csv(cls, path: str | Path) -> "ProgressProjector":
         data = np.loadtxt(Path(path), delimiter=";", comments="#", dtype=np.float64)
         if data.ndim != 2 or data.shape[1] < 3:
             raise ValueError(f"Expected s/x/y columns in raceline CSV: {path}")
@@ -128,9 +127,12 @@ class PPOTransitionReward:
 
     def __init__(
         self,
+        map_name: str,
+        ego_raceline: str,
         projector: ProgressProjector | None = None,
     ) -> None:
-        self.projector = projector or ProgressProjector.from_csv()
+        self.progress_reference_path = PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
+        self.projector = projector or ProgressProjector.from_csv(self.progress_reference_path)
         self._previous_ego_progress: float | None = None
         self._previous_opponent_progress: float | None = None
         self._relative_position_m = 0.0

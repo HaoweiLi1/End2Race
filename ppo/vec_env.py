@@ -20,9 +20,6 @@ from ppo.environment import EXTERNAL_RESET_OPTION, make_environment
 from ppo.scenarios import ScenarioScheduler, ScenarioSpec
 
 
-ENV_WORKERS = 6
-
-
 def _limit_worker_threads() -> None:
     for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
         os.environ[name] = "1"
@@ -112,21 +109,21 @@ def _worker(
 
 class CentralScheduleSubprocVecEnv(VecEnv):
 
-    def __init__(self, n_envs: int, seed: int, hard_scenarios: Sequence[ScenarioSpec]) -> None:
-        if n_envs < ENV_WORKERS or n_envs % 2 != 0:
-            raise ValueError(f"n_envs must be even and at least {ENV_WORKERS}")
+    def __init__(self, n_envs: int, worker_count: int, start_method: str, seed: int, map_name: str, collision_scenarios: Sequence[ScenarioSpec], ordinary_scenarios: Sequence[ScenarioSpec]) -> None:
+        if worker_count <= 0 or n_envs < worker_count or n_envs % 2 != 0:
+            raise ValueError("n_envs must be even and at least worker_count, and worker_count must be positive")
         if torch.cuda.is_initialized():
             raise RuntimeError("Subprocess environments must be created before CUDA initialization")
         self.waiting = False
         self.closed = False
         self.actions = None
-        self.worker_count = ENV_WORKERS
-        self.scheduler = ScenarioScheduler(seed, hard_scenarios)
+        self.worker_count = worker_count
+        self.scheduler = ScenarioScheduler(seed, collision_scenarios, ordinary_scenarios)
         logical_seeds = [
             int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
             for rank in range(n_envs)
         ]
-        env_fns = [make_environment(logical_seeds[rank]) for rank in range(n_envs)]
+        env_fns = [make_environment(logical_seeds[rank], map_name) for rank in range(n_envs)]
         self.worker_env_indices = [[] for _ in range(self.worker_count)]
         for rank in range(n_envs):
             self.worker_env_indices[rank % self.worker_count].append(rank)
@@ -135,7 +132,7 @@ class CentralScheduleSubprocVecEnv(VecEnv):
             for worker_index, ranks in enumerate(self.worker_env_indices)
             for rank in ranks
         }
-        context = mp.get_context("forkserver")
+        context = mp.get_context(start_method)
         self.remotes, work_remotes = zip(*[context.Pipe() for _ in range(self.worker_count)])
         self.processes = []
         previous = {name: os.environ.get(name) for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")}

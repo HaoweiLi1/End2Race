@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Generator, Sequence
+from collections.abc import Generator
 from concurrent.futures import ProcessPoolExecutor
 import copy as copy_module
 import multiprocessing as mp
@@ -14,6 +14,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+import yaml
 from sb3_contrib import RecurrentPPO
 from sb3_contrib.common.recurrent.buffers import RecurrentRolloutBuffer, create_sequencers
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
@@ -25,8 +26,8 @@ from stable_baselines3.common.vec_env import VecNormalize
 from model import End2Race
 from ppo.environment import EXTERNAL_RESET_OPTION, make_environment
 from ppo.policy import END2RACE_LIDAR_SIZE, STEERING_BOUND, End2RaceGRUPolicy
-from ppo.scenarios import ScenarioSpec, expanded_scenarios
-from ppo.vec_env import ENV_WORKERS, CentralScheduleSubprocVecEnv, _limit_worker_threads
+from ppo.scenarios import ScenarioSpec, expanded_scenarios, ordinary_scenarios
+from ppo.vec_env import CentralScheduleSubprocVecEnv, _limit_worker_threads
 
 
 WARMUP_MAX_EPOCHS = 20
@@ -34,6 +35,10 @@ WARMUP_PATIENCE = 3
 WARMUP_TRAIN_FRACTION = 0.8
 VALUE_LOSS_COEFFICIENT = 0.5
 MAX_GRAD_NORM = 0.5
+PPO_CONFIG_PATH = Path(__file__).resolve().parent / "ppo" / "ppo_config.yaml"
+with PPO_CONFIG_PATH.open("r", encoding="utf-8") as file:
+    PPO_CONFIG = yaml.safe_load(file)
+START_METHOD = str(PPO_CONFIG["start_method"])
 
 
 def parse_arguments():
@@ -48,15 +53,10 @@ def parse_arguments():
     parser.add_argument("--hidden_scale", type=int, default=4)
 
     # Environment configuration
+    parser.add_argument("--map_name", type=str, default="Austin")
     parser.add_argument("--n_envs", type=int, default=16)
+    parser.add_argument("--env_workers", type=int, default=6)
     parser.add_argument("--seed", type=int, default=0)
-
-    # Collision scenario configuration
-    parser.add_argument("--collision_interval_indices", type=int, nargs="+", default=(8, 10, 12, 15), help="Opponent waypoint offsets used in collision classification")
-    parser.add_argument("--collision_speed_scales", type=float, nargs="+", default=(0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85), help="Opponent speed scales used in collision classification")
-    parser.add_argument("--collision_startpoint_count", type=int, default=100, help="Number of collision-classification startpoints")
-    parser.add_argument("--expected_collision_scenario_count", type=int, default=10_800, help="Expected number of generated collision-classification scenarios")
-    parser.add_argument("--evaluation_startpoint_clearance", type=float, default=1.0, help="Minimum distance in metres from evaluation startpoints")
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -88,10 +88,10 @@ _COLLISION_ENV = None
 _COLLISION_ACTOR = None
 
 
-def _collision_worker_init(pretrained_model_path: str, hidden_scale: int) -> None:
+def _collision_worker_init(pretrained_model_path: str, hidden_scale: int, map_name: str) -> None:
     global _COLLISION_ENV, _COLLISION_ACTOR
     _limit_worker_threads()
-    _COLLISION_ENV = make_environment(0)()
+    _COLLISION_ENV = make_environment(0, map_name)()
     _COLLISION_ACTOR = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
     _COLLISION_ACTOR.load_state_dict(torch.load(pretrained_model_path, map_location="cpu", weights_only=True), strict=True)
     _COLLISION_ACTOR.eval()
@@ -102,7 +102,7 @@ def _classify_collision_candidate(task: tuple[int, ScenarioSpec]) -> tuple[int, 
     if _COLLISION_ENV is None or _COLLISION_ACTOR is None:
         raise RuntimeError("Collision classification worker is not initialized")
     try:
-        observation, _info = _COLLISION_ENV.reset(options={EXTERNAL_RESET_OPTION: scenario.to_reset_spec("hard")})
+        observation, _info = _COLLISION_ENV.reset(options={EXTERNAL_RESET_OPTION: scenario.to_reset_spec("collision")})
         raw = _COLLISION_ENV._raw_observation
         finite = np.isfinite(observation).all() and all(np.isfinite(np.asarray(value)).all() for value in raw.values() if isinstance(value, (list, tuple, np.ndarray)))
         if not finite or np.asarray(raw["collisions"], dtype=bool).any():
@@ -123,12 +123,12 @@ def _classify_collision_candidate(task: tuple[int, ScenarioSpec]) -> tuple[int, 
         raise RuntimeError(f"Collision classification failed for {scenario.scenario_id}") from error
 
 
-def classify_collision_scenarios(pretrained_model_path: str | Path, hidden_scale: int, interval_indices: Sequence[int], speed_scales: Sequence[float], startpoint_count: int, expected_scenario_count: int, evaluation_clearance: float) -> tuple[ScenarioSpec, ...]:
-    candidates = expanded_scenarios(interval_indices, speed_scales, startpoint_count, expected_scenario_count, evaluation_clearance)
-    context = mp.get_context("forkserver")
+def classify_collision_scenarios(pretrained_model_path: str | Path, hidden_scale: int, map_name: str, env_workers: int) -> tuple[ScenarioSpec, ...]:
+    candidates = expanded_scenarios(map_name)
+    context = mp.get_context(START_METHOD)
     collisions = []
     invalid_count = 0
-    with ProcessPoolExecutor(max_workers=ENV_WORKERS, mp_context=context, initializer=_collision_worker_init, initargs=(str(Path(pretrained_model_path).expanduser().resolve()), hidden_scale)) as executor:
+    with ProcessPoolExecutor(max_workers=env_workers, mp_context=context, initializer=_collision_worker_init, initargs=(str(Path(pretrained_model_path).expanduser().resolve()), hidden_scale, map_name)) as executor:
         for completed, (index, outcome) in enumerate(executor.map(_classify_collision_candidate, enumerate(candidates), chunksize=1), start=1):
             if outcome == "ego_collision":
                 collisions.append(candidates[index])
@@ -240,11 +240,11 @@ class End2RaceRecurrentPPO(RecurrentPPO):
 
     def _warmup_split(self) -> tuple[np.ndarray, np.ndarray]:
         starts = self.rollout_buffer.episode_starts
-        sequences = {"hard": [], "ordinary": []}
+        sequences = {"collision": [], "ordinary": []}
         for env_index in range(self.n_envs):
             if starts[0, env_index] <= 0.5:
                 raise RuntimeError("Warm-up rollout must begin with freshly reset environments")
-            role = "hard" if env_index % 2 == 0 else "ordinary"
+            role = "collision" if env_index % 2 == 0 else "ordinary"
             boundaries = np.flatnonzero(starts[:, env_index] > 0.5).tolist()
             boundaries.append(self.n_steps)
             for start, end in zip(boundaries[:-1], boundaries[1:]):
@@ -255,7 +255,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
 
         train_indices: list[int] = []
         validation_indices: list[int] = []
-        for role in ("hard", "ordinary"):
+        for role in ("collision", "ordinary"):
             role_sequences = sequences[role]
             if len(role_sequences) < 2:
                 raise RuntimeError(f"Warm-up requires at least two {role} recurrent sequences")
@@ -381,8 +381,10 @@ def validate_arguments(args) -> None:
         raise FileNotFoundError(f"Pretrained model does not exist: {pretrained_path}")
     if pretrained_path == ppo_path:
         raise ValueError("PPO model path must not overwrite the pretrained model")
-    if args.n_envs < ENV_WORKERS or args.n_envs % 2 != 0:
-        raise ValueError(f"n_envs must be even and at least {ENV_WORKERS}")
+    if not args.map_name.strip():
+        raise ValueError("map_name must not be empty")
+    if args.env_workers <= 0 or args.n_envs < args.env_workers or args.n_envs % 2 != 0:
+        raise ValueError("n_envs must be even and at least env_workers, and env_workers must be positive")
     for name in ("hidden_scale", "n_steps", "batch_size", "num_updates", "actor_epochs", "critic_epochs"):
         if getattr(args, name) <= 0:
             raise ValueError(f"{name} must be positive")
@@ -441,10 +443,11 @@ def main() -> None:
     random.seed(args.seed)
     np.random.seed(args.seed)
 
-    hard_scenarios = classify_collision_scenarios(args.pretrained_model_path, args.hidden_scale, args.collision_interval_indices, args.collision_speed_scales, args.collision_startpoint_count, args.expected_collision_scenario_count, args.evaluation_startpoint_clearance)
+    collision_scenarios = classify_collision_scenarios(args.pretrained_model_path, args.hidden_scale, args.map_name, args.env_workers)
+    ordinary_scenario_set = ordinary_scenarios(args.map_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.seed, hard_scenarios)
+    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.env_workers, START_METHOD, args.seed, args.map_name, collision_scenarios, ordinary_scenario_set)
     try:
         model = build_model(vector_env, args, device)
         total_rollouts = args.num_updates + 1

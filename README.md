@@ -21,9 +21,11 @@ end2race/
 ├── pretrained/
 │   └── end2race.pth           # Pretrained model weights
 ├── ppo/
+│   ├── ppo_config.yaml        # Low-frequency PPO environment and scenario settings
 │   ├── policy.py              # PPO actor adapter and critic
-│   ├── environment.py         # Austin environment and vector environment
-│   ├── scenarios.py           # Fixed hard/ordinary scenarios and queues
+│   ├── environment.py         # Single logical F110 environment
+│   ├── vec_env.py             # Multiprocess vector environment
+│   ├── scenarios.py           # Collision/ordinary scenarios and queues
 │   └── reward.py              # Fixed PPO reward
 ├── f1tenth_gym/               # F1Tenth simulator environment
 ├── f1tenth_racetracks/        # Track data with pre-generated lanes and racelines
