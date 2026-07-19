@@ -153,6 +153,7 @@ def intersect_point(point, radius, trajectory, t=0.0, wrap=False):
     first_t = None
     first_i = None
     first_p = None
+    epsilon = 1e-9
     trajectory = np.ascontiguousarray(trajectory)
     for i in range(start_i, trajectory.shape[0] - 1):
         start = trajectory[i, :]
@@ -160,38 +161,25 @@ def intersect_point(point, radius, trajectory, t=0.0, wrap=False):
         V = np.ascontiguousarray(end - start)
 
         a = np.dot(V, V)
+        if a <= epsilon:
+            continue
         b = 2.0 * np.dot(V, start - point)
         c = np.dot(start, start) + np.dot(point, point) - 2.0 * np.dot(start, point) - radius * radius
         discriminant = b * b - 4 * a * c
 
-        if discriminant < 0:
+        if discriminant < -epsilon:
             continue
-        #   print "NO INTERSECTION"
-        # else:
-        # if discriminant >= 0.0:
-        discriminant = np.sqrt(discriminant)
+        discriminant = np.sqrt(max(discriminant, 0.0))
         t1 = (-b - discriminant) / (2.0 * a)
         t2 = (-b + discriminant) / (2.0 * a)
-        if i == start_i:
-            if t1 >= 0.0 and t1 <= 1.0 and t1 >= start_t:
-                first_t = t1
+        minimum_t = start_t - epsilon if i == start_i else -epsilon
+        for root in (t1, t2):
+            if minimum_t <= root <= 1.0 + epsilon:
+                first_t = min(max(root, 0.0), 1.0)
                 first_i = i
-                first_p = start + t1 * V
+                first_p = start + first_t * V
                 break
-            if t2 >= 0.0 and t2 <= 1.0 and t2 >= start_t:
-                first_t = t2
-                first_i = i
-                first_p = start + t2 * V
-                break
-        elif t1 >= 0.0 and t1 <= 1.0:
-            first_t = t1
-            first_i = i
-            first_p = start + t1 * V
-            break
-        elif t2 >= 0.0 and t2 <= 1.0:
-            first_t = t2
-            first_i = i
-            first_p = start + t2 * V
+        if first_p is not None:
             break
     # wrap around to the beginning of the trajectory if no intersection is found1
     if wrap and first_p is None:
@@ -201,24 +189,24 @@ def intersect_point(point, radius, trajectory, t=0.0, wrap=False):
             V = end - start
 
             a = np.dot(V, V)
+            if a <= epsilon:
+                continue
             b = 2.0 * np.dot(V, start - point)
             c = np.dot(start, start) + np.dot(point, point) - 2.0 * np.dot(start, point) - radius * radius
             discriminant = b * b - 4 * a * c
 
-            if discriminant < 0:
+            if discriminant < -epsilon:
                 continue
-            discriminant = np.sqrt(discriminant)
+            discriminant = np.sqrt(max(discriminant, 0.0))
             t1 = (-b - discriminant) / (2.0 * a)
             t2 = (-b + discriminant) / (2.0 * a)
-            if t1 >= 0.0 and t1 <= 1.0:
-                first_t = t1
-                first_i = i
-                first_p = start + t1 * V
-                break
-            elif t2 >= 0.0 and t2 <= 1.0:
-                first_t = t2
-                first_i = i
-                first_p = start + t2 * V
+            for root in (t1, t2):
+                if -epsilon <= root <= 1.0 + epsilon:
+                    first_t = min(max(root, 0.0), 1.0)
+                    first_i = i
+                    first_p = start + first_t * V
+                    break
+            if first_p is not None:
                 break
 
     return first_p, first_i, first_t

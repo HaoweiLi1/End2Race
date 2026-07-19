@@ -11,3 +11,4 @@ install/
 **/.numba_cache/
 Dataset_*/
 post-trained/
+remember/
