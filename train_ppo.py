@@ -62,14 +62,14 @@ def parse_arguments():
     parser.add_argument("--map_name", type=str, default="Austin")
     parser.add_argument("--n_envs", type=int, default=16)
     parser.add_argument("--env_workers", type=int, default=12)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/default")
     parser.add_argument("--reclassify_collisions", action="store_true")
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
     parser.add_argument("--batch_size", type=int, default=12800)
-    parser.add_argument("--num_updates", type=int, default=30)
+    parser.add_argument("--num_updates", type=int, default=25)
 
     # Training configuration
     parser.add_argument("--actor_epochs", type=int, default=3)
@@ -77,6 +77,8 @@ def parse_arguments():
     parser.add_argument("--gru_learning_rate", type=float, default=1.0e-6)
     parser.add_argument("--head_learning_rate", type=float, default=1.0e-5)
     parser.add_argument("--critic_learning_rate", type=float, default=1.0e-4)
+    parser.add_argument("--steering_latent_std", type=float, default=STEERING_LATENT_STD)
+    parser.add_argument("--speed_physical_std", type=float, default=SPEED_PHYSICAL_STD)
 
     # PPO configuration
     parser.add_argument("--gamma", type=float, default=0.999)
@@ -122,7 +124,16 @@ def validate_arguments(args) -> None:
         raise ValueError("n_envs * n_steps must be divisible by batch_size")
     if args.batch_size % (2 * args.n_steps) != 0:
         raise ValueError("batch_size must be divisible by 2 * n_steps so each env-major recurrent minibatch has equal collision and ordinary transitions")
-    for name in ("gru_learning_rate", "head_learning_rate", "critic_learning_rate", "gamma", "gae_lambda", "clip_range"):
+    for name in (
+        "gru_learning_rate",
+        "head_learning_rate",
+        "critic_learning_rate",
+        "steering_latent_std",
+        "speed_physical_std",
+        "gamma",
+        "gae_lambda",
+        "clip_range",
+    ):
         if getattr(args, name) <= 0:
             raise ValueError(f"{name} must be positive")
     if args.gamma > 1.0 or args.gae_lambda > 1.0:
@@ -157,6 +168,8 @@ def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2Rac
             "gru_learning_rate": args.gru_learning_rate,
             "head_learning_rate": args.head_learning_rate,
             "critic_learning_rate": args.critic_learning_rate,
+            "steering_latent_std": args.steering_latent_std,
+            "speed_physical_std": args.speed_physical_std,
         },
         verbose=1,
     )
@@ -223,8 +236,8 @@ def main() -> None:
                 "WARMUP_TRAIN_FRACTION": WARMUP_TRAIN_FRACTION,
                 "VALUE_LOSS_COEFFICIENT": VALUE_LOSS_COEFFICIENT,
                 "MAX_GRAD_NORM": MAX_GRAD_NORM,
-                "STEERING_LATENT_STD": STEERING_LATENT_STD,
-                "SPEED_PHYSICAL_STD": SPEED_PHYSICAL_STD,
+                "STEERING_LATENT_STD": args.steering_latent_std,
+                "SPEED_PHYSICAL_STD": args.speed_physical_std,
                 "PRIVILEGED_FEATURE_SIZE": PRIVILEGED_FEATURE_SIZE,
                 "PRIVILEGED_FEATURE_NAMES": list(PRIVILEGED_FEATURE_NAMES),
                 "PRIVILEGED_FEATURE_LOWS": list(PRIVILEGED_FEATURE_LOWS),

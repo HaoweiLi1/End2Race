@@ -168,7 +168,7 @@ The deployable actor always receives 361 values:
 360 downsampled LiDAR ranges + previous measured ego speed
 ```
 
-The `priviledge_mlp` and `independent_gru_p20` environments append 20 pre-action physical features, producing a 381D environment observation. The actor still slices and reads only the first 361 values. The privileged MLP reads only the final P20, while the hybrid critic sends the first 361 values through its independent recurrent branch and fuses the current P20 only at the value head. The CLI spelling `priviledge_mlp` is retained for compatibility.
+The `priviledge_mlp` and `privilege_gru` environments append 20 pre-action physical features, producing a 381D environment observation. The actor still slices and reads only the first 361 values. The privileged MLP reads only the final P20, while the hybrid critic sends the first 361 values through its independent recurrent branch and fuses the current P20 only at the value head. The CLI spelling `priviledge_mlp` is retained for compatibility.
 
 ### Critic variants
 
@@ -178,7 +178,7 @@ The `priviledge_mlp` and `independent_gru_p20` environments append 20 pre-action
 | `detached_gru` | Actor GRU hidden stored and detached during rollout, then `LayerNorm→420→ReLU→1` |
 | `independent_gru` | Trainable BC-initialized pressure/speed/GRU critic with `1680→420→ReLU→1` value head |
 | `priviledge_mlp` | P20 normalized pre-action physical state through `20→120→ReLU→30→ReLU→1` |
-| `independent_gru_p20` | Independent GRU hidden plus a zero-initialized P20 projection, fused as `1680→420 + 20→420→ReLU→1` |
+| `privilege_gru` | Independent GRU hidden plus a zero-initialized P20 projection, fused as `1680→420 + 20→420→ReLU→1` |
 
 The P20 privileged features are:
 
@@ -213,9 +213,9 @@ Every output directory must be new or empty and must be inside `post-trained/`:
 
 ```bash
 python train_ppo.py \
-    --critic independent_gru_p20 \
+    --critic privilege_gru \
     --pretrained_model_path pretrained/end2race.pth \
-    --output_dir post-trained/ppo_independent_gru_p20
+    --output_dir post-trained/ppo_privilege_gru_0720
 ```
 
 Current defaults are:

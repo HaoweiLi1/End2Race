@@ -18,8 +18,8 @@ from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution
 
 
-CRITIC_VARIANTS = ("mlp", "detached_gru", "independent_gru", "priviledge_mlp", "independent_gru_p20")
-P20_CRITIC_VARIANTS = ("priviledge_mlp", "independent_gru_p20")
+CRITIC_VARIANTS = ("mlp", "detached_gru", "independent_gru", "priviledge_mlp", "privilege_gru")
+P20_CRITIC_VARIANTS = ("priviledge_mlp", "privilege_gru")
 END2RACE_OBSERVATION_SIZE = 361
 END2RACE_LIDAR_SIZE = 360
 END2RACE_ACTION_SIZE = 2
@@ -216,7 +216,7 @@ class IndependentGRUCritic(nn.Module):
         return self.value_head(gru_output[:, -1, :]), next_hidden
 
 
-class IndependentGRUP20Critic(nn.Module):
+class PrivilegeGRUCritic(nn.Module):
     """Independent BC-initialized GRU critic with zero-initialized P20 late fusion."""
 
     def __init__(self, actor: End2Race):
@@ -256,7 +256,7 @@ class IndependentGRUP20Critic(nn.Module):
 
         if privileged_features.shape[-1] != PRIVILEGED_FEATURE_SIZE:
             raise RuntimeError(
-                f"independent_gru_p20 expects {PRIVILEGED_FEATURE_SIZE} privileged features, "
+                f"privilege_gru expects {PRIVILEGED_FEATURE_SIZE} privileged features, "
                 f"got {privileged_features.shape[-1]}"
             )
         pressure = (-1.0 / (1.0 + torch.exp(-self.k * lidar)) + 1.0) * 2.0
@@ -280,11 +280,15 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         gru_learning_rate: float = 5.0e-6,
         head_learning_rate: float = 5.0e-5,
         critic_learning_rate: float = 5.0e-4,
+        steering_latent_std: float = STEERING_LATENT_STD,
+        speed_physical_std: float = SPEED_PHYSICAL_STD,
         **kwargs: Any,
     ):
         kwargs.pop("use_sde", None)
         if critic_variant not in CRITIC_VARIANTS:
             raise ValueError(f"critic_variant must be one of {CRITIC_VARIANTS}, got {critic_variant!r}")
+        if steering_latent_std <= 0 or speed_physical_std <= 0:
+            raise ValueError("Exploration standard deviations must be positive")
         expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant in P20_CRITIC_VARIANTS else 0)
         if tuple(observation_space.shape) != (expected_observation_size,):
             raise ValueError(
@@ -312,14 +316,14 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             )
         elif critic_variant == "independent_gru":
             self.value_net = IndependentGRUCritic(self.end2race_actor)
-        elif critic_variant == "independent_gru_p20":
-            self.value_net = IndependentGRUP20Critic(self.end2race_actor)
+        elif critic_variant == "privilege_gru":
+            self.value_net = PrivilegeGRUCritic(self.end2race_actor)
         else:
             self.value_net = PriviledgeMLPCritic()
         self.action_net = nn.Identity()
         self.action_dist = EvaluatorCompatibleJointDistribution()
 
-        self.log_std.data.copy_(torch.tensor([np.log(STEERING_LATENT_STD), np.log(SPEED_PHYSICAL_STD)], dtype=self.log_std.dtype, device=self.log_std.device))
+        self.log_std.data.copy_(torch.tensor([np.log(steering_latent_std), np.log(speed_physical_std)], dtype=self.log_std.dtype, device=self.log_std.device))
         self.log_std.requires_grad_(False)
         for parameter in self.end2race_actor.parameters():
             parameter.requires_grad_(False)
@@ -346,7 +350,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
     @property
     def critic_is_independent_gru(self) -> bool:
-        return self.critic_variant in ("independent_gru", "independent_gru_p20")
+        return self.critic_variant in ("independent_gru", "privilege_gru")
 
     @staticmethod
     def _actor_observation(obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
@@ -481,7 +485,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                 previous_speed[sequence_index : sequence_index + 1],
                 hidden[:, sequence_index : sequence_index + 1],
             )
-            if self.critic_variant == "independent_gru_p20":
+            if self.critic_variant == "privilege_gru":
                 values, next_hidden = self.value_net.step(
                     *recurrent_inputs,
                     privileged_features[sequence_index : sequence_index + 1],
@@ -604,7 +608,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
         n_seq = hidden.shape[1]
         expected_observation_size = END2RACE_OBSERVATION_SIZE + (
-            PRIVILEGED_FEATURE_SIZE if self.critic_variant == "independent_gru_p20" else 0
+            PRIVILEGED_FEATURE_SIZE if self.critic_variant == "privilege_gru" else 0
         )
         if n_seq <= 0 or full_obs.ndim != 2 or full_obs.shape[1] != expected_observation_size or full_obs.shape[0] % n_seq != 0:
             raise RuntimeError(f"Invalid critic replay layout: observations={tuple(full_obs.shape)}, sequences={n_seq}")
@@ -629,7 +633,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                     step_obs[indices, END2RACE_LIDAR_SIZE:END2RACE_OBSERVATION_SIZE].unsqueeze(1),
                     hidden[:, indices],
                 )
-                if self.critic_variant == "independent_gru_p20":
+                if self.critic_variant == "privilege_gru":
                     step_values, next_hidden = self.value_net.step(
                         *recurrent_inputs,
                         step_obs[indices, END2RACE_OBSERVATION_SIZE:],
