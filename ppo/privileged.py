@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from ppo.geometry import rectangle_clearance
 from ppo.reward import ProgressProjector, wrapped_progress_delta
 
 
@@ -36,41 +37,6 @@ YAW_RATE_SCALE_RADPS = 5.0
 CLEARANCE_SCALE_M = 2.0
 CURVATURE_SCALE_PERCENTILE = 95.0
 DYNAMIC_MODEL_SPEED_THRESHOLD_MPS = 0.5
-
-
-def _point_segment_distance(point: np.ndarray, start: np.ndarray, end: np.ndarray) -> float:
-    segment = end - start
-    fraction = np.clip(np.dot(point - start, segment) / np.dot(segment, segment), 0.0, 1.0)
-    return float(np.linalg.norm(point - (start + fraction * segment)))
-
-
-def _separating_axis_exists(vertices_a: np.ndarray, vertices_b: np.ndarray) -> bool:
-    for vertices in (vertices_a, vertices_b):
-        for index in range(len(vertices)):
-            edge = vertices[(index + 1) % len(vertices)] - vertices[index]
-            axis = np.asarray((-edge[1], edge[0]), dtype=np.float64)
-            projection_a = vertices_a @ axis
-            projection_b = vertices_b @ axis
-            if projection_a.max() < projection_b.min() or projection_b.max() < projection_a.min():
-                return True
-    return False
-
-
-def rectangle_clearance(vertices_a: np.ndarray, vertices_b: np.ndarray) -> float:
-    """Exact surface distance between two convex quadrilaterals, zero at contact or overlap.
-
-    latticeplanner.utils.distance runs an unbounded GJK loop that does not terminate for
-    overlapping bodies, which is exactly the post-collision terminal-observation case.
-    """
-
-    if not _separating_axis_exists(vertices_a, vertices_b):
-        return 0.0
-    best = np.inf
-    for vertices_from, vertices_to in ((vertices_a, vertices_b), (vertices_b, vertices_a)):
-        for point in vertices_from:
-            for index in range(len(vertices_to)):
-                best = min(best, _point_segment_distance(point, vertices_to[index], vertices_to[(index + 1) % len(vertices_to)]))
-    return float(best)
 
 
 class BoundaryDistanceReference:
@@ -198,6 +164,7 @@ class PrivilegedStateExtractor:
         opponent_index: int,
         ego_slip_angle: float,
         opponent_slip_angle: float,
+        obb_clearance_m: float | None = None,
     ) -> np.ndarray:
         ego_position, ego_heading, ego_speed, ego_yaw_rate = self._agent_state(raw_observation, ego_index)
         opponent_position, opponent_heading, opponent_speed, opponent_yaw_rate = self._agent_state(raw_observation, opponent_index)
@@ -224,10 +191,15 @@ class PrivilegedStateExtractor:
         relative_long_velocity = cos_ego * velocity_delta_world[0] + sin_ego * velocity_delta_world[1]
         relative_lat_velocity = -sin_ego * velocity_delta_world[0] + cos_ego * velocity_delta_world[1]
 
-        clearance = self._obb_clearance(
-            np.asarray((ego_position[0], ego_position[1], ego_heading), dtype=np.float64),
-            np.asarray((opponent_position[0], opponent_position[1], opponent_heading), dtype=np.float64),
-        )
+        if obb_clearance_m is None:
+            clearance = self._obb_clearance(
+                np.asarray((ego_position[0], ego_position[1], ego_heading), dtype=np.float64),
+                np.asarray((opponent_position[0], opponent_position[1], opponent_heading), dtype=np.float64),
+            )
+        else:
+            clearance = float(obb_clearance_m)
+            if not np.isfinite(clearance) or clearance < 0.0:
+                raise ValueError(f"OBB clearance must be finite and non-negative, got {clearance!r}")
         margin = self.boundary.normalized_body_margin(
             ego_position,
             ego_heading,

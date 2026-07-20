@@ -7,6 +7,10 @@ start_method: forkserver
 simulator_timestep: 0.01
 episode_horizon: 8.0
 
+# Potential-based pre-collision shaping over exact vehicle OBB surface clearance.
+risk_safe_clearance_m: 0.5
+risk_potential_alpha: 0.2
+
 # Racelines
 ego_raceline: raceline1
 opponent_racelines: [raceline0, raceline1, raceline2]

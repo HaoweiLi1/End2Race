@@ -61,10 +61,10 @@ def parse_arguments():
     parser.add_argument("--num_updates", type=int, default=20)
 
     # Training configuration
-    parser.add_argument("--actor_epochs", type=int, default=3)
+    parser.add_argument("--actor_epochs", type=int, default=5)
     parser.add_argument("--critic_epochs", type=int, default=10)
-    parser.add_argument("--gru_learning_rate", type=float, default=5.0e-6)
-    parser.add_argument("--head_learning_rate", type=float, default=5.0e-5)
+    parser.add_argument("--gru_learning_rate", type=float, default=1.0e-6)
+    parser.add_argument("--head_learning_rate", type=float, default=1.0e-5)
     parser.add_argument("--critic_learning_rate", type=float, default=5.0e-4)
 
     # PPO configuration
@@ -114,6 +114,8 @@ def validate_arguments(args) -> None:
     for name in ("gru_learning_rate", "head_learning_rate", "critic_learning_rate", "gamma", "gae_lambda", "clip_range"):
         if getattr(args, name) <= 0:
             raise ValueError(f"{name} must be positive")
+    if args.gamma > 1.0 or args.gae_lambda > 1.0:
+        raise ValueError("gamma and gae_lambda must be at most 1")
 
 
 def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2RaceRecurrentPPO:
@@ -198,7 +200,17 @@ def main() -> None:
         },
     )
     print("[4/5] Creating vector environments", flush=True)
-    vector_env = CentralScheduleSubprocVecEnv(args.n_envs, args.env_workers, START_METHOD, args.seed, args.map_name, collision_scenarios, ordinary_scenario_set, privileged=args.critic == "priviledge_mlp")
+    vector_env = CentralScheduleSubprocVecEnv(
+        args.n_envs,
+        args.env_workers,
+        START_METHOD,
+        args.seed,
+        args.map_name,
+        collision_scenarios,
+        ordinary_scenario_set,
+        privileged=args.critic == "priviledge_mlp",
+        reward_gamma=args.gamma,
+    )
     try:
         print("[5/5] Building PPO model", flush=True)
         model = build_model(vector_env, args, device, recorder)

@@ -22,9 +22,9 @@ from ppo.privileged import PRIVILEGED_FEATURE_HIGHS, PRIVILEGED_FEATURE_LOWS
 from ppo.training_records import TrainingRecorder, require_finite_number, require_finite_tensor
 
 
-WARMUP_MAX_EPOCHS = 30
-WARMUP_PATIENCE = 3
-WARMUP_TRAIN_FRACTION = 0.8
+WARMUP_MAX_EPOCHS = 50
+WARMUP_PATIENCE = 5
+WARMUP_TRAIN_FRACTION = 0.85
 VALUE_LOSS_COEFFICIENT = 0.5
 MAX_GRAD_NORM = 0.5
 
@@ -231,6 +231,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "episode_reward_progress": float(info["episode_reward_progress"]),
                 "episode_reward_relative": float(info["episode_reward_relative"]),
                 "episode_reward_collision": float(info["episode_reward_collision"]),
+                "episode_reward_risk": float(info["episode_reward_risk"]),
+                "episode_min_obb_clearance_m": float(info["episode_min_obb_clearance_m"]),
+                "episode_risk_active_fraction": float(info["episode_risk_active_fraction"]),
                 "termination_reason": str(info["termination_reason"]),
                 "timeout": bool(info["timeout"]),
                 "opponent_collision": bool(info["opponent_collision"]),
@@ -490,8 +493,16 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "mean_episode_steps": cls._mean_episode_metric(episodes, "episode_steps"),
             "mean_episode_return": cls._mean_episode_metric(episodes, "episode_return"),
             "mean_relative_position_m": cls._mean_episode_metric(episodes, "relative_position_m"),
+            "mean_episode_min_obb_clearance_m": cls._mean_episode_metric(
+                episodes,
+                "episode_min_obb_clearance_m",
+            ),
+            "mean_episode_risk_active_fraction": cls._mean_episode_metric(
+                episodes,
+                "episode_risk_active_fraction",
+            ),
         }
-        for component in ("progress", "relative", "collision"):
+        for component in ("progress", "relative", "collision", "risk"):
             metrics[f"mean_episode_reward_{component}"] = cls._mean_episode_metric(
                 episodes,
                 f"episode_reward_{component}",

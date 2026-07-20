@@ -104,20 +104,31 @@ class End2RaceGymnasiumEnv(gym.Env):
         map_name: str,
         ego_raceline: str,
         privileged: bool = False,
+        reward_gamma: float = 0.999,
     ) -> None:
         super().__init__()
         self.f110_env = f110_env
         self.reset_provider = reset_provider
         self.opponent_controller = LatticePlannerOpponentController()
-        self.transition_reward = PPOTransitionReward(map_name, ego_raceline)
+        core_params = getattr(f110_env, "unwrapped", f110_env).params
+        vehicle_length = float(core_params["length"])
+        vehicle_width = float(core_params["width"])
+        self.transition_reward = PPOTransitionReward(
+            map_name,
+            ego_raceline,
+            gamma=reward_gamma,
+            vehicle_length=vehicle_length,
+            vehicle_width=vehicle_width,
+            risk_safe_clearance_m=float(PPO_CONFIG["risk_safe_clearance_m"]),
+            risk_potential_alpha=float(PPO_CONFIG["risk_potential_alpha"]),
+        )
         if privileged:
-            core_params = getattr(f110_env, "unwrapped", f110_env).params
             self.privileged_extractor = PrivilegedStateExtractor(
                 map_name,
                 ego_raceline,
                 self.transition_reward.projector,
-                float(core_params["length"]),
-                float(core_params["width"]),
+                vehicle_length,
+                vehicle_width,
             )
         else:
             self.privileged_extractor = None
@@ -142,6 +153,9 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_progress = 0.0
         self._episode_reward_relative = 0.0
         self._episode_reward_collision = 0.0
+        self._episode_reward_risk = 0.0
+        self._episode_min_obb_clearance_m = float("inf")
+        self._episode_risk_active_steps = 0
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][EGO_INDEX]).reshape(-1)
@@ -173,6 +187,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             opponent_index=OPPONENT_INDEX,
             ego_slip_angle=ego_slip_angle,
             opponent_slip_angle=opponent_slip_angle,
+            obb_clearance_m=self.transition_reward.current_obb_clearance_m,
         )
         return np.concatenate((observation, features))
 
@@ -199,11 +214,14 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_progress = 0.0
         self._episode_reward_relative = 0.0
         self._episode_reward_collision = 0.0
+        self._episode_reward_risk = 0.0
+        self._episode_risk_active_steps = 0
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
         scenario_id = str(spec.scenario["scenario_id"])
         self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=EGO_INDEX)
+        self._episode_min_obb_clearance_m = float(self.transition_reward.current_obb_clearance_m)
         self.opponent_controller.reset(spec)
         info = self._info(False, False, False, False, None, None, base_info, {})
         return self._observation(raw_observation), info
@@ -238,6 +256,13 @@ class End2RaceGymnasiumEnv(gym.Env):
             "episode_reward_progress": self._episode_reward_progress,
             "episode_reward_relative": self._episode_reward_relative,
             "episode_reward_collision": self._episode_reward_collision,
+            "episode_reward_risk": self._episode_reward_risk,
+            "episode_min_obb_clearance_m": self._episode_min_obb_clearance_m,
+            "episode_risk_active_fraction": (
+                self._episode_risk_active_steps / self._episode_steps
+                if self._episode_steps > 0
+                else 0.0
+            ),
             "base_info": base_info,
             **reward_info,
         }
@@ -267,6 +292,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             raw_observation,
             ego_collision=ego_collision,
             opponent_collision=opponent_collision,
+            terminated=terminated,
             scenario_id=scenario_id,
             ego_index=EGO_INDEX,
         )
@@ -277,6 +303,11 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_progress += float(reward_info["reward_progress"])
         self._episode_reward_relative += float(reward_info["reward_relative"])
         self._episode_reward_collision += float(reward_info["reward_collision"])
+        self._episode_reward_risk += float(reward_info["reward_risk"])
+        obb_clearance_m = float(reward_info["obb_clearance_m"])
+        self._episode_min_obb_clearance_m = min(self._episode_min_obb_clearance_m, obb_clearance_m)
+        if obb_clearance_m < self.transition_reward.risk_safe_clearance_m:
+            self._episode_risk_active_steps += 1
         outcome = None
         if terminated or truncated:
             if ego_collision:
@@ -310,7 +341,12 @@ def _external_reset_required(_rng: np.random.Generator) -> EpisodeResetSpec:
     raise RuntimeError("Subprocess resets must be supplied by the parent scheduler")
 
 
-def make_environment(seed: int, map_name: str, privileged: bool = False) -> Callable[[], End2RaceGymnasiumEnv]:
+def make_environment(
+    seed: int,
+    map_name: str,
+    privileged: bool = False,
+    reward_gamma: float = 0.999,
+) -> Callable[[], End2RaceGymnasiumEnv]:
 
     def factory() -> End2RaceGymnasiumEnv:
         import gym
@@ -325,6 +361,13 @@ def make_environment(seed: int, map_name: str, privileged: bool = False) -> Call
             integrator=Integrator.RK4,
             seed=seed,
         )
-        return End2RaceGymnasiumEnv(core, _external_reset_required, map_name, EGO_RACELINE, privileged=privileged)
+        return End2RaceGymnasiumEnv(
+            core,
+            _external_reset_required,
+            map_name,
+            EGO_RACELINE,
+            privileged=privileged,
+            reward_gamma=reward_gamma,
+        )
 
     return factory
