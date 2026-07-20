@@ -38,6 +38,41 @@ CURVATURE_SCALE_PERCENTILE = 95.0
 DYNAMIC_MODEL_SPEED_THRESHOLD_MPS = 0.5
 
 
+def _point_segment_distance(point: np.ndarray, start: np.ndarray, end: np.ndarray) -> float:
+    segment = end - start
+    fraction = np.clip(np.dot(point - start, segment) / np.dot(segment, segment), 0.0, 1.0)
+    return float(np.linalg.norm(point - (start + fraction * segment)))
+
+
+def _separating_axis_exists(vertices_a: np.ndarray, vertices_b: np.ndarray) -> bool:
+    for vertices in (vertices_a, vertices_b):
+        for index in range(len(vertices)):
+            edge = vertices[(index + 1) % len(vertices)] - vertices[index]
+            axis = np.asarray((-edge[1], edge[0]), dtype=np.float64)
+            projection_a = vertices_a @ axis
+            projection_b = vertices_b @ axis
+            if projection_a.max() < projection_b.min() or projection_b.max() < projection_a.min():
+                return True
+    return False
+
+
+def rectangle_clearance(vertices_a: np.ndarray, vertices_b: np.ndarray) -> float:
+    """Exact surface distance between two convex quadrilaterals, zero at contact or overlap.
+
+    latticeplanner.utils.distance runs an unbounded GJK loop that does not terminate for
+    overlapping bodies, which is exactly the post-collision terminal-observation case.
+    """
+
+    if not _separating_axis_exists(vertices_a, vertices_b):
+        return 0.0
+    best = np.inf
+    for vertices_from, vertices_to in ((vertices_a, vertices_b), (vertices_b, vertices_a)):
+        for point in vertices_from:
+            for index in range(len(vertices_to)):
+                best = min(best, _point_segment_distance(point, vertices_to[index], vertices_to[(index + 1) % len(vertices_to)]))
+    return float(best)
+
+
 class BoundaryDistanceReference:
     """Signed lateral offset and boundary widths against a cyclic lane polyline."""
 
@@ -149,14 +184,11 @@ class PrivilegedStateExtractor:
         )
 
     def _obb_clearance(self, ego_pose: np.ndarray, opponent_pose: np.ndarray) -> float:
-        from latticeplanner.utils import distance as gjk_distance, get_vertices
+        from latticeplanner.utils import get_vertices
 
         ego_vertices = get_vertices(ego_pose, self.vehicle_length, self.vehicle_width)
         opponent_vertices = get_vertices(opponent_pose, self.vehicle_length, self.vehicle_width)
-        direction = opponent_pose[:2] - ego_pose[:2]
-        if np.linalg.norm(direction) <= 1e-9:
-            direction = np.asarray((1.0, 0.0), dtype=np.float64)
-        return float(gjk_distance(ego_vertices, opponent_vertices, direction))
+        return rectangle_clearance(ego_vertices, opponent_vertices)
 
     def features(
         self,
