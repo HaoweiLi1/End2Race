@@ -52,6 +52,7 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         self._staged_detached_gru_features: np.ndarray | None = None
         self.current_valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None
         self.current_detached_gru_features: torch.Tensor | None = None
+        self.current_collision_mask: torch.Tensor | None = None
 
     def stage_detached_gru_features(self, features: np.ndarray) -> None:
         """Receive the per-step detached critic features computed inside policy.forward."""
@@ -106,6 +107,8 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         padded_batch_size = n_seq * max_length
         sequence_lengths = np.diff(np.concatenate((self.seq_start_indices, np.asarray([len(batch_inds)]))))
         self.current_valid_by_timestep = tuple(tuple(step < int(length) for length in sequence_lengths) for step in range(max_length))
+        collision_by_transition = ((batch_inds // self.buffer_size) % 2 == 0).astype(np.float32)
+        self.current_collision_mask = self.to_torch(self.pad_and_flatten(collision_by_transition)) > 0.5
         if self.detached_gru_feature_size:
             self.current_detached_gru_features = self.to_torch(self.pad(self.detached_gru_features[batch_inds])).reshape(padded_batch_size, self.detached_gru_feature_size)
         else:
@@ -232,7 +235,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "episode_reward_relative": float(info["episode_reward_relative"]),
                 "episode_reward_collision": float(info["episode_reward_collision"]),
                 "episode_reward_risk": float(info["episode_reward_risk"]),
+                "episode_abs_reward_risk": float(info["episode_abs_reward_risk"]),
                 "episode_min_obb_clearance_m": float(info["episode_min_obb_clearance_m"]),
+                "episode_min_wall_clearance_m": float(info["episode_min_wall_clearance_m"]),
                 "episode_risk_active_fraction": float(info["episode_risk_active_fraction"]),
                 "termination_reason": str(info["termination_reason"]),
                 "timeout": bool(info["timeout"]),
@@ -461,11 +466,23 @@ class End2RaceRecurrentPPO(RecurrentPPO):
 
         predictions = []
         returns = []
+        role_predictions = {"collision": [], "ordinary": []}
+        role_returns = {"collision": [], "ordinary": []}
         with torch.no_grad():
             for rollout_data in self.rollout_buffer.get(self.batch_size, rng=self.telemetry_rng):
                 mask = rollout_data.mask > 1e-8
-                predictions.append(self._batch_values(rollout_data)[mask].detach().cpu().numpy())
+                values = self._batch_values(rollout_data)
+                predictions.append(values[mask].detach().cpu().numpy())
                 returns.append(rollout_data.returns[mask].detach().cpu().numpy())
+                collision_mask = self.rollout_buffer.current_collision_mask
+                if collision_mask is None:
+                    raise RuntimeError("Rollout role mask is missing for value-fit statistics")
+                for role, role_mask in (
+                    ("collision", mask & collision_mask),
+                    ("ordinary", mask & ~collision_mask),
+                ):
+                    role_predictions[role].append(values[role_mask].detach().cpu().numpy())
+                    role_returns[role].append(rollout_data.returns[role_mask].detach().cpu().numpy())
         prediction_array = np.concatenate(predictions).astype(np.float64, copy=False)
         return_array = np.concatenate(returns).astype(np.float64, copy=False)
         statistics = {
@@ -476,6 +493,15 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "return_mean": float(return_array.mean()),
             "return_std": float(return_array.std()),
         }
+        for role in ("collision", "ordinary"):
+            role_prediction_array = np.concatenate(role_predictions[role]).astype(np.float64, copy=False)
+            role_return_array = np.concatenate(role_returns[role]).astype(np.float64, copy=False)
+            statistics[f"{role}_value_loss"] = float(
+                np.mean(np.square(role_prediction_array - role_return_array))
+            )
+            statistics[f"{role}_explained_variance"] = float(
+                explained_variance(role_prediction_array, role_return_array)
+            )
         for name, value in statistics.items():
             require_finite_number(f"Full-buffer {name}", value)
         return statistics
@@ -497,9 +523,17 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 episodes,
                 "episode_min_obb_clearance_m",
             ),
+            "mean_episode_min_wall_clearance_m": cls._mean_episode_metric(
+                episodes,
+                "episode_min_wall_clearance_m",
+            ),
             "mean_episode_risk_active_fraction": cls._mean_episode_metric(
                 episodes,
                 "episode_risk_active_fraction",
+            ),
+            "mean_episode_abs_reward_risk": cls._mean_episode_metric(
+                episodes,
+                "episode_abs_reward_risk",
             ),
         }
         for component in ("progress", "relative", "collision", "risk"):
@@ -641,6 +675,14 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "value_loss_post_update": value_statistics_post_update["value_loss"],
             "explained_variance_pre_update": value_statistics_pre_update["explained_variance"],
             "explained_variance_post_update": value_statistics_post_update["explained_variance"],
+            "collision_value_loss_pre": value_statistics_pre_update["collision_value_loss"],
+            "collision_value_loss_post": value_statistics_post_update["collision_value_loss"],
+            "ordinary_value_loss_pre": value_statistics_pre_update["ordinary_value_loss"],
+            "ordinary_value_loss_post": value_statistics_post_update["ordinary_value_loss"],
+            "collision_explained_variance_pre": value_statistics_pre_update["collision_explained_variance"],
+            "collision_explained_variance_post": value_statistics_post_update["collision_explained_variance"],
+            "ordinary_explained_variance_pre": value_statistics_pre_update["ordinary_explained_variance"],
+            "ordinary_explained_variance_post": value_statistics_post_update["ordinary_explained_variance"],
             "value_prediction_post_mean": value_statistics_post_update["value_prediction_mean"],
             "value_prediction_post_std": value_statistics_post_update["value_prediction_std"],
             "return_mean": value_statistics_post_update["return_mean"],

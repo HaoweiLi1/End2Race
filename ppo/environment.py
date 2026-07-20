@@ -12,6 +12,7 @@ from gymnasium import spaces
 import numpy as np
 import yaml
 
+from ppo.geometry import OccupancyMapClearance
 from ppo.policy import END2RACE_LIDAR_SIZE, END2RACE_OBSERVATION_SIZE, NOOP_SPEED_BOUND, STEERING_BOUND, end2race_observation
 from ppo.privileged import PRIVILEGED_FEATURE_SIZE, PrivilegedStateExtractor
 from ppo.reward import PPOTransitionReward
@@ -110,17 +111,27 @@ class End2RaceGymnasiumEnv(gym.Env):
         self.f110_env = f110_env
         self.reset_provider = reset_provider
         self.opponent_controller = LatticePlannerOpponentController()
-        core_params = getattr(f110_env, "unwrapped", f110_env).params
+        core = getattr(f110_env, "unwrapped", f110_env)
+        core_params = core.params
         vehicle_length = float(core_params["length"])
         vehicle_width = float(core_params["width"])
+        scan_simulator = core.sim.agents[EGO_INDEX].scan_simulator
+        map_clearance = OccupancyMapClearance(
+            scan_simulator.dt,
+            scan_simulator.map_resolution,
+            scan_simulator.origin,
+        )
         self.transition_reward = PPOTransitionReward(
             map_name,
             ego_raceline,
             gamma=reward_gamma,
             vehicle_length=vehicle_length,
             vehicle_width=vehicle_width,
-            risk_safe_clearance_m=float(PPO_CONFIG["risk_safe_clearance_m"]),
-            risk_potential_alpha=float(PPO_CONFIG["risk_potential_alpha"]),
+            map_clearance=map_clearance,
+            risk_longitudinal_clearance_m=float(PPO_CONFIG["risk_longitudinal_clearance_m"]),
+            risk_lateral_clearance_m=float(PPO_CONFIG["risk_lateral_clearance_m"]),
+            risk_wall_clearance_m=float(PPO_CONFIG["risk_wall_clearance_m"]),
+            risk_potential_maximum=float(PPO_CONFIG["risk_potential_maximum"]),
         )
         if privileged:
             self.privileged_extractor = PrivilegedStateExtractor(
@@ -129,6 +140,11 @@ class End2RaceGymnasiumEnv(gym.Env):
                 self.transition_reward.projector,
                 vehicle_length,
                 vehicle_width,
+                steering_min_rad=float(core_params["s_min"]),
+                steering_max_rad=float(core_params["s_max"]),
+                risk_longitudinal_clearance_m=self.transition_reward.risk_longitudinal_clearance_m,
+                risk_lateral_clearance_m=self.transition_reward.risk_lateral_clearance_m,
+                risk_wall_clearance_m=self.transition_reward.risk_wall_clearance_m,
             )
         else:
             self.privileged_extractor = None
@@ -154,7 +170,9 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_relative = 0.0
         self._episode_reward_collision = 0.0
         self._episode_reward_risk = 0.0
+        self._episode_abs_reward_risk = 0.0
         self._episode_min_obb_clearance_m = float("inf")
+        self._episode_min_wall_clearance_m = float("inf")
         self._episode_risk_active_steps = 0
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
@@ -166,30 +184,42 @@ class End2RaceGymnasiumEnv(gym.Env):
     def _ego_speed(self, raw_observation: dict[str, Any]) -> float:
         return float(np.asarray(raw_observation["linear_vels_x"])[EGO_INDEX])
 
-    def _privileged_slip_angles(self) -> tuple[float, float]:
+    def _privileged_physical_state(self) -> tuple[float, float, float]:
         core = getattr(self.f110_env, "unwrapped", self.f110_env)
         agents = getattr(getattr(core, "sim", None), "agents", None)
         if agents is None or len(agents) != NUM_AGENTS:
             raise RuntimeError("Privileged critic requires simulator agent states")
-        slip_angles = tuple(float(np.asarray(agent.state).reshape(-1)[6]) for agent in agents)
-        if not np.isfinite(slip_angles).all():
-            raise ValueError("Simulator slip angles must be finite")
-        return slip_angles
+        ego_state = np.asarray(agents[EGO_INDEX].state, dtype=np.float64).reshape(-1)
+        opponent_state = np.asarray(agents[OPPONENT_INDEX].state, dtype=np.float64).reshape(-1)
+        if ego_state.size <= 6 or opponent_state.size <= 6:
+            raise RuntimeError("Privileged critic requires steering and slip in simulator agent states")
+        physical_state = (float(ego_state[2]), float(ego_state[6]), float(opponent_state[6]))
+        if not np.isfinite(physical_state).all():
+            raise ValueError("Simulator steering and slip angles must be finite")
+        return physical_state
 
     def _observation(self, raw_observation: dict[str, Any]) -> np.ndarray:
         observation = end2race_observation(self._ego_lidar(raw_observation), self._previous_ego_speed)
         if self.privileged_extractor is None:
             return observation
-        ego_slip_angle, opponent_slip_angle = self._privileged_slip_angles()
+        ego_steering_angle, ego_slip_angle, opponent_slip_angle = self._privileged_physical_state()
+        if self.transition_reward.current_clearances is None:
+            raise RuntimeError("Reward current-state geometry must exist before privileged observation")
         features = self.privileged_extractor.features(
             raw_observation,
             ego_index=EGO_INDEX,
             opponent_index=OPPONENT_INDEX,
+            ego_steering_angle=ego_steering_angle,
             ego_slip_angle=ego_slip_angle,
             opponent_slip_angle=opponent_slip_angle,
-            obb_clearance_m=self.transition_reward.current_obb_clearance_m,
+            clearances=self.transition_reward.current_clearances,
         )
         return np.concatenate((observation, features))
+
+    def privileged_normalization_metadata(self) -> dict[str, Any]:
+        if self.privileged_extractor is None:
+            return {}
+        return self.privileged_extractor.normalization_metadata()
 
     def reset(
         self,
@@ -215,6 +245,7 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_relative = 0.0
         self._episode_reward_collision = 0.0
         self._episode_reward_risk = 0.0
+        self._episode_abs_reward_risk = 0.0
         self._episode_risk_active_steps = 0
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
@@ -222,6 +253,7 @@ class End2RaceGymnasiumEnv(gym.Env):
         scenario_id = str(spec.scenario["scenario_id"])
         self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=EGO_INDEX)
         self._episode_min_obb_clearance_m = float(self.transition_reward.current_obb_clearance_m)
+        self._episode_min_wall_clearance_m = float(self.transition_reward.current_wall_clearance_m)
         self.opponent_controller.reset(spec)
         info = self._info(False, False, False, False, None, None, base_info, {})
         return self._observation(raw_observation), info
@@ -257,7 +289,9 @@ class End2RaceGymnasiumEnv(gym.Env):
             "episode_reward_relative": self._episode_reward_relative,
             "episode_reward_collision": self._episode_reward_collision,
             "episode_reward_risk": self._episode_reward_risk,
+            "episode_abs_reward_risk": self._episode_abs_reward_risk,
             "episode_min_obb_clearance_m": self._episode_min_obb_clearance_m,
+            "episode_min_wall_clearance_m": self._episode_min_wall_clearance_m,
             "episode_risk_active_fraction": (
                 self._episode_risk_active_steps / self._episode_steps
                 if self._episode_steps > 0
@@ -304,9 +338,12 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_relative += float(reward_info["reward_relative"])
         self._episode_reward_collision += float(reward_info["reward_collision"])
         self._episode_reward_risk += float(reward_info["reward_risk"])
+        self._episode_abs_reward_risk += abs(float(reward_info["reward_risk"]))
         obb_clearance_m = float(reward_info["obb_clearance_m"])
         self._episode_min_obb_clearance_m = min(self._episode_min_obb_clearance_m, obb_clearance_m)
-        if obb_clearance_m < self.transition_reward.risk_safe_clearance_m:
+        wall_clearance_m = float(reward_info["wall_clearance_m"])
+        self._episode_min_wall_clearance_m = min(self._episode_min_wall_clearance_m, wall_clearance_m)
+        if bool(reward_info["risk_active"]):
             self._episode_risk_active_steps += 1
         outcome = None
         if terminated or truncated:

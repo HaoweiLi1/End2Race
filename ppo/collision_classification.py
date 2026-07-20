@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import asdict
+import json
 import multiprocessing as mp
 from pathlib import Path
 import time
@@ -14,22 +16,182 @@ from model import End2Race
 from ppo.environment import EXTERNAL_RESET_OPTION, make_environment
 from ppo.policy import END2RACE_LIDAR_SIZE, STEERING_BOUND
 from ppo.scenarios import (
+    COLLISION_INTERVAL_INDICES,
+    COLLISION_SPEED_SCALES,
+    COLLISION_STARTPOINT_COUNT,
+    COLLISION_STARTPOINT_MIN_DISTANCE,
+    EGO_RACELINE,
+    OPPONENT_RACELINES,
+    SIM_DURATION,
+    TIMESTEP,
     ScenarioSpec,
-    collision_cache_exists,
-    collision_classification_config,
-    load_collision_cache,
-    write_collision_cache,
 )
-from ppo.vec_env import _limit_worker_threads
+from ppo.vec_env import limit_worker_threads
 
 
 _COLLISION_ENV = None
 _COLLISION_ACTOR = None
+COLLISION_CLASSIFICATION_SCHEMA = 1
+
+
+def collision_classification_config(args, candidate_count: int) -> dict:
+    return {
+        "classification_schema": COLLISION_CLASSIFICATION_SCHEMA,
+        "pretrained_model_path": str(Path(args.pretrained_model_path).expanduser().resolve()),
+        "hidden_scale": int(args.hidden_scale),
+        "map_name": str(args.map_name),
+        "ego_raceline": EGO_RACELINE,
+        "opponent_racelines": list(OPPONENT_RACELINES),
+        "collision_startpoint_count": COLLISION_STARTPOINT_COUNT,
+        "collision_interval_indices": list(COLLISION_INTERVAL_INDICES),
+        "collision_speed_scales": list(COLLISION_SPEED_SCALES),
+        "collision_startpoint_min_distance": COLLISION_STARTPOINT_MIN_DISTANCE,
+        "simulator_timestep": TIMESTEP,
+        "episode_horizon": SIM_DURATION,
+        "candidate_count": candidate_count,
+    }
+
+
+def _write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2)
+        file.write("\n")
+
+
+def collision_cache_exists(cache_dir: Path) -> bool:
+    required_paths = (
+        cache_dir / "classification_config.json",
+        cache_dir / "candidate_outcomes.jsonl",
+        cache_dir / "collision_scenarios.json",
+        cache_dir / "classification_summary.json",
+    )
+    existing_count = sum(path.exists() for path in required_paths)
+    if existing_count not in (0, len(required_paths)):
+        raise RuntimeError("Collision classification cache is incomplete; use --reclassify_collisions")
+    return existing_count == len(required_paths)
+
+
+def write_collision_cache(
+    cache_dir: Path,
+    config: dict,
+    outcomes: list[dict],
+    collision_scenarios: tuple[ScenarioSpec, ...],
+    summary: dict,
+) -> None:
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    _write_json(cache_dir / "classification_config.json", config)
+    with (cache_dir / "candidate_outcomes.jsonl").open("w", encoding="utf-8") as file:
+        for outcome in outcomes:
+            file.write(json.dumps(outcome) + "\n")
+    _write_json(cache_dir / "collision_scenarios.json", [asdict(scenario) for scenario in collision_scenarios])
+    _write_json(cache_dir / "classification_summary.json", summary)
+
+
+def _load_candidate_outcomes(path: Path, candidates: tuple[ScenarioSpec, ...]) -> list[dict]:
+    with path.open("r", encoding="utf-8") as file:
+        outcomes = [json.loads(line) for line in file]
+    candidate_count = len(candidates)
+    if len(outcomes) != candidate_count:
+        raise RuntimeError(f"Collision cache has {len(outcomes)} outcomes for {candidate_count} candidates")
+    expected_keys = {"candidate_index", "scenario_id", "outcome"}
+    for candidate_index, (outcome, candidate) in enumerate(zip(outcomes, candidates)):
+        if (
+            set(outcome) != expected_keys
+            or type(outcome["candidate_index"]) is not int
+            or outcome["candidate_index"] != candidate_index
+        ):
+            raise RuntimeError(f"Collision cache candidate_index must be 0 through {candidate_count - 1}")
+        if outcome["scenario_id"] != candidate.scenario_id:
+            raise RuntimeError(f"Collision cache scenario_id mismatch at candidate {candidate_index}/{candidate_count}")
+        if outcome["outcome"] not in {"ego_collision", "other", "invalid"}:
+            raise RuntimeError(f"Collision cache has an invalid outcome at candidate {candidate_index}/{candidate_count}")
+    return outcomes
+
+
+def _load_collision_scenarios(
+    path: Path,
+    candidates: tuple[ScenarioSpec, ...],
+    outcomes: list[dict],
+) -> tuple[ScenarioSpec, ...]:
+    with path.open("r", encoding="utf-8") as file:
+        records = json.load(file)
+    if not isinstance(records, list) or not records:
+        raise RuntimeError("Collision cache must contain at least one collision ScenarioSpec")
+    candidate_by_id = {candidate.scenario_id: candidate for candidate in candidates}
+    expected_ids = [outcome["scenario_id"] for outcome in outcomes if outcome["outcome"] == "ego_collision"]
+    actual_ids = [record.get("scenario_id") for record in records if isinstance(record, dict)]
+    if len(actual_ids) != len(records) or len(set(actual_ids)) != len(actual_ids):
+        raise RuntimeError("Collision cache collision scenario IDs must be unique")
+    if actual_ids != expected_ids:
+        raise RuntimeError("Collision cache collision scenarios do not match ego_collision outcomes")
+    collision_scenarios = []
+    expected_fields = set(asdict(candidates[0]))
+    for record in records:
+        if set(record) != expected_fields:
+            raise RuntimeError(f"Collision cache ScenarioSpec fields are invalid for {record['scenario_id']}")
+        scenario = ScenarioSpec(**record)
+        current_candidate = candidate_by_id.get(scenario.scenario_id)
+        if current_candidate is None:
+            raise RuntimeError(f"Collision cache ScenarioSpec does not match current candidate {scenario.scenario_id}")
+        current_record = asdict(current_candidate)
+        if any(
+            type(record[name]) is not type(current_record[name]) or record[name] != current_record[name]
+            for name in expected_fields
+        ):
+            raise RuntimeError(f"Collision cache ScenarioSpec does not match current candidate {scenario.scenario_id}")
+        collision_scenarios.append(scenario)
+    return tuple(collision_scenarios)
+
+
+def _validate_classification_summary(path: Path, outcomes: list[dict], candidate_count: int) -> None:
+    with path.open("r", encoding="utf-8") as file:
+        summary = json.load(file)
+    collision_count = sum(outcome["outcome"] == "ego_collision" for outcome in outcomes)
+    invalid_count = sum(outcome["outcome"] == "invalid" for outcome in outcomes)
+    expected_counts = {
+        "candidate_count": candidate_count,
+        "collision_count": collision_count,
+        "other_count": candidate_count - collision_count - invalid_count,
+        "invalid_count": invalid_count,
+    }
+    expected_keys = set(expected_counts) | {"env_workers", "wall_seconds", "scenarios_per_second"}
+    if (
+        not isinstance(summary, dict)
+        or set(summary) != expected_keys
+        or any(type(summary[name]) is not int or summary[name] != value for name, value in expected_counts.items())
+    ):
+        raise RuntimeError(f"Collision cache summary does not match {candidate_count} candidate outcomes")
+    if type(summary["env_workers"]) is not int or summary["env_workers"] <= 0:
+        raise RuntimeError("Collision cache summary has invalid env_workers")
+    for name in ("wall_seconds", "scenarios_per_second"):
+        value = summary[name]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value < 0:
+            raise RuntimeError(f"Collision cache summary has invalid {name}")
+
+
+def load_collision_cache(
+    cache_dir: Path,
+    current_config: dict,
+    candidates: tuple[ScenarioSpec, ...],
+) -> tuple[ScenarioSpec, ...]:
+    with (cache_dir / "classification_config.json").open("r", encoding="utf-8") as file:
+        cached_config = json.load(file)
+    candidate_count = len(candidates)
+    if json.dumps(cached_config, sort_keys=True) != json.dumps(current_config, sort_keys=True):
+        raise RuntimeError(
+            f"Collision cache configuration does not match the current {candidate_count} candidates; "
+            "use --reclassify_collisions"
+        )
+    outcomes = _load_candidate_outcomes(cache_dir / "candidate_outcomes.jsonl", candidates)
+    collision_scenarios = _load_collision_scenarios(cache_dir / "collision_scenarios.json", candidates, outcomes)
+    _validate_classification_summary(cache_dir / "classification_summary.json", outcomes, candidate_count)
+    return collision_scenarios
 
 
 def _collision_worker_init(pretrained_model_path: str, hidden_scale: int, map_name: str) -> None:
     global _COLLISION_ENV, _COLLISION_ACTOR
-    _limit_worker_threads()
+    limit_worker_threads()
     _COLLISION_ENV = make_environment(0, map_name)()
     _COLLISION_ACTOR = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
     _COLLISION_ACTOR.load_state_dict(torch.load(pretrained_model_path, map_location="cpu", weights_only=True), strict=True)

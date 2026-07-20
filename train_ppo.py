@@ -21,7 +21,12 @@ from ppo.algorithm import (
 )
 from ppo.collision_classification import resolve_collision_scenarios
 from ppo.policy import CRITIC_VARIANTS, SPEED_PHYSICAL_STD, STEERING_LATENT_STD, End2RaceGRUPolicy
-from ppo.privileged import PRIVILEGED_FEATURE_NAMES
+from ppo.privileged import (
+    PRIVILEGED_FEATURE_HIGHS,
+    PRIVILEGED_FEATURE_LOWS,
+    PRIVILEGED_FEATURE_NAMES,
+    PRIVILEGED_FEATURE_SIZE,
+)
 from ppo.scenarios import expanded_scenarios, ordinary_scenarios
 from ppo.training_records import TrainingRecorder
 from ppo.vec_env import CentralScheduleSubprocVecEnv
@@ -50,7 +55,7 @@ def parse_arguments():
     # Environment configuration
     parser.add_argument("--map_name", type=str, default="Austin")
     parser.add_argument("--n_envs", type=int, default=16)
-    parser.add_argument("--env_workers", type=int, default=8)
+    parser.add_argument("--env_workers", type=int, default=12)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/default")
     parser.add_argument("--reclassify_collisions", action="store_true")
@@ -58,14 +63,14 @@ def parse_arguments():
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
     parser.add_argument("--batch_size", type=int, default=12800)
-    parser.add_argument("--num_updates", type=int, default=20)
+    parser.add_argument("--num_updates", type=int, default=30)
 
     # Training configuration
-    parser.add_argument("--actor_epochs", type=int, default=5)
+    parser.add_argument("--actor_epochs", type=int, default=3)
     parser.add_argument("--critic_epochs", type=int, default=10)
     parser.add_argument("--gru_learning_rate", type=float, default=1.0e-6)
     parser.add_argument("--head_learning_rate", type=float, default=1.0e-5)
-    parser.add_argument("--critic_learning_rate", type=float, default=5.0e-4)
+    parser.add_argument("--critic_learning_rate", type=float, default=1.0e-4)
 
     # PPO configuration
     parser.add_argument("--gamma", type=float, default=0.999)
@@ -174,20 +179,6 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}", flush=True)
     recorder = TrainingRecorder(args.output_dir, args.hidden_scale)
-    recorder.write_run_config(
-        args,
-        PPO_CONFIG,
-        {
-            "WARMUP_MAX_EPOCHS": WARMUP_MAX_EPOCHS,
-            "WARMUP_PATIENCE": WARMUP_PATIENCE,
-            "WARMUP_TRAIN_FRACTION": WARMUP_TRAIN_FRACTION,
-            "VALUE_LOSS_COEFFICIENT": VALUE_LOSS_COEFFICIENT,
-            "MAX_GRAD_NORM": MAX_GRAD_NORM,
-            "STEERING_LATENT_STD": STEERING_LATENT_STD,
-            "SPEED_PHYSICAL_STD": SPEED_PHYSICAL_STD,
-            "PRIVILEGED_FEATURE_NAMES": list(PRIVILEGED_FEATURE_NAMES),
-        },
-    )
     recorder.write_scenario_pools(
         collision_scenarios,
         ordinary_scenario_set,
@@ -212,6 +203,29 @@ def main() -> None:
         reward_gamma=args.gamma,
     )
     try:
+        privileged_normalization = (
+            vector_env.env_method("privileged_normalization_metadata", indices=[0])[0]
+            if args.critic == "priviledge_mlp"
+            else {}
+        )
+        recorder.write_run_config(
+            args,
+            PPO_CONFIG,
+            {
+                "WARMUP_MAX_EPOCHS": WARMUP_MAX_EPOCHS,
+                "WARMUP_PATIENCE": WARMUP_PATIENCE,
+                "WARMUP_TRAIN_FRACTION": WARMUP_TRAIN_FRACTION,
+                "VALUE_LOSS_COEFFICIENT": VALUE_LOSS_COEFFICIENT,
+                "MAX_GRAD_NORM": MAX_GRAD_NORM,
+                "STEERING_LATENT_STD": STEERING_LATENT_STD,
+                "SPEED_PHYSICAL_STD": SPEED_PHYSICAL_STD,
+                "PRIVILEGED_FEATURE_SIZE": PRIVILEGED_FEATURE_SIZE,
+                "PRIVILEGED_FEATURE_NAMES": list(PRIVILEGED_FEATURE_NAMES),
+                "PRIVILEGED_FEATURE_LOWS": list(PRIVILEGED_FEATURE_LOWS),
+                "PRIVILEGED_FEATURE_HIGHS": list(PRIVILEGED_FEATURE_HIGHS),
+                "PRIVILEGED_NORMALIZATION": privileged_normalization,
+            },
+        )
         print("[5/5] Building PPO model", flush=True)
         model = build_model(vector_env, args, device, recorder)
         total_rollouts = args.num_updates + 1

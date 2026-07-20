@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from ppo.geometry import rectangle_clearance
+from ppo.geometry import CurrentStateClearances, OccupancyMapClearance, rectangle_clearance_components
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -18,16 +18,65 @@ RELATIVE_WEIGHT = 0.02
 COLLISION_PENALTY = -2.0
 
 
-def proximity_risk_potential(clearance_m: float, safe_clearance_m: float, alpha: float) -> float:
-    """Negative quadratic potential inside the configured vehicle-clearance boundary."""
+def anisotropic_risk_potential(
+    longitudinal_clearance_m: float,
+    lateral_clearance_m: float,
+    wall_clearance_m: float,
+    *,
+    longitudinal_safe_m: float,
+    lateral_safe_m: float,
+    wall_safe_m: float,
+    maximum_magnitude: float,
+) -> float:
+    """One bounded potential over vehicle and wall proximity."""
 
-    values = np.asarray((clearance_m, safe_clearance_m, alpha), dtype=np.float64)
-    if not np.isfinite(values).all() or clearance_m < 0.0 or safe_clearance_m <= 0.0 or alpha < 0.0:
-        raise ValueError(
-            "Risk potential requires finite clearance >= 0, safe clearance > 0, and alpha >= 0"
+    values = np.asarray(
+        (
+            longitudinal_clearance_m,
+            lateral_clearance_m,
+            wall_clearance_m,
+            longitudinal_safe_m,
+            lateral_safe_m,
+            wall_safe_m,
+            maximum_magnitude,
+        ),
+        dtype=np.float64,
+    )
+    if (
+        not np.isfinite(values).all()
+        or np.any(values[:3] < 0.0)
+        or np.any(values[3:6] <= 0.0)
+        or maximum_magnitude < 0.0
+    ):
+        raise ValueError("Risk potential requires non-negative clearances and positive safety scales")
+    vehicle_distance = float(
+        np.hypot(
+            longitudinal_clearance_m / longitudinal_safe_m,
+            lateral_clearance_m / lateral_safe_m,
         )
-    shortfall = max(0.0, float(safe_clearance_m) - float(clearance_m))
-    return float(-float(alpha) * shortfall * shortfall)
+    )
+    wall_distance = float(wall_clearance_m / wall_safe_m)
+    normalized_distance = min(vehicle_distance, wall_distance)
+    shortfall = max(0.0, 1.0 - normalized_distance)
+    return float(-maximum_magnitude * shortfall * shortfall)
+
+
+def potential_shaping_reward(
+    previous_potential: float,
+    physical_next_potential: float,
+    gamma: float,
+    *,
+    terminated: bool,
+) -> tuple[float, float]:
+    """Return potential reward and the next potential carried by the episode."""
+
+    values = np.asarray((previous_potential, physical_next_potential, gamma), dtype=np.float64)
+    if not np.isfinite(values).all() or previous_potential > 0.0 or physical_next_potential > 0.0:
+        raise ValueError("Risk potentials must be finite and non-positive")
+    if not 0.0 < gamma <= 1.0:
+        raise ValueError("Potential shaping gamma must be in (0, 1]")
+    next_potential = 0.0 if terminated else float(physical_next_potential)
+    return float(gamma * next_potential - previous_potential), next_potential
 
 
 def wrapped_progress_delta(current_s: float, previous_s: float, track_length: float) -> float:
@@ -132,6 +181,10 @@ class RewardResult:
     opponent_collision: bool
     opponent_collision_latched: bool
     obb_clearance_m: float
+    obb_longitudinal_clearance_m: float
+    obb_lateral_clearance_m: float
+    wall_clearance_m: float
+    risk_active: bool
     scenario_id: str
 
     def to_info(self) -> dict[str, Any]:
@@ -150,8 +203,11 @@ class PPOTransitionReward:
         gamma: float,
         vehicle_length: float,
         vehicle_width: float,
-        risk_safe_clearance_m: float,
-        risk_potential_alpha: float,
+        map_clearance: OccupancyMapClearance,
+        risk_longitudinal_clearance_m: float,
+        risk_lateral_clearance_m: float,
+        risk_wall_clearance_m: float,
+        risk_potential_maximum: float,
     ) -> None:
         self.progress_reference_path = PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
         self.projector = projector or ProgressProjector.from_csv(self.progress_reference_path)
@@ -164,15 +220,20 @@ class PPOTransitionReward:
         self.gamma = float(gamma)
         self.vehicle_length = float(vehicle_length)
         self.vehicle_width = float(vehicle_width)
-        self.risk_safe_clearance_m = float(risk_safe_clearance_m)
-        self.risk_potential_alpha = float(risk_potential_alpha)
+        self.map_clearance = map_clearance
+        self.risk_longitudinal_clearance_m = float(risk_longitudinal_clearance_m)
+        self.risk_lateral_clearance_m = float(risk_lateral_clearance_m)
+        self.risk_wall_clearance_m = float(risk_wall_clearance_m)
+        self.risk_potential_maximum = float(risk_potential_maximum)
         parameters = np.asarray(
             (
                 self.gamma,
                 self.vehicle_length,
                 self.vehicle_width,
-                self.risk_safe_clearance_m,
-                self.risk_potential_alpha,
+                self.risk_longitudinal_clearance_m,
+                self.risk_lateral_clearance_m,
+                self.risk_wall_clearance_m,
+                self.risk_potential_maximum,
             ),
             dtype=np.float64,
         )
@@ -181,12 +242,22 @@ class PPOTransitionReward:
             or not 0.0 < self.gamma <= 1.0
             or self.vehicle_length <= 0.0
             or self.vehicle_width <= 0.0
-            or self.risk_safe_clearance_m <= 0.0
-            or self.risk_potential_alpha < 0.0
+            or self.risk_longitudinal_clearance_m <= 0.0
+            or self.risk_lateral_clearance_m <= 0.0
+            or self.risk_wall_clearance_m <= 0.0
+            or self.risk_potential_maximum < 0.0
         ):
             raise ValueError("Invalid PPO risk-potential parameters")
         self._previous_risk_potential: float | None = None
-        self.current_obb_clearance_m: float | None = None
+        self.current_clearances: CurrentStateClearances | None = None
+
+    @property
+    def current_obb_clearance_m(self) -> float | None:
+        return None if self.current_clearances is None else self.current_clearances.obb_clearance_m
+
+    @property
+    def current_wall_clearance_m(self) -> float | None:
+        return None if self.current_clearances is None else self.current_clearances.wall_clearance_m
 
     @staticmethod
     def _position(raw_observation: dict[str, Any], index: int) -> np.ndarray:
@@ -199,7 +270,12 @@ class PPOTransitionReward:
     def _heading(raw_observation: dict[str, Any], index: int) -> float:
         return float(np.asarray(raw_observation["poses_theta"])[index])
 
-    def _obb_clearance(self, raw_observation: dict[str, Any], ego_index: int, opponent_index: int) -> float:
+    def _clearances(
+        self,
+        raw_observation: dict[str, Any],
+        ego_index: int,
+        opponent_index: int,
+    ) -> CurrentStateClearances:
         from latticeplanner.utils import get_vertices
 
         ego_position = self._position(raw_observation, ego_index)
@@ -212,16 +288,35 @@ class PPOTransitionReward:
             (opponent_position[0], opponent_position[1], self._heading(raw_observation, opponent_index)),
             dtype=np.float64,
         )
-        return rectangle_clearance(
-            get_vertices(ego_pose, self.vehicle_length, self.vehicle_width),
-            get_vertices(opponent_pose, self.vehicle_length, self.vehicle_width),
+        ego_vertices = get_vertices(ego_pose, self.vehicle_length, self.vehicle_width)
+        opponent_vertices = get_vertices(opponent_pose, self.vehicle_length, self.vehicle_width)
+        obb_clearance, longitudinal_clearance, lateral_clearance = rectangle_clearance_components(
+            ego_vertices,
+            opponent_vertices,
+            ego_pose[2],
+        )
+        wall_clearance = self.map_clearance.rectangle_clearance(ego_vertices)
+        return CurrentStateClearances(
+            obb_clearance_m=obb_clearance,
+            obb_longitudinal_clearance_m=longitudinal_clearance,
+            obb_lateral_clearance_m=lateral_clearance,
+            wall_clearance_m=wall_clearance,
         )
 
-    def _risk_potential(self, clearance_m: float) -> float:
-        return proximity_risk_potential(
-            clearance_m,
-            self.risk_safe_clearance_m,
-            self.risk_potential_alpha,
+    def _risk_potential(
+        self,
+        longitudinal_clearance_m: float,
+        lateral_clearance_m: float,
+        wall_clearance_m: float,
+    ) -> float:
+        return anisotropic_risk_potential(
+            longitudinal_clearance_m,
+            lateral_clearance_m,
+            wall_clearance_m,
+            longitudinal_safe_m=self.risk_longitudinal_clearance_m,
+            lateral_safe_m=self.risk_lateral_clearance_m,
+            wall_safe_m=self.risk_wall_clearance_m,
+            maximum_magnitude=self.risk_potential_maximum,
         )
 
     def reset(self, raw_observation: dict[str, Any], *, scenario_id: str, ego_index: int = 0) -> None:
@@ -242,9 +337,12 @@ class PPOTransitionReward:
         self._opponent_collision_latched = False
         self._ego_collision_penalty_applied = False
         self._scenario_id = str(scenario_id)
-        clearance = self._obb_clearance(raw_observation, ego_index, opponent_index)
-        self.current_obb_clearance_m = clearance
-        self._previous_risk_potential = self._risk_potential(clearance)
+        self.current_clearances = self._clearances(raw_observation, ego_index, opponent_index)
+        self._previous_risk_potential = self._risk_potential(
+            self.current_clearances.obb_longitudinal_clearance_m,
+            self.current_clearances.obb_lateral_clearance_m,
+            self.current_clearances.wall_clearance_m,
+        )
 
     def step(
         self,
@@ -301,11 +399,22 @@ class PPOTransitionReward:
             self._ego_collision_penalty_applied = True
         else:
             reward_collision = 0.0
-        obb_clearance = self._obb_clearance(raw_observation, ego_index, opponent_index)
-        self.current_obb_clearance_m = obb_clearance
-        physical_risk_potential = self._risk_potential(obb_clearance)
-        next_risk_potential = 0.0 if terminated else physical_risk_potential
-        reward_risk = self.gamma * next_risk_potential - self._previous_risk_potential
+        self.current_clearances = self._clearances(
+            raw_observation,
+            ego_index,
+            opponent_index,
+        )
+        physical_risk_potential = self._risk_potential(
+            self.current_clearances.obb_longitudinal_clearance_m,
+            self.current_clearances.obb_lateral_clearance_m,
+            self.current_clearances.wall_clearance_m,
+        )
+        reward_risk, next_risk_potential = potential_shaping_reward(
+            self._previous_risk_potential,
+            physical_risk_potential,
+            self.gamma,
+            terminated=terminated,
+        )
         self._previous_risk_potential = next_risk_potential
         reward_total = reward_progress + reward_relative + reward_collision + reward_risk
         return RewardResult(
@@ -320,6 +429,10 @@ class PPOTransitionReward:
             ego_collision=bool(ego_collision),
             opponent_collision=bool(opponent_collision),
             opponent_collision_latched=bool(self._opponent_collision_latched),
-            obb_clearance_m=float(obb_clearance),
+            obb_clearance_m=float(self.current_clearances.obb_clearance_m),
+            obb_longitudinal_clearance_m=float(self.current_clearances.obb_longitudinal_clearance_m),
+            obb_lateral_clearance_m=float(self.current_clearances.obb_lateral_clearance_m),
+            wall_clearance_m=float(self.current_clearances.wall_clearance_m),
+            risk_active=bool(physical_risk_potential < 0.0),
             scenario_id=str(scenario_id),
         )

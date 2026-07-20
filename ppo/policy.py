@@ -160,7 +160,7 @@ class DetachedGRUCritic(nn.Module):
 
 
 class PriviledgeMLPCritic(nn.Module):
-    """MLP critic over the 12D privileged pre-action physical state."""
+    """MLP critic over the P20 privileged pre-action physical state."""
 
     def __init__(self):
         super().__init__()

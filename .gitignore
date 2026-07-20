@@ -12,3 +12,4 @@ install/
 Dataset_*/
 post-trained/*/*.pth
 post-trained/*/checkpoints
+eval_results/

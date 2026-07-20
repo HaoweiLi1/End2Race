@@ -20,7 +20,7 @@ from ppo.environment import EXTERNAL_RESET_OPTION, make_environment
 from ppo.scenarios import ScenarioScheduler, ScenarioSpec
 
 
-def _limit_worker_threads() -> None:
+def limit_worker_threads() -> None:
     for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
         os.environ[name] = "1"
     threadpool_limits(limits=1)
@@ -39,7 +39,7 @@ def _worker(
     parent_remote.close()
     envs = []
     try:
-        _limit_worker_threads()
+        limit_worker_threads()
         envs = [_patch_env(wrapper.var()) for wrapper in env_fn_wrappers]
         by_rank = dict(zip(env_indices, envs))
         while True:
