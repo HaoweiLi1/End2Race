@@ -18,7 +18,8 @@ from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution
 
 
-CRITIC_VARIANTS = ("mlp", "detached_gru", "independent_gru", "priviledge_mlp")
+CRITIC_VARIANTS = ("mlp", "detached_gru", "independent_gru", "priviledge_mlp", "independent_gru_p20")
+P20_CRITIC_VARIANTS = ("priviledge_mlp", "independent_gru_p20")
 END2RACE_OBSERVATION_SIZE = 361
 END2RACE_LIDAR_SIZE = 360
 END2RACE_ACTION_SIZE = 2
@@ -215,6 +216,56 @@ class IndependentGRUCritic(nn.Module):
         return self.value_head(gru_output[:, -1, :]), next_hidden
 
 
+class IndependentGRUP20Critic(nn.Module):
+    """Independent BC-initialized GRU critic with zero-initialized P20 late fusion."""
+
+    def __init__(self, actor: End2Race):
+        super().__init__()
+        self.k = nn.Parameter(actor.k.detach().clone())
+        self.speed_mlp = copy_module.deepcopy(actor.speed_mlp)
+        self.gru = copy_module.deepcopy(actor.gru)
+
+        # Keep creation and initialization order identical to IndependentGRUCritic,
+        # then add the zero-initialized P20 residual without disturbing that baseline.
+        self.hidden_projection = nn.Linear(self.gru.hidden_size, self.gru.input_size)
+        self.activation = nn.ReLU()
+        self.value_output = nn.Linear(self.gru.input_size, 1)
+        self._initialize_value_head()
+        self.privileged_projection = nn.Linear(
+            PRIVILEGED_FEATURE_SIZE,
+            self.gru.input_size,
+            bias=False,
+        )
+        nn.init.zeros_(self.privileged_projection.weight)
+        for parameter in self.parameters():
+            parameter.requires_grad_(True)
+
+    def _initialize_value_head(self) -> None:
+        for module in (self.hidden_projection, self.value_output):
+            nn.init.xavier_uniform_(module.weight)
+            nn.init.zeros_(module.bias)
+
+    def step(
+        self,
+        lidar: torch.Tensor,
+        previous_speed: torch.Tensor,
+        hidden: torch.Tensor,
+        privileged_features: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the independent GRU and fuse only the current P20 before the value output."""
+
+        if privileged_features.shape[-1] != PRIVILEGED_FEATURE_SIZE:
+            raise RuntimeError(
+                f"independent_gru_p20 expects {PRIVILEGED_FEATURE_SIZE} privileged features, "
+                f"got {privileged_features.shape[-1]}"
+            )
+        pressure = (-1.0 / (1.0 + torch.exp(-self.k * lidar)) + 1.0) * 2.0
+        speed_embedding = self.speed_mlp(previous_speed)
+        gru_output, next_hidden = self.gru(torch.cat((pressure, speed_embedding), dim=2), hidden)
+        fused = self.hidden_projection(gru_output[:, -1, :]) + self.privileged_projection(privileged_features)
+        return self.value_output(self.activation(fused)), next_hidden
+
+
 class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     """Use the original End2Race actor unchanged inside recurrent PPO."""
 
@@ -234,7 +285,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         kwargs.pop("use_sde", None)
         if critic_variant not in CRITIC_VARIANTS:
             raise ValueError(f"critic_variant must be one of {CRITIC_VARIANTS}, got {critic_variant!r}")
-        expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant == "priviledge_mlp" else 0)
+        expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant in P20_CRITIC_VARIANTS else 0)
         if tuple(observation_space.shape) != (expected_observation_size,):
             raise ValueError(
                 f"Critic variant {critic_variant!r} requires a {expected_observation_size}D observation space, got {observation_space.shape}"
@@ -261,6 +312,8 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             )
         elif critic_variant == "independent_gru":
             self.value_net = IndependentGRUCritic(self.end2race_actor)
+        elif critic_variant == "independent_gru_p20":
+            self.value_net = IndependentGRUP20Critic(self.end2race_actor)
         else:
             self.value_net = PriviledgeMLPCritic()
         self.action_net = nn.Identity()
@@ -293,7 +346,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
     @property
     def critic_is_independent_gru(self) -> bool:
-        return self.critic_variant == "independent_gru"
+        return self.critic_variant in ("independent_gru", "independent_gru_p20")
 
     @staticmethod
     def _actor_observation(obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
@@ -409,9 +462,11 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         """Single-timestep recurrent critic step preserving batch-size-one execution."""
 
         hidden, _dummy_cell = states
-        critic_obs = self._actor_observation(obs).float()
-        if critic_obs.ndim == 1:
-            critic_obs = critic_obs.unsqueeze(0)
+        full_obs = (obs["actor"] if isinstance(obs, dict) else obs).float()
+        if full_obs.ndim == 1:
+            full_obs = full_obs.unsqueeze(0)
+        critic_obs = full_obs[..., :END2RACE_OBSERVATION_SIZE]
+        privileged_features = full_obs[..., END2RACE_OBSERVATION_SIZE:]
         n_seq = hidden.shape[1]
         if critic_obs.shape[0] != n_seq:
             raise RuntimeError("Recurrent critic collection requires one timestep per sequence slot")
@@ -421,11 +476,18 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         slot_values: list[torch.Tensor] = []
         slot_hidden: list[torch.Tensor] = []
         for sequence_index in range(n_seq):
-            values, next_hidden = self.value_net.step(
+            recurrent_inputs = (
                 lidar[sequence_index : sequence_index + 1],
                 previous_speed[sequence_index : sequence_index + 1],
                 hidden[:, sequence_index : sequence_index + 1],
             )
+            if self.critic_variant == "independent_gru_p20":
+                values, next_hidden = self.value_net.step(
+                    *recurrent_inputs,
+                    privileged_features[sequence_index : sequence_index + 1],
+                )
+            else:
+                values, next_hidden = self.value_net.step(*recurrent_inputs)
             slot_values.append(values)
             slot_hidden.append(next_hidden)
         next_hidden = torch.cat(slot_hidden, dim=1)
@@ -459,7 +521,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             if rollout_buffer is not None:
                 rollout_buffer.stage_detached_gru_features(features[0].cpu().numpy())
             vf_states = (features.clone(), torch.zeros_like(features))
-        elif self.critic_variant == "independent_gru":
+        elif self.critic_is_independent_gru:
             values, vf_states = self._independent_gru_forward_collection(obs, lstm_states.vf, episode_starts)
         else:
             values = self.value_net(self._critic_observation(obs))
@@ -486,7 +548,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         if self.critic_variant == "detached_gru":
             _mean_actions, actor_states = self._actor_forward(obs, lstm_states, episode_starts)
             return self.value_net(actor_states[0][0].detach())
-        if self.critic_variant == "independent_gru":
+        if self.critic_is_independent_gru:
             values, _critic_states = self._independent_gru_forward_collection(obs, lstm_states, episode_starts)
             return values
         del lstm_states, episode_starts
@@ -508,7 +570,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     def evaluate_values(self, critic_inputs: torch.Tensor) -> torch.Tensor:
         """Feed-forward critic values over observation rows or stored feature rows."""
 
-        if self.critic_variant == "independent_gru":
+        if self.critic_is_independent_gru:
             raise RuntimeError("Independent-GRU critic values require evaluate_values_independent_gru")
         if self.critic_variant == "detached_gru":
             if critic_inputs.shape[-1] != self.end2race_actor.gru.hidden_size:
@@ -525,45 +587,55 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     ) -> torch.Tensor:
         """Replay the recurrent critic over padded sequences, one FP32 call per timestep."""
 
-        if self.critic_variant != "independent_gru":
-            raise RuntimeError("evaluate_values_independent_gru requires the independent_gru critic variant")
+        if not self.critic_is_independent_gru:
+            raise RuntimeError("evaluate_values_independent_gru requires an independent-GRU critic variant")
         hidden, dummy_cell = states
-        critic_obs = self._actor_observation(obs)
-        if critic_obs.ndim == 1:
-            critic_obs = critic_obs.unsqueeze(0)
-        if critic_obs.dtype != torch.float32 or hidden.dtype != torch.float32 or dummy_cell.dtype != torch.float32 or episode_starts.dtype != torch.float32:
+        full_obs = obs["actor"] if isinstance(obs, dict) else obs
+        if full_obs.ndim == 1:
+            full_obs = full_obs.unsqueeze(0)
+        if full_obs.dtype != torch.float32 or hidden.dtype != torch.float32 or dummy_cell.dtype != torch.float32 or episode_starts.dtype != torch.float32:
             raise RuntimeError("Recurrent critic replay tensors must remain float32")
         if hidden.shape != dummy_cell.shape or hidden.ndim != 3:
             raise RuntimeError("Critic replay hidden and dummy cell shapes must match and be rank 3")
-        if critic_obs.device != hidden.device or episode_starts.device != critic_obs.device:
+        if full_obs.device != hidden.device or episode_starts.device != full_obs.device:
             raise RuntimeError("Critic replay tensors must share one device")
-        if critic_obs.is_cuda and (torch.backends.cudnn.allow_tf32 or torch.backends.cuda.matmul.allow_tf32 or torch.get_float32_matmul_precision() != "highest" or torch.backends.cudnn.benchmark):
+        if full_obs.is_cuda and (torch.backends.cudnn.allow_tf32 or torch.backends.cuda.matmul.allow_tf32 or torch.get_float32_matmul_precision() != "highest" or torch.backends.cudnn.benchmark):
             raise RuntimeError("CUDA critic replay requires TF32 off, highest FP32 precision, and cuDNN benchmark off")
 
         n_seq = hidden.shape[1]
-        if n_seq <= 0 or critic_obs.ndim != 2 or critic_obs.shape[1] != END2RACE_OBSERVATION_SIZE or critic_obs.shape[0] % n_seq != 0:
-            raise RuntimeError(f"Invalid critic replay layout: observations={tuple(critic_obs.shape)}, sequences={n_seq}")
-        max_length = critic_obs.shape[0] // n_seq
-        if episode_starts.numel() != critic_obs.shape[0]:
+        expected_observation_size = END2RACE_OBSERVATION_SIZE + (
+            PRIVILEGED_FEATURE_SIZE if self.critic_variant == "independent_gru_p20" else 0
+        )
+        if n_seq <= 0 or full_obs.ndim != 2 or full_obs.shape[1] != expected_observation_size or full_obs.shape[0] % n_seq != 0:
+            raise RuntimeError(f"Invalid critic replay layout: observations={tuple(full_obs.shape)}, sequences={n_seq}")
+        max_length = full_obs.shape[0] // n_seq
+        if episode_starts.numel() != full_obs.shape[0]:
             raise RuntimeError("Critic replay episode starts must match observation rows")
         if valid_by_timestep is not None and (len(valid_by_timestep) != max_length or any(len(row) != n_seq for row in valid_by_timestep)):
             raise RuntimeError("Critic replay padding mask does not match the padded batch")
 
-        obs_sequence = critic_obs.reshape(n_seq, max_length, END2RACE_OBSERVATION_SIZE).swapaxes(0, 1)
+        obs_sequence = full_obs.reshape(n_seq, max_length, expected_observation_size).swapaxes(0, 1)
         start_sequence = episode_starts.reshape(n_seq, max_length).swapaxes(0, 1)
         values: list[torch.Tensor] = []
         for timestep, (step_obs, episode_start) in enumerate(zip(obs_sequence, start_sequence)):
             hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
             active = list(range(n_seq)) if valid_by_timestep is None else [index for index, valid in enumerate(valid_by_timestep[timestep]) if valid]
             next_by_slot = [hidden[:, index : index + 1] for index in range(n_seq)]
-            values_by_slot = [torch.zeros((1, 1), dtype=critic_obs.dtype, device=critic_obs.device) for _ in range(n_seq)]
+            values_by_slot = [torch.zeros((1, 1), dtype=full_obs.dtype, device=full_obs.device) for _ in range(n_seq)]
             if active:
-                indices = torch.as_tensor(active, dtype=torch.long, device=critic_obs.device)
-                step_values, next_hidden = self.value_net.step(
+                indices = torch.as_tensor(active, dtype=torch.long, device=full_obs.device)
+                recurrent_inputs = (
                     step_obs[indices, :END2RACE_LIDAR_SIZE].unsqueeze(1),
-                    step_obs[indices, END2RACE_LIDAR_SIZE:].unsqueeze(1),
+                    step_obs[indices, END2RACE_LIDAR_SIZE:END2RACE_OBSERVATION_SIZE].unsqueeze(1),
                     hidden[:, indices],
                 )
+                if self.critic_variant == "independent_gru_p20":
+                    step_values, next_hidden = self.value_net.step(
+                        *recurrent_inputs,
+                        step_obs[indices, END2RACE_OBSERVATION_SIZE:],
+                    )
+                else:
+                    step_values, next_hidden = self.value_net.step(*recurrent_inputs)
                 for offset, slot in enumerate(active):
                     next_by_slot[slot] = next_hidden[:, offset : offset + 1]
                     values_by_slot[slot] = step_values[offset : offset + 1]

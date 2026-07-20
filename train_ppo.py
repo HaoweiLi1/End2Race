@@ -20,7 +20,13 @@ from ppo.algorithm import (
     End2RaceRecurrentPPO,
 )
 from ppo.collision_classification import resolve_collision_scenarios
-from ppo.policy import CRITIC_VARIANTS, SPEED_PHYSICAL_STD, STEERING_LATENT_STD, End2RaceGRUPolicy
+from ppo.policy import (
+    CRITIC_VARIANTS,
+    P20_CRITIC_VARIANTS,
+    SPEED_PHYSICAL_STD,
+    STEERING_LATENT_STD,
+    End2RaceGRUPolicy,
+)
 from ppo.privileged import (
     PRIVILEGED_FEATURE_HIGHS,
     PRIVILEGED_FEATURE_LOWS,
@@ -199,13 +205,13 @@ def main() -> None:
         args.map_name,
         collision_scenarios,
         ordinary_scenario_set,
-        privileged=args.critic == "priviledge_mlp",
+        privileged=args.critic in P20_CRITIC_VARIANTS,
         reward_gamma=args.gamma,
     )
     try:
         privileged_normalization = (
             vector_env.env_method("privileged_normalization_metadata", indices=[0])[0]
-            if args.critic == "priviledge_mlp"
+            if args.critic in P20_CRITIC_VARIANTS
             else {}
         )
         recorder.write_run_config(
