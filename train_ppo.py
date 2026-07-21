@@ -62,28 +62,28 @@ def parse_arguments():
     parser.add_argument("--map_name", type=str, default="Austin")
     parser.add_argument("--n_envs", type=int, default=16)
     parser.add_argument("--env_workers", type=int, default=12)
-    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/default")
     parser.add_argument("--reclassify_collisions", action="store_true")
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
     parser.add_argument("--batch_size", type=int, default=12800)
-    parser.add_argument("--num_updates", type=int, default=25)
+    parser.add_argument("--num_updates", type=int, default=20)
 
     # Training configuration
     parser.add_argument("--actor_epochs", type=int, default=2)
     parser.add_argument("--critic_epochs", type=int, default=5)
-    parser.add_argument("--gru_learning_rate", type=float, default=1.0e-6)
-    parser.add_argument("--head_learning_rate", type=float, default=1.0e-5)
-    parser.add_argument("--critic_learning_rate", type=float, default=1.0e-4)
-    parser.add_argument("--steering_latent_std", type=float, default=STEERING_LATENT_STD)
-    parser.add_argument("--speed_physical_std", type=float, default=SPEED_PHYSICAL_STD)
+    parser.add_argument("--gru_learning_rate", type=float, default=3.0e-6)
+    parser.add_argument("--head_learning_rate", type=float, default=3.0e-5)
+    parser.add_argument("--critic_learning_rate", type=float, default=3.0e-4)
+    parser.add_argument("--steering_latent_std", type=float, default=0.03)
+    parser.add_argument("--speed_physical_std", type=float, default=0.15)
 
     # PPO configuration
     parser.add_argument("--gamma", type=float, default=0.999)
     parser.add_argument("--gae_lambda", type=float, default=0.995)
-    parser.add_argument("--clip_range", type=float, default=0.10)
+    parser.add_argument("--clip_range", type=float, default=0.1)
     return parser.parse_args()
 
 
