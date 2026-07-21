@@ -17,7 +17,7 @@ from stable_baselines3.common.buffers import RolloutBuffer
 from stable_baselines3.common.utils import FloatSchedule, explained_variance
 from stable_baselines3.common.vec_env import VecNormalize
 
-from ppo.policy import END2RACE_OBSERVATION_SIZE
+from ppo.policy import END2RACE_OBSERVATION_SIZE, P20_CRITIC_VARIANTS
 from ppo.privileged import PRIVILEGED_FEATURE_HIGHS, PRIVILEGED_FEATURE_LOWS
 from ppo.training_records import TrainingRecorder, require_finite_number, require_finite_tensor
 
@@ -558,7 +558,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "detached_gru_feature_std": float(features.std()),
                 "detached_gru_feature_abs_max": float(np.abs(features).max()),
             }
-        if self.policy.critic_variant == "priviledge_mlp":
+        if self.policy.critic_variant in P20_CRITIC_VARIANTS:
             features = self.rollout_buffer.observations.reshape(-1, self.rollout_buffer.obs_shape[0])[:, END2RACE_OBSERVATION_SIZE:]
             lows = np.asarray(PRIVILEGED_FEATURE_LOWS, dtype=np.float32)
             highs = np.asarray(PRIVILEGED_FEATURE_HIGHS, dtype=np.float32)
@@ -569,6 +569,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "privileged_feature_std": [float(value) for value in features.std(axis=0)],
                 "privileged_feature_saturation_low": [float(value) for value in (features <= lows + 1e-6).mean(axis=0)],
                 "privileged_feature_saturation_high": [float(value) for value in (features >= highs - 1e-6).mean(axis=0)],
+                "privileged_feature_fraction_ge_0_95": [float(value) for value in (features >= 0.95).mean(axis=0)],
+                "privileged_feature_fraction_ge_0_99": [float(value) for value in (features >= 0.99).mean(axis=0)],
             }
         return {}
 

@@ -72,8 +72,8 @@ def parse_arguments():
     parser.add_argument("--num_updates", type=int, default=25)
 
     # Training configuration
-    parser.add_argument("--actor_epochs", type=int, default=3)
-    parser.add_argument("--critic_epochs", type=int, default=10)
+    parser.add_argument("--actor_epochs", type=int, default=2)
+    parser.add_argument("--critic_epochs", type=int, default=5)
     parser.add_argument("--gru_learning_rate", type=float, default=1.0e-6)
     parser.add_argument("--head_learning_rate", type=float, default=1.0e-5)
     parser.add_argument("--critic_learning_rate", type=float, default=1.0e-4)

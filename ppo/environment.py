@@ -142,9 +142,6 @@ class End2RaceGymnasiumEnv(gym.Env):
                 vehicle_width,
                 steering_min_rad=float(core_params["s_min"]),
                 steering_max_rad=float(core_params["s_max"]),
-                risk_longitudinal_clearance_m=self.transition_reward.risk_longitudinal_clearance_m,
-                risk_lateral_clearance_m=self.transition_reward.risk_lateral_clearance_m,
-                risk_wall_clearance_m=self.transition_reward.risk_wall_clearance_m,
             )
         else:
             self.privileged_extractor = None

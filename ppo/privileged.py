@@ -54,6 +54,11 @@ CURVATURE_SCALE_PERCENTILE = 95.0
 CURVATURE_LOOKAHEAD_M = 1.0
 CURVATURE_LOOKAHEAD_SAMPLES = 16
 DYNAMIC_MODEL_SPEED_THRESHOLD_MPS = 0.5
+CLEARANCE_NORMALIZATION_VERSION = "p20_clearance_softsign_v2"
+CLEARANCE_NORMALIZATION_FORMULA = "min(distance_m / (distance_m + half_response_m), nextafter(1, 0))"
+OBB_LONGITUDINAL_CLEARANCE_HALF_RESPONSE_M = 0.6
+OBB_LATERAL_CLEARANCE_HALF_RESPONSE_M = 0.2
+WALL_CLEARANCE_HALF_RESPONSE_M = 0.2
 
 
 def wrap_to_pi(angle: float) -> float:
@@ -62,6 +67,19 @@ def wrap_to_pi(angle: float) -> float:
     if not np.isfinite(angle):
         raise ValueError("Angle must be finite")
     return float((float(angle) + np.pi) % (2.0 * np.pi) - np.pi)
+
+
+def soft_normalize_clearance(distance_m: float, half_response_m: float) -> float:
+    """Map one non-negative clearance to [0, 1) without a hard safe-distance plateau."""
+
+    values = np.asarray((distance_m, half_response_m), dtype=np.float64)
+    if not np.isfinite(values).all() or distance_m < 0.0 or half_response_m <= 0.0:
+        raise ValueError("Clearance and its half-response scale must be finite, with clearance >= 0 and scale > 0")
+    if distance_m <= half_response_m:
+        ratio = float(distance_m / half_response_m)
+        return float(ratio / (1.0 + ratio))
+    normalized = float(1.0 / (1.0 + half_response_m / distance_m))
+    return min(normalized, float(np.nextafter(1.0, 0.0)))
 
 
 @dataclass(frozen=True)
@@ -168,9 +186,6 @@ class PrivilegedStateExtractor:
         *,
         steering_min_rad: float,
         steering_max_rad: float,
-        risk_longitudinal_clearance_m: float,
-        risk_lateral_clearance_m: float,
-        risk_wall_clearance_m: float,
     ) -> None:
         if not ego_raceline.startswith("raceline"):
             raise ValueError(f"Cannot derive a lane boundary file from ego raceline {ego_raceline!r}")
@@ -198,17 +213,17 @@ class PrivilegedStateExtractor:
         self.vehicle_length = float(vehicle_length)
         self.vehicle_width = float(vehicle_width)
         self.steering_scale_rad = max(abs(float(steering_min_rad)), abs(float(steering_max_rad)))
-        self.risk_longitudinal_clearance_m = float(risk_longitudinal_clearance_m)
-        self.risk_lateral_clearance_m = float(risk_lateral_clearance_m)
-        self.risk_wall_clearance_m = float(risk_wall_clearance_m)
+        self.obb_longitudinal_clearance_half_response_m = OBB_LONGITUDINAL_CLEARANCE_HALF_RESPONSE_M
+        self.obb_lateral_clearance_half_response_m = OBB_LATERAL_CLEARANCE_HALF_RESPONSE_M
+        self.wall_clearance_half_response_m = WALL_CLEARANCE_HALF_RESPONSE_M
         parameters = np.asarray(
             (
                 self.vehicle_length,
                 self.vehicle_width,
                 self.steering_scale_rad,
-                self.risk_longitudinal_clearance_m,
-                self.risk_lateral_clearance_m,
-                self.risk_wall_clearance_m,
+                self.obb_longitudinal_clearance_half_response_m,
+                self.obb_lateral_clearance_half_response_m,
+                self.wall_clearance_half_response_m,
             ),
             dtype=np.float64,
         )
@@ -263,15 +278,18 @@ class PrivilegedStateExtractor:
         """Return the exact runtime P20 normalization contract for run records."""
 
         return {
+            "version": CLEARANCE_NORMALIZATION_VERSION,
             "delta_s_m": DELTA_S_SCALE_M,
             "relative_lateral_m": RELATIVE_LATERAL_SCALE_M,
             "relative_long_velocity_mps": LONGITUDINAL_VELOCITY_SCALE_MPS,
             "relative_lat_velocity_mps": LATERAL_VELOCITY_SCALE_MPS,
             "ego_speed_mps": EGO_SPEED_SCALE_MPS,
             "yaw_rate_radps": YAW_RATE_SCALE_RADPS,
-            "obb_longitudinal_clearance_m": self.risk_longitudinal_clearance_m,
-            "obb_lateral_clearance_m": self.risk_lateral_clearance_m,
-            "wall_clearance_m": self.risk_wall_clearance_m,
+            "clearance_formula": CLEARANCE_NORMALIZATION_FORMULA,
+            "clearance_scale_source": "fixed_privileged_contract",
+            "obb_longitudinal_clearance_half_response_m": self.obb_longitudinal_clearance_half_response_m,
+            "obb_lateral_clearance_half_response_m": self.obb_lateral_clearance_half_response_m,
+            "wall_clearance_half_response_m": self.wall_clearance_half_response_m,
             "ego_steering_angle_rad": self.steering_scale_rad,
             "ego_slip_angle_rad": SLIP_ANGLE_SCALE_RAD,
             "curvature_abs_percentile": CURVATURE_SCALE_PERCENTILE,
@@ -339,17 +357,18 @@ class PrivilegedStateExtractor:
                 np.clip(ego_speed / EGO_SPEED_SCALE_MPS, -1.0, 1.0),
                 np.clip(ego_yaw_rate / YAW_RATE_SCALE_RADPS, -1.0, 1.0),
                 np.clip((opponent_yaw_rate - ego_yaw_rate) / YAW_RATE_SCALE_RADPS, -1.0, 1.0),
-                np.clip(
-                    clearances.obb_longitudinal_clearance_m / self.risk_longitudinal_clearance_m,
-                    0.0,
-                    1.0,
+                soft_normalize_clearance(
+                    clearances.obb_longitudinal_clearance_m,
+                    self.obb_longitudinal_clearance_half_response_m,
                 ),
-                np.clip(
-                    clearances.obb_lateral_clearance_m / self.risk_lateral_clearance_m,
-                    0.0,
-                    1.0,
+                soft_normalize_clearance(
+                    clearances.obb_lateral_clearance_m,
+                    self.obb_lateral_clearance_half_response_m,
                 ),
-                np.clip(clearances.wall_clearance_m / self.risk_wall_clearance_m, 0.0, 1.0),
+                soft_normalize_clearance(
+                    clearances.wall_clearance_m,
+                    self.wall_clearance_half_response_m,
+                ),
                 np.clip(float(ego_steering_angle) / self.steering_scale_rad, -1.0, 1.0),
                 np.clip(float(ego_slip_angle) / SLIP_ANGLE_SCALE_RAD, -1.0, 1.0),
                 body_track.normalized_left_margin,

@@ -10,8 +10,9 @@ install/
 .remember/
 **/.numba_cache/
 Dataset_*/
-post-trained/
+post-trained/ppo_*
 # post-trained/*/*.pth
 # post-trained/*/checkpoints
 eval_results/
 run_*.sh
+analysis/
