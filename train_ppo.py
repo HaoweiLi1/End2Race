@@ -83,7 +83,13 @@ def parse_arguments():
     # PPO configuration
     parser.add_argument("--gamma", type=float, default=0.999)
     parser.add_argument("--gae_lambda", type=float, default=0.995)
-    parser.add_argument("--clip_range", type=float, default=0.1)
+    parser.add_argument("--clip_range", type=float, default=0.15)
+    parser.add_argument(
+        "--target_kl",
+        type=float,
+        default=None,
+        help="Optional PPO actor early-stop target; disabled when omitted",
+    )
     return parser.parse_args()
 
 
@@ -138,6 +144,8 @@ def validate_arguments(args) -> None:
             raise ValueError(f"{name} must be positive")
     if args.gamma > 1.0 or args.gae_lambda > 1.0:
         raise ValueError("gamma and gae_lambda must be at most 1")
+    if args.target_kl is not None and (not np.isfinite(args.target_kl) or args.target_kl <= 0.0):
+        raise ValueError("target_kl must be positive when enabled")
 
 
 def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2RaceRecurrentPPO:
@@ -158,7 +166,7 @@ def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2Rac
         ent_coef=0.0,
         vf_coef=VALUE_LOSS_COEFFICIENT,
         max_grad_norm=MAX_GRAD_NORM,
-        target_kl=None,
+        target_kl=args.target_kl,
         seed=args.seed,
         device=device,
         policy_kwargs={
@@ -185,7 +193,7 @@ def main() -> None:
     print(
         f"PPO training configuration: output_dir={Path(args.output_dir).expanduser().resolve()}, pretrained_model_path={Path(args.pretrained_model_path).expanduser().resolve()}, "
         f"map={args.map_name}, critic={args.critic}, n_envs={args.n_envs}, env_workers={args.env_workers}, n_steps={args.n_steps}, "
-        f"batch_size={args.batch_size}, num_updates={args.num_updates}, seed={args.seed}",
+        f"batch_size={args.batch_size}, num_updates={args.num_updates}, target_kl={args.target_kl}, seed={args.seed}",
         flush=True,
     )
     print("[1/5] Building collision candidates", flush=True)

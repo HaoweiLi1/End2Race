@@ -21,6 +21,9 @@ evaluate_run() {
 # Common controls: 20 updates, actor epochs 2, critic epochs 5,
 # steering std 0.03, speed std 0.15. Evaluate U1/U5/U10/U15/U20(final).
 
+# End2Race Baseline eval
+
+
 # Group 1: critic comparison. Baseline batch size 12800 and clip range 0.10.
 $PYTHON train_ppo.py --critic independent_gru --num_updates 20 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.15 --output_dir post-trained/ppo_independent_gru_0721_base
 evaluate_run ppo_independent_gru_0721_base 0001 0005 0010 0015 0020
@@ -40,8 +43,13 @@ $PYTHON train_ppo.py --critic privilege_gru --num_updates 20 --actor_epochs 2 --
 evaluate_run ppo_privilege_gru_0721_bs51200 0001 0005 0010 0015 0020
 
 # Group 3: privilege_gru clip-range comparison. Baseline batch size is 12800.
-# $PYTHON train_ppo.py --critic privilege_gru --num_updates 20 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.10 --output_dir post-trained/ppo_privilege_gru_0721_clip010
-# evaluate_run ppo_privilege_gru_0721_clip010 0001 0005 0010 0015 0020
+$PYTHON train_ppo.py --critic privilege_gru --num_updates 20 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.10 --output_dir post-trained/ppo_privilege_gru_0721_clip010
+evaluate_run ppo_privilege_gru_0721_clip010 0001 0005 0010 0015 0020
 
-# $PYTHON train_ppo.py --critic privilege_gru --num_updates 20 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --output_dir post-trained/ppo_privilege_gru_0721_clip020
-# evaluate_run ppo_privilege_gru_0721_clip020 0001 0005 0010 0015 0020
+$PYTHON train_ppo.py --critic privilege_gru --num_updates 20 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --output_dir post-trained/ppo_privilege_gru_0721_clip020
+evaluate_run ppo_privilege_gru_0721_clip020 0001 0005 0010 0015 0020
+
+# Group 4: Lr comparision
+
+# Group 5：privilege_gru long-run clip-range comparison.
+

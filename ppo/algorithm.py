@@ -587,6 +587,17 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         actor_grad_norms = []
         critic_grad_norms = []
         update = self._n_updates + 1
+        actor_optimizer_steps_planned = (
+            self.actor_epochs
+            * self.rollout_buffer.buffer_size
+            * self.rollout_buffer.n_envs
+            // self.batch_size
+        )
+        actor_optimizer_steps_completed = 0
+        actor_early_stop_triggered = False
+        actor_early_stop_epoch = None
+        actor_early_stop_minibatch = None
+        actor_early_stop_approx_kl = None
         critic_input_stats = self._critic_input_statistics()
         telemetry_rng_state = copy_module.deepcopy(self.telemetry_rng.bit_generator.state)
         value_statistics_pre_update = self._full_buffer_value_statistics()
@@ -595,8 +606,11 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         actor_started_at = time.perf_counter()
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(False)
-        for _epoch in range(self.actor_epochs):
-            for rollout_data in self.rollout_buffer.get(self.batch_size, rng=self.actor_minibatch_rng):
+        for epoch in range(self.actor_epochs):
+            for minibatch, rollout_data in enumerate(
+                self.rollout_buffer.get(self.batch_size, rng=self.actor_minibatch_rng),
+                start=1,
+            ):
                 mask = rollout_data.mask > 1e-8
                 advantages = rollout_data.advantages
                 if self.normalize_advantage:
@@ -604,6 +618,26 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                     advantages = (advantages - valid_advantages.mean()) / (valid_advantages.std() + 1e-8)
                 log_prob, _entropy = self.policy.evaluate_actor_actions(rollout_data.observations, rollout_data.actions, rollout_data.lstm_states, rollout_data.episode_starts)
                 ratio = torch.exp(log_prob - rollout_data.old_log_prob)
+                with torch.no_grad():
+                    log_ratio = log_prob - rollout_data.old_log_prob
+                    approximate_kl = float(
+                        ((torch.exp(log_ratio) - 1) - log_ratio)[mask].mean().cpu().item()
+                    )
+                    require_finite_number("Approximate KL", approximate_kl)
+                    approximate_kls.append(approximate_kl)
+                    clip_fractions.append(float((torch.abs(ratio - 1) > clip_range)[mask].float().mean().cpu().item()))
+                if self.target_kl is not None and approximate_kl > 1.5 * self.target_kl:
+                    actor_early_stop_triggered = True
+                    actor_early_stop_epoch = epoch + 1
+                    actor_early_stop_minibatch = minibatch
+                    actor_early_stop_approx_kl = approximate_kl
+                    print(
+                        f"Formal update {update}: actor early stop at epoch {actor_early_stop_epoch}, "
+                        f"minibatch {minibatch}: approx_kl={approximate_kl:.6f} > "
+                        f"threshold={1.5 * self.target_kl:.6f}",
+                        flush=True,
+                    )
+                    break
                 policy_loss = -torch.min(advantages * ratio, advantages * torch.clamp(ratio, 1 - clip_range, 1 + clip_range))[mask].mean()
                 require_finite_tensor("Policy loss", policy_loss)
                 self.policy.actor_optimizer.zero_grad()
@@ -612,11 +646,10 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 require_finite_tensor("Actor gradient norm", grad_norm)
                 actor_grad_norms.append(float(grad_norm.detach().cpu().item()))
                 self.policy.actor_optimizer.step()
-                with torch.no_grad():
-                    log_ratio = log_prob - rollout_data.old_log_prob
-                    approximate_kls.append(float(((torch.exp(log_ratio) - 1) - log_ratio)[mask].mean().cpu().item()))
-                    clip_fractions.append(float((torch.abs(ratio - 1) > clip_range)[mask].float().mean().cpu().item()))
+                actor_optimizer_steps_completed += 1
                 policy_losses.append(float(policy_loss.item()))
+            if actor_early_stop_triggered:
+                break
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(True)
         actor_train_wall_seconds = time.perf_counter() - actor_started_at
@@ -650,7 +683,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         print(f"Formal update {update}: critic phase complete in {critic_train_wall_seconds:.2f}s", flush=True)
 
         self._n_updates += 1
-        policy_gradient_loss = float(np.mean(policy_losses))
+        policy_gradient_loss = float(np.mean(policy_losses)) if policy_losses else 0.0
         value_loss_mean = sum(loss * count for loss, count in value_loss_samples) / sum(
             count for _loss, count in value_loss_samples
         )
@@ -694,8 +727,16 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "approx_kl_max": approximate_kl_max,
             "clip_fraction_mean": clip_fraction_mean,
             "clip_fraction_max": clip_fraction_max,
-            "actor_grad_norm_mean": float(np.mean(actor_grad_norms)),
-            "actor_grad_norm_max": float(np.max(actor_grad_norms)),
+            "actor_target_kl": self.target_kl,
+            "actor_kl_stop_threshold": None if self.target_kl is None else 1.5 * self.target_kl,
+            "actor_optimizer_steps_planned": actor_optimizer_steps_planned,
+            "actor_optimizer_steps_completed": actor_optimizer_steps_completed,
+            "actor_early_stop_triggered": actor_early_stop_triggered,
+            "actor_early_stop_epoch": actor_early_stop_epoch,
+            "actor_early_stop_minibatch": actor_early_stop_minibatch,
+            "actor_early_stop_approx_kl": actor_early_stop_approx_kl,
+            "actor_grad_norm_mean": float(np.mean(actor_grad_norms)) if actor_grad_norms else 0.0,
+            "actor_grad_norm_max": float(np.max(actor_grad_norms)) if actor_grad_norms else 0.0,
             "critic_grad_norm_mean": float(np.mean(critic_grad_norms)),
             "critic_grad_norm_max": float(np.max(critic_grad_norms)),
             "rollout_wall_seconds": self.rollout_wall_seconds,
@@ -716,6 +757,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.logger.record("train/value_loss", value_loss_mean)
         self.logger.record("train/approx_kl", approximate_kl_mean)
         self.logger.record("train/clip_fraction", clip_fraction_mean)
+        self.logger.record("train/actor_optimizer_steps", actor_optimizer_steps_completed)
+        self.logger.record("train/actor_early_stop", int(actor_early_stop_triggered))
         self.logger.record("train/explained_variance", value_statistics_post_update["explained_variance"])
         print(
             f"Formal update {update}: policy_gradient_loss={policy_gradient_loss:.6f}, value_loss={value_loss_mean:.6f}, "

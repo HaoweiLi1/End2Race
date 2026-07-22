@@ -185,6 +185,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             "ego_pose": [],
             "opp_pose": [],
             "collisions": [],
+            "action_applied": [],
+            "terminal_post_step": [],
         }
     
     # Main simulation loop
@@ -254,6 +256,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             trace["ego_pose"].append([obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0]])
             trace["opp_pose"].append([obs['poses_x'][1], obs['poses_y'][1], obs['poses_theta'][1]])
             trace["collisions"].append(np.array(obs['collisions'], dtype=np.bool_))
+            trace["action_applied"].append(True)
+            trace["terminal_post_step"].append(False)
         
         # Update render info and trajectory tracking
         if render:
@@ -321,6 +325,41 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         if collision_scope_stops_episode(collision_scope, step_ego_collision, step_opp_collision):
             collision_occurred = True
             done = True
+
+        if trace is not None and (done or lap_time >= sim_duration):
+            terminal_raw_lidar = np.asarray(obs["scans"][0]).reshape(-1)
+            if len(terminal_raw_lidar) > num_features:
+                indices = np.linspace(0, len(terminal_raw_lidar) - 1, num_features, dtype=int)
+                terminal_raw_lidar = terminal_raw_lidar[indices]
+            terminal_lidar = terminal_raw_lidar.copy()
+            if noise_level > 0:
+                num_points_to_mask = int(len(terminal_lidar) * noise_level)
+                if num_points_to_mask > 0:
+                    mask_indices = np.random.choice(
+                        len(terminal_lidar),
+                        min(num_points_to_mask, len(terminal_lidar)),
+                        replace=False,
+                    )
+                    terminal_lidar[mask_indices] = 0.0
+
+            terminal_opp_lidar = np.asarray(obs["scans"][1]).reshape(-1)
+            if len(terminal_opp_lidar) > num_features:
+                indices = np.linspace(0, len(terminal_opp_lidar) - 1, num_features, dtype=int)
+                terminal_opp_lidar = terminal_opp_lidar[indices]
+
+            trace["time_s"].append(float(lap_time))
+            trace["ego_lidar_360"].append(terminal_lidar)
+            trace["opp_lidar_360"].append(terminal_opp_lidar)
+            trace["ego_raw_action"].append(np.zeros(2, dtype=np.float32))
+            trace["ego_executed_action"].append(np.zeros(2, dtype=np.float32))
+            trace["opp_executed_action"].append(np.zeros(2, dtype=np.float32))
+            trace["ego_measured_speed_mps"].append(float(obs['linear_vels_x'][0]))
+            trace["opp_measured_speed_mps"].append(float(obs['linear_vels_x'][1]))
+            trace["ego_pose"].append([obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0]])
+            trace["opp_pose"].append([obs['poses_x'][1], obs['poses_y'][1], obs['poses_theta'][1]])
+            trace["collisions"].append(np.array(obs['collisions'], dtype=np.bool_))
+            trace["action_applied"].append(False)
+            trace["terminal_post_step"].append(True)
         
         tracker_count = (tracker_count + 1) % tracker_steps
     
@@ -345,7 +384,14 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     avg_speed, speed_variance, total_distance = calculate_metrics(ego_trajectory, speeds)
 
     if trace is not None:
-        dtypes = {"time_s": np.float64, "ego_pose": np.float64, "opp_pose": np.float64, "collisions": np.bool_}
+        dtypes = {
+            "time_s": np.float64,
+            "ego_pose": np.float64,
+            "opp_pose": np.float64,
+            "collisions": np.bool_,
+            "action_applied": np.bool_,
+            "terminal_post_step": np.bool_,
+        }
         save_numeric_npz(
             output_paths["trace"],
             {name: np.asarray(values, dtype=dtypes.get(name, np.float32)) for name, values in trace.items()},
