@@ -28,3 +28,8 @@ collision_startpoint_count: 100
 collision_interval_indices: [8, 10, 12, 15]
 collision_speed_scales: [0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85]
 collision_startpoint_min_distance: 1.0
+
+# Boundary-aware hard-neighbor cache. The current Austin grid generates at
+# most 22 candidates in one (ego start, opponent raceline) family, so this cap
+# does not discard any current candidate and only guards future maps/configs.
+hard_neighbor_max_candidates_per_family: 24

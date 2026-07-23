@@ -1,0 +1,9 @@
+{
+  "candidate_count": 1183,
+  "collision_count": 326,
+  "env_workers": 12,
+  "invalid_count": 0,
+  "other_count": 857,
+  "scenarios_per_second": 2.765755274236607,
+  "wall_seconds": 427.73126422999485
+}

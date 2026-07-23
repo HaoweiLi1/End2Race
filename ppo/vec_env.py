@@ -109,7 +109,19 @@ def _worker(
 
 class CentralScheduleSubprocVecEnv(VecEnv):
 
-    def __init__(self, n_envs: int, worker_count: int, start_method: str, seed: int, map_name: str, collision_scenarios: Sequence[ScenarioSpec], ordinary_scenarios: Sequence[ScenarioSpec], privileged: bool = False, reward_gamma: float = 0.999) -> None:
+    def __init__(
+        self,
+        n_envs: int,
+        worker_count: int,
+        start_method: str,
+        seed: int,
+        map_name: str,
+        collision_scenarios: Sequence[ScenarioSpec],
+        ordinary_scenarios: Sequence[ScenarioSpec],
+        privileged: bool = False,
+        reward_gamma: float = 0.999,
+        hard_neighbor_fraction: float | None = None,
+    ) -> None:
         if worker_count <= 0 or n_envs < worker_count or n_envs % 2 != 0:
             raise ValueError("n_envs must be even and at least worker_count, and worker_count must be positive")
         if torch.cuda.is_initialized():
@@ -118,7 +130,12 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         self.closed = False
         self.actions = None
         self.worker_count = worker_count
-        self.scheduler = ScenarioScheduler(seed, collision_scenarios, ordinary_scenarios)
+        self.scheduler = ScenarioScheduler(
+            seed,
+            collision_scenarios,
+            ordinary_scenarios,
+            hard_neighbor_fraction=hard_neighbor_fraction,
+        )
         logical_seeds = [
             int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
             for rank in range(n_envs)

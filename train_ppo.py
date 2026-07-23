@@ -19,7 +19,7 @@ from ppo.algorithm import (
     WARMUP_TRAIN_FRACTION,
     End2RaceRecurrentPPO,
 )
-from ppo.collision_classification import resolve_collision_scenarios
+from ppo.hard_neighbors import resolve_training_collision_scenarios
 from ppo.policy import (
     CRITIC_VARIANTS,
     P20_CRITIC_VARIANTS,
@@ -65,6 +65,27 @@ def parse_arguments():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/default")
     parser.add_argument("--reclassify_collisions", action="store_true")
+    parser.add_argument(
+        "--hard_neighbors",
+        action="store_true",
+        help="Use a fixed boundary-aware collision cache instead of the baseline collision pool",
+    )
+    parser.add_argument(
+        "--hard_neighbor_cache_dir",
+        type=str,
+        default="post-trained/collision-cache/boundary-aware-v1",
+        help="Independent cache built and consumed only when --hard_neighbors is enabled",
+    )
+    parser.add_argument(
+        "--hard_neighbor_fraction",
+        type=float,
+        default=None,
+        help=(
+            "Optional with --hard_neighbors; fraction of collision episode resets "
+            "drawn from the boundary-aware pool. If omitted, preserve the legacy "
+            "uniform merged-pool schedule"
+        ),
+    )
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -110,12 +131,19 @@ def validate_arguments(args) -> None:
         raise ValueError("map_name must not be empty")
     if not args.collision_cache_dir.strip():
         raise ValueError("collision_cache_dir must not be empty")
+    if not args.hard_neighbor_cache_dir.strip():
+        raise ValueError("hard_neighbor_cache_dir must not be empty")
     output_dir = Path(args.output_dir).expanduser().resolve()
     collision_cache_dir = Path(args.collision_cache_dir).expanduser().resolve()
+    hard_neighbor_cache_dir = Path(args.hard_neighbor_cache_dir).expanduser().resolve()
     if output_dir == POST_TRAINED_ROOT or POST_TRAINED_ROOT not in output_dir.parents:
         raise ValueError(f"output_dir must be inside the project post-trained directory: {POST_TRAINED_ROOT}")
     if output_dir == collision_cache_dir:
         raise ValueError("output_dir and collision_cache_dir must be different directories")
+    if collision_cache_dir == hard_neighbor_cache_dir:
+        raise ValueError("collision_cache_dir and hard_neighbor_cache_dir must be different directories")
+    if output_dir == hard_neighbor_cache_dir:
+        raise ValueError("output_dir and hard_neighbor_cache_dir must be different directories")
     if output_dir.exists():
         if not output_dir.is_dir():
             raise ValueError(f"PPO output path is not a directory: {output_dir}")
@@ -146,6 +174,19 @@ def validate_arguments(args) -> None:
         raise ValueError("gamma and gae_lambda must be at most 1")
     if args.target_kl is not None and (not np.isfinite(args.target_kl) or args.target_kl <= 0.0):
         raise ValueError("target_kl must be positive when enabled")
+    if args.hard_neighbors:
+        if args.hard_neighbor_fraction is not None and (
+            not np.isfinite(args.hard_neighbor_fraction)
+            or not 0.0 < args.hard_neighbor_fraction < 1.0
+        ):
+            raise ValueError(
+                "hard_neighbor_fraction must be a finite value in (0, 1) "
+                "when --hard_neighbors is enabled"
+            )
+    elif args.hard_neighbor_fraction is not None:
+        raise ValueError(
+            "hard_neighbor_fraction may only be set when --hard_neighbors is enabled"
+        )
 
 
 def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2RaceRecurrentPPO:
@@ -193,14 +234,30 @@ def main() -> None:
     print(
         f"PPO training configuration: output_dir={Path(args.output_dir).expanduser().resolve()}, pretrained_model_path={Path(args.pretrained_model_path).expanduser().resolve()}, "
         f"map={args.map_name}, critic={args.critic}, n_envs={args.n_envs}, env_workers={args.env_workers}, n_steps={args.n_steps}, "
-        f"batch_size={args.batch_size}, num_updates={args.num_updates}, target_kl={args.target_kl}, seed={args.seed}",
+        f"batch_size={args.batch_size}, num_updates={args.num_updates}, target_kl={args.target_kl}, "
+        f"hard_neighbors={args.hard_neighbors}, hard_neighbor_fraction={args.hard_neighbor_fraction}, "
+        f"seed={args.seed}",
         flush=True,
     )
     print("[1/5] Building collision candidates", flush=True)
     candidates = expanded_scenarios(args.map_name)
-    candidate_count = len(candidates)
     print("[2/5] Loading or classifying collision pool", flush=True)
-    collision_scenarios, cache_hit, reclassified = resolve_collision_scenarios(args, candidates, START_METHOD)
+    collision_scenarios, collision_cache_info = resolve_training_collision_scenarios(
+        args,
+        candidates,
+        START_METHOD,
+    )
+    collision_cache_info = {
+        **collision_cache_info,
+        "hard_neighbor_sampling_fraction": args.hard_neighbor_fraction,
+        "hard_neighbor_sampling_mode": (
+            "stratified_collision_episode_reset"
+            if args.hard_neighbor_fraction is not None
+            else "uniform_merged_collision_pool"
+            if args.hard_neighbors
+            else None
+        ),
+    }
     print("[3/5] Building ordinary scenarios", flush=True)
     ordinary_scenario_set = ordinary_scenarios(args.map_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -209,13 +266,7 @@ def main() -> None:
     recorder.write_scenario_pools(
         collision_scenarios,
         ordinary_scenario_set,
-        {
-            "cache_dir": str(Path(args.collision_cache_dir).expanduser().resolve()),
-            "cache_hit": cache_hit,
-            "reclassified": reclassified,
-            "candidate_count": candidate_count,
-            "collision_count": len(collision_scenarios),
-        },
+        collision_cache_info,
     )
     print("[4/5] Creating vector environments", flush=True)
     vector_env = CentralScheduleSubprocVecEnv(
@@ -228,6 +279,7 @@ def main() -> None:
         ordinary_scenario_set,
         privileged=args.critic in P20_CRITIC_VARIANTS,
         reward_gamma=args.gamma,
+        hard_neighbor_fraction=args.hard_neighbor_fraction,
     )
     try:
         privileged_normalization = (

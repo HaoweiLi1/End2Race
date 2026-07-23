@@ -144,7 +144,7 @@ def _load_collision_scenarios(
     return tuple(collision_scenarios)
 
 
-def _validate_classification_summary(path: Path, outcomes: list[dict], candidate_count: int) -> None:
+def _validate_classification_summary(path: Path, outcomes: list[dict], candidate_count: int) -> dict:
     with path.open("r", encoding="utf-8") as file:
         summary = json.load(file)
     collision_count = sum(outcome["outcome"] == "ego_collision" for outcome in outcomes)
@@ -168,13 +168,16 @@ def _validate_classification_summary(path: Path, outcomes: list[dict], candidate
         value = summary[name]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value < 0:
             raise RuntimeError(f"Collision cache summary has invalid {name}")
+    return summary
 
 
-def load_collision_cache(
+def load_collision_cache_artifacts(
     cache_dir: Path,
     current_config: dict,
     candidates: tuple[ScenarioSpec, ...],
-) -> tuple[ScenarioSpec, ...]:
+) -> tuple[tuple[ScenarioSpec, ...], list[dict], dict]:
+    """Strictly load the collision pool together with its validated evidence."""
+
     with (cache_dir / "classification_config.json").open("r", encoding="utf-8") as file:
         cached_config = json.load(file)
     candidate_count = len(candidates)
@@ -185,7 +188,20 @@ def load_collision_cache(
         )
     outcomes = _load_candidate_outcomes(cache_dir / "candidate_outcomes.jsonl", candidates)
     collision_scenarios = _load_collision_scenarios(cache_dir / "collision_scenarios.json", candidates, outcomes)
-    _validate_classification_summary(cache_dir / "classification_summary.json", outcomes, candidate_count)
+    summary = _validate_classification_summary(cache_dir / "classification_summary.json", outcomes, candidate_count)
+    return collision_scenarios, outcomes, summary
+
+
+def load_collision_cache(
+    cache_dir: Path,
+    current_config: dict,
+    candidates: tuple[ScenarioSpec, ...],
+) -> tuple[ScenarioSpec, ...]:
+    collision_scenarios, _outcomes, _summary = load_collision_cache_artifacts(
+        cache_dir,
+        current_config,
+        candidates,
+    )
     return collision_scenarios
 
 

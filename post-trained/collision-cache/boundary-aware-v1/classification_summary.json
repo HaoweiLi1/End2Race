@@ -1,0 +1,51 @@
+{
+  "base_candidate_count": 10800,
+  "base_collision_count": 479,
+  "base_invalid_count": 36,
+  "base_other_count": 10285,
+  "boundary_collision_count": 326,
+  "boundary_generated_candidate_count": 1183,
+  "boundary_invalid_count": 0,
+  "boundary_other_count": 857,
+  "boundary_pair_count": 1042,
+  "boundary_selected_candidate_count": 1183,
+  "final_collision_count": 805,
+  "final_max_family_share": 0.02981366459627329,
+  "final_max_scenarios_per_family": 24,
+  "final_per_interval": {
+    "10": 166,
+    "11": 43,
+    "12": 127,
+    "13": 43,
+    "14": 44,
+    "15": 152,
+    "8": 181,
+    "9": 49
+  },
+  "final_per_raceline": {
+    "raceline0": 348,
+    "raceline1": 219,
+    "raceline2": 238
+  },
+  "final_per_speed": {
+    "0.450": 90,
+    "0.475": 18,
+    "0.500": 80,
+    "0.525": 11,
+    "0.550": 47,
+    "0.575": 15,
+    "0.600": 51,
+    "0.625": 15,
+    "0.650": 48,
+    "0.675": 18,
+    "0.700": 70,
+    "0.725": 20,
+    "0.750": 81,
+    "0.775": 22,
+    "0.800": 103,
+    "0.825": 28,
+    "0.850": 88
+  },
+  "final_unique_ego_start_count": 81,
+  "minimum_evaluation_start_distance_m": 1.0000224554963726
+}

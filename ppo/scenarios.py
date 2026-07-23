@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import asdict, dataclass
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, Sequence
 import numpy as np
@@ -25,6 +26,7 @@ COLLISION_INTERVAL_INDICES = tuple(int(value) for value in PPO_CONFIG["collision
 COLLISION_SPEED_SCALES = tuple(float(value) for value in PPO_CONFIG["collision_speed_scales"])
 COLLISION_STARTPOINT_COUNT = int(PPO_CONFIG["collision_startpoint_count"])
 COLLISION_STARTPOINT_MIN_DISTANCE = float(PPO_CONFIG["collision_startpoint_min_distance"])
+HARD_NEIGHBOR_MAX_CANDIDATES_PER_FAMILY = int(PPO_CONFIG["hard_neighbor_max_candidates_per_family"])
 SIM_DURATION = float(PPO_CONFIG["episode_horizon"])
 TIMESTEP = float(PPO_CONFIG["simulator_timestep"])
 
@@ -183,19 +185,111 @@ class RoleScenarioQueue:
 
 class ScenarioScheduler:
 
-    def __init__(self, seed: int, collision_scenarios: Sequence[ScenarioSpec], ordinary_scenarios: Sequence[ScenarioSpec]):
+    def __init__(
+        self,
+        seed: int,
+        collision_scenarios: Sequence[ScenarioSpec],
+        ordinary_scenarios: Sequence[ScenarioSpec],
+        hard_neighbor_fraction: float | None = None,
+    ):
         collision_seed, ordinary_seed = np.random.SeedSequence(seed).spawn(2)
-        self.collision = RoleScenarioQueue(collision_scenarios, collision_seed)
         self.ordinary = RoleScenarioQueue(ordinary_scenarios, ordinary_seed)
+        self.hard_neighbor_fraction = None
+        self.hard_neighbor_fraction_numerator = 0
+        self.hard_neighbor_fraction_denominator = 1
+        self.hard_neighbor_positions: frozenset[int] = frozenset()
+        self.collision_source_cursor = 0
+        self.base_collision: RoleScenarioQueue | None = None
+        self.hard_neighbor: RoleScenarioQueue | None = None
+
+        if hard_neighbor_fraction is None:
+            self.collision = RoleScenarioQueue(collision_scenarios, collision_seed)
+            return
+
+        fraction = Fraction(str(float(hard_neighbor_fraction))).limit_denominator(1_000)
+        if (
+            not np.isfinite(hard_neighbor_fraction)
+            or not 0 < fraction < 1
+            or abs(float(fraction) - float(hard_neighbor_fraction)) > 1e-12
+        ):
+            raise ValueError("hard_neighbor_fraction must be a finite rational value in (0, 1)")
+        base_scenarios = tuple(scenario for scenario in collision_scenarios if scenario.pool == "collision")
+        hard_scenarios = tuple(scenario for scenario in collision_scenarios if scenario.pool == "hard_neighbor")
+        unexpected_pools = sorted(
+            {scenario.pool for scenario in collision_scenarios}
+            - {"collision", "hard_neighbor"}
+        )
+        if unexpected_pools:
+            raise ValueError(f"Unexpected collision scenario pools: {unexpected_pools}")
+        if not base_scenarios or not hard_scenarios:
+            raise ValueError(
+                "Stratified hard-neighbor sampling requires non-empty base and hard-neighbor pools"
+            )
+
+        hard_seed = np.random.SeedSequence([int(seed), 0x48415244])
+        self.collision = None
+        self.base_collision = RoleScenarioQueue(base_scenarios, collision_seed)
+        self.hard_neighbor = RoleScenarioQueue(hard_scenarios, hard_seed)
+        self.hard_neighbor_fraction = float(fraction)
+        self.hard_neighbor_fraction_numerator = fraction.numerator
+        self.hard_neighbor_fraction_denominator = fraction.denominator
+        self.hard_neighbor_positions = frozenset(
+            ((2 * index + 1) * fraction.denominator) // (2 * fraction.numerator)
+            for index in range(fraction.numerator)
+        )
+        if len(self.hard_neighbor_positions) != fraction.numerator:
+            raise RuntimeError("Hard-neighbor sampling positions are not unique")
+
+    def _next_collision_scenario(self) -> ScenarioSpec:
+        if self.hard_neighbor_fraction is None:
+            return self.collision.next()
+        cycle_position = (
+            self.collision_source_cursor % self.hard_neighbor_fraction_denominator
+        )
+        use_hard_neighbor = cycle_position in self.hard_neighbor_positions
+        self.collision_source_cursor += 1
+        queue = self.hard_neighbor if use_hard_neighbor else self.base_collision
+        return queue.next()
 
     def next(self, rank: int) -> EpisodeResetSpec:
-        env_role = "collision" if rank % 2 == 0 else "ordinary"
-        queue = self.collision if env_role == "collision" else self.ordinary
-        return queue.next().to_reset_spec(env_role)
+        if rank % 2 == 0:
+            return self._next_collision_scenario().to_reset_spec("collision")
+        return self.ordinary.next().to_reset_spec("ordinary")
 
     def state_dict(self) -> dict[str, Any]:
-        return {"collision": self.collision.state_dict(), "ordinary": self.ordinary.state_dict()}
+        if self.hard_neighbor_fraction is None:
+            return {
+                "collision": self.collision.state_dict(),
+                "ordinary": self.ordinary.state_dict(),
+            }
+        return {
+            "sampling_mode": "stratified_hard_neighbor",
+            "base_collision": self.base_collision.state_dict(),
+            "hard_neighbor": self.hard_neighbor.state_dict(),
+            "ordinary": self.ordinary.state_dict(),
+            "collision_source_cursor": self.collision_source_cursor,
+            "hard_neighbor_fraction_numerator": self.hard_neighbor_fraction_numerator,
+            "hard_neighbor_fraction_denominator": self.hard_neighbor_fraction_denominator,
+        }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        self.collision.load_state_dict(state["collision"])
+        if self.hard_neighbor_fraction is None:
+            self.collision.load_state_dict(state["collision"])
+            self.ordinary.load_state_dict(state["ordinary"])
+            return
+        if state.get("sampling_mode") != "stratified_hard_neighbor":
+            raise ValueError("Scenario scheduler sampling mode does not match")
+        if (
+            int(state["hard_neighbor_fraction_numerator"])
+            != self.hard_neighbor_fraction_numerator
+            or int(state["hard_neighbor_fraction_denominator"])
+            != self.hard_neighbor_fraction_denominator
+        ):
+            raise ValueError("Scenario scheduler hard-neighbor fraction does not match")
+        collision_source_cursor = int(state["collision_source_cursor"])
+        if collision_source_cursor < 0:
+            raise ValueError("Scenario scheduler collision source cursor is invalid")
+        self.base_collision.load_state_dict(state["base_collision"])
+        self.hard_neighbor.load_state_dict(state["hard_neighbor"])
         self.ordinary.load_state_dict(state["ordinary"])
+        self.collision_source_cursor = collision_source_cursor

@@ -224,6 +224,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "rollout_for_update": self.rollout_for_update,
                 "rollout_policy_update": self.rollout_policy_update,
                 "scenario_id": str(info["scenario_id"]),
+                "scenario_pool": str(info["scenario"]["pool"]),
                 "env_role": str(info["env_role"]),
                 "episode_outcome": str(info["episode_outcome"]),
                 "episode_return": float(info["episode_return"]),
