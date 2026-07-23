@@ -1,0 +1,59 @@
+{
+  "decision": "Cap clip exploration at 0.25, extend the clean 0.20/0.25 comparison to 45 updates, freeze gamma, defer GAE, then test a fixed boundary-aware collision cache as a separate axis.",
+  "as_of": "2026-07-22",
+  "checkpoint_updates": [
+    1,
+    5,
+    10,
+    15,
+    20,
+    25,
+    30
+  ],
+  "clip015_collision_path": [
+    16,
+    18,
+    18,
+    14,
+    14,
+    17,
+    20
+  ],
+  "clip020_collision_path": [
+    21,
+    18,
+    16,
+    13,
+    13,
+    17,
+    11
+  ],
+  "clip015_mean_collisions_all_checkpoints": 16.714285714285715,
+  "clip020_mean_collisions_all_checkpoints": 15.571428571428571,
+  "clip020_u30_collisions": 11,
+  "clip015_u30_collisions": 20,
+  "u30_resolved_by_clip020": 15,
+  "u30_created_by_clip020": 6,
+  "u30_paired_exact_p_unadjusted": 0.0783538818359375,
+  "clip020_mean_clip_fraction_u2_u30": 0.05283388218971407,
+  "clip020_updates_kl_max_gt_0_5_u2_u30": 15,
+  "clip020_updates_kl_max_gt_1_u2_u30": 5,
+  "late_actor_relative_step_min_u20_u30": 6.948525263743788e-05,
+  "late_actor_relative_step_max_u20_u30": 0.00012957042238959283,
+  "late_kl_mean_min_u20_u30": 0.0039527445792919,
+  "late_kl_mean_max_u20_u30": 0.4431079248370952,
+  "gamma_is_reward_coupled": true,
+  "current_gamma": 0.999,
+  "current_gae_lambda": 0.995,
+  "current_gae_td_error_half_life_seconds": 1.1527395991034204,
+  "hard_neighbor_probe_collisions": 11,
+  "hard_neighbor_probe_count": 18,
+  "hard_neighbor_boundary_pairs": 1042,
+  "hard_neighbor_pipeline_integrated": false,
+  "recommendation_order": [
+    "Run clean 45-update clip 0.20 and 0.25 arms with the current fixed collision cache; cap clip at 0.25.",
+    "Evaluate U35/U40/U45 and use the late-window mean plus scenario churn to assess convergence; do not select only the minimum collision checkpoint.",
+    "Freeze gamma at 0.999 and defer GAE lambda until advantage-by-role telemetry exists.",
+    "After choosing clip and horizon, implement and A/B a fixed boundary-aware hard-neighbor cache without changing reward or the 50/50 role mix."
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "by_format": {
+    "legacy_pre_post_step": {
+      "aligned_True": 21000,
+      "collision_marker_matches_False": 736,
+      "collision_marker_matches_True": 20264,
+      "files": 21000,
+      "numeric_True": 21000
+    },
+    "post_step_v2": {
+      "aligned_True": 20999,
+      "collision_marker_matches_True": 20999,
+      "files": 20999,
+      "numeric_True": 20999,
+      "terminal_valid_True": 20999
+    }
+  },
+  "interpretation": "Legacy 0721 traces omit terminal_post_step/action_applied and therefore do not record the terminal collision state. Collision truth for those panels must come from results_multi.json.",
+  "structural_panel_issues": [],
+  "totals": {
+    "aligned_True": 41999,
+    "collision_marker_matches_False": 736,
+    "collision_marker_matches_True": 41263,
+    "files": 41999,
+    "numeric_True": 41999,
+    "terminal_valid_True": 20999
+  }
+}

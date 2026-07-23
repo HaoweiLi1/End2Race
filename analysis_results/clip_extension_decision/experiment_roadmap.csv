@@ -1,0 +1,6 @@
+priority,axis,treatment,comparator,decision
+1,Training horizon,"clip 0.20, 45 updates",existing clip 0.20 through U30,Run now as a fresh-start horizon diagnostic; assess U35/U40/U45 late-window mean and scenario churn.
+1,Clip boundary,"clip 0.25, 45 updates","clip 0.20, 45 updates under the same seed/source/cache",Maximum clip probe; do not open 0.30/0.40 unless 0.25 wins without safety regression.
+2,Collision curriculum,fixed schema-2 boundary-aware collision cache,current fixed base collision cache,Run only after clip/horizon freeze; preserve 50/50 collision/ordinary transitions and fresh-start both arms.
+3,GAE lambda,0.99 diagnostic,current 0.995,"Defer until advantage statistics are logged; this is a stability hypothesis, not a current evidence-backed improvement."
+4,Gamma,keep 0.999,none,Freeze: current code couples gamma to PPO discounting and potential-based risk reward.

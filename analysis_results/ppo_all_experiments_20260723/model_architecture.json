@@ -1,0 +1,29 @@
+{
+  "action_dimensions": 2,
+  "actor_fixed_parameter_count": 540,
+  "actor_gru_parameter_count": 10594080,
+  "actor_head_parameter_count": 706862,
+  "actor_observation_dimensions": 361,
+  "actor_state_dict_keys": 12,
+  "actor_total_parameter_count": 11301482,
+  "actor_trainable_parameter_count": 11300942,
+  "critic_parameter_counts_by_observed_variant": {
+    "independent_gru": 11301001,
+    "priviledge_mlp": 6181,
+    "privilege_gru": 11309401
+  },
+  "frozen_actor_components": [
+    "k",
+    "speed_mlp",
+    "dummy_embedding"
+  ],
+  "gru_hidden_size": 1680,
+  "gru_input_size": 420,
+  "pretrained_sha256": "b5a1360fee18c2875185a3d23ab21cbdd8a4cdb2e94639433a148f34809ac5e4",
+  "privileged_critic_observation_dimensions": 381,
+  "privileged_feature_count": 20,
+  "trainable_actor_components": [
+    "gru",
+    "output_layer"
+  ]
+}

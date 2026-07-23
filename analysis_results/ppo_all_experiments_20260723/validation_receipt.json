@@ -1,0 +1,59 @@
+{
+  "as_of": "2026-07-23 Asia/Singapore",
+  "assessment": "share_with_caveats",
+  "checks": [
+    {
+      "check": "raw_results_reconcile",
+      "panels": 93,
+      "status": "pass"
+    },
+    {
+      "check": "analysis_grain_and_validity",
+      "episode_rows": 55799,
+      "invalid_panels": 1,
+      "status": "pass",
+      "valid_panels": 92
+    },
+    {
+      "bc_collision_scenarios": 22,
+      "bc_tail_scenarios": 11,
+      "check": "paired_set_transitions",
+      "status": "pass",
+      "valid_ppo_panels": 91
+    },
+    {
+      "bc_median_lateral_convergence_m": 0.3130866824815084,
+      "bc_median_pass_to_collision_s": 0.3899999999999917,
+      "bc_primary_events": 11,
+      "check": "mechanism_geometry_predicates",
+      "primary_events_all_panels": 846,
+      "status": "pass"
+    },
+    {
+      "check": "unique_policy_collision_partition",
+      "class_counts": {
+        "ego_only_wall_like": 147,
+        "post_overtake_merge_rear_sweep": 778,
+        "post_overtake_rear_contact_without_merge_threshold": 76,
+        "prepass_or_front_side_opponent_contact": 784
+      },
+      "collision_events": 1785,
+      "status": "pass",
+      "unique_policies": 86
+    },
+    {
+      "check": "full_npz_audit_receipt",
+      "files": 55799,
+      "legacy_expected_terminal_marker_mismatches": 736,
+      "legacy_pre_post_step": 21000,
+      "post_step_v2": 34799,
+      "status": "pass"
+    }
+  ],
+  "required_caveats": [
+    "All experiments use one recorded training/evaluation realization; run_config.json does not persist seed or source commit.",
+    "Checkpoint selection and 91 panel-wise comparisons create multiple-testing/selection risk; raw paired p-values do not generalize beyond Austin600.",
+    "The evaluator saves pose-derived kinematics, not simulator tire slip angle; the analysis establishes rear-sweep merge geometry, not literal tire-side-slip causality.",
+    "The 599-row lr5 update-20 panel is excluded from ranking and inference."
+  ]
+}

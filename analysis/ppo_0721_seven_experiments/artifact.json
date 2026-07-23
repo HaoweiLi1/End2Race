@@ -1,0 +1,1923 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "PPO 0721 七实验综合评估",
+    "description": "基于训练参数、140 个 formal metrics、35 个 Austin 600 checkpoint eval、checkpoint 权重和 21,000 个 NPZ trace 的技术审计。",
+    "generatedAt": "2026-07-22T00:00:00+08:00",
+    "cards": [],
+    "charts": [
+      {
+        "id": "critic_collision",
+        "title": "Critic 对照：privilege_gru 全程领先",
+        "subtitle": "同 worker、同 warmup 轨迹、同 batch/clip；纵轴越低越好。",
+        "type": "line",
+        "dataset": "eval_critic",
+        "sourceId": "report_views",
+        "encodings": {
+          "x": {
+            "field": "update",
+            "type": "quantitative",
+            "label": "Formal update"
+          },
+          "y": {
+            "field": "collision_count",
+            "type": "quantitative",
+            "label": "碰撞数 / 600"
+          },
+          "color": {
+            "field": "run_label",
+            "type": "nominal",
+            "label": "Critic"
+          },
+          "tooltip": [
+            {
+              "field": "overtake_count",
+              "type": "quantitative",
+              "label": "超车"
+            },
+            {
+              "field": "follow_count",
+              "type": "quantitative",
+              "label": "跟随"
+            }
+          ]
+        }
+      },
+      {
+        "id": "batch_collision",
+        "title": "Batch size：12800 的总体结果最好",
+        "subtitle": "更大 batch 减少每 update 的优化器步数，并降低 critic EV 与参数学习量。",
+        "type": "line",
+        "dataset": "eval_batch",
+        "sourceId": "report_views",
+        "encodings": {
+          "x": {
+            "field": "update",
+            "type": "quantitative",
+            "label": "Formal update"
+          },
+          "y": {
+            "field": "collision_count",
+            "type": "quantitative",
+            "label": "碰撞数 / 600"
+          },
+          "color": {
+            "field": "run_label",
+            "type": "nominal",
+            "label": "Batch"
+          }
+        }
+      },
+      {
+        "id": "clip_collision",
+        "title": "Clip range：0.15 当前最稳，0.20 是候选",
+        "subtitle": "0.10 vs 0.20 是严格对照；0.15 使用不同 env_workers，只能作参考。",
+        "type": "line",
+        "dataset": "eval_clip",
+        "sourceId": "report_views",
+        "encodings": {
+          "x": {
+            "field": "update",
+            "type": "quantitative",
+            "label": "Formal update"
+          },
+          "y": {
+            "field": "collision_count",
+            "type": "quantitative",
+            "label": "碰撞数 / 600"
+          },
+          "color": {
+            "field": "run_label",
+            "type": "nominal",
+            "label": "Clip"
+          }
+        }
+      },
+      {
+        "id": "actor_delta",
+        "title": "Actor 权重位移很小，但策略 KL 并不小",
+        "subtitle": "仅 GRU 与输出头更新；固定 BC 前端逐 tensor 未改变。",
+        "type": "line",
+        "dataset": "actor_deltas",
+        "sourceId": "report_views",
+        "encodings": {
+          "x": {
+            "field": "update",
+            "type": "quantitative",
+            "label": "Formal update"
+          },
+          "y": {
+            "field": "actor_relative_l2_pct",
+            "type": "quantitative",
+            "label": "相对 BC L2 位移 (%)"
+          },
+          "color": {
+            "field": "run_label",
+            "type": "nominal",
+            "label": "Run"
+          }
+        }
+      },
+      {
+        "id": "kl_dynamics",
+        "title": "所有设置仍有稀疏 KL 尖峰",
+        "subtitle": "clip 约束 surrogate objective，不会硬限制 KL；当前 target_kl=None。",
+        "type": "line",
+        "dataset": "kl_rows",
+        "sourceId": "report_views",
+        "encodings": {
+          "x": {
+            "field": "update",
+            "type": "quantitative",
+            "label": "Formal update"
+          },
+          "y": {
+            "field": "approx_kl_mean",
+            "type": "quantitative",
+            "label": "Mean approximate KL"
+          },
+          "color": {
+            "field": "run_label",
+            "type": "nominal",
+            "label": "Run"
+          }
+        }
+      },
+      {
+        "id": "scenario_slices",
+        "title": "风险集中在少数 raceline × speed 切片",
+        "subtitle": "35 个 checkpoint 的描述性聚合；同一 checkpoint/场景相关，不能当独立样本。",
+        "type": "bar",
+        "dataset": "scenario_slices",
+        "sourceId": "report_views",
+        "valueFormat": "percent",
+        "encodings": {
+          "x": {
+            "field": "slice",
+            "type": "nominal",
+            "label": "Austin slice"
+          },
+          "y": {
+            "field": "collision_rate",
+            "type": "quantitative",
+            "label": "碰撞率"
+          }
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "final_models",
+        "title": "7 个 run 的 checkpoint 与最终结果",
+        "subtitle": "序列顺序为 U1/U5/U10/U15/U20；best 在同一 Austin 面板上选取，存在选择偏差。",
+        "dataset": "final_table",
+        "sourceId": "report_views",
+        "defaultSort": {
+          "field": "final_collision_count",
+          "direction": "asc"
+        },
+        "columns": [
+          {
+            "field": "run_label",
+            "label": "Run",
+            "type": "text"
+          },
+          {
+            "field": "collision_sequence",
+            "label": "碰撞序列",
+            "type": "text"
+          },
+          {
+            "field": "collision_mean",
+            "label": "5点均值",
+            "format": "decimal"
+          },
+          {
+            "field": "best_update",
+            "label": "Best U",
+            "format": "number"
+          },
+          {
+            "field": "best_collision_count",
+            "label": "Best 碰撞",
+            "format": "number"
+          },
+          {
+            "field": "final_collision_count",
+            "label": "U20 碰撞",
+            "format": "number"
+          },
+          {
+            "field": "final_overtake_count",
+            "label": "U20 超车",
+            "format": "number"
+          },
+          {
+            "field": "final_follow_count",
+            "label": "U20 跟随",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "training_table",
+        "title": "训练质量与优化风险",
+        "subtitle": "EV 与 rollout 取 last-5；KL/grad 为 20 update 汇总。grad norm 是裁剪前。",
+        "dataset": "training_summary",
+        "sourceId": "report_views",
+        "columns": [
+          {
+            "field": "run_label",
+            "label": "Run",
+            "type": "text"
+          },
+          {
+            "field": "ev_last5",
+            "label": "EV last5",
+            "format": "decimal"
+          },
+          {
+            "field": "collision_ev_last5",
+            "label": "碰撞 EV",
+            "format": "decimal"
+          },
+          {
+            "field": "rollout_collision_last5",
+            "label": "训练碰撞率",
+            "format": "percent"
+          },
+          {
+            "field": "kl_mean_median",
+            "label": "KL 中位",
+            "format": "decimal"
+          },
+          {
+            "field": "kl_single_minibatch_max",
+            "label": "单 MB KL max",
+            "format": "decimal"
+          },
+          {
+            "field": "actor_preclip_grad_norm_median",
+            "label": "preclip grad",
+            "format": "decimal"
+          },
+          {
+            "field": "total_training_minutes",
+            "label": "训练分钟",
+            "format": "decimal"
+          }
+        ]
+      },
+      {
+        "id": "control_table",
+        "title": "控制变量与完整性审计",
+        "subtitle": "seed 和源码 commit 未持久化；clip=0.15 与 0.10/0.20 的 worker 数不同。",
+        "dataset": "control_table",
+        "sourceId": "report_views",
+        "columns": [
+          {
+            "field": "run_label",
+            "label": "Run",
+            "type": "text"
+          },
+          {
+            "field": "critic",
+            "label": "Critic",
+            "type": "text"
+          },
+          {
+            "field": "batch_size",
+            "label": "Batch",
+            "format": "number"
+          },
+          {
+            "field": "clip_range",
+            "label": "Clip",
+            "format": "decimal"
+          },
+          {
+            "field": "env_workers",
+            "label": "Workers",
+            "format": "number"
+          },
+          {
+            "field": "warmup_control",
+            "label": "Warmup 匹配",
+            "type": "text"
+          },
+          {
+            "field": "audit_note",
+            "label": "控制强度",
+            "type": "text"
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "report_views",
+        "label": "Read-only report snapshot views",
+        "path": "queries/report_views.sql"
+      },
+      {
+        "id": "control_audit",
+        "label": "Control-variable audit snapshot",
+        "path": "data/control_audit.csv"
+      },
+      {
+        "id": "training_metrics",
+        "label": "Formal training metrics snapshot",
+        "path": "data/training_metrics.csv"
+      },
+      {
+        "id": "training_summary",
+        "label": "Training summary snapshot",
+        "path": "data/training_summary.csv"
+      },
+      {
+        "id": "eval_summary",
+        "label": "Austin checkpoint summary snapshot",
+        "path": "data/eval_summary.csv"
+      },
+      {
+        "id": "eval_rollup",
+        "label": "Austin run rollup snapshot",
+        "path": "data/eval_rollup.csv"
+      },
+      {
+        "id": "paired_comparisons",
+        "label": "Austin paired comparison snapshot",
+        "path": "data/paired_comparisons.csv"
+      },
+      {
+        "id": "actor_deltas",
+        "label": "Actor checkpoint parameter audit",
+        "path": "data/actor_parameter_deltas.csv"
+      },
+      {
+        "id": "trace_quality",
+        "label": "NPZ trace quality audit",
+        "path": "data/trace_quality.csv"
+      },
+      {
+        "id": "scenario_slices",
+        "label": "Austin scenario-slice risk snapshot",
+        "path": "data/scenario_slices.csv"
+      }
+    ],
+    "blocks": [
+      {
+        "id": "summary",
+        "type": "markdown",
+        "body": "## 技术结论\n\n**首选配置：privilege_gru + batch_size=12800 + clip_range=0.15；U15 与 U20 的聚合结果并列。** 该 run 在 Austin 600 的 U1/U5/U10/U15/U20 为 16/18/18/14/14，U20 为 14 碰撞、349 超车。严格 critic 对照的 U20 中，independent_gru 为 34，privilege_mlp 为 25。privilege_gru 相对 independent_gru 净减少 20 次碰撞；逐场景 discordant 为 25 vs 5，exact p=0.0003。\n\n**证据强度：中等。** critic 与 batch 两组控制成立；但只有单 seed，且所有 best checkpoint 都在同一 Austin 面板上选择。"
+      },
+      {
+        "id": "critic_text",
+        "type": "markdown",
+        "body": "## 1. Critic：hybrid privilege_gru 胜出\n\n三种 critic 的初始 warmup 轨迹逐条相同；actor 总参数位移也近似，因此结果差异不能用‘更新幅度更大’解释。privilege_gru 同时保留 361D 时序观测与 P20 当步特权状态，并且仅比 independent_gru 多 8,400 个 projection 参数。它在 5 个 checkpoint 均优于另外两种结构，支持‘时序观测 + 特权状态互补’，但不能证明当前 late-fusion 是全局最优架构。"
+      },
+      {
+        "id": "critic_chart",
+        "type": "chart",
+        "chartId": "critic_collision"
+      },
+      {
+        "id": "final_table_block",
+        "type": "table",
+        "tableId": "final_models"
+      },
+      {
+        "id": "batch_text",
+        "type": "markdown",
+        "body": "## 2. Batch size：保留 12800\n\n在 n_envs×n_steps=102,400 固定时，batch 12800/25600/51200 分别给 actor 每 update 16/8/4 个优化器 step，critic 为 40/20/10 个 step。学习率和 epoch 未随 batch 缩放，因此大 batch 实际降低了每 update 的优化量：U20 actor 位移、privileged projection norm 和 critic EV 都随 batch 增大而下降。25600/51200 没有稳定 eval 收益，训练阶段节时不足以抵消质量损失。"
+      },
+      {
+        "id": "batch_chart",
+        "type": "chart",
+        "chartId": "batch_collision"
+      },
+      {
+        "id": "clip_text",
+        "type": "markdown",
+        "body": "## 3. Clip range：0.15 当前首选，0.20 进入复验\n\n严格的 0.10 vs 0.20 对照中，0.20 的 U20 为 14 碰撞，0.10 为 20；0.20 的 actor 权重位移更大、eval 从 24→14 单调改善，但单-minibatch KL 尾部更高。0.15 的 5 点均值 16.0、U20 14，是现有面板最稳的设置；不过它使用 env_workers=12，而另外两档为 8，初始 warmup 轨迹已不同，所以三档排序不能作纯 clip 因果结论。"
+      },
+      {
+        "id": "clip_chart",
+        "type": "chart",
+        "chartId": "clip_collision"
+      },
+      {
+        "id": "param_text",
+        "type": "markdown",
+        "body": "## 4. 参数变化：权重小位移不等于策略小变化\n\n所有 run 的固定 BC 前端 tensor 完全不变；U20 的可训练 actor 相对 BC L2 位移只有约 0.037%–0.068%，输出头相对位移约为 GRU 的 10 倍。尽管如此，approximate KL 有稀疏尖峰，说明窄探索分布下小权重变化仍可显著改变动作概率。privilege_gru 的 P20 projection norm 在 warmup 后持续增长到 U20，表明通道被使用；权重 norm 不能当作因果特征重要性。"
+      },
+      {
+        "id": "actor_chart",
+        "type": "chart",
+        "chartId": "actor_delta"
+      },
+      {
+        "id": "kl_chart",
+        "type": "chart",
+        "chartId": "kl_dynamics"
+      },
+      {
+        "id": "training_table_block",
+        "type": "table",
+        "tableId": "training_table"
+      },
+      {
+        "id": "scenario_text",
+        "type": "markdown",
+        "body": "## 5. Austin 风险结构\n\n600 个场景里，92 个在至少一个 checkpoint 中碰撞，4 个在至少 80% checkpoint 中碰撞，3 个在全部 35 个 checkpoint 中碰撞。说明排名主要由不足百个边界场景决定。相邻 checkpoint 平均只有少量场景翻转，但低碰撞总数下足以改变名次；best checkpoint 必须用独立 holdout 复核。"
+      },
+      {
+        "id": "scenario_chart",
+        "type": "chart",
+        "chartId": "scenario_slices"
+      },
+      {
+        "id": "quality_text",
+        "type": "markdown",
+        "body": "## 6. 数据质量\n\n7 个训练目录均有 1 条 warmup + 20 条 formal metrics、20 个 actor/critic checkpoint 和 5×600 个有效 eval；所有 results JSON 的 observation/action finite 且 error_count=0。21,000 个 NPZ trace 齐全，但 736 次 JSON 碰撞中有 736 次在 trace 内没有碰撞 bit，原因是缺 terminal post-step frame；碰撞标签必须以 results_multi.json 为准。P20 clearance softsign 后 exact +1 饱和为 0，body margin 的约半数 +1 是互补几何语义，不是旧的 clearance 硬截断。"
+      },
+      {
+        "id": "control_table_block",
+        "type": "table",
+        "tableId": "control_table"
+      },
+      {
+        "id": "method",
+        "type": "markdown",
+        "body": "## Scope, definitions, and methodology\n\n- **Primary KPI:** ego collision count on the same 600-scenario Austin panel; overtakes are the secondary guardrail.\n- **Training evidence:** post-update EV/value loss, rollout outcome rates, approximate KL, clip fraction, pre-clip gradient norm, and wall time.\n- **Parameter evidence:** tensor-level L2 displacement from the shared BC checkpoint; critic deltas are only compared within architecture.\n- **Paired evidence:** exact McNemar/binomial test on discordant collision outcomes plus a 10,000-draw bootstrap clustered by the 150 base startpoint/opponent pairs.\n- **Trace evidence:** all NPZ files were opened; action finiteness, length, physical clipping, and collision-bit coverage were checked.\n\nWilson intervals describe one fixed panel, not cross-map or cross-seed generalization. Checkpoints from one training run are correlated and are never treated as five independent seeds."
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "body": "## Limitations and robustness\n\n1. **Single seed:** critic result is convincing within this trajectory, not yet an architecture-level population estimate.\n2. **Selection bias:** U1/U5/U10/U15/U20 are all scored on the same Austin panel; choosing the minimum is optimistic.\n3. **Clip contamination:** clip0.15 uses 12 workers; clip0.10/0.20 use 8 and were produced on the remote execution environment. Their warmup paths differ.\n4. **Missing provenance:** run_config intentionally omits seed and records neither Git commit nor source hash. The script implies seed=42, but artifacts alone cannot prove it.\n5. **Trace terminal frame:** terminal collision geometry is unavailable in NPZ, so trace-based collision labeling is invalid."
+      },
+      {
+        "id": "recommendations",
+        "type": "markdown",
+        "body": "## Recommended next actions\n\n1. **保留 privilege_gru / batch12800 / clip0.15。** U15 与 U20 都是 14 碰撞、349 超车、237 跟随，但碰撞集合并不相同；若现在必须指定单一文件，默认用 final alias 对应的 U20，只是工程选择，不是指标胜出。\n2. **只补一个窄实验：clip0.15 vs 0.20，固定 env_workers、硬件、源码 hash，各 2–3 seed。** 不再扩 batch sweep。\n3. **加 target-KL early stop（建议起点 0.015–0.02）并保持 max_grad_norm=0.5。** 当前 clip 不足以阻止 KL 尾部；先直接控制策略距离。\n4. **增加独立 Austin holdout 起点面板。** 模型晋升要求主面板和 holdout 同向，不用同一面板挑最低 checkpoint。\n5. **补齐 run provenance 与 trace terminal frame。** run_config 记录 seed、Git commit、pretrained SHA256；trace 在 env.step 后写入 terminal post-step frame。"
+      },
+      {
+        "id": "questions",
+        "type": "markdown",
+        "body": "## Further questions\n\n- privilege_gru 的优势在不同 seed 和平移起点面板上是否仍为 10–20 次碰撞？\n- clip0.20 在 target-KL early stop 下是否保留后期收益，同时消除 KL 尾部？\n- 3 个 universal-collision 场景对原始 BC actor 是否也必碰，还是 PPO reward/credit assignment 的共同失败？"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-07-22T00:00:00+08:00",
+    "status": "ready",
+    "datasets": {
+      "report_kpis": [
+        {
+          "runs": 7,
+          "checkpoint_evals": 35,
+          "austin_scenarios": 600,
+          "best_collision_count": 14,
+          "best_collision_rate": 0.023333333333333334,
+          "complete_runs": 7
+        }
+      ],
+      "eval_critic": [
+        {
+          "run_label": "independent_gru",
+          "update": 1,
+          "collision_count": 19,
+          "overtake_count": 345,
+          "follow_count": 236
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 5,
+          "collision_count": 19,
+          "overtake_count": 339,
+          "follow_count": 242
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 10,
+          "collision_count": 27,
+          "overtake_count": 339,
+          "follow_count": 234
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 15,
+          "collision_count": 29,
+          "overtake_count": 330,
+          "follow_count": 241
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 20,
+          "collision_count": 34,
+          "overtake_count": 329,
+          "follow_count": 237
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 1,
+          "collision_count": 24,
+          "overtake_count": 343,
+          "follow_count": 233
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 5,
+          "collision_count": 25,
+          "overtake_count": 345,
+          "follow_count": 230
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 10,
+          "collision_count": 25,
+          "overtake_count": 347,
+          "follow_count": 228
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 15,
+          "collision_count": 21,
+          "overtake_count": 349,
+          "follow_count": 230
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 20,
+          "collision_count": 25,
+          "overtake_count": 360,
+          "follow_count": 215
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 1,
+          "collision_count": 16,
+          "overtake_count": 350,
+          "follow_count": 234
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 5,
+          "collision_count": 18,
+          "overtake_count": 343,
+          "follow_count": 239
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 10,
+          "collision_count": 18,
+          "overtake_count": 339,
+          "follow_count": 243
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 15,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 20,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237
+        }
+      ],
+      "eval_batch": [
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 1,
+          "collision_count": 16,
+          "overtake_count": 350,
+          "follow_count": 234
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 5,
+          "collision_count": 18,
+          "overtake_count": 343,
+          "follow_count": 239
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 10,
+          "collision_count": 18,
+          "overtake_count": 339,
+          "follow_count": 243
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 15,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 20,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 1,
+          "collision_count": 18,
+          "overtake_count": 349,
+          "follow_count": 233
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 5,
+          "collision_count": 22,
+          "overtake_count": 344,
+          "follow_count": 234
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 10,
+          "collision_count": 21,
+          "overtake_count": 347,
+          "follow_count": 232
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 15,
+          "collision_count": 22,
+          "overtake_count": 343,
+          "follow_count": 235
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 20,
+          "collision_count": 16,
+          "overtake_count": 348,
+          "follow_count": 236
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 1,
+          "collision_count": 22,
+          "overtake_count": 344,
+          "follow_count": 234
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 5,
+          "collision_count": 17,
+          "overtake_count": 345,
+          "follow_count": 238
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 10,
+          "collision_count": 15,
+          "overtake_count": 349,
+          "follow_count": 236
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 15,
+          "collision_count": 17,
+          "overtake_count": 345,
+          "follow_count": 238
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 20,
+          "collision_count": 21,
+          "overtake_count": 342,
+          "follow_count": 237
+        }
+      ],
+      "eval_clip": [
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 1,
+          "collision_count": 16,
+          "overtake_count": 350,
+          "follow_count": 234
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 5,
+          "collision_count": 18,
+          "overtake_count": 343,
+          "follow_count": 239
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 10,
+          "collision_count": 18,
+          "overtake_count": 339,
+          "follow_count": 243
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 15,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 20,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 1,
+          "collision_count": 28,
+          "overtake_count": 340,
+          "follow_count": 232
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 5,
+          "collision_count": 23,
+          "overtake_count": 344,
+          "follow_count": 233
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 10,
+          "collision_count": 17,
+          "overtake_count": 351,
+          "follow_count": 232
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 15,
+          "collision_count": 28,
+          "overtake_count": 333,
+          "follow_count": 239
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 20,
+          "collision_count": 20,
+          "overtake_count": 340,
+          "follow_count": 240
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 1,
+          "collision_count": 24,
+          "overtake_count": 343,
+          "follow_count": 233
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 5,
+          "collision_count": 23,
+          "overtake_count": 331,
+          "follow_count": 246
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 10,
+          "collision_count": 22,
+          "overtake_count": 335,
+          "follow_count": 243
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 15,
+          "collision_count": 18,
+          "overtake_count": 342,
+          "follow_count": 240
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 20,
+          "collision_count": 14,
+          "overtake_count": 341,
+          "follow_count": 245
+        }
+      ],
+      "actor_deltas": [
+        {
+          "run_label": "independent_gru",
+          "update": 1,
+          "actor_relative_l2_pct": 0.014076225192852445
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 5,
+          "actor_relative_l2_pct": 0.02855239475177132
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 10,
+          "actor_relative_l2_pct": 0.03733705492445225
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 15,
+          "actor_relative_l2_pct": 0.0463836690981895
+        },
+        {
+          "run_label": "independent_gru",
+          "update": 20,
+          "actor_relative_l2_pct": 0.053746843182962606
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 1,
+          "actor_relative_l2_pct": 0.013740793497243916
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 5,
+          "actor_relative_l2_pct": 0.027180817112486284
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 10,
+          "actor_relative_l2_pct": 0.03805848232947153
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 15,
+          "actor_relative_l2_pct": 0.047630310821462574
+        },
+        {
+          "run_label": "privilege_mlp",
+          "update": 20,
+          "actor_relative_l2_pct": 0.054870701100532375
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 1,
+          "actor_relative_l2_pct": 0.011783982988194705
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 5,
+          "actor_relative_l2_pct": 0.025646066483519442
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 10,
+          "actor_relative_l2_pct": 0.03458729781576888
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 15,
+          "actor_relative_l2_pct": 0.045863631403704336
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 20,
+          "actor_relative_l2_pct": 0.05433789622010249
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 1,
+          "actor_relative_l2_pct": 0.011368303429261529
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 5,
+          "actor_relative_l2_pct": 0.022822523331977124
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 10,
+          "actor_relative_l2_pct": 0.03287011318914503
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 15,
+          "actor_relative_l2_pct": 0.03893640392378555
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 20,
+          "actor_relative_l2_pct": 0.04343223194980293
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 1,
+          "actor_relative_l2_pct": 0.011555120318588016
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 5,
+          "actor_relative_l2_pct": 0.02242258973765514
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 10,
+          "actor_relative_l2_pct": 0.029087056289109008
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 15,
+          "actor_relative_l2_pct": 0.03395471178422294
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 20,
+          "actor_relative_l2_pct": 0.037345460908241236
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 1,
+          "actor_relative_l2_pct": 0.017635532673718902
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 5,
+          "actor_relative_l2_pct": 0.02793519815743542
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 10,
+          "actor_relative_l2_pct": 0.036955375830414965
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 15,
+          "actor_relative_l2_pct": 0.041357408330362715
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 20,
+          "actor_relative_l2_pct": 0.04592228319584451
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 1,
+          "actor_relative_l2_pct": 0.017684921846912185
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 5,
+          "actor_relative_l2_pct": 0.03150064798670499
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 10,
+          "actor_relative_l2_pct": 0.0445724627223394
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 15,
+          "actor_relative_l2_pct": 0.056897024254028226
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 20,
+          "actor_relative_l2_pct": 0.06799328976630688
+        }
+      ],
+      "kl_rows": [
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 1,
+          "approx_kl_mean": 0.18558810801885556,
+          "approx_kl_max": 2.3920912742614746
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 2,
+          "approx_kl_mean": 0.005739051477285102,
+          "approx_kl_max": 0.015216964296996593
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 3,
+          "approx_kl_mean": 0.10286644230422098,
+          "approx_kl_max": 0.8599998354911804
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 4,
+          "approx_kl_mean": 0.3748586910657468,
+          "approx_kl_max": 2.378282308578491
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 5,
+          "approx_kl_mean": 0.0034106669222455817,
+          "approx_kl_max": 0.02034442126750946
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 6,
+          "approx_kl_mean": 0.030059676782693712,
+          "approx_kl_max": 0.30947551131248474
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 7,
+          "approx_kl_mean": 0.0028983925475040417,
+          "approx_kl_max": 0.005859386641532183
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 8,
+          "approx_kl_mean": 0.06505299993601511,
+          "approx_kl_max": 0.8403179049491882
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 9,
+          "approx_kl_mean": 0.0036494575288088527,
+          "approx_kl_max": 0.009456511586904526
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 10,
+          "approx_kl_mean": 0.002512538408918772,
+          "approx_kl_max": 0.004565645940601826
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 11,
+          "approx_kl_mean": 0.08701271808386082,
+          "approx_kl_max": 1.1923576593399048
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 12,
+          "approx_kl_mean": 0.003874855183530597,
+          "approx_kl_max": 0.008832313120365143
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 13,
+          "approx_kl_mean": 0.0049473695877532,
+          "approx_kl_max": 0.01689385250210762
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 14,
+          "approx_kl_mean": 0.3125069399207132,
+          "approx_kl_max": 3.094435453414917
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 15,
+          "approx_kl_mean": 0.04791829086199868,
+          "approx_kl_max": 0.6657530069351196
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 16,
+          "approx_kl_mean": 0.0030878619127906876,
+          "approx_kl_max": 0.013597050681710243
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 17,
+          "approx_kl_mean": 0.007387597016058858,
+          "approx_kl_max": 0.03965902328491211
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 18,
+          "approx_kl_mean": 0.058731083185994064,
+          "approx_kl_max": 0.843797504901886
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 19,
+          "approx_kl_mean": 0.03527784940437414,
+          "approx_kl_max": 0.40210872888565063
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "update": 20,
+          "approx_kl_mean": 0.11873954111419152,
+          "approx_kl_max": 1.0881820917129517
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 1,
+          "approx_kl_mean": 0.1803131372499047,
+          "approx_kl_max": 1.245259165763855
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 2,
+          "approx_kl_mean": 0.3109751203257474,
+          "approx_kl_max": 0.9160916805267334
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 3,
+          "approx_kl_mean": 0.1525244879849197,
+          "approx_kl_max": 0.6953277587890625
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 4,
+          "approx_kl_mean": 0.024187286177766498,
+          "approx_kl_max": 0.18465858697891235
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 5,
+          "approx_kl_mean": 0.002755578728974792,
+          "approx_kl_max": 0.005230441689491272
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 6,
+          "approx_kl_mean": 0.09559895935468375,
+          "approx_kl_max": 0.35613980889320374
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 7,
+          "approx_kl_mean": 0.0023730530316242865,
+          "approx_kl_max": 0.0037563566584140062
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 8,
+          "approx_kl_mean": 0.004818088265601539,
+          "approx_kl_max": 0.011415963992476463
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 9,
+          "approx_kl_mean": 0.002617773240199295,
+          "approx_kl_max": 0.004246318247169256
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 10,
+          "approx_kl_mean": 0.00208985606441274,
+          "approx_kl_max": 0.00438163336366415
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 11,
+          "approx_kl_mean": 0.002351261395670004,
+          "approx_kl_max": 0.0063191852532327175
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 12,
+          "approx_kl_mean": 0.00390890795591986,
+          "approx_kl_max": 0.006508782505989075
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 13,
+          "approx_kl_mean": 0.0023718933880445547,
+          "approx_kl_max": 0.005348682403564453
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 14,
+          "approx_kl_mean": 0.008665805403434201,
+          "approx_kl_max": 0.043031662702560425
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 15,
+          "approx_kl_mean": 0.041476165171043244,
+          "approx_kl_max": 0.3136073350906372
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 16,
+          "approx_kl_mean": 0.003283673041150903,
+          "approx_kl_max": 0.006312832701951265
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 17,
+          "approx_kl_mean": 0.00230009754741331,
+          "approx_kl_max": 0.0043498151935637
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 18,
+          "approx_kl_mean": 0.08185971547558438,
+          "approx_kl_max": 0.3660237491130829
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 19,
+          "approx_kl_mean": 0.0018107802170561627,
+          "approx_kl_max": 0.004985267296433449
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "update": 20,
+          "approx_kl_mean": 0.0011900411333772287,
+          "approx_kl_max": 0.0021657811012119055
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 1,
+          "approx_kl_mean": 0.057102592510054784,
+          "approx_kl_max": 0.11845307797193527
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 2,
+          "approx_kl_mean": 0.004228421716252345,
+          "approx_kl_max": 0.00691984873265028
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 3,
+          "approx_kl_mean": 0.046543668404920024,
+          "approx_kl_max": 0.1717054545879364
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 4,
+          "approx_kl_mean": 0.0900241476317751,
+          "approx_kl_max": 0.1758180558681488
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 5,
+          "approx_kl_mean": 0.0005786105938022645,
+          "approx_kl_max": 0.0016865128418430686
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 6,
+          "approx_kl_mean": 0.0011739539663540022,
+          "approx_kl_max": 0.0019304390298202634
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 7,
+          "approx_kl_mean": 0.08261370319873096,
+          "approx_kl_max": 0.16457076370716095
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 8,
+          "approx_kl_mean": 0.15147181893000378,
+          "approx_kl_max": 0.5527903437614441
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 9,
+          "approx_kl_mean": 0.0008314944122684853,
+          "approx_kl_max": 0.0020495327189564705
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 10,
+          "approx_kl_mean": 0.002100169212208125,
+          "approx_kl_max": 0.0031741803977638483
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 11,
+          "approx_kl_mean": 0.04913739504612746,
+          "approx_kl_max": 0.09835141897201538
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 12,
+          "approx_kl_mean": 0.002128768725960961,
+          "approx_kl_max": 0.004954097326844931
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 13,
+          "approx_kl_mean": 0.0028103580255992577,
+          "approx_kl_max": 0.006061416584998369
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 14,
+          "approx_kl_mean": 0.10720731746958334,
+          "approx_kl_max": 0.29066047072410583
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 15,
+          "approx_kl_mean": 0.009069205694103744,
+          "approx_kl_max": 0.03466527536511421
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 16,
+          "approx_kl_mean": 0.030570242274552573,
+          "approx_kl_max": 0.06341064721345901
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 17,
+          "approx_kl_mean": 0.0036121379779069374,
+          "approx_kl_max": 0.005963889416307211
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 18,
+          "approx_kl_mean": 0.02636535275494678,
+          "approx_kl_max": 0.09910033643245697
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 19,
+          "approx_kl_mean": 0.02925802512123482,
+          "approx_kl_max": 0.10879278182983398
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "update": 20,
+          "approx_kl_mean": 0.0009338893200037668,
+          "approx_kl_max": 0.0034383677411824465
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 1,
+          "approx_kl_mean": 0.3433067961258348,
+          "approx_kl_max": 2.8735873699188232
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 2,
+          "approx_kl_mean": 0.11939425705451867,
+          "approx_kl_max": 0.7203378081321716
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 3,
+          "approx_kl_mean": 0.009660111504199445,
+          "approx_kl_max": 0.09554561227560043
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 4,
+          "approx_kl_mean": 0.02944052594495588,
+          "approx_kl_max": 0.403639018535614
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 5,
+          "approx_kl_mean": 0.04649759013875154,
+          "approx_kl_max": 0.6685150265693665
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 6,
+          "approx_kl_mean": 0.0016619696957059192,
+          "approx_kl_max": 0.0033074866514652967
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 7,
+          "approx_kl_mean": 0.045611041323154494,
+          "approx_kl_max": 0.6300526261329651
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 8,
+          "approx_kl_mean": 0.07066953411936992,
+          "approx_kl_max": 0.5535526275634766
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 9,
+          "approx_kl_mean": 0.0032800235904869614,
+          "approx_kl_max": 0.005520849023014307
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 10,
+          "approx_kl_mean": 0.05589103115922626,
+          "approx_kl_max": 0.8631880879402161
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 11,
+          "approx_kl_mean": 0.12213414415309672,
+          "approx_kl_max": 1.1430341005325317
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 12,
+          "approx_kl_mean": 0.0031620147074863728,
+          "approx_kl_max": 0.007771829143166542
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 13,
+          "approx_kl_mean": 0.004462634927185717,
+          "approx_kl_max": 0.01066213846206665
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 14,
+          "approx_kl_mean": 0.19173944324589684,
+          "approx_kl_max": 0.785028338432312
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 15,
+          "approx_kl_mean": 0.05272413731203414,
+          "approx_kl_max": 0.7998908162117004
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 16,
+          "approx_kl_mean": 0.006193514852639054,
+          "approx_kl_max": 0.025210492312908173
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 17,
+          "approx_kl_mean": 0.14187289567489642,
+          "approx_kl_max": 1.3669047355651855
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 18,
+          "approx_kl_mean": 0.10157257649771054,
+          "approx_kl_max": 0.8171870112419128
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 19,
+          "approx_kl_mean": 0.03678535855869995,
+          "approx_kl_max": 0.5408904552459717
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "update": 20,
+          "approx_kl_mean": 0.0019973642678814893,
+          "approx_kl_max": 0.0034182744566351175
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 1,
+          "approx_kl_mean": 0.3249206571443938,
+          "approx_kl_max": 2.756199836730957
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 2,
+          "approx_kl_mean": 0.10081931259424892,
+          "approx_kl_max": 1.3050854206085205
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 3,
+          "approx_kl_mean": 0.0421273965400178,
+          "approx_kl_max": 0.6141466498374939
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 4,
+          "approx_kl_mean": 0.19452191820601,
+          "approx_kl_max": 2.2492358684539795
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 5,
+          "approx_kl_mean": 0.039047916525814796,
+          "approx_kl_max": 0.5440094470977783
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 6,
+          "approx_kl_mean": 0.05028854402597062,
+          "approx_kl_max": 0.7406477332115173
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 7,
+          "approx_kl_mean": 0.3147614167039865,
+          "approx_kl_max": 4.324038505554199
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 8,
+          "approx_kl_mean": 0.06930909411225003,
+          "approx_kl_max": 0.8155558109283447
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 9,
+          "approx_kl_mean": 0.006748587795882485,
+          "approx_kl_max": 0.022768659517169
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 10,
+          "approx_kl_mean": 0.008013367706153074,
+          "approx_kl_max": 0.03135759383440018
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 11,
+          "approx_kl_mean": 0.1898679758283106,
+          "approx_kl_max": 1.4947259426116943
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 12,
+          "approx_kl_mean": 0.0029572557050414616,
+          "approx_kl_max": 0.005384531337767839
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 13,
+          "approx_kl_mean": 0.10364341650973075,
+          "approx_kl_max": 1.402037262916565
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 14,
+          "approx_kl_mean": 0.0679773408389883,
+          "approx_kl_max": 0.956183671951294
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 15,
+          "approx_kl_mean": 0.008055403074104107,
+          "approx_kl_max": 0.06662382185459137
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 16,
+          "approx_kl_mean": 0.00855985603528097,
+          "approx_kl_max": 0.018319686874747276
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 17,
+          "approx_kl_mean": 0.18168823996762512,
+          "approx_kl_max": 1.3941525220870972
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 18,
+          "approx_kl_mean": 0.0883213719302148,
+          "approx_kl_max": 0.8166640400886536
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 19,
+          "approx_kl_mean": 0.009363210115407125,
+          "approx_kl_max": 0.03982949256896973
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "update": 20,
+          "approx_kl_mean": 0.0024043472105404334,
+          "approx_kl_max": 0.008071156218647957
+        }
+      ],
+      "scenario_slices": [
+        {
+          "slice": "R0 / v0.7",
+          "collision_rate": 0.09428571428571429,
+          "collision_count": 165,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R1 / v0.5",
+          "collision_rate": 0.06857142857142857,
+          "collision_count": 120,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R0 / v0.8",
+          "collision_rate": 0.06628571428571428,
+          "collision_count": 116,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R2 / v0.8",
+          "collision_rate": 0.05828571428571429,
+          "collision_count": 102,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R2 / v0.7",
+          "collision_rate": 0.045142857142857144,
+          "collision_count": 79,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R1 / v0.6",
+          "collision_rate": 0.037142857142857144,
+          "collision_count": 65,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R2 / v0.5",
+          "collision_rate": 0.02,
+          "collision_count": 35,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R0 / v0.6",
+          "collision_rate": 0.010857142857142857,
+          "collision_count": 19,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R0 / v0.5",
+          "collision_rate": 0.008571428571428572,
+          "collision_count": 15,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R1 / v0.7",
+          "collision_rate": 0.006285714285714286,
+          "collision_count": 11,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R2 / v0.6",
+          "collision_rate": 0.0034285714285714284,
+          "collision_count": 6,
+          "evaluation_rows": 1750
+        },
+        {
+          "slice": "R1 / v0.8",
+          "collision_rate": 0.0017142857142857142,
+          "collision_count": 3,
+          "evaluation_rows": 1750
+        }
+      ],
+      "final_table": [
+        {
+          "run_label": "independent_gru",
+          "collision_sequence": "19/19/27/29/34",
+          "collision_mean": 25.6,
+          "best_update": 1,
+          "best_collision_count": 19,
+          "final_collision_count": 34,
+          "final_overtake_count": 329,
+          "final_follow_count": 237
+        },
+        {
+          "run_label": "privilege_mlp",
+          "collision_sequence": "24/25/25/21/25",
+          "collision_mean": 24.0,
+          "best_update": 15,
+          "best_collision_count": 21,
+          "final_collision_count": 25,
+          "final_overtake_count": 360,
+          "final_follow_count": 215
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "collision_sequence": "16/18/18/14/14",
+          "collision_mean": 16.0,
+          "best_update": 15,
+          "best_collision_count": 14,
+          "final_collision_count": 14,
+          "final_overtake_count": 349,
+          "final_follow_count": 237
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "collision_sequence": "18/22/21/22/16",
+          "collision_mean": 19.8,
+          "best_update": 20,
+          "best_collision_count": 16,
+          "final_collision_count": 16,
+          "final_overtake_count": 348,
+          "final_follow_count": 236
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "collision_sequence": "22/17/15/17/21",
+          "collision_mean": 18.4,
+          "best_update": 10,
+          "best_collision_count": 15,
+          "final_collision_count": 21,
+          "final_overtake_count": 342,
+          "final_follow_count": 237
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "collision_sequence": "28/23/17/28/20",
+          "collision_mean": 23.2,
+          "best_update": 10,
+          "best_collision_count": 17,
+          "final_collision_count": 20,
+          "final_overtake_count": 340,
+          "final_follow_count": 240
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "collision_sequence": "24/23/22/18/14",
+          "collision_mean": 20.2,
+          "best_update": 20,
+          "best_collision_count": 14,
+          "final_collision_count": 14,
+          "final_overtake_count": 341,
+          "final_follow_count": 245
+        }
+      ],
+      "training_summary": [
+        {
+          "run_label": "independent_gru",
+          "ev_last5": 0.9106139214738326,
+          "collision_ev_last5": 0.904166112129644,
+          "rollout_collision_last5": 0.264216884086611,
+          "kl_mean_median": 0.03417186810198473,
+          "kl_single_minibatch_max": 3.495802640914917,
+          "actor_preclip_grad_norm_median": 37.50455028563738,
+          "total_training_minutes": 53.675049219349845
+        },
+        {
+          "run_label": "privilege_mlp",
+          "ev_last5": 0.6941691249385341,
+          "collision_ev_last5": 0.6474351308690476,
+          "rollout_collision_last5": 0.2992027520750658,
+          "kl_mean_median": 0.04804031011095503,
+          "kl_single_minibatch_max": 2.662461757659912,
+          "actor_preclip_grad_norm_median": 39.90411478281021,
+          "total_training_minutes": 32.463891603883376
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "ev_last5": 0.9122735958612029,
+          "collision_ev_last5": 0.9054390709118154,
+          "rollout_collision_last5": 0.25317008226596477,
+          "kl_mean_median": 0.03266876309353393,
+          "kl_single_minibatch_max": 3.094435453414917,
+          "actor_preclip_grad_norm_median": 43.35179224610329,
+          "total_training_minutes": 56.5673661738833
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "ev_last5": 0.8717816359395905,
+          "collision_ev_last5": 0.8551253567528821,
+          "rollout_collision_last5": 0.299232140408611,
+          "kl_mean_median": 0.0035962904985353816,
+          "kl_single_minibatch_max": 1.245259165763855,
+          "actor_preclip_grad_norm_median": 26.19664826989174,
+          "total_training_minutes": 51.43441768676669
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "ev_last5": 0.8303491095284482,
+          "collision_ev_last5": 0.8073832991422745,
+          "rollout_collision_last5": 0.2638165721600112,
+          "kl_mean_median": 0.017717279224525262,
+          "kl_single_minibatch_max": 0.5527903437614441,
+          "actor_preclip_grad_norm_median": 31.878069192171097,
+          "total_training_minutes": 48.89177579931681
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "ev_last5": 0.9286529154301071,
+          "collision_ev_last5": 0.9157899092832358,
+          "rollout_collision_last5": 0.27364090194109647,
+          "kl_mean_median": 0.04605431573095302,
+          "kl_single_minibatch_max": 2.8735873699188232,
+          "actor_preclip_grad_norm_median": 45.001743882894516,
+          "total_training_minutes": 155.11482959256668
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "ev_last5": 0.9295964181339125,
+          "collision_ev_last5": 0.9194597018665792,
+          "rollout_collision_last5": 0.23203418126742625,
+          "kl_mean_median": 0.05913294243247946,
+          "kl_single_minibatch_max": 4.324038505554199,
+          "actor_preclip_grad_norm_median": 27.54387830197811,
+          "total_training_minutes": 154.43458648383367
+        }
+      ],
+      "control_table": [
+        {
+          "run_label": "independent_gru",
+          "critic": "independent_gru",
+          "batch_size": 12800,
+          "clip_range": 0.15,
+          "env_workers": 12,
+          "warmup_control": true,
+          "audit_note": "strict"
+        },
+        {
+          "run_label": "privilege_mlp",
+          "critic": "priviledge_mlp",
+          "batch_size": 12800,
+          "clip_range": 0.15,
+          "env_workers": 12,
+          "warmup_control": true,
+          "audit_note": "strict"
+        },
+        {
+          "run_label": "privilege_gru / bs12800 / clip0.15",
+          "critic": "privilege_gru",
+          "batch_size": 12800,
+          "clip_range": 0.15,
+          "env_workers": 12,
+          "warmup_control": true,
+          "audit_note": "strict"
+        },
+        {
+          "run_label": "privilege_gru / bs25600",
+          "critic": "privilege_gru",
+          "batch_size": 25600,
+          "clip_range": 0.15,
+          "env_workers": 12,
+          "warmup_control": true,
+          "audit_note": "strict"
+        },
+        {
+          "run_label": "privilege_gru / bs51200",
+          "critic": "privilege_gru",
+          "batch_size": 51200,
+          "clip_range": 0.15,
+          "env_workers": 12,
+          "warmup_control": true,
+          "audit_note": "strict"
+        },
+        {
+          "run_label": "privilege_gru / clip0.10",
+          "critic": "privilege_gru",
+          "batch_size": 12800,
+          "clip_range": 0.1,
+          "env_workers": 8,
+          "warmup_control": true,
+          "audit_note": "strict pair; comparison to clip0.15 is worker-contaminated"
+        },
+        {
+          "run_label": "privilege_gru / clip0.20",
+          "critic": "privilege_gru",
+          "batch_size": 12800,
+          "clip_range": 0.2,
+          "env_workers": 8,
+          "warmup_control": true,
+          "audit_note": "strict pair; comparison to clip0.15 is worker-contaminated"
+        }
+      ]
+    },
+    "accessIssues": []
+  },
+  "sources": [
+    {
+      "id": "report_views",
+      "description": "DuckDB-compatible read-only views over the reviewed CSV snapshots used by report charts and tables."
+    },
+    {
+      "id": "control_audit",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 7."
+    },
+    {
+      "id": "training_metrics",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 140."
+    },
+    {
+      "id": "training_summary",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 7."
+    },
+    {
+      "id": "eval_summary",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 35."
+    },
+    {
+      "id": "eval_rollup",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 7."
+    },
+    {
+      "id": "paired_comparisons",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 35."
+    },
+    {
+      "id": "actor_deltas",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 35."
+    },
+    {
+      "id": "trace_quality",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 35."
+    },
+    {
+      "id": "scenario_slices",
+      "description": "Derived, reviewed snapshot. Raw relative source paths are retained in provenance columns. Rows: 12."
+    }
+  ],
+  "package_info": {
+    "originUrl": "artifact://ppo-0721-seven-experiments",
+    "controls": {
+      "edit": false,
+      "refresh": false
+    }
+  }
+}

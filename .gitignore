@@ -12,5 +12,4 @@ install/
 Dataset_*/
 post-trained/ppo*
 eval_results/
-analysis*/
-tests/
+.pytest*

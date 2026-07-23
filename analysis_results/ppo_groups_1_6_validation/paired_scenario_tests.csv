@@ -1,0 +1,6 @@
+comparison,before_collisions,after_collisions,shared,resolved,created,net_change,paired_exact_p_unadjusted
+BC -> base U20,22,14,12,10,2,-8,0.03857421875
+BC -> old G3 clip 0.20 U20,22,14,4,18,10,-8,0.1849333420395851
+BC -> G5 long clip 0.20 U30,22,11,5,17,6,-11,0.03468966484069824
+base U20 -> G5 long clip 0.20 U30,14,11,5,9,6,-3,0.60723876953125
+BC -> target-KL 0.04 U20,22,33,8,14,25,11,0.10812902140605729

@@ -1,0 +1,202 @@
+{
+  "candidate_episode_breakdown": {
+    "final_follow": {
+      "episode_cap_episode_count": 5,
+      "episode_count": 914,
+      "penalty_median": 0.05,
+      "penalty_q10": 0.05,
+      "penalty_q90": 0.05,
+      "penalty_sum": 0.25,
+      "preterminal_trigger_episode_count": 5,
+      "step_cap_episode_count": 5,
+      "trigger_episode_count": 5,
+      "trigger_episode_rate": 0.005470459518599562
+    },
+    "non_reference_collision": {
+      "episode_cap_episode_count": 0,
+      "episode_count": 36,
+      "penalty_median": 0.0023274181787364748,
+      "penalty_q10": 0.0023274181787364748,
+      "penalty_q90": 0.0023274181787364748,
+      "penalty_sum": 0.0023274181787364748,
+      "preterminal_trigger_episode_count": 1,
+      "step_cap_episode_count": 0,
+      "trigger_episode_count": 1,
+      "trigger_episode_rate": 0.027777777777777776
+    },
+    "reference_primary_tail": {
+      "episode_cap_episode_count": 11,
+      "episode_count": 26,
+      "first_signal_lead_s_median": 0.3149999999999933,
+      "first_signal_lead_s_q10": 0.1549999999999967,
+      "first_signal_lead_s_q90": 0.704999999999985,
+      "penalty_median": 0.04707434296303752,
+      "penalty_q10": 0.016335471704971766,
+      "penalty_q90": 0.05,
+      "penalty_sum": 0.9696556601292733,
+      "preterminal_trigger_episode_count": 26,
+      "step_cap_episode_count": 3,
+      "trigger_episode_count": 26,
+      "trigger_episode_rate": 1.0
+    },
+    "successful_overtake": {
+      "episode_cap_episode_count": 170,
+      "episode_count": 1424,
+      "penalty_median": 0.01959812393007629,
+      "penalty_q10": 0.002870064501164521,
+      "penalty_q90": 0.05,
+      "penalty_sum": 21.259129475696938,
+      "preterminal_trigger_episode_count": 895,
+      "step_cap_episode_count": 13,
+      "trigger_episode_count": 897,
+      "trigger_episode_rate": 0.6299157303370787
+    },
+    "triggered_final_follow_episodes": [
+      {
+        "panel": "BC",
+        "penalty": 0.05,
+        "scenario_id": "evaluation-sp28-ego1197-raceline0-v0.8"
+      },
+      {
+        "panel": "BC",
+        "penalty": 0.05,
+        "scenario_id": "evaluation-sp25-ego1069-raceline2-v0.8"
+      },
+      {
+        "panel": "ppo_privilege_gru_0722_long_clip020_u0030",
+        "penalty": 0.05,
+        "scenario_id": "evaluation-sp14-ego598-raceline0-v0.8"
+      },
+      {
+        "panel": "ppo_privilege_gru_0722_long45_clip020_u0045",
+        "penalty": 0.05,
+        "scenario_id": "evaluation-sp25-ego1069-raceline2-v0.8"
+      },
+      {
+        "panel": "ppo_privilege_gru_0722_long45_clip020_hard_u0045",
+        "penalty": 0.05,
+        "scenario_id": "evaluation-sp5-ego213-raceline2-v0.8"
+      }
+    ]
+  },
+  "candidate_sparse_setting": {
+    "active_step_fraction": 0.0403855719367836,
+    "active_steps": 76889,
+    "clear_mode": "latched",
+    "closing_deadband_mps": 0.2,
+    "collision_episode_count": 62,
+    "collision_proposed_penalty_median": 0.046545448526664784,
+    "collision_proposed_penalty_q90": 0.05,
+    "collision_trigger_episode_count": 27,
+    "collision_trigger_episode_rate": 0.43548387096774194,
+    "episode_count": 2400,
+    "follow_episode_count": 914,
+    "follow_proposed_penalty_median": 0.05,
+    "follow_proposed_penalty_q90": 0.05,
+    "follow_trigger_episode_count": 5,
+    "follow_trigger_episode_rate": 0.005470459518599562,
+    "overtake_episode_count": 1424,
+    "overtake_proposed_penalty_median": 0.01959812393007629,
+    "overtake_proposed_penalty_q90": 0.05,
+    "overtake_trigger_episode_count": 897,
+    "overtake_trigger_episode_rate": 0.6299157303370787,
+    "panel_count": 4,
+    "pass_margin_m": 0.05,
+    "proposed_episode_cap_episode_count": 186,
+    "proposed_penalty_episode_median": 0.02049924746985432,
+    "proposed_penalty_episode_q90": 0.05,
+    "proposed_penalty_sum": 22.48111255400496,
+    "proposed_step_cap_episode_count": 21,
+    "reference_primary_tail_capture_rate": 1.0,
+    "reference_primary_tail_captured": 26,
+    "reference_primary_tail_count": 26,
+    "safe_rear_gap_m": 0.3,
+    "setting": "pass0.05_safe0.30_dead0.20mps_latched",
+    "total_transition_steps": 1903873,
+    "trigger_episode_count": 929,
+    "trigger_episode_fraction": 0.38708333333333333,
+    "trigger_step_fraction": 0.009498007482641962,
+    "trigger_steps": 18083,
+    "triggered_basis_episode_median_m": 0.08199698987941728,
+    "triggered_basis_episode_q90_m": 0.2779538136167087,
+    "triggered_basis_sum_m": 131.2706742529013
+  },
+  "contract": {
+    "clear_modes": [
+      "latched",
+      "reactive"
+    ],
+    "episode_setting_results_scope": "Only the selected candidate's 2,400 episode rows; all setting-level aggregates are in setting_sweep.csv.",
+    "pass_margins_m": [
+      0.0,
+      0.05,
+      0.1,
+      0.3
+    ],
+    "proposed_maximum_episode_penalty": 0.05,
+    "proposed_maximum_step_penalty": 0.005,
+    "proposed_reward_weight_per_m": 0.25,
+    "rear_closing_deadbands_mps": [
+      0.0,
+      0.05,
+      0.1,
+      0.15,
+      0.2,
+      0.3
+    ],
+    "safe_rear_gaps_m": [
+      0.3,
+      0.6
+    ],
+    "tail_reference": "analysis_results/ppo_all_experiments_20260723/collision_episode_kinematics.csv",
+    "tail_reference_note": "Reference labels are the existing primary heuristic, not ground-truth contact-point annotations.",
+    "vehicle_length_m": 0.58,
+    "vehicle_width_m": 0.31
+  },
+  "data_quality": {
+    "all_collision_times_match_trace": true,
+    "all_panel_scenario_ids_unique": true,
+    "all_replayed_final_relative_positions_match_results": true,
+    "all_row_signed_gap_formula_matches_obb_vertices": true,
+    "all_trace_collision_markers_match_results": true,
+    "all_trace_file_sets_match_result_keys": true,
+    "all_trace_opponent_collision_markers_match_results": true,
+    "all_trace_steps_and_times_match_results": true,
+    "all_traces_numeric_aligned_terminal_v2": true,
+    "episode_count": 2400,
+    "evaluated_setting_count": 96,
+    "panel_outcome_counts": {
+      "BC": {
+        "collision": 22,
+        "follow": 234,
+        "overtake": 344
+      },
+      "ppo_privilege_gru_0722_long45_clip020_hard_u0045": {
+        "collision": 17,
+        "follow": 218,
+        "overtake": 365
+      },
+      "ppo_privilege_gru_0722_long45_clip020_u0045": {
+        "collision": 12,
+        "follow": 231,
+        "overtake": 357
+      },
+      "ppo_privilege_gru_0722_long_clip020_u0030": {
+        "collision": 11,
+        "follow": 231,
+        "overtake": 358
+      }
+    },
+    "panels": [
+      "end2race_Austin",
+      "ppo_privilege_gru_0722_long_clip020_u0030_Austin",
+      "ppo_privilege_gru_0722_long45_clip020_u0045_Austin",
+      "ppo_privilege_gru_0722_long45_clip020_hard_u0045_Austin"
+    ],
+    "transition_dt_s_max": 0.010000000000000231,
+    "transition_dt_s_min": 0.009999999999999787,
+    "unique_panel_episode_count": 2400,
+    "unique_panel_scenario_count": 2400
+  },
+  "selection_rule": "maximum existing-primary-tail episode capture; then zero/minimum follow triggers; then minimum capped-episode count; then minimum total bounded penalty; then minimum trigger-step fraction; then minimum successful-overtake trigger rate"
+}

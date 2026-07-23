@@ -1,0 +1,8 @@
+update,clip015_collisions,clip020_collisions,shared,resolved_by_clip020,created_by_clip020,net_collision_change,paired_exact_p_unadjusted
+1,16,21,10,6,11,5,0.332305908203125
+5,18,18,11,7,7,0,1.0
+10,18,16,6,12,10,-2,0.8318119049072266
+15,14,13,6,8,7,-1,1.0
+20,14,13,7,7,6,-1,1.0
+25,17,17,7,10,10,0,1.0
+30,20,11,5,15,6,-9,0.0783538818359375

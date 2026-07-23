@@ -1,0 +1,9 @@
+checkpoint,panel,collision_count,overtake_count,follow_count,collision_with_opponent_count,wall_like_collision_count,merge_tail_relaxed_count,merge_tail_primary_count,merge_tail_strict_count,merge_tail_primary_share_of_collisions,valid
+BC,BC,22,344,234,21,1,11,11,8,0.5,True
+P20 base U20,ppo_privilege_gru_0721_base_u0020,14,349,237,14,0,7,7,5,0.5,True
+hard U35,ppo_privilege_gru_0722_long45_clip020_hard_u0035,20,366,214,18,2,7,2,0,0.1,True
+hard U45,ppo_privilege_gru_0722_long45_clip020_hard_u0045,17,365,218,17,0,5,4,3,0.2352941176470588,True
+clip .20 U40,ppo_privilege_gru_0722_long45_clip020_u0040,11,355,234,11,0,8,8,8,0.7272727272727273,True
+clip .20 U45,ppo_privilege_gru_0722_long45_clip020_u0045,12,357,231,11,1,7,7,6,0.5833333333333334,True
+clip .25 U45,ppo_privilege_gru_0722_long45_clip025_u0045,16,355,229,16,0,8,7,3,0.4375,True
+clip .20 U30,ppo_privilege_gru_0722_long_clip020_u0030,11,358,231,11,0,4,4,4,0.3636363636363636,True

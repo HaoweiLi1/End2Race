@@ -1,0 +1,31 @@
+arm,run,update,collision_count,merge_tail_primary_count,merge_tail_relaxed_count,merge_tail_strict_count,overtake_count,follow_count
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,1,19,9,9,6,343,238
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,5,18,8,8,7,344,238
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,10,19,7,7,6,348,233
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,15,15,4,5,2,360,225
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,20,14,7,7,3,352,234
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,25,22,10,10,9,354,224
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,30,26,6,7,2,368,206
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,35,20,2,7,0,366,214
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,40,22,6,9,5,365,213
+clip .20 + hard,ppo_privilege_gru_0722_long45_clip020_hard,45,17,4,5,3,365,218
+clip .20,ppo_privilege_gru_0722_long45_clip020,35,14,7,8,7,349,237
+clip .20,ppo_privilege_gru_0722_long45_clip020,40,11,8,8,8,355,234
+clip .20,ppo_privilege_gru_0722_long45_clip020,45,12,7,7,6,357,231
+clip .25,ppo_privilege_gru_0722_long45_clip025,1,18,7,7,5,348,234
+clip .25,ppo_privilege_gru_0722_long45_clip025,5,23,11,13,6,347,230
+clip .25,ppo_privilege_gru_0722_long45_clip025,10,15,3,3,2,364,221
+clip .25,ppo_privilege_gru_0722_long45_clip025,15,15,6,7,5,357,228
+clip .25,ppo_privilege_gru_0722_long45_clip025,20,21,10,10,9,346,233
+clip .25,ppo_privilege_gru_0722_long45_clip025,25,14,4,4,3,356,230
+clip .25,ppo_privilege_gru_0722_long45_clip025,30,18,5,7,5,361,221
+clip .25,ppo_privilege_gru_0722_long45_clip025,35,18,5,6,4,360,222
+clip .25,ppo_privilege_gru_0722_long45_clip025,40,18,7,9,5,359,223
+clip .25,ppo_privilege_gru_0722_long45_clip025,45,16,7,8,3,355,229
+clip .20,ppo_privilege_gru_0722_long_clip020,1,21,12,13,9,343,236
+clip .20,ppo_privilege_gru_0722_long_clip020,5,18,6,6,5,347,235
+clip .20,ppo_privilege_gru_0722_long_clip020,10,16,8,8,7,350,234
+clip .20,ppo_privilege_gru_0722_long_clip020,15,13,6,6,6,349,238
+clip .20,ppo_privilege_gru_0722_long_clip020,20,13,6,6,4,350,237
+clip .20,ppo_privilege_gru_0722_long_clip020,25,17,7,7,7,352,231
+clip .20,ppo_privilege_gru_0722_long_clip020,30,11,4,4,4,358,231

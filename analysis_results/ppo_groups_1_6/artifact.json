@@ -1,0 +1,2884 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "End2Race PPO：Baseline 至 Group 6 对比实验技术分析",
+    "description": "基于训练参数、metrics.jsonl、eval JSON 与 41,999 个 NPZ 的可复核技术报告。",
+    "generatedAt": "2026-07-22T12:17:24.585055+00:00",
+    "cards": [
+      {
+        "id": "selected_collision_card",
+        "description": "Group 5 clip 0.20 at U30 on Austin600.",
+        "dataset": "headline",
+        "sourceId": "analysis_summary",
+        "metrics": [
+          {
+            "label": "选定模型碰撞",
+            "field": "selected_collisions",
+            "format": "number"
+          },
+          {
+            "label": "相对 BC 降幅",
+            "field": "collision_reduction",
+            "format": "percent"
+          }
+        ]
+      },
+      {
+        "id": "success_card",
+        "description": "589 of 600 scenarios complete without collision.",
+        "dataset": "headline",
+        "sourceId": "analysis_summary",
+        "metrics": [
+          {
+            "label": "成功率",
+            "field": "selected_success_rate",
+            "format": "percent"
+          },
+          {
+            "label": "超车",
+            "field": "selected_overtakes",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "quality_card",
+        "description": "Validated evidence included in this report.",
+        "dataset": "headline",
+        "sourceId": "analysis_summary",
+        "metrics": [
+          {
+            "label": "有效评估面板",
+            "field": "valid_panels",
+            "format": "number"
+          },
+          {
+            "label": "NPZ 全量检查",
+            "field": "npz_files",
+            "format": "number"
+          }
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "group_mean_collisions",
+        "title": "各组实验臂的 U5+ 平均碰撞数",
+        "subtitle": "越低越好；Group 4 高 LR 的无效 U20 已排除",
+        "type": "bar",
+        "dataset": "arm_performance",
+        "sourceId": "group_summary",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {
+            "field": "arm",
+            "type": "nominal",
+            "label": "实验臂"
+          },
+          "y": {
+            "field": "mean_collision_u5_plus",
+            "type": "quantitative",
+            "label": "U5+ 平均碰撞数"
+          },
+          "color": {
+            "field": "group",
+            "type": "nominal",
+            "label": "实验组"
+          },
+          "tooltip": [
+            {
+              "field": "collision_path",
+              "type": "nominal",
+              "label": "碰撞路径"
+            },
+            {
+              "field": "final_collision_count",
+              "type": "quantitative",
+              "label": "最终碰撞"
+            },
+            {
+              "field": "env_workers",
+              "type": "quantitative",
+              "label": "评估 workers"
+            },
+            {
+              "field": "mean_approx_kl",
+              "type": "quantitative",
+              "label": "平均 KL"
+            }
+          ]
+        }
+      },
+      {
+        "id": "group5_path",
+        "title": "Group 5 正式检查点碰撞路径",
+        "subtitle": "同为 12 workers、30 updates，仅 clip range 不同",
+        "type": "bar",
+        "dataset": "group5_panels",
+        "sourceId": "evaluation_panels",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {
+            "field": "update",
+            "type": "nominal",
+            "label": "Formal update"
+          },
+          "y": {
+            "field": "collision_count",
+            "type": "quantitative",
+            "label": "碰撞数"
+          },
+          "color": {
+            "field": "arm",
+            "type": "nominal",
+            "label": "Clip range"
+          },
+          "tooltip": [
+            {
+              "field": "overtake_count",
+              "type": "quantitative",
+              "label": "超车"
+            },
+            {
+              "field": "follow_count",
+              "type": "quantitative",
+              "label": "跟随"
+            },
+            {
+              "field": "success_rate",
+              "type": "quantitative",
+              "label": "成功率",
+              "format": "percent"
+            },
+            {
+              "field": "median_collision_time_s",
+              "type": "quantitative",
+              "label": "碰撞时间中位数"
+            }
+          ]
+        }
+      },
+      {
+        "id": "telemetry_scatter",
+        "title": "训练 KL 与评估碰撞数",
+        "subtitle": "68 个有效 PPO 检查点；点色表示该 update 是否触发 actor 早停",
+        "type": "scatter",
+        "dataset": "telemetry_scatter",
+        "sourceId": "training_eval_join",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {
+            "field": "approx_kl_mean",
+            "type": "quantitative",
+            "label": "Actor mean approximate KL"
+          },
+          "y": {
+            "field": "collision_count",
+            "type": "quantitative",
+            "label": "评估碰撞数"
+          },
+          "color": {
+            "field": "early_stop",
+            "type": "nominal",
+            "label": "Actor 早停"
+          },
+          "label": {
+            "field": "point",
+            "type": "nominal",
+            "label": "检查点"
+          },
+          "tooltip": [
+            {
+              "field": "point",
+              "type": "nominal",
+              "label": "检查点"
+            },
+            {
+              "field": "approx_kl_max",
+              "type": "quantitative",
+              "label": "最大 KL"
+            },
+            {
+              "field": "clip_fraction_mean",
+              "type": "quantitative",
+              "label": "Clip fraction"
+            },
+            {
+              "field": "explained_variance_post",
+              "type": "quantitative",
+              "label": "Critic EV"
+            }
+          ]
+        }
+      },
+      {
+        "id": "persistent_scenarios",
+        "title": "最持续的 10 个碰撞场景",
+        "subtitle": "分母为 68 个有效 PPO 检查点面板",
+        "type": "bar",
+        "dataset": "persistent_scenarios",
+        "sourceId": "scenario_frequency",
+        "valueFormat": "percent",
+        "encodings": {
+          "x": {
+            "field": "scenario_short",
+            "type": "nominal",
+            "label": "场景"
+          },
+          "y": {
+            "field": "collision_rate",
+            "type": "quantitative",
+            "label": "出现碰撞的面板比例"
+          },
+          "tooltip": [
+            {
+              "field": "scenario",
+              "type": "nominal",
+              "label": "完整场景 ID"
+            },
+            {
+              "field": "collision_panels",
+              "type": "quantitative",
+              "label": "碰撞面板"
+            },
+            {
+              "field": "valid_ppo_panels",
+              "type": "quantitative",
+              "label": "有效面板"
+            }
+          ]
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "control_table",
+        "title": "参数控制审计",
+        "subtitle": "“否”表示对共享 baseline 的比较存在额外变化",
+        "dataset": "control_audit",
+        "sourceId": "control_audit",
+        "columns": [
+          {
+            "field": "group",
+            "label": "组"
+          },
+          {
+            "field": "arm",
+            "label": "实验臂"
+          },
+          {
+            "field": "intended_axis",
+            "label": "预期变量"
+          },
+          {
+            "field": "recorded_differences",
+            "label": "实际变化"
+          },
+          {
+            "field": "confounds",
+            "label": "混杂"
+          },
+          {
+            "field": "strict_single_axis",
+            "label": "严格单轴"
+          }
+        ]
+      },
+      {
+        "id": "group_detail_table",
+        "title": "六组训练—评估明细",
+        "subtitle": "路径依次为正式检查点；星号对应无效最终面板",
+        "dataset": "arm_performance",
+        "sourceId": "group_summary",
+        "columns": [
+          {
+            "field": "group",
+            "label": "组"
+          },
+          {
+            "field": "arm",
+            "label": "实验臂"
+          },
+          {
+            "field": "env_workers",
+            "label": "workers",
+            "format": "number"
+          },
+          {
+            "field": "collision_path",
+            "label": "碰撞路径"
+          },
+          {
+            "field": "mean_collision_u5_plus",
+            "label": "U5+ 均值",
+            "format": "number"
+          },
+          {
+            "field": "best_update",
+            "label": "最佳 U",
+            "format": "number"
+          },
+          {
+            "field": "best_collision_count",
+            "label": "最佳碰撞",
+            "format": "number"
+          },
+          {
+            "field": "final_collision_count",
+            "label": "最终碰撞",
+            "format": "number"
+          },
+          {
+            "field": "mean_approx_kl",
+            "label": "平均 KL",
+            "format": "number"
+          },
+          {
+            "field": "mean_clip_fraction",
+            "label": "Clip frac",
+            "format": "percent"
+          },
+          {
+            "field": "early_stop_updates",
+            "label": "早停 updates",
+            "format": "number"
+          },
+          {
+            "field": "actor_steps_completed",
+            "label": "Actor steps",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "quality_table",
+        "title": "证据完整性与可用性",
+        "subtitle": "结果可用于固定面板比较；旧 NPZ 的终止碰撞位除外",
+        "dataset": "quality",
+        "sourceId": "analysis_summary",
+        "columns": [
+          {
+            "field": "check",
+            "label": "检查"
+          },
+          {
+            "field": "result",
+            "label": "结果"
+          },
+          {
+            "field": "interpretation",
+            "label": "解释"
+          }
+        ]
+      },
+      {
+        "id": "pairwise_table",
+        "title": "逐场景碰撞身份变化",
+        "subtitle": "净下降不代表同一批场景稳定修复；需同时看 resolved 与 created",
+        "dataset": "pairwise",
+        "sourceId": "scenario_identity",
+        "columns": [
+          {
+            "field": "comparison",
+            "label": "比较"
+          },
+          {
+            "field": "a_collisions",
+            "label": "A 碰撞",
+            "format": "number"
+          },
+          {
+            "field": "b_collisions",
+            "label": "B 碰撞",
+            "format": "number"
+          },
+          {
+            "field": "shared",
+            "label": "共同",
+            "format": "number"
+          },
+          {
+            "field": "resolved",
+            "label": "消除",
+            "format": "number"
+          },
+          {
+            "field": "created",
+            "label": "新增",
+            "format": "number"
+          },
+          {
+            "field": "net_change",
+            "label": "净变化",
+            "format": "number"
+          },
+          {
+            "field": "jaccard",
+            "label": "Jaccard",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "trace_table",
+        "title": "代表性检查点的 trace 级碰撞构成",
+        "subtitle": "碰撞对手数来自逐帧空间关系；ego/wall 为差额分类",
+        "dataset": "trace_summary",
+        "sourceId": "trace_summary",
+        "columns": [
+          {
+            "field": "label",
+            "label": "检查点"
+          },
+          {
+            "field": "collision_count",
+            "label": "碰撞",
+            "format": "number"
+          },
+          {
+            "field": "opponent_collisions",
+            "label": "对手碰撞",
+            "format": "number"
+          },
+          {
+            "field": "ego_or_wall_collisions",
+            "label": "ego/墙",
+            "format": "number"
+          },
+          {
+            "field": "initial_collisions",
+            "label": "初始碰撞",
+            "format": "number"
+          },
+          {
+            "field": "median_collision_time_s",
+            "label": "时间中位数(s)",
+            "format": "number"
+          },
+          {
+            "field": "raceline0",
+            "label": "R0",
+            "format": "number"
+          },
+          {
+            "field": "raceline1",
+            "label": "R1",
+            "format": "number"
+          },
+          {
+            "field": "raceline2",
+            "label": "R2",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "correlation_table",
+        "title": "训练指标与评估碰撞的 pooled 相关性",
+        "subtitle": "68 个有效 PPO 检查点；异质 run 的描述性诊断，不作因果解释",
+        "dataset": "correlations",
+        "sourceId": "training_eval_join",
+        "columns": [
+          {
+            "field": "metric",
+            "label": "训练指标"
+          },
+          {
+            "field": "panels",
+            "label": "面板数",
+            "format": "number"
+          },
+          {
+            "field": "pearson",
+            "label": "Pearson",
+            "format": "number"
+          },
+          {
+            "field": "spearman",
+            "label": "Spearman",
+            "format": "number"
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "analysis_summary",
+        "label": "PPO Groups 1-6 consolidated analysis",
+        "path": "analysis_results/ppo_groups_1_6/analysis_summary.json",
+        "query": {
+          "language": "python",
+          "description": "Reads run configs, training metrics.jsonl, evaluation results_multi.json and NPZ traces; validates panels and produces joined comparison tables.",
+          "tables_used": [
+            "post-trained/*/config.json",
+            "post-trained/*/metrics.jsonl",
+            "eval_results/*/results_multi.json",
+            "eval_results/*/traces/*.npz"
+          ],
+          "filters": [
+            "Austin600",
+            "formal checkpoints U1/U5/U10/U15/U20 and Group 5 U25/U30",
+            "invalid panels excluded from inferential summaries"
+          ],
+          "metric_definitions": [
+            "collision_count = collision episodes among the 600 evaluation scenarios",
+            "success_rate = (600 - collision_count) / 600",
+            "mean_collision_u5_plus = arithmetic mean of valid checkpoint collision counts from U5 onward"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_json_auto('analysis_results/ppo_groups_1_6/analysis_summary.json');"
+        }
+      },
+      {
+        "id": "group_summary",
+        "label": "Experiment parameters, training telemetry and evaluation paths",
+        "path": "analysis_results/ppo_groups_1_6/group_summary.csv",
+        "query": {
+          "language": "python",
+          "description": "One bounded row per experiment arm, joining recorded parameters, formal training metrics and evaluation checkpoints.",
+          "tables_used": [
+            "analysis_results/ppo_groups_1_6/run_summary.csv",
+            "analysis_results/ppo_groups_1_6/panel_metrics.csv"
+          ],
+          "metric_definitions": [
+            "best/final collision counts use only valid evaluation panels",
+            "logged actor gradient norm is the pre-clip norm returned by clip_grad_norm_"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/group_summary.csv', header = true);"
+        }
+      },
+      {
+        "id": "control_audit",
+        "label": "Recorded single-axis control audit",
+        "path": "analysis_results/ppo_groups_1_6/group_control_audit.csv",
+        "query": {
+          "language": "python",
+          "description": "Compares every arm's recorded config against its declared baseline and flags any additional changed parameter.",
+          "tables_used": [
+            "post-trained/*/config.json"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/group_control_audit.csv', header = true);"
+        }
+      },
+      {
+        "id": "evaluation_panels",
+        "label": "Evaluation panel metrics",
+        "path": "analysis_results/ppo_groups_1_6/panel_metrics.csv",
+        "query": {
+          "language": "python",
+          "description": "One row per evaluated checkpoint, reconciled against episode records and trace filenames.",
+          "tables_used": [
+            "eval_results/*/results_multi.json",
+            "eval_results/*/traces/*.npz"
+          ],
+          "metric_definitions": [
+            "valid requires 600 episodes, 600 unique scenarios, 600 traces, zero errors and consistent aggregates"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/panel_metrics.csv', header = true);"
+        }
+      },
+      {
+        "id": "training_eval_join",
+        "label": "Training/evaluation checkpoint join",
+        "path": "analysis_results/ppo_groups_1_6/training_eval_join.csv",
+        "query": {
+          "language": "python",
+          "description": "Joins formal update telemetry to the matching evaluation checkpoint; correlations are pooled descriptive diagnostics.",
+          "tables_used": [
+            "post-trained/*/metrics.jsonl",
+            "analysis_results/ppo_groups_1_6/panel_metrics.csv"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/training_eval_join.csv', header = true) WHERE valid = true;"
+        }
+      },
+      {
+        "id": "npz_audit",
+        "label": "Full NPZ structural and terminal-state audit",
+        "path": "analysis_results/ppo_groups_1_6/npz_audit.json",
+        "query": {
+          "language": "python",
+          "description": "Inspects every trace NPZ for numeric dtype, aligned leading dimensions, terminal fields and collision-marker agreement with evaluation JSON.",
+          "tables_used": [
+            "eval_results/*/traces/*.npz",
+            "eval_results/*/results_multi.json"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_json_auto('analysis_results/ppo_groups_1_6/npz_audit.json');"
+        }
+      },
+      {
+        "id": "scenario_identity",
+        "label": "Scenario-level collision identity and trace summaries",
+        "path": "analysis_results/ppo_groups_1_6/scenario_pairwise.csv",
+        "query": {
+          "language": "python",
+          "description": "Pairs the same Austin600 scenario IDs across checkpoints and counts shared, resolved and newly created collision cases.",
+          "tables_used": [
+            "eval_results/*/results_multi.json",
+            "analysis_results/ppo_groups_1_6/trace_summary_selected.csv"
+          ],
+          "metric_definitions": [
+            "Jaccard = shared / (shared + resolved + created)"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/scenario_pairwise.csv', header = true);"
+        }
+      },
+      {
+        "id": "scenario_frequency",
+        "label": "Persistent collision scenario frequency",
+        "path": "analysis_results/ppo_groups_1_6/scenario_frequency.csv",
+        "query": {
+          "language": "python",
+          "description": "Counts in how many of the 68 valid PPO checkpoint panels each Austin600 scenario collides.",
+          "tables_used": [
+            "eval_results/*/results_multi.json"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/scenario_frequency.csv', header = true) ORDER BY collision_panels DESC, scenario_id LIMIT 10;"
+        }
+      },
+      {
+        "id": "trace_summary",
+        "label": "Selected checkpoint trace-level collision summaries",
+        "path": "analysis_results/ppo_groups_1_6/trace_summary_selected.csv",
+        "query": {
+          "language": "sql",
+          "description": "Loads the bounded trace-level collision classification table derived from the audited NPZ files.",
+          "tables_used": [
+            "analysis_results/ppo_groups_1_6/trace_summary_selected.csv",
+            "eval_results/*/traces/*.npz"
+          ],
+          "engine": "duckdb",
+          "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/trace_summary_selected.csv', header = true);"
+        }
+      }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "layout": "full",
+        "body": "# End2Race PPO：Baseline 至 Group 6 对比实验技术分析"
+      },
+      {
+        "id": "technical_summary",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## 技术摘要\n\n在现有单次训练、固定 Austin600 评估面板上，最有证据支持的配置是 **`privilege_gru` + batch 12,800 + actor GRU/head LR `3e-6 / 3e-5` + clip 0.20 + target-KL 关闭，并训练到 U30**。它得到 **11/600 碰撞、358 次超车、231 次跟随、98.17% 成功率**；相对 BC 的 22 次碰撞减半，也优于同条件 clip 0.15 U30 的 20 次碰撞。\n\n六组实验给出的参数方向一致：特权共享 GRU critic 最好；增大 batch 会削弱优化步数与后期稳定性；中间学习率最好；干净的 Group 5 支持 clip 0.20；target-KL 早停没有转化成更安全的 policy。**但最终选择仍是单 seed、同一固定场景面板、多个 checkpoint 中择优的结果，不能等价为泛化收益或置信区间。**"
+      },
+      {
+        "id": "headline_metrics",
+        "type": "metric-strip",
+        "cardIds": [
+          "selected_collision_card",
+          "success_card",
+          "quality_card"
+        ]
+      },
+      {
+        "id": "key_findings",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## 关键发现\n\n**最终排序由 eval 决定，训练 metrics 用于解释机制。** 选定的 clip 0.20 U30 虽然最终 critic explained variance（0.906）低于 clip 0.15（0.950），但碰撞数为 11 对 20。反过来，Group 1 的特权 MLP warm-up validation loss 最低（0.183），U20 却有 25 次碰撞，明显差于 `privilege_gru` 的 14 次。\n\n**累计碰撞数必须与场景身份一起看。** Group 3 的 clip 0.15 与旧 clip 0.20 在 U20 都是 14 次碰撞，但只共享 6 个碰撞场景，各自消除 8 个、又新增 8 个；相同总数掩盖了明显的场景迁移。"
+      },
+      {
+        "id": "group_chart_block",
+        "type": "chart",
+        "chartId": "group_mean_collisions"
+      },
+      {
+        "id": "group1",
+        "type": "markdown",
+        "sourceId": "group_summary",
+        "body": "## Group 1：Critic 架构\n\n这是严格单轴对照，三组仅改变 critic。U20 碰撞为：独立 GRU **34**、特权 MLP **25**、共享 `privilege_gru` **14**；U5–U20 均值分别为 27.25、24.00、16.00。`privilege_gru` 的最终总体/碰撞/普通 explained variance 为 0.922/0.921/0.864，兼具最好 eval 和最均衡的价值拟合。因此后续组固定采用 `privilege_gru`。\n\nwarm-up validation loss 不能直接排序 policy：特权 MLP 的 0.183 是三者最低，但 eval 反而更差。"
+      },
+      {
+        "id": "group2",
+        "type": "markdown",
+        "sourceId": "group_summary",
+        "body": "## Group 2：Batch size\n\n这是严格单轴对照。batch 12,800 / 25,600 / 51,200 每个 update 的计划 actor optimizer steps 分别为 16 / 8 / 4，20 updates 总步数为 320 / 160 / 80。对应 U5–U20 平均碰撞为 **16.00 / 20.25 / 17.50**，U20 为 **14 / 16 / 21**。\n\n更大 batch 同时降低平均 KL 与 clip fraction，说明每个 formal update 的学习强度下降；51,200 在 U10 短暂达到 15 次碰撞，但 U20 回退到 21。保留 12,800 的依据是最终性能与跨 checkpoint 稳定性，而不是单点最优。"
+      },
+      {
+        "id": "group3",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## Group 3：Clip range（历史实验含混杂）\n\n记录的碰撞路径为 clip 0.10：28/23/17/28/20；共享 baseline clip 0.15：16/18/18/14/14；旧 clip 0.20：24/23/22/18/14。**baseline 使用 12 workers，而 0.10 与旧 0.20 使用 8 workers，因此 baseline 对另外两臂不是严格单轴。**\n\n0.10 与旧 0.20 在 8-worker 内是干净对照，0.20 的 U5–U20 均值 19.25 优于 0.10 的 22.00。两者 warm-up 记录完全一致（19 epochs、best epoch 16、validation loss 0.169683），而与 baseline 的 5/2/0.298154 不同；由于 clip 在 warm-up 不生效，这进一步证明不能把 baseline 差异只归因于 clip。\n\n张量复核也显示：共享 baseline 与 Group 5 长跑 clip 0.15 的 U1/U5/U10/U15/U20 actor 完全一致；旧 clip 0.20 与 Group 5 clip 0.20 在相同 updates 均不一致，最大参数差从 0.00057 增至 0.00319。两条 clip 0.20 轨迹不能混作同一 run，干净结论只取 Group 5。"
+      },
+      {
+        "id": "group4",
+        "type": "markdown",
+        "sourceId": "group_summary",
+        "body": "## Group 4：Actor 学习率\n\n这是严格单轴对照，仅 GRU/head LR 改为 1×=`1e-6/1e-5`、3×=`3e-6/3e-5`、5×=`5e-6/5e-5`。1× 路径 18/15/15/19/21，早期较好但随后漂移；3× 路径 16/18/18/14/14，最终最好；5× 路径 19/21/21/26/26*，且 U20 因缺 1 个场景无效。\n\n平均 KL 从 1× 的 0.0147 升至 3× 的 0.0728、5× 的 0.0815；clip fraction 从 0.0343 升至 0.0975、0.1595。1× 明显偏弱，5× 更激进且 eval 恶化，因此保留 3×。日志中的 gradient norm 是 clip 前范数；不能把它当成实际应用的更新幅度。"
+      },
+      {
+        "id": "group5",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## Group 5：30 updates 的干净 Clip 对照\n\n两臂均使用 12 workers、相同 warm-up、相同学习率与 batch，只改变 clip 0.15 → 0.20；这是当前权威 clip 对照。clip 0.15 路径为 16/18/18/14/14/17/20，U20 后持续退化；clip 0.20 为 21/18/16/13/13/17/11，U25 短暂回退后 U30 达到全实验最低 **11**。\n\nU30 逐场景比较显示，clip 0.20 相对 clip 0.15 从 20 降到 11：共同 5、消除 15、新增 6。相对 BC 从 22 降到 11：共同 5、消除 17、新增 6。因存在 checkpoint 选择，建议先把 clip 0.20 U30 视为候选，而非已证明的稳定终局。"
+      },
+      {
+        "id": "group5_chart_block",
+        "type": "chart",
+        "chartId": "group5_path"
+      },
+      {
+        "id": "group6",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## Group 6：Target-KL\n\n关闭 / 0.02 / 0.04 的碰撞路径为 16/18/18/14/14、20/17/19/18/20、23/45/70/58/33。0.02 使用 8 workers，和 12-worker baseline 同时改变两个因素；只有 0.04 是严格单轴比较。\n\n0.02 在 11/20 个 updates 早停，完成 206/320 个 actor steps；0.04 在 12/20 个 updates 早停，完成 203/320。实际门槛是 `1.5 × target_kl`，分别为 0.03 与 0.06；停止记录仍出现最高 2.43 与 1.05 的 minibatch KL。尽管显著减少 optimizer steps，0.04 的 U20 仍为 33 次碰撞，并新增 28 个 baseline 未碰撞的场景。当前门控是在触发该 minibatch 更新后停止后续 minibatch，不能撤销已经造成 KL overshoot 的更新；因此它是计算/信赖域诊断，不是安全保证。结论是保持 `target_kl=None`。"
+      },
+      {
+        "id": "control_table_block",
+        "type": "table",
+        "tableId": "control_table"
+      },
+      {
+        "id": "group_detail_block",
+        "type": "table",
+        "tableId": "group_detail_table"
+      },
+      {
+        "id": "telemetry",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## 训练 Metrics 与 Eval 的关系\n\n跨 68 个有效 PPO 检查点汇总后，训练 rollout collision rate、return、critic value loss、explained variance、mean KL、clip fraction 与 eval 碰撞的 Pearson 绝对值都不超过 **0.114**；Spearman 绝对值最高也只有 **0.279**。这是异质 run 的 pooled 描述统计，不能用于因果推断，但足以说明：**这些训练遥测适合诊断更新是否过弱、过激或早停，不适合替代固定场景 eval 来选 checkpoint。**"
+      },
+      {
+        "id": "telemetry_chart_block",
+        "type": "chart",
+        "chartId": "telemetry_scatter"
+      },
+      {
+        "id": "correlation_table_block",
+        "type": "table",
+        "tableId": "correlation_table"
+      },
+      {
+        "id": "data_quality",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## 数据质量与 NPZ 证据\n\n70 个面板中 69 个有效；唯一无效项是 Group 4 高 LR U20（599 个 episode/trace、1 个错误），该点不进入均值和最终判断。所有有效面板具有相同 600 个场景，训练 metrics 数值有限且 formal update 连续，所有 checkpoint 存在，且每个 `actor_final.pth` 与最后一个 actor checkpoint 张量一致。\n\n全量检查的 41,999 个 NPZ 均为 numeric/bool，所有 leading dimension 对齐。20,999 个 `post_step_v2` 轨迹的终止字段与 JSON 完全一致；21,000 个旧轨迹缺 terminal post-step，其中 736 个碰撞 episode 的 NPZ 最后一帧没有碰撞标记，这是格式语义限制，不是 JSON 标签冲突。因此旧面板碰撞真值使用 `results_multi.json`，NPZ 只用于终止前运动与空间关系分析。"
+      },
+      {
+        "id": "quality_table_block",
+        "type": "table",
+        "tableId": "quality_table"
+      },
+      {
+        "id": "scenario_identity_section",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## 场景身份与碰撞构成\n\n最终 clip 0.20 U30 的 11 次碰撞全部具有对手空间接触证据，碰撞时间中位数为 6.07 秒。相比之下，target-KL 0.04 U20 的 33 次碰撞只有 23 次涉及对手，另有 10 次为 ego/墙类，碰撞时间中位数 3.92 秒，说明失败不只是车车冲突数量增加，而是更广泛的轨迹失稳。\n\n两条场景在 68/68 个有效 PPO 面板中都碰撞，说明它们是强稳定困难样本；但不能据此宣称不可解，应作为后续定向诊断集。"
+      },
+      {
+        "id": "trace_table_block",
+        "type": "table",
+        "tableId": "trace_table"
+      },
+      {
+        "id": "persistent_chart_block",
+        "type": "chart",
+        "chartId": "persistent_scenarios"
+      },
+      {
+        "id": "pairwise_table_block",
+        "type": "table",
+        "tableId": "pairwise_table"
+      },
+      {
+        "id": "scope",
+        "type": "markdown",
+        "body": "## 范围、数据与指标定义\n\n- **Baseline**：`pretrained/end2race.pth` 的 BC，在 Austin600 上为 22 碰撞、344 超车、234 跟随。\n- **共享 PPO baseline**：`ppo_privilege_gru_0721_base`，20 updates，clip 0.15，batch 12,800，actor GRU/head LR `3e-6/3e-5`，target-KL 关闭。\n- **主指标**：每个 600-scenario 面板中的 collision episode 数；越低越好。\n- **成功率**：`(600 - collisions) / 600`。超车/跟随为 episode 最终结果分解。\n- **U5+ 均值**：从 U5 开始的所有有效正式检查点碰撞数算术平均；用于削弱 U1 warm-start 的影响，但不替代完整路径。\n- **场景身份**：同一 scenario ID 在两检查点的 shared / resolved / created collision 集合；Jaccard 衡量集合重合。\n- **训练遥测**：formal update 的 `metrics.jsonl` 记录。gradient norm 是 pre-clip；wall time 因实验重叠运行，不用于算法速度比较。"
+      },
+      {
+        "id": "methodology",
+        "type": "markdown",
+        "body": "## 方法\n\n1. 从每个训练目录的配置与 `metrics.jsonl` 重建实际参数、warm-up、formal update、optimizer step、KL/clip、critic loss/EV。\n2. 从每个 eval JSON 逐 episode 重算 collision/overtake/follow，并与 aggregate、错误数、600 个唯一场景和 trace 文件名对账。\n3. 对所有 41,999 个 NPZ 检查 dtype、leading dimension、终止字段和碰撞标记；按 legacy 与 post-step-v2 分层解释。\n4. 用 recorded config 对每组做单轴控制审计；存在额外变化时仅作描述性比较。\n5. 在相同 scenario ID 上配对碰撞集合，避免只看总数。\n6. 将训练 update 与相同 checkpoint eval join；相关性仅作为 pooled 诊断，不作因果或跨 run 排名依据。\n\n可复跑入口为 `analysis_results/ppo_groups_1_6/analyze_groups.py`；notebook 是对其 bounded outputs 的执行型伴随文档。"
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## 局限、不确定性与稳健性\n\n- **无重复 seed / 无置信区间**：目前每臂一次训练，无法分离随机性与参数效应。\n- **固定面板 checkpoint 选择偏差**：clip 0.20 U30 是 7 个已观察 checkpoint 中的最低点；如果同一 Austin600 同时承担调参与报告，11 次碰撞可能乐观。\n- **Group 3 与 Group 6(0.02) 混杂**：worker 数变化使其不能对共享 baseline 做纯参数归因。\n- **旧 NPZ 终止状态不完整**：旧 trace 的碰撞真值依赖 eval JSON；终止后一帧动力学不能复原。\n- **无统计独立场景集**：场景 ID 相同便于配对，但没有验证到新地图、新 ego 分布或扰动条件。\n- **训练 telemetry 相关性是 pooled 描述统计**：不同 run/更新阶段混合，不满足独立同分布或因果解释条件。"
+      },
+      {
+        "id": "recommendations",
+        "type": "markdown",
+        "sourceId": "analysis_summary",
+        "body": "## 推荐配置与下一步\n\n当前建议冻结候选：**`privilege_gru`、batch 12,800、actor GRU/head LR `3e-6/3e-5`、critic LR `3e-4`、clip 0.20、target-KL 关闭、30 updates，选择 U30。**\n\n下一步只做一个最小确认实验：用相同配置再训练 **2–3 个独立 seed**，预先固定 U20/U25/U30 三个读取点，并增加一份不参与选择的 holdout 场景集。主要报告每 seed/每 checkpoint 的 collision 数、跨 seed 中位数与范围，并保留场景 shared/resolved/created 分解。如果复现不了 11，也能判断 0.20 的方向性是否仍优于 0.15。"
+      },
+      {
+        "id": "further_questions",
+        "type": "markdown",
+        "body": "## 进一步问题\n\n1. 两个 68/68 持续碰撞场景的几何失败机制是感知不足、动作饱和，还是奖励/终止边界？\n2. clip 0.20 在 U25 回退、U30 恢复，是采样噪声还是特定场景簇切换？\n3. target-KL 早停触发前的 minibatch 顺序与首次 overshoot，是否集中在少数轨迹类型？\n4. 在独立 holdout 上，11 次碰撞的优势能否保留，同时维持 358 次超车？"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-07-22T12:17:24.585055+00:00",
+    "status": "ready",
+    "datasets": {
+      "headline": [
+        {
+          "selected_collisions": 11,
+          "bc_collisions": 22,
+          "collision_reduction": 0.5,
+          "selected_success_rate": 0.9816666666666667,
+          "selected_overtakes": 358,
+          "valid_panels": 69,
+          "npz_files": 41999
+        }
+      ],
+      "arm_performance": [
+        {
+          "group": "Group 1",
+          "arm": "独立 GRU",
+          "arm_display": "G1 · 独立 GRU",
+          "run": "ppo_independent_gru_0721_base",
+          "collision_path": "19 / 19 / 27 / 29 / 34",
+          "mean_collision_u5_plus": 27.25,
+          "best_update": 1,
+          "best_collision_count": 19,
+          "final_update": 20,
+          "final_collision_count": 34,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.059663199417502255,
+          "mean_clip_fraction": 0.10101342524558277,
+          "final_explained_variance_post": 0.9074039817653526,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 1",
+          "arm": "特权 MLP",
+          "arm_display": "G1 · 特权 MLP",
+          "run": "ppo_privilege_mlp_0721_base",
+          "collision_path": "24 / 25 / 25 / 21 / 25",
+          "mean_collision_u5_plus": 24.0,
+          "best_update": 15,
+          "best_collision_count": 21,
+          "final_update": 20,
+          "final_collision_count": 25,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.09656366032711594,
+          "mean_clip_fraction": 0.10913989014170511,
+          "final_explained_variance_post": 0.6734456517455584,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 1",
+          "arm": "共享基线",
+          "arm_display": "G1 · 共享基线",
+          "run": "ppo_privilege_gru_0721_base",
+          "collision_path": "16 / 18 / 18 / 14 / 14",
+          "mean_collision_u5_plus": 16.0,
+          "best_update": 15,
+          "best_collision_count": 14,
+          "final_update": 20,
+          "final_collision_count": 14,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.07280600656317801,
+          "mean_clip_fraction": 0.09745165769709274,
+          "final_explained_variance_post": 0.9220174622338332,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 2",
+          "arm": "batch 12,800",
+          "arm_display": "G2 · batch 12,800",
+          "run": "ppo_privilege_gru_0721_base",
+          "collision_path": "16 / 18 / 18 / 14 / 14",
+          "mean_collision_u5_plus": 16.0,
+          "best_update": 15,
+          "best_collision_count": 14,
+          "final_update": 20,
+          "final_collision_count": 14,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.07280600656317801,
+          "mean_clip_fraction": 0.09745165769709274,
+          "final_explained_variance_post": 0.9220174622338332,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 2",
+          "arm": "batch 25,600",
+          "arm_display": "G2 · batch 25,600",
+          "run": "ppo_privilege_gru_0721_bs25600",
+          "collision_path": "18 / 22 / 21 / 22 / 16",
+          "mean_collision_u5_plus": 20.25,
+          "best_update": 20,
+          "best_collision_count": 16,
+          "final_update": 20,
+          "final_collision_count": 16,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.04637358405762643,
+          "mean_clip_fraction": 0.06795898314371698,
+          "final_explained_variance_post": 0.8907417132031176,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 160,
+          "actor_steps_planned": 160
+        },
+        {
+          "group": "Group 2",
+          "arm": "batch 51,200",
+          "arm_display": "G2 · batch 51,200",
+          "run": "ppo_privilege_gru_0721_bs51200",
+          "collision_path": "22 / 17 / 15 / 17 / 21",
+          "mean_collision_u5_plus": 17.5,
+          "best_update": 10,
+          "best_collision_count": 15,
+          "final_update": 20,
+          "final_collision_count": 21,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.03488806364931948,
+          "mean_clip_fraction": 0.05960619981888158,
+          "final_explained_variance_post": 0.8617407126749194,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 80,
+          "actor_steps_planned": 80
+        },
+        {
+          "group": "Group 3",
+          "arm": "clip 0.10（旧）",
+          "arm_display": "G3 · clip 0.10（旧）",
+          "run": "ppo_privilege_gru_0721_clip010",
+          "collision_path": "28 / 23 / 17 / 28 / 20",
+          "mean_collision_u5_plus": 22.0,
+          "best_update": 10,
+          "best_collision_count": 17,
+          "final_update": 20,
+          "final_collision_count": 20,
+          "final_eval_valid": true,
+          "env_workers": 8,
+          "mean_approx_kl": 0.06940284824268655,
+          "mean_clip_fraction": 0.13597045600454294,
+          "final_explained_variance_post": 0.9426720189391673,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 3",
+          "arm": "clip 0.15（基线）",
+          "arm_display": "G3 · clip 0.15（基线）",
+          "run": "ppo_privilege_gru_0721_base",
+          "collision_path": "16 / 18 / 18 / 14 / 14",
+          "mean_collision_u5_plus": 16.0,
+          "best_update": 15,
+          "best_collision_count": 14,
+          "final_update": 20,
+          "final_collision_count": 14,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.07280600656317801,
+          "mean_clip_fraction": 0.09745165769709274,
+          "final_explained_variance_post": 0.9220174622338332,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 3",
+          "arm": "clip 0.20（旧）",
+          "arm_display": "G3 · clip 0.20（旧）",
+          "run": "ppo_privilege_gru_0721_clip020",
+          "collision_path": "24 / 23 / 22 / 18 / 14",
+          "mean_collision_u5_plus": 19.25,
+          "best_update": 20,
+          "best_collision_count": 14,
+          "final_update": 20,
+          "final_collision_count": 14,
+          "final_eval_valid": true,
+          "env_workers": 8,
+          "mean_approx_kl": 0.09066983142849859,
+          "mean_clip_fraction": 0.058920897153848274,
+          "final_explained_variance_post": 0.9489634652076271,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 4",
+          "arm": "LR 1×",
+          "arm_display": "G4 · LR 1×",
+          "run": "ppo_privilege_gru_0722_lr1_tkloff",
+          "collision_path": "18 / 15 / 15 / 19 / 21",
+          "mean_collision_u5_plus": 17.5,
+          "best_update": 10,
+          "best_collision_count": 15,
+          "final_update": 20,
+          "final_collision_count": 21,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.014728226376512677,
+          "mean_clip_fraction": 0.03430908137629558,
+          "final_explained_variance_post": 0.9351399714458795,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 4",
+          "arm": "LR 3×（基线）",
+          "arm_display": "G4 · LR 3×（基线）",
+          "run": "ppo_privilege_gru_0721_base",
+          "collision_path": "16 / 18 / 18 / 14 / 14",
+          "mean_collision_u5_plus": 16.0,
+          "best_update": 15,
+          "best_collision_count": 14,
+          "final_update": 20,
+          "final_collision_count": 14,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.07280600656317801,
+          "mean_clip_fraction": 0.09745165769709274,
+          "final_explained_variance_post": 0.9220174622338332,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 4",
+          "arm": "LR 5×",
+          "arm_display": "G4 · LR 5×",
+          "run": "ppo_privilege_gru_0722_lr5_tkloff",
+          "collision_path": "19 / 21 / 21 / 26 / 26*",
+          "mean_collision_u5_plus": 22.666666666666668,
+          "best_update": 1,
+          "best_collision_count": 19,
+          "final_update": 20,
+          "final_collision_count": 26,
+          "final_eval_valid": false,
+          "env_workers": 12,
+          "mean_approx_kl": 0.0815119436413588,
+          "mean_clip_fraction": 0.15950341423413192,
+          "final_explained_variance_post": 0.9249300132148621,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 5",
+          "arm": "clip 0.15 / 30U",
+          "arm_display": "G5 · clip 0.15 / 30U",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "collision_path": "16 / 18 / 18 / 14 / 14 / 17 / 20",
+          "mean_collision_u5_plus": 16.833333333333332,
+          "best_update": 15,
+          "best_collision_count": 14,
+          "final_update": 30,
+          "final_collision_count": 20,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.0599040661105743,
+          "mean_clip_fraction": 0.08768359160446076,
+          "final_explained_variance_post": 0.9504502799407462,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 480,
+          "actor_steps_planned": 480
+        },
+        {
+          "group": "Group 5",
+          "arm": "clip 0.20 / 30U",
+          "arm_display": "G5 · clip 0.20 / 30U",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "collision_path": "21 / 18 / 16 / 13 / 13 / 17 / 11",
+          "mean_collision_u5_plus": 14.666666666666666,
+          "best_update": 30,
+          "best_collision_count": 11,
+          "final_update": 30,
+          "final_collision_count": 11,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.0726521682325462,
+          "mean_clip_fraction": 0.05620914594534649,
+          "final_explained_variance_post": 0.9059636928899524,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 480,
+          "actor_steps_planned": 480
+        },
+        {
+          "group": "Group 6",
+          "arm": "target-KL 关闭",
+          "arm_display": "G6 · target-KL 关闭",
+          "run": "ppo_privilege_gru_0721_base",
+          "collision_path": "16 / 18 / 18 / 14 / 14",
+          "mean_collision_u5_plus": 16.0,
+          "best_update": 15,
+          "best_collision_count": 14,
+          "final_update": 20,
+          "final_collision_count": 14,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.07280600656317801,
+          "mean_clip_fraction": 0.09745165769709274,
+          "final_explained_variance_post": 0.9220174622338332,
+          "early_stop_updates": 0,
+          "actor_steps_completed": 320,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 6",
+          "arm": "target-KL 0.02",
+          "arm_display": "G6 · target-KL 0.02",
+          "run": "ppo_privilege_gru_0722_clip015_tkl002",
+          "collision_path": "20 / 17 / 19 / 18 / 20",
+          "mean_collision_u5_plus": 18.5,
+          "best_update": 5,
+          "best_collision_count": 17,
+          "final_update": 20,
+          "final_collision_count": 20,
+          "final_eval_valid": true,
+          "env_workers": 8,
+          "mean_approx_kl": 0.05763983694512861,
+          "mean_clip_fraction": 0.059732292547663574,
+          "final_explained_variance_post": 0.9173586960492012,
+          "early_stop_updates": 11,
+          "actor_steps_completed": 206,
+          "actor_steps_planned": 320
+        },
+        {
+          "group": "Group 6",
+          "arm": "target-KL 0.04",
+          "arm_display": "G6 · target-KL 0.04",
+          "run": "ppo_privilege_gru_0722_clip015_tkl004",
+          "collision_path": "23 / 45 / 70 / 58 / 33",
+          "mean_collision_u5_plus": 51.5,
+          "best_update": 1,
+          "best_collision_count": 23,
+          "final_update": 20,
+          "final_collision_count": 33,
+          "final_eval_valid": true,
+          "env_workers": 12,
+          "mean_approx_kl": 0.06029175024768588,
+          "mean_clip_fraction": 0.10409032958099361,
+          "final_explained_variance_post": 0.9066544820530256,
+          "early_stop_updates": 12,
+          "actor_steps_completed": 203,
+          "actor_steps_planned": 320
+        }
+      ],
+      "group5_panels": [
+        {
+          "arm": "clip 0.15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 1,
+          "collision_count": 16,
+          "overtake_count": 350,
+          "follow_count": 234,
+          "success_rate": 0.9733333333333334,
+          "median_collision_time_s": 4.954999999999939,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 5,
+          "collision_count": 18,
+          "overtake_count": 343,
+          "follow_count": 239,
+          "success_rate": 0.97,
+          "median_collision_time_s": 4.554999999999947,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 10,
+          "collision_count": 18,
+          "overtake_count": 339,
+          "follow_count": 243,
+          "success_rate": 0.97,
+          "median_collision_time_s": 4.939999999999939,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 15,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237,
+          "success_rate": 0.9766666666666667,
+          "median_collision_time_s": 3.96999999999996,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 20,
+          "collision_count": 14,
+          "overtake_count": 349,
+          "follow_count": 237,
+          "success_rate": 0.9766666666666667,
+          "median_collision_time_s": 4.5449999999999475,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 25,
+          "collision_count": 17,
+          "overtake_count": 347,
+          "follow_count": 236,
+          "success_rate": 0.9716666666666667,
+          "median_collision_time_s": 4.629999999999946,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 30,
+          "collision_count": 20,
+          "overtake_count": 335,
+          "follow_count": 245,
+          "success_rate": 0.9666666666666667,
+          "median_collision_time_s": 5.589999999999925,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 1,
+          "collision_count": 21,
+          "overtake_count": 343,
+          "follow_count": 236,
+          "success_rate": 0.965,
+          "median_collision_time_s": 4.9199999999999395,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 5,
+          "collision_count": 18,
+          "overtake_count": 347,
+          "follow_count": 235,
+          "success_rate": 0.97,
+          "median_collision_time_s": 4.354999999999952,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 10,
+          "collision_count": 16,
+          "overtake_count": 350,
+          "follow_count": 234,
+          "success_rate": 0.9733333333333334,
+          "median_collision_time_s": 5.319999999999931,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 15,
+          "collision_count": 13,
+          "overtake_count": 349,
+          "follow_count": 238,
+          "success_rate": 0.9783333333333334,
+          "median_collision_time_s": 4.809999999999942,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 20,
+          "collision_count": 13,
+          "overtake_count": 350,
+          "follow_count": 237,
+          "success_rate": 0.9783333333333334,
+          "median_collision_time_s": 4.569999999999947,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 25,
+          "collision_count": 17,
+          "overtake_count": 352,
+          "follow_count": 231,
+          "success_rate": 0.9716666666666667,
+          "median_collision_time_s": 5.599999999999925,
+          "episode_rows": 600,
+          "valid": true
+        },
+        {
+          "arm": "clip 0.20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 30,
+          "collision_count": 11,
+          "overtake_count": 358,
+          "follow_count": 231,
+          "success_rate": 0.9816666666666667,
+          "median_collision_time_s": 6.069999999999915,
+          "episode_rows": 600,
+          "valid": true
+        }
+      ],
+      "telemetry_scatter": [
+        {
+          "point": "独立 GRU U1",
+          "run": "ppo_independent_gru_0721_base",
+          "update": 1,
+          "collision_count": 19,
+          "approx_kl_mean": 0.4068368784862105,
+          "approx_kl_max": 3.495802640914917,
+          "clip_fraction_mean": 0.36235839035362005,
+          "explained_variance_post": 0.6103389777938593,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "独立 GRU U5",
+          "run": "ppo_independent_gru_0721_base",
+          "update": 5,
+          "collision_count": 19,
+          "approx_kl_mean": 0.032859141761582576,
+          "approx_kl_max": 0.3657929599285126,
+          "clip_fraction_mean": 0.09383300541958306,
+          "explained_variance_post": 0.8152309772744148,
+          "training_collision_rate": 0.2631578947368421,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "独立 GRU U10",
+          "run": "ppo_independent_gru_0721_base",
+          "update": 10,
+          "collision_count": 27,
+          "approx_kl_mean": 0.04831887224136153,
+          "approx_kl_max": 0.7131489515304565,
+          "clip_fraction_mean": 0.0836328094592318,
+          "explained_variance_post": 0.8125155526754014,
+          "training_collision_rate": 0.3087248322147651,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "独立 GRU U15",
+          "run": "ppo_independent_gru_0721_base",
+          "update": 15,
+          "collision_count": 29,
+          "approx_kl_mean": 0.0062732507281179975,
+          "approx_kl_max": 0.027623562142252922,
+          "clip_fraction_mean": 0.04965331868152134,
+          "explained_variance_post": 0.8897054315285117,
+          "training_collision_rate": 0.27702702702702703,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "独立 GRU U20",
+          "run": "ppo_independent_gru_0721_base",
+          "update": 20,
+          "collision_count": 34,
+          "approx_kl_mean": 0.02972025167255197,
+          "approx_kl_max": 0.39666256308555603,
+          "clip_fraction_mean": 0.03978027243283577,
+          "explained_variance_post": 0.9074039817653526,
+          "training_collision_rate": 0.2980132450331126,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "特权 MLP U1",
+          "run": "ppo_privilege_mlp_0721_base",
+          "update": 1,
+          "collision_count": 24,
+          "approx_kl_mean": 0.19317712300806306,
+          "approx_kl_max": 2.662461757659912,
+          "clip_fraction_mean": 0.36630858667194843,
+          "explained_variance_post": 0.30666758594647836,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "特权 MLP U5",
+          "run": "ppo_privilege_mlp_0721_base",
+          "update": 5,
+          "collision_count": 25,
+          "approx_kl_mean": 0.002378753069206138,
+          "approx_kl_max": 0.005285773891955614,
+          "clip_fraction_mean": 0.04187499883119017,
+          "explained_variance_post": 0.5875576836813436,
+          "training_collision_rate": 0.29333333333333333,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "特权 MLP U10",
+          "run": "ppo_privilege_mlp_0721_base",
+          "update": 10,
+          "collision_count": 25,
+          "approx_kl_mean": 0.043148289355740416,
+          "approx_kl_max": 0.6236236691474915,
+          "clip_fraction_mean": 0.0665478496812284,
+          "explained_variance_post": 0.6591607623791911,
+          "training_collision_rate": 0.32450331125827814,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "特权 MLP U15",
+          "run": "ppo_privilege_mlp_0721_base",
+          "update": 15,
+          "collision_count": 21,
+          "approx_kl_mean": 0.0053450421456364,
+          "approx_kl_max": 0.013771148398518562,
+          "clip_fraction_mean": 0.08327148237731308,
+          "explained_variance_post": 0.6658913141525656,
+          "training_collision_rate": 0.3630573248407643,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "特权 MLP U20",
+          "run": "ppo_privilege_mlp_0721_base",
+          "update": 20,
+          "collision_count": 25,
+          "approx_kl_mean": 0.14436727076623357,
+          "approx_kl_max": 1.4722648859024048,
+          "clip_fraction_mean": 0.1540283167269081,
+          "explained_variance_post": 0.6734456517455584,
+          "training_collision_rate": 0.2620689655172414,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "共享基线 U1",
+          "run": "ppo_privilege_gru_0721_base",
+          "update": 1,
+          "collision_count": 16,
+          "approx_kl_mean": 0.18558810801885556,
+          "approx_kl_max": 2.3920912742614746,
+          "clip_fraction_mean": 0.20425780746154487,
+          "explained_variance_post": 0.6211697350443632,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "共享基线 U5",
+          "run": "ppo_privilege_gru_0721_base",
+          "update": 5,
+          "collision_count": 18,
+          "approx_kl_mean": 0.0034106669222455817,
+          "approx_kl_max": 0.02034442126750946,
+          "clip_fraction_mean": 0.03796874889667379,
+          "explained_variance_post": 0.8176774137772385,
+          "training_collision_rate": 0.3333333333333333,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "共享基线 U10",
+          "run": "ppo_privilege_gru_0721_base",
+          "update": 10,
+          "collision_count": 18,
+          "approx_kl_mean": 0.002512538408918772,
+          "approx_kl_max": 0.004565645940601826,
+          "clip_fraction_mean": 0.03937988227698952,
+          "explained_variance_post": 0.8508910048461742,
+          "training_collision_rate": 0.25,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "共享基线 U15",
+          "run": "ppo_privilege_gru_0721_base",
+          "update": 15,
+          "collision_count": 14,
+          "approx_kl_mean": 0.04791829086199868,
+          "approx_kl_max": 0.6657530069351196,
+          "clip_fraction_mean": 0.10151855142612476,
+          "explained_variance_post": 0.8642720748252954,
+          "training_collision_rate": 0.304635761589404,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "共享基线 U20",
+          "run": "ppo_privilege_gru_0721_base",
+          "update": 20,
+          "collision_count": 14,
+          "approx_kl_mean": 0.11873954111419152,
+          "approx_kl_max": 1.0881820917129517,
+          "clip_fraction_mean": 0.11695800453890115,
+          "explained_variance_post": 0.9220174622338332,
+          "training_collision_rate": 0.24475524475524477,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 25,600 U1",
+          "run": "ppo_privilege_gru_0721_bs25600",
+          "update": 1,
+          "collision_count": 18,
+          "approx_kl_mean": 0.1803131372499047,
+          "approx_kl_max": 1.245259165763855,
+          "clip_fraction_mean": 0.36706054396927357,
+          "explained_variance_post": 0.5665091782579185,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 25,600 U5",
+          "run": "ppo_privilege_gru_0721_bs25600",
+          "update": 5,
+          "collision_count": 22,
+          "approx_kl_mean": 0.002755578728974792,
+          "approx_kl_max": 0.005230441689491272,
+          "clip_fraction_mean": 0.05005371128208935,
+          "explained_variance_post": 0.8211459344162776,
+          "training_collision_rate": 0.3618421052631579,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 25,600 U10",
+          "run": "ppo_privilege_gru_0721_bs25600",
+          "update": 10,
+          "collision_count": 21,
+          "approx_kl_mean": 0.00208985606441274,
+          "approx_kl_max": 0.00438163336366415,
+          "clip_fraction_mean": 0.034487303579226136,
+          "explained_variance_post": 0.8399300562237759,
+          "training_collision_rate": 0.3108108108108108,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 25,600 U15",
+          "run": "ppo_privilege_gru_0721_bs25600",
+          "update": 15,
+          "collision_count": 22,
+          "approx_kl_mean": 0.041476165171043244,
+          "approx_kl_max": 0.3136073350906372,
+          "clip_fraction_mean": 0.02743164007551968,
+          "explained_variance_post": 0.8484902040324593,
+          "training_collision_rate": 0.32450331125827814,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 25,600 U20",
+          "run": "ppo_privilege_gru_0721_bs25600",
+          "update": 20,
+          "collision_count": 16,
+          "approx_kl_mean": 0.0011900411333772287,
+          "approx_kl_max": 0.0021657811012119055,
+          "clip_fraction_mean": 0.01132812473224476,
+          "explained_variance_post": 0.8907417132031176,
+          "training_collision_rate": 0.25,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 51,200 U1",
+          "run": "ppo_privilege_gru_0721_bs51200",
+          "update": 1,
+          "collision_count": 22,
+          "approx_kl_mean": 0.057102592510054784,
+          "approx_kl_max": 0.11845307797193527,
+          "clip_fraction_mean": 0.2014453038573265,
+          "explained_variance_post": 0.513705572954174,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 51,200 U5",
+          "run": "ppo_privilege_gru_0721_bs51200",
+          "update": 5,
+          "collision_count": 17,
+          "approx_kl_mean": 0.0005786105938022645,
+          "approx_kl_max": 0.0016865128418430686,
+          "clip_fraction_mean": 0.005888671614229679,
+          "explained_variance_post": 0.7610785278597105,
+          "training_collision_rate": 0.2980132450331126,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 51,200 U10",
+          "run": "ppo_privilege_gru_0721_bs51200",
+          "update": 10,
+          "collision_count": 15,
+          "approx_kl_mean": 0.002100169212208125,
+          "approx_kl_max": 0.0031741803977638483,
+          "clip_fraction_mean": 0.02747070277109742,
+          "explained_variance_post": 0.7940901372804026,
+          "training_collision_rate": 0.28169014084507044,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 51,200 U15",
+          "run": "ppo_privilege_gru_0721_bs51200",
+          "update": 15,
+          "collision_count": 17,
+          "approx_kl_mean": 0.009069205694103744,
+          "approx_kl_max": 0.03466527536511421,
+          "clip_fraction_mean": 0.009702148177893832,
+          "explained_variance_post": 0.8301753495659586,
+          "training_collision_rate": 0.2905405405405405,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "batch 51,200 U20",
+          "run": "ppo_privilege_gru_0721_bs51200",
+          "update": 20,
+          "collision_count": 21,
+          "approx_kl_mean": 0.0009338893200037668,
+          "approx_kl_max": 0.0034383677411824465,
+          "clip_fraction_mean": 0.006621093685680535,
+          "explained_variance_post": 0.8617407126749194,
+          "training_collision_rate": 0.2413793103448276,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.10（旧） U1",
+          "run": "ppo_privilege_gru_0721_clip010",
+          "update": 1,
+          "collision_count": 28,
+          "approx_kl_mean": 0.3433067961258348,
+          "approx_kl_max": 2.8735873699188232,
+          "clip_fraction_mean": 0.2540087839588523,
+          "explained_variance_post": 0.7488194427423085,
+          "training_collision_rate": 0.3092105263157895,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.10（旧） U5",
+          "run": "ppo_privilege_gru_0721_clip010",
+          "update": 5,
+          "collision_count": 23,
+          "approx_kl_mean": 0.04649759013875154,
+          "approx_kl_max": 0.6685150265693665,
+          "clip_fraction_mean": 0.14333495707251132,
+          "explained_variance_post": 0.8542677509395824,
+          "training_collision_rate": 0.35294117647058826,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.10（旧） U10",
+          "run": "ppo_privilege_gru_0721_clip010",
+          "update": 10,
+          "collision_count": 17,
+          "approx_kl_mean": 0.05589103115922626,
+          "approx_kl_max": 0.8631880879402161,
+          "clip_fraction_mean": 0.07734863136829517,
+          "explained_variance_post": 0.8656743408348677,
+          "training_collision_rate": 0.30344827586206896,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.10（旧） U15",
+          "run": "ppo_privilege_gru_0721_clip010",
+          "update": 15,
+          "collision_count": 28,
+          "approx_kl_mean": 0.05272413731203414,
+          "approx_kl_max": 0.7998908162117004,
+          "clip_fraction_mean": 0.14085937186609954,
+          "explained_variance_post": 0.9094260185671288,
+          "training_collision_rate": 0.304635761589404,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.10（旧） U20",
+          "run": "ppo_privilege_gru_0721_clip010",
+          "update": 20,
+          "collision_count": 20,
+          "approx_kl_mean": 0.0019973642678814893,
+          "approx_kl_max": 0.0034182744566351175,
+          "clip_fraction_mean": 0.07979003735817969,
+          "explained_variance_post": 0.9426720189391673,
+          "training_collision_rate": 0.20567375886524822,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20（旧） U1",
+          "run": "ppo_privilege_gru_0721_clip020",
+          "update": 1,
+          "collision_count": 24,
+          "approx_kl_mean": 0.3249206571443938,
+          "approx_kl_max": 2.756199836730957,
+          "clip_fraction_mean": 0.06883300561457872,
+          "explained_variance_post": 0.7488194427423085,
+          "training_collision_rate": 0.3092105263157895,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20（旧） U5",
+          "run": "ppo_privilege_gru_0721_clip020",
+          "update": 5,
+          "collision_count": 23,
+          "approx_kl_mean": 0.039047916525814796,
+          "approx_kl_max": 0.5440094470977783,
+          "clip_fraction_mean": 0.057714842152563506,
+          "explained_variance_post": 0.8649772460470821,
+          "training_collision_rate": 0.34838709677419355,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20（旧） U10",
+          "run": "ppo_privilege_gru_0721_clip020",
+          "update": 10,
+          "collision_count": 22,
+          "approx_kl_mean": 0.008013367706153074,
+          "approx_kl_max": 0.03135759383440018,
+          "clip_fraction_mean": 0.060585936647839844,
+          "explained_variance_post": 0.9010397594288952,
+          "training_collision_rate": 0.2653061224489796,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20（旧） U15",
+          "run": "ppo_privilege_gru_0721_clip020",
+          "update": 15,
+          "collision_count": 18,
+          "approx_kl_mean": 0.008055403074104107,
+          "approx_kl_max": 0.06662382185459137,
+          "clip_fraction_mean": 0.038325194516801275,
+          "explained_variance_post": 0.8964536828974066,
+          "training_collision_rate": 0.20279720279720279,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20（旧） U20",
+          "run": "ppo_privilege_gru_0721_clip020",
+          "update": 20,
+          "collision_count": 14,
+          "approx_kl_mean": 0.0024043472105404334,
+          "approx_kl_max": 0.008071156218647957,
+          "clip_fraction_mean": 0.021508788522623945,
+          "explained_variance_post": 0.9489634652076271,
+          "training_collision_rate": 0.20279720279720279,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 1× U1",
+          "run": "ppo_privilege_gru_0722_lr1_tkloff",
+          "update": 1,
+          "collision_count": 18,
+          "approx_kl_mean": 0.005871681492571952,
+          "approx_kl_max": 0.012227625586092472,
+          "clip_fraction_mean": 0.10522949110600166,
+          "explained_variance_post": 0.6211697350443632,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 1× U5",
+          "run": "ppo_privilege_gru_0722_lr1_tkloff",
+          "update": 5,
+          "collision_count": 15,
+          "approx_kl_mean": 0.019976941837594492,
+          "approx_kl_max": 0.1643335372209549,
+          "clip_fraction_mean": 0.013554687498981366,
+          "explained_variance_post": 0.8294151157505467,
+          "training_collision_rate": 0.37341772151898733,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 1× U10",
+          "run": "ppo_privilege_gru_0722_lr1_tkloff",
+          "update": 10,
+          "collision_count": 15,
+          "approx_kl_mean": 0.035725678106653044,
+          "approx_kl_max": 0.27854210138320923,
+          "clip_fraction_mean": 0.01402343701920472,
+          "explained_variance_post": 0.891779026502669,
+          "training_collision_rate": 0.2925170068027211,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 1× U15",
+          "run": "ppo_privilege_gru_0722_lr1_tkloff",
+          "update": 15,
+          "collision_count": 19,
+          "approx_kl_mean": 0.004294842748859079,
+          "approx_kl_max": 0.028815196827054024,
+          "clip_fraction_mean": 0.046669920993736014,
+          "explained_variance_post": 0.8838364129292955,
+          "training_collision_rate": 0.30201342281879195,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 1× U20",
+          "run": "ppo_privilege_gru_0722_lr1_tkloff",
+          "update": 20,
+          "collision_count": 21,
+          "approx_kl_mean": 0.008924766338313926,
+          "approx_kl_max": 0.09215585142374039,
+          "clip_fraction_mean": 0.021845702274731593,
+          "explained_variance_post": 0.9351399714458795,
+          "training_collision_rate": 0.2152777777777778,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 5× U1",
+          "run": "ppo_privilege_gru_0722_lr5_tkloff",
+          "update": 1,
+          "collision_count": 19,
+          "approx_kl_mean": 0.5360915522684808,
+          "approx_kl_max": 4.960463047027588,
+          "clip_fraction_mean": 0.38606444373726845,
+          "explained_variance_post": 0.6211697350443632,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 5× U5",
+          "run": "ppo_privilege_gru_0722_lr5_tkloff",
+          "update": 5,
+          "collision_count": 21,
+          "approx_kl_mean": 0.058466288921772504,
+          "approx_kl_max": 0.775219202041626,
+          "clip_fraction_mean": 0.0866845678538084,
+          "explained_variance_post": 0.8195305732103546,
+          "training_collision_rate": 0.34415584415584416,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 5× U10",
+          "run": "ppo_privilege_gru_0722_lr5_tkloff",
+          "update": 10,
+          "collision_count": 21,
+          "approx_kl_mean": 0.007989257904118856,
+          "approx_kl_max": 0.018199700862169266,
+          "clip_fraction_mean": 0.14149901980999857,
+          "explained_variance_post": 0.8551190625943853,
+          "training_collision_rate": 0.3717948717948718,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "LR 5× U15",
+          "run": "ppo_privilege_gru_0722_lr5_tkloff",
+          "update": 15,
+          "collision_count": 26,
+          "approx_kl_mean": 0.008093478800437877,
+          "approx_kl_max": 0.045797210186719894,
+          "clip_fraction_mean": 0.07101074093952775,
+          "explained_variance_post": 0.8921454347255494,
+          "training_collision_rate": 0.25517241379310346,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.15 / 30U U1",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 1,
+          "collision_count": 16,
+          "approx_kl_mean": 0.18558810801885556,
+          "approx_kl_max": 2.3920912742614746,
+          "clip_fraction_mean": 0.20425780746154487,
+          "explained_variance_post": 0.6211697350443632,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.15 / 30U U5",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 5,
+          "collision_count": 18,
+          "approx_kl_mean": 0.0034106669222455817,
+          "approx_kl_max": 0.02034442126750946,
+          "clip_fraction_mean": 0.03796874889667379,
+          "explained_variance_post": 0.8176774137772385,
+          "training_collision_rate": 0.3333333333333333,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.15 / 30U U10",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 10,
+          "collision_count": 18,
+          "approx_kl_mean": 0.002512538408918772,
+          "approx_kl_max": 0.004565645940601826,
+          "clip_fraction_mean": 0.03937988227698952,
+          "explained_variance_post": 0.8508910048461742,
+          "training_collision_rate": 0.25,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.15 / 30U U15",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 15,
+          "collision_count": 14,
+          "approx_kl_mean": 0.04791829086199868,
+          "approx_kl_max": 0.6657530069351196,
+          "clip_fraction_mean": 0.10151855142612476,
+          "explained_variance_post": 0.8642720748252954,
+          "training_collision_rate": 0.304635761589404,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.15 / 30U U20",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 20,
+          "collision_count": 14,
+          "approx_kl_mean": 0.11873954111419152,
+          "approx_kl_max": 1.0881820917129517,
+          "clip_fraction_mean": 0.11695800453890115,
+          "explained_variance_post": 0.9220174622338332,
+          "training_collision_rate": 0.24475524475524477,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.15 / 30U U25",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 25,
+          "collision_count": 17,
+          "approx_kl_mean": 0.003392160649491417,
+          "approx_kl_max": 0.014511249028146267,
+          "clip_fraction_mean": 0.05155761569949391,
+          "explained_variance_post": 0.9171240797069817,
+          "training_collision_rate": 0.2751677852348993,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.15 / 30U U30",
+          "run": "ppo_privilege_gru_0722_long_clip015",
+          "update": 30,
+          "collision_count": 20,
+          "approx_kl_mean": 0.003629436953342516,
+          "approx_kl_max": 0.007558932527899742,
+          "clip_fraction_mean": 0.07003417770101805,
+          "explained_variance_post": 0.9504502799407462,
+          "training_collision_rate": 0.24647887323943662,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20 / 30U U1",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 1,
+          "collision_count": 21,
+          "approx_kl_mean": 0.20632292214548215,
+          "approx_kl_max": 2.34454345703125,
+          "clip_fraction_mean": 0.15409179485868663,
+          "explained_variance_post": 0.6211697350443632,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20 / 30U U5",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 5,
+          "collision_count": 18,
+          "approx_kl_mean": 0.003729354590395813,
+          "approx_kl_max": 0.006887258030474186,
+          "clip_fraction_mean": 0.02897460834356025,
+          "explained_variance_post": 0.8159666358188626,
+          "training_collision_rate": 0.31543624161073824,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20 / 30U U10",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 10,
+          "collision_count": 16,
+          "approx_kl_mean": 0.006299816422979346,
+          "approx_kl_max": 0.01528159435838461,
+          "clip_fraction_mean": 0.0690429670503363,
+          "explained_variance_post": 0.8848547653307935,
+          "training_collision_rate": 0.33986928104575165,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20 / 30U U15",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 15,
+          "collision_count": 13,
+          "approx_kl_mean": 0.08895986016810639,
+          "approx_kl_max": 0.8682770133018494,
+          "clip_fraction_mean": 0.023364257416687906,
+          "explained_variance_post": 0.8855975875899237,
+          "training_collision_rate": 0.2328767123287671,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20 / 30U U20",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 20,
+          "collision_count": 13,
+          "approx_kl_mean": 0.0039527445792919,
+          "approx_kl_max": 0.0073198662139475346,
+          "clip_fraction_mean": 0.03625976464445557,
+          "explained_variance_post": 0.9379833952439158,
+          "training_collision_rate": 0.27631578947368424,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20 / 30U U25",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 25,
+          "collision_count": 17,
+          "approx_kl_mean": 0.0474929101204907,
+          "approx_kl_max": 0.6626574397087097,
+          "clip_fraction_mean": 0.044570311409188434,
+          "explained_variance_post": 0.9408050788775355,
+          "training_collision_rate": 0.25165562913907286,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "clip 0.20 / 30U U30",
+          "run": "ppo_privilege_gru_0722_long_clip020",
+          "update": 30,
+          "collision_count": 11,
+          "approx_kl_mean": 0.015088822011312009,
+          "approx_kl_max": 0.11299610882997513,
+          "clip_fraction_mean": 0.10962890394148417,
+          "explained_variance_post": 0.9059636928899524,
+          "training_collision_rate": 0.20279720279720279,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.02 U1",
+          "run": "ppo_privilege_gru_0722_clip015_tkl002",
+          "update": 1,
+          "collision_count": 20,
+          "approx_kl_mean": 0.4122702039964497,
+          "approx_kl_max": 2.4268271923065186,
+          "clip_fraction_mean": 0.15783853828907013,
+          "explained_variance_post": 0.7488194427423085,
+          "training_collision_rate": 0.3092105263157895,
+          "early_stop": "本更新早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.02 U5",
+          "run": "ppo_privilege_gru_0722_clip015_tkl002",
+          "update": 5,
+          "collision_count": 17,
+          "approx_kl_mean": 0.0031803685305566987,
+          "approx_kl_max": 0.009552923031151295,
+          "clip_fraction_mean": 0.04606445215176791,
+          "explained_variance_post": 0.8626255813433154,
+          "training_collision_rate": 0.25675675675675674,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.02 U10",
+          "run": "ppo_privilege_gru_0722_clip015_tkl002",
+          "update": 10,
+          "collision_count": 19,
+          "approx_kl_mean": 0.13105790229979902,
+          "approx_kl_max": 0.7543918490409851,
+          "clip_fraction_mean": 0.13158853724598885,
+          "explained_variance_post": 0.8470427916597552,
+          "training_collision_rate": 0.3087248322147651,
+          "early_stop": "本更新早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.02 U15",
+          "run": "ppo_privilege_gru_0722_clip015_tkl002",
+          "update": 15,
+          "collision_count": 18,
+          "approx_kl_mean": 0.0024945443106116696,
+          "approx_kl_max": 0.005243552848696709,
+          "clip_fraction_mean": 0.045214842727546056,
+          "explained_variance_post": 0.9148608845018217,
+          "training_collision_rate": 0.3026315789473684,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.02 U20",
+          "run": "ppo_privilege_gru_0722_clip015_tkl002",
+          "update": 20,
+          "collision_count": 20,
+          "approx_kl_mean": 0.002269512969505741,
+          "approx_kl_max": 0.004861887078732252,
+          "clip_fraction_mean": 0.03450683521805331,
+          "explained_variance_post": 0.9173586960492012,
+          "training_collision_rate": 0.28187919463087246,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.04 U1",
+          "run": "ppo_privilege_gru_0722_clip015_tkl004",
+          "update": 1,
+          "collision_count": 23,
+          "approx_kl_mean": 0.038640857497230174,
+          "approx_kl_max": 0.07728171348571777,
+          "clip_fraction_mean": 0.3387109339237213,
+          "explained_variance_post": 0.6211697350443632,
+          "training_collision_rate": 0.33962264150943394,
+          "early_stop": "本更新早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.04 U5",
+          "run": "ppo_privilege_gru_0722_clip015_tkl004",
+          "update": 5,
+          "collision_count": 45,
+          "approx_kl_mean": 0.008022882788936841,
+          "approx_kl_max": 0.018855314701795578,
+          "clip_fraction_mean": 0.13641601240669843,
+          "explained_variance_post": 0.8243465714524982,
+          "training_collision_rate": 0.31125827814569534,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.04 U10",
+          "run": "ppo_privilege_gru_0722_clip015_tkl004",
+          "update": 10,
+          "collision_count": 70,
+          "approx_kl_mean": 0.004624903691728834,
+          "approx_kl_max": 0.009880462661385536,
+          "clip_fraction_mean": 0.08941894122108351,
+          "explained_variance_post": 0.9043036969079096,
+          "training_collision_rate": 0.273972602739726,
+          "early_stop": "未早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.04 U15",
+          "run": "ppo_privilege_gru_0722_clip015_tkl004",
+          "update": 15,
+          "collision_count": 58,
+          "approx_kl_mean": 0.017496565774512973,
+          "approx_kl_max": 0.16631679236888885,
+          "clip_fraction_mean": 0.072812497902375,
+          "explained_variance_post": 0.8985017597712924,
+          "training_collision_rate": 0.2013888888888889,
+          "early_stop": "本更新早停",
+          "episode_rows": 600
+        },
+        {
+          "point": "target-KL 0.04 U20",
+          "run": "ppo_privilege_gru_0722_clip015_tkl004",
+          "update": 20,
+          "collision_count": 33,
+          "approx_kl_mean": 0.03078559409565059,
+          "approx_kl_max": 0.39741504192352295,
+          "clip_fraction_mean": 0.1294140592799522,
+          "explained_variance_post": 0.9066544820530256,
+          "training_collision_rate": 0.27450980392156865,
+          "early_stop": "本更新早停",
+          "episode_rows": 600
+        }
+      ],
+      "persistent_scenarios": [
+        {
+          "rank": 1,
+          "scenario": "evaluation-sp35-ego1497-raceline1-v0.5",
+          "scenario_short": "sp35-ego1497-r1-v0.5",
+          "collision_panels": 68,
+          "valid_ppo_panels": 68,
+          "collision_rate": 1.0
+        },
+        {
+          "rank": 2,
+          "scenario": "evaluation-sp17-ego727-raceline2-v0.5",
+          "scenario_short": "sp17-ego727-r2-v0.5",
+          "collision_panels": 68,
+          "valid_ppo_panels": 68,
+          "collision_rate": 1.0
+        },
+        {
+          "rank": 3,
+          "scenario": "evaluation-sp5-ego213-raceline0-v0.7",
+          "scenario_short": "sp5-ego213-r0-v0.7",
+          "collision_panels": 60,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.8823529411764706
+        },
+        {
+          "rank": 4,
+          "scenario": "evaluation-sp15-ego641-raceline2-v0.7",
+          "scenario_short": "sp15-ego641-r2-v0.7",
+          "collision_panels": 54,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.7941176470588235
+        },
+        {
+          "rank": 5,
+          "scenario": "evaluation-sp32-ego1368-raceline1-v0.6",
+          "scenario_short": "sp32-ego1368-r1-v0.6",
+          "collision_panels": 52,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.7647058823529411
+        },
+        {
+          "rank": 6,
+          "scenario": "evaluation-sp17-ego727-raceline2-v0.7",
+          "scenario_short": "sp17-ego727-r2-v0.7",
+          "collision_panels": 43,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.6323529411764706
+        },
+        {
+          "rank": 7,
+          "scenario": "evaluation-sp2-ego85-raceline2-v0.8",
+          "scenario_short": "sp2-ego85-r2-v0.8",
+          "collision_panels": 38,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.5588235294117647
+        },
+        {
+          "rank": 8,
+          "scenario": "evaluation-sp21-ego898-raceline0-v0.7",
+          "scenario_short": "sp21-ego898-r0-v0.7",
+          "collision_panels": 38,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.5588235294117647
+        },
+        {
+          "rank": 9,
+          "scenario": "evaluation-sp35-ego1497-raceline1-v0.6",
+          "scenario_short": "sp35-ego1497-r1-v0.6",
+          "collision_panels": 37,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.5441176470588235
+        },
+        {
+          "rank": 10,
+          "scenario": "evaluation-sp36-ego1539-raceline1-v0.5",
+          "scenario_short": "sp36-ego1539-r1-v0.5",
+          "collision_panels": 37,
+          "valid_ppo_panels": 68,
+          "collision_rate": 0.5441176470588235
+        }
+      ],
+      "control_audit": [
+        {
+          "group": "Group 1",
+          "arm": "独立 GRU",
+          "intended_axis": "critic architecture",
+          "recorded_differences": "critic",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 1",
+          "arm": "特权 MLP",
+          "intended_axis": "critic architecture",
+          "recorded_differences": "critic",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 2",
+          "arm": "batch 25,600",
+          "intended_axis": "batch size",
+          "recorded_differences": "batch_size",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 2",
+          "arm": "batch 51,200",
+          "intended_axis": "batch size",
+          "recorded_differences": "batch_size",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 3",
+          "arm": "clip 0.10（旧）",
+          "intended_axis": "clip range",
+          "recorded_differences": "clip_range, env_workers",
+          "confounds": "env_workers",
+          "strict_single_axis": "否"
+        },
+        {
+          "group": "Group 3",
+          "arm": "clip 0.20（旧）",
+          "intended_axis": "clip range",
+          "recorded_differences": "clip_range, env_workers",
+          "confounds": "env_workers",
+          "strict_single_axis": "否"
+        },
+        {
+          "group": "Group 3 within workers=8",
+          "arm": "clip 0.20（旧）",
+          "intended_axis": "clip range",
+          "recorded_differences": "clip_range",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 4",
+          "arm": "LR 1×",
+          "intended_axis": "actor GRU/head learning rates",
+          "recorded_differences": "gru_learning_rate, head_learning_rate",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 4",
+          "arm": "LR 5×",
+          "intended_axis": "actor GRU/head learning rates",
+          "recorded_differences": "gru_learning_rate, head_learning_rate",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 5",
+          "arm": "clip 0.20 / 30U",
+          "intended_axis": "clip range",
+          "recorded_differences": "clip_range",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        },
+        {
+          "group": "Group 6",
+          "arm": "target-KL 0.02",
+          "intended_axis": "target-KL",
+          "recorded_differences": "env_workers, target_kl",
+          "confounds": "env_workers",
+          "strict_single_axis": "否"
+        },
+        {
+          "group": "Group 6",
+          "arm": "target-KL 0.04",
+          "intended_axis": "target-KL",
+          "recorded_differences": "target_kl",
+          "confounds": "无",
+          "strict_single_axis": "是"
+        }
+      ],
+      "pairwise": [
+        {
+          "comparison": "BC -> shared PPO baseline U20",
+          "a_collisions": 22,
+          "b_collisions": 14,
+          "shared": 12,
+          "resolved": 10,
+          "created": 2,
+          "net_change": -8,
+          "jaccard": 0.5
+        },
+        {
+          "comparison": "G1 independent -> privilege_gru U20",
+          "a_collisions": 34,
+          "b_collisions": 14,
+          "shared": 9,
+          "resolved": 25,
+          "created": 5,
+          "net_change": -20,
+          "jaccard": 0.23076923076923078
+        },
+        {
+          "comparison": "G1 privilege_mlp -> privilege_gru U20",
+          "a_collisions": 25,
+          "b_collisions": 14,
+          "shared": 8,
+          "resolved": 17,
+          "created": 6,
+          "net_change": -11,
+          "jaccard": 0.25806451612903225
+        },
+        {
+          "comparison": "G2 batch 12800 -> 25600 U20",
+          "a_collisions": 14,
+          "b_collisions": 16,
+          "shared": 10,
+          "resolved": 4,
+          "created": 6,
+          "net_change": 2,
+          "jaccard": 0.5
+        },
+        {
+          "comparison": "G2 batch 12800 -> 51200 U20",
+          "a_collisions": 14,
+          "b_collisions": 21,
+          "shared": 8,
+          "resolved": 6,
+          "created": 13,
+          "net_change": 7,
+          "jaccard": 0.2962962962962963
+        },
+        {
+          "comparison": "G3 clip 0.15 -> 0.10 U20",
+          "a_collisions": 14,
+          "b_collisions": 20,
+          "shared": 9,
+          "resolved": 5,
+          "created": 11,
+          "net_change": 6,
+          "jaccard": 0.36
+        },
+        {
+          "comparison": "G3 clip 0.15 -> legacy 0.20 U20",
+          "a_collisions": 14,
+          "b_collisions": 14,
+          "shared": 6,
+          "resolved": 8,
+          "created": 8,
+          "net_change": 0,
+          "jaccard": 0.2727272727272727
+        },
+        {
+          "comparison": "G4 LR3 -> LR1 U20",
+          "a_collisions": 14,
+          "b_collisions": 21,
+          "shared": 7,
+          "resolved": 7,
+          "created": 14,
+          "net_change": 7,
+          "jaccard": 0.25
+        },
+        {
+          "comparison": "G4 LR3 -> LR5 U15",
+          "a_collisions": 14,
+          "b_collisions": 26,
+          "shared": 7,
+          "resolved": 7,
+          "created": 19,
+          "net_change": 12,
+          "jaccard": 0.21212121212121213
+        },
+        {
+          "comparison": "G5 clip 0.15 U20 -> U30",
+          "a_collisions": 14,
+          "b_collisions": 20,
+          "shared": 8,
+          "resolved": 6,
+          "created": 12,
+          "net_change": 6,
+          "jaccard": 0.3076923076923077
+        },
+        {
+          "comparison": "G5 clip 0.20 U20 -> U30",
+          "a_collisions": 13,
+          "b_collisions": 11,
+          "shared": 5,
+          "resolved": 8,
+          "created": 6,
+          "net_change": -2,
+          "jaccard": 0.2631578947368421
+        },
+        {
+          "comparison": "G5 clip 0.15 U30 -> 0.20 U30",
+          "a_collisions": 20,
+          "b_collisions": 11,
+          "shared": 5,
+          "resolved": 15,
+          "created": 6,
+          "net_change": -9,
+          "jaccard": 0.19230769230769232
+        },
+        {
+          "comparison": "G6 KL off -> 0.02 U20",
+          "a_collisions": 14,
+          "b_collisions": 20,
+          "shared": 11,
+          "resolved": 3,
+          "created": 9,
+          "net_change": 6,
+          "jaccard": 0.4782608695652174
+        },
+        {
+          "comparison": "G6 KL off -> 0.04 U20",
+          "a_collisions": 14,
+          "b_collisions": 33,
+          "shared": 5,
+          "resolved": 9,
+          "created": 28,
+          "net_change": 19,
+          "jaccard": 0.11904761904761904
+        },
+        {
+          "comparison": "BC -> selected clip 0.20 U30",
+          "a_collisions": 22,
+          "b_collisions": 11,
+          "shared": 5,
+          "resolved": 17,
+          "created": 6,
+          "net_change": -11,
+          "jaccard": 0.17857142857142858
+        }
+      ],
+      "trace_summary": [
+        {
+          "label": "BC",
+          "collision_count": 22,
+          "opponent_collisions": 21,
+          "ego_or_wall_collisions": 1,
+          "initial_collisions": 0,
+          "median_collision_time_s": 4.924999999999939,
+          "raceline0": 8,
+          "raceline1": 5,
+          "raceline2": 9
+        },
+        {
+          "label": "Shared PPO baseline U20",
+          "collision_count": 14,
+          "opponent_collisions": 14,
+          "ego_or_wall_collisions": 0,
+          "initial_collisions": 0,
+          "median_collision_time_s": 4.5449999999999475,
+          "raceline0": 6,
+          "raceline1": 4,
+          "raceline2": 4
+        },
+        {
+          "label": "Group 5 clip 0.15 U30",
+          "collision_count": 20,
+          "opponent_collisions": 19,
+          "ego_or_wall_collisions": 1,
+          "initial_collisions": 0,
+          "median_collision_time_s": 5.589999999999925,
+          "raceline0": 13,
+          "raceline1": 2,
+          "raceline2": 5
+        },
+        {
+          "label": "Group 5 clip 0.20 U30",
+          "collision_count": 11,
+          "opponent_collisions": 11,
+          "ego_or_wall_collisions": 0,
+          "initial_collisions": 0,
+          "median_collision_time_s": 6.069999999999915,
+          "raceline0": 5,
+          "raceline1": 4,
+          "raceline2": 2
+        },
+        {
+          "label": "Group 6 target-KL 0.02 U20",
+          "collision_count": 20,
+          "opponent_collisions": 20,
+          "ego_or_wall_collisions": 0,
+          "initial_collisions": 0,
+          "median_collision_time_s": 5.709999999999923,
+          "raceline0": 9,
+          "raceline1": 5,
+          "raceline2": 6
+        },
+        {
+          "label": "Group 6 target-KL 0.04 U20",
+          "collision_count": 33,
+          "opponent_collisions": 23,
+          "ego_or_wall_collisions": 10,
+          "initial_collisions": 0,
+          "median_collision_time_s": 3.9199999999999604,
+          "raceline0": 4,
+          "raceline1": 12,
+          "raceline2": 17
+        }
+      ],
+      "quality": [
+        {
+          "check": "评估面板",
+          "result": "69 / 70 有效",
+          "interpretation": "仅 Group 4 高 LR U20 无效；599 行、1 错误"
+        },
+        {
+          "check": "场景覆盖",
+          "result": "有效面板均为同一 Austin600",
+          "interpretation": "逐场景可配对；每面板 600 个唯一场景"
+        },
+        {
+          "check": "训练 metrics",
+          "result": "全部有限且 update 连续",
+          "interpretation": "13 个训练 run；正式 update 序列完整"
+        },
+        {
+          "check": "checkpoint",
+          "result": "全部存在",
+          "interpretation": "每个 actor_final 与最后 actor checkpoint 张量一致"
+        },
+        {
+          "check": "NPZ 数值与时间维",
+          "result": "41,999 / 41,999",
+          "interpretation": "全部 numeric/bool 且 leading dimension 对齐"
+        },
+        {
+          "check": "新版 NPZ 终止语义",
+          "result": "20,999 / 20,999 有效",
+          "interpretation": "post_step_v2 的终止帧及碰撞标记与 JSON 一致"
+        },
+        {
+          "check": "旧版 NPZ 终止语义",
+          "result": "21,000 缺 terminal post-step",
+          "interpretation": "736 个旧版碰撞轨迹不可用 NPZ 碰撞位复核，改用 results_multi.json"
+        },
+        {
+          "check": "训练/评估泄漏",
+          "result": "ego index 重叠 0",
+          "interpretation": "训练 131 个唯一 ego index；评估 50 个"
+        }
+      ],
+      "correlations": [
+        {
+          "metric": "Training rollout collision rate",
+          "panels": 68,
+          "pearson": -0.05386613200508214,
+          "spearman": 0.17929946886857198,
+          "scope": "pooled descriptive correlation across heterogeneous runs; not causal"
+        },
+        {
+          "metric": "Training mean episode return",
+          "panels": 68,
+          "pearson": 0.08183868084190803,
+          "spearman": -0.1977781069749505,
+          "scope": "pooled descriptive correlation across heterogeneous runs; not causal"
+        },
+        {
+          "metric": "Critic post-update value loss",
+          "panels": 68,
+          "pearson": -0.1143118271257427,
+          "spearman": 0.1354923600670245,
+          "scope": "pooled descriptive correlation across heterogeneous runs; not causal"
+        },
+        {
+          "metric": "Critic post-update explained variance",
+          "panels": 68,
+          "pearson": 0.024836515835216826,
+          "spearman": -0.18401379031149034,
+          "scope": "pooled descriptive correlation across heterogeneous runs; not causal"
+        },
+        {
+          "metric": "Actor mean approximate KL",
+          "panels": 68,
+          "pearson": -0.05330957080260553,
+          "spearman": 0.10031908899333741,
+          "scope": "pooled descriptive correlation across heterogeneous runs; not causal"
+        },
+        {
+          "metric": "Actor clip fraction",
+          "panels": 68,
+          "pearson": 0.06857698553543598,
+          "spearman": 0.278657755688801,
+          "scope": "pooled descriptive correlation across heterogeneous runs; not causal"
+        }
+      ]
+    },
+    "accessIssues": []
+  },
+  "sources": [
+    {
+      "id": "analysis_summary",
+      "label": "PPO Groups 1-6 consolidated analysis",
+      "path": "analysis_results/ppo_groups_1_6/analysis_summary.json",
+      "query": {
+        "language": "python",
+        "description": "Reads run configs, training metrics.jsonl, evaluation results_multi.json and NPZ traces; validates panels and produces joined comparison tables.",
+        "tables_used": [
+          "post-trained/*/config.json",
+          "post-trained/*/metrics.jsonl",
+          "eval_results/*/results_multi.json",
+          "eval_results/*/traces/*.npz"
+        ],
+        "filters": [
+          "Austin600",
+          "formal checkpoints U1/U5/U10/U15/U20 and Group 5 U25/U30",
+          "invalid panels excluded from inferential summaries"
+        ],
+        "metric_definitions": [
+          "collision_count = collision episodes among the 600 evaluation scenarios",
+          "success_rate = (600 - collision_count) / 600",
+          "mean_collision_u5_plus = arithmetic mean of valid checkpoint collision counts from U5 onward"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_json_auto('analysis_results/ppo_groups_1_6/analysis_summary.json');"
+      }
+    },
+    {
+      "id": "group_summary",
+      "label": "Experiment parameters, training telemetry and evaluation paths",
+      "path": "analysis_results/ppo_groups_1_6/group_summary.csv",
+      "query": {
+        "language": "python",
+        "description": "One bounded row per experiment arm, joining recorded parameters, formal training metrics and evaluation checkpoints.",
+        "tables_used": [
+          "analysis_results/ppo_groups_1_6/run_summary.csv",
+          "analysis_results/ppo_groups_1_6/panel_metrics.csv"
+        ],
+        "metric_definitions": [
+          "best/final collision counts use only valid evaluation panels",
+          "logged actor gradient norm is the pre-clip norm returned by clip_grad_norm_"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/group_summary.csv', header = true);"
+      }
+    },
+    {
+      "id": "control_audit",
+      "label": "Recorded single-axis control audit",
+      "path": "analysis_results/ppo_groups_1_6/group_control_audit.csv",
+      "query": {
+        "language": "python",
+        "description": "Compares every arm's recorded config against its declared baseline and flags any additional changed parameter.",
+        "tables_used": [
+          "post-trained/*/config.json"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/group_control_audit.csv', header = true);"
+      }
+    },
+    {
+      "id": "evaluation_panels",
+      "label": "Evaluation panel metrics",
+      "path": "analysis_results/ppo_groups_1_6/panel_metrics.csv",
+      "query": {
+        "language": "python",
+        "description": "One row per evaluated checkpoint, reconciled against episode records and trace filenames.",
+        "tables_used": [
+          "eval_results/*/results_multi.json",
+          "eval_results/*/traces/*.npz"
+        ],
+        "metric_definitions": [
+          "valid requires 600 episodes, 600 unique scenarios, 600 traces, zero errors and consistent aggregates"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/panel_metrics.csv', header = true);"
+      }
+    },
+    {
+      "id": "training_eval_join",
+      "label": "Training/evaluation checkpoint join",
+      "path": "analysis_results/ppo_groups_1_6/training_eval_join.csv",
+      "query": {
+        "language": "python",
+        "description": "Joins formal update telemetry to the matching evaluation checkpoint; correlations are pooled descriptive diagnostics.",
+        "tables_used": [
+          "post-trained/*/metrics.jsonl",
+          "analysis_results/ppo_groups_1_6/panel_metrics.csv"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/training_eval_join.csv', header = true) WHERE valid = true;"
+      }
+    },
+    {
+      "id": "npz_audit",
+      "label": "Full NPZ structural and terminal-state audit",
+      "path": "analysis_results/ppo_groups_1_6/npz_audit.json",
+      "query": {
+        "language": "python",
+        "description": "Inspects every trace NPZ for numeric dtype, aligned leading dimensions, terminal fields and collision-marker agreement with evaluation JSON.",
+        "tables_used": [
+          "eval_results/*/traces/*.npz",
+          "eval_results/*/results_multi.json"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_json_auto('analysis_results/ppo_groups_1_6/npz_audit.json');"
+      }
+    },
+    {
+      "id": "scenario_identity",
+      "label": "Scenario-level collision identity and trace summaries",
+      "path": "analysis_results/ppo_groups_1_6/scenario_pairwise.csv",
+      "query": {
+        "language": "python",
+        "description": "Pairs the same Austin600 scenario IDs across checkpoints and counts shared, resolved and newly created collision cases.",
+        "tables_used": [
+          "eval_results/*/results_multi.json",
+          "analysis_results/ppo_groups_1_6/trace_summary_selected.csv"
+        ],
+        "metric_definitions": [
+          "Jaccard = shared / (shared + resolved + created)"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/scenario_pairwise.csv', header = true);"
+      }
+    },
+    {
+      "id": "scenario_frequency",
+      "label": "Persistent collision scenario frequency",
+      "path": "analysis_results/ppo_groups_1_6/scenario_frequency.csv",
+      "query": {
+        "language": "python",
+        "description": "Counts in how many of the 68 valid PPO checkpoint panels each Austin600 scenario collides.",
+        "tables_used": [
+          "eval_results/*/results_multi.json"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/scenario_frequency.csv', header = true) ORDER BY collision_panels DESC, scenario_id LIMIT 10;"
+      }
+    },
+    {
+      "id": "trace_summary",
+      "label": "Selected checkpoint trace-level collision summaries",
+      "path": "analysis_results/ppo_groups_1_6/trace_summary_selected.csv",
+      "query": {
+        "language": "sql",
+        "description": "Loads the bounded trace-level collision classification table derived from the audited NPZ files.",
+        "tables_used": [
+          "analysis_results/ppo_groups_1_6/trace_summary_selected.csv",
+          "eval_results/*/traces/*.npz"
+        ],
+        "engine": "duckdb",
+        "sql": "SELECT * FROM read_csv_auto('analysis_results/ppo_groups_1_6/trace_summary_selected.csv', header = true);"
+      }
+    }
+  ]
+}

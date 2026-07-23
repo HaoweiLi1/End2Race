@@ -1,0 +1,13 @@
+group,baseline_run,arm_run,intended_axis,recorded_differences,confounds,strict_single_axis
+Group 1,ppo_privilege_gru_0721_base,ppo_independent_gru_0721_base,critic architecture,critic,,True
+Group 1,ppo_privilege_gru_0721_base,ppo_privilege_mlp_0721_base,critic architecture,critic,,True
+Group 2,ppo_privilege_gru_0721_base,ppo_privilege_gru_0721_bs25600,batch size,batch_size,,True
+Group 2,ppo_privilege_gru_0721_base,ppo_privilege_gru_0721_bs51200,batch size,batch_size,,True
+Group 3,ppo_privilege_gru_0721_base,ppo_privilege_gru_0721_clip010,clip range,"clip_range, env_workers",env_workers,False
+Group 3,ppo_privilege_gru_0721_base,ppo_privilege_gru_0721_clip020,clip range,"clip_range, env_workers",env_workers,False
+Group 3 within workers=8,ppo_privilege_gru_0721_clip010,ppo_privilege_gru_0721_clip020,clip range,clip_range,,True
+Group 4,ppo_privilege_gru_0721_base,ppo_privilege_gru_0722_lr1_tkloff,actor GRU/head learning rates,"gru_learning_rate, head_learning_rate",,True
+Group 4,ppo_privilege_gru_0721_base,ppo_privilege_gru_0722_lr5_tkloff,actor GRU/head learning rates,"gru_learning_rate, head_learning_rate",,True
+Group 5,ppo_privilege_gru_0722_long_clip015,ppo_privilege_gru_0722_long_clip020,clip range,clip_range,,True
+Group 6,ppo_privilege_gru_0721_base,ppo_privilege_gru_0722_clip015_tkl002,target-KL,"env_workers, target_kl",env_workers,False
+Group 6,ppo_privilege_gru_0721_base,ppo_privilege_gru_0722_clip015_tkl004,target-KL,target_kl,,True

@@ -1,0 +1,12 @@
+scenario_id,start,ego,raceline,speed,clip .20 U30,clip .20 U45,hard U35,hard U45
+evaluation-sp12-ego513-raceline0-v0.8,sp12,ego513,raceline0,v0.8,超车完成,超车完成,超车完成,超车完成
+evaluation-sp13-ego556-raceline0-v0.8,sp13,ego556,raceline0,v0.8,超车完成,主判据尾扫碰撞,超车完成,超车完成
+evaluation-sp15-ego641-raceline2-v0.7,sp15,ego641,raceline2,v0.7,超车完成,超车完成,超车完成,超车完成
+evaluation-sp2-ego85-raceline2-v0.8,sp2,ego85,raceline2,v0.8,超车完成,超车完成,超车完成,超车完成
+evaluation-sp21-ego898-raceline0-v0.7,sp21,ego898,raceline0,v0.7,主判据尾扫碰撞,主判据尾扫碰撞,超车完成,超车完成
+evaluation-sp30-ego1283-raceline0-v0.7,sp30,ego1283,raceline0,v0.7,超车完成,超车完成,超车完成,超车完成
+evaluation-sp37-ego1582-raceline2-v0.7,sp37,ego1582,raceline2,v0.7,超车完成,超车完成,超车完成,超车完成
+evaluation-sp4-ego171-raceline2-v0.8,sp4,ego171,raceline2,v0.8,超车完成,超车完成,超车完成,超车完成
+evaluation-sp45-ego1924-raceline0-v0.7,sp45,ego1924,raceline0,v0.7,超车完成,超车完成,超车完成,超车完成
+evaluation-sp5-ego213-raceline0-v0.7,sp5,ego213,raceline0,v0.7,超车完成,主判据尾扫碰撞,超车完成,超车完成
+evaluation-sp9-ego384-raceline0-v0.7,sp9,ego384,raceline0,v0.7,其他碰撞,主判据尾扫碰撞,超车完成,超车完成

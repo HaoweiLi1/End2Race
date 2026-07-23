@@ -1,0 +1,7 @@
+label,run,update,collision_count,collision_with_opponent_count,initial_collision_count,min_collision_time_s,median_collision_time_s,max_collision_time_s,raceline0_count,raceline1_count,raceline2_count,speed_0_5_count,speed_0_6_count,speed_0_7_count,speed_0_8_count
+BC,BC,0,22,21,0,1.0800000000000007,4.924999999999939,7.389999999999887,8,5,9,5,2,9,6
+Shared PPO baseline U20,ppo_privilege_gru_0721_base,20,14,14,0,1.0500000000000007,4.5449999999999475,7.2199999999998905,6,4,4,3,2,7,2
+Group 5 clip 0.15 U30,ppo_privilege_gru_0722_long_clip015,30,20,19,0,1.0400000000000007,5.589999999999925,7.889999999999876,13,2,5,2,1,10,7
+Group 5 clip 0.20 U30,ppo_privilege_gru_0722_long_clip020,30,11,11,0,1.0400000000000007,6.069999999999915,7.25999999999989,5,4,2,5,0,3,3
+Group 6 target-KL 0.02 U20,ppo_privilege_gru_0722_clip015_tkl002,20,20,20,0,1.0900000000000007,5.709999999999923,7.609999999999882,9,5,6,4,3,6,7
+Group 6 target-KL 0.04 U20,ppo_privilege_gru_0722_clip015_tkl004,20,33,23,0,1.0800000000000007,3.9199999999999604,7.929999999999875,4,12,17,5,8,8,12

@@ -1,0 +1,13 @@
+updates,source,target,pearson_r,spearman_rho
+U2-U30,overall advantage second-moment proxy,actor grad norm mean,0.07053376699776398,0.07044334975369458
+U2-U30,overall advantage second-moment proxy,actor grad norm max,0.108447126066891,0.007881773399014778
+U2-U30,overall advantage second-moment proxy,approx KL mean,-0.20352945595766525,-0.11724137931034483
+U2-U30,overall advantage second-moment proxy,clip fraction mean,0.11061443613021066,0.10492610837438424
+U2-U30,collision advantage second-moment proxy,actor grad norm mean,0.019704666866852412,0.08571428571428572
+U2-U30,collision advantage second-moment proxy,actor grad norm max,0.022026339628630265,0.02857142857142857
+U2-U30,collision advantage second-moment proxy,approx KL mean,-0.14750767027134135,-0.08817733990147783
+U2-U30,collision advantage second-moment proxy,clip fraction mean,0.06223187932014989,0.08866995073891626
+U2-U30,ordinary advantage second-moment proxy,actor grad norm mean,0.15374531884867465,0.1625615763546798
+U2-U30,ordinary advantage second-moment proxy,actor grad norm max,0.2525462206943688,0.1270935960591133
+U2-U30,ordinary advantage second-moment proxy,approx KL mean,-0.266513451100003,-0.23497536945812808
+U2-U30,ordinary advantage second-moment proxy,clip fraction mean,0.17989164392593324,0.1541871921182266

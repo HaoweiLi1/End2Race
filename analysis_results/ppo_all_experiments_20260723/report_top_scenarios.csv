@@ -1,0 +1,16 @@
+scenario_id,startpoint,ego_idx,opponent_raceline,opponent_speed_scale,unique_policy_panels,collision_panels,collision_rate,opponent_collision_panels,merge_tail_panels,merge_tail_rate,overtake_panels,follow_panels,scenario_short
+evaluation-sp17-ego727-raceline2-v0.5,17,727,raceline2,0.5,86,86,1.0,86,0,0.0,0,0,sp17-ego727-r2-v0.5
+evaluation-sp35-ego1497-raceline1-v0.5,35,1497,raceline1,0.5,86,86,1.0,86,0,0.0,0,0,sp35-ego1497-r1-v0.5
+evaluation-sp5-ego213-raceline0-v0.7,5,213,raceline0,0.7,86,73,0.8488372093023255,73,69,0.8023255813953488,13,0,sp5-ego213-r0-v0.7
+evaluation-sp32-ego1368-raceline1-v0.6,32,1368,raceline1,0.6,86,61,0.7093023255813954,61,0,0.0,0,25,sp32-ego1368-r1-v0.6
+evaluation-sp15-ego641-raceline2-v0.7,15,641,raceline2,0.7,86,60,0.6976744186046512,60,58,0.6744186046511628,26,0,sp15-ego641-r2-v0.7
+evaluation-sp17-ego727-raceline2-v0.7,17,727,raceline2,0.7,86,56,0.6511627906976745,54,15,0.1744186046511628,30,0,sp17-ego727-r2-v0.7
+evaluation-sp36-ego1539-raceline1-v0.5,36,1539,raceline1,0.5,86,54,0.627906976744186,53,2,0.0232558139534883,31,1,sp36-ego1539-r1-v0.5
+evaluation-sp35-ego1497-raceline1-v0.6,35,1497,raceline1,0.6,86,49,0.5697674418604651,45,3,0.0348837209302325,10,27,sp35-ego1497-r1-v0.6
+evaluation-sp21-ego898-raceline0-v0.7,21,898,raceline0,0.7,86,45,0.5232558139534884,45,37,0.4302325581395348,41,0,sp21-ego898-r0-v0.7
+evaluation-sp9-ego384-raceline0-v0.7,9,384,raceline0,0.7,86,45,0.5232558139534884,45,12,0.1395348837209302,41,0,sp9-ego384-r0-v0.7
+evaluation-sp12-ego513-raceline0-v0.8,12,513,raceline0,0.8,86,43,0.5,43,40,0.4651162790697674,43,0,sp12-ego513-r0-v0.8
+evaluation-sp2-ego85-raceline2-v0.8,2,85,raceline2,0.8,86,43,0.5,43,23,0.2674418604651162,26,17,sp2-ego85-r2-v0.8
+evaluation-sp3-ego128-raceline2-v0.8,3,128,raceline2,0.8,86,43,0.5,43,3,0.0348837209302325,43,0,sp3-ego128-r2-v0.8
+evaluation-sp13-ego556-raceline0-v0.8,13,556,raceline0,0.8,86,39,0.4534883720930232,39,28,0.3255813953488372,41,6,sp13-ego556-r0-v0.8
+evaluation-sp32-ego1368-raceline1-v0.5,32,1368,raceline1,0.5,86,39,0.4534883720930232,39,0,0.0,0,47,sp32-ego1368-r1-v0.5

@@ -1,0 +1,3 @@
+comparison,left_collisions,right_collisions,net_reduction,resolved,created,discordant_pairs,paired_exact_p_unadjusted
+BC -> privilege_gru base U20,22,14,8,10,2,12,0.03857421875
+long clip0.15 U30 -> long clip0.20 U30,20,11,9,15,6,21,0.0783538818359375

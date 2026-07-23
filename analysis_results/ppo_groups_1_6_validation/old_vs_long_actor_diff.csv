@@ -1,0 +1,6 @@
+update,keys_match,tensor_equal,max_abs_parameter_difference
+1,True,False,0.0005712807178497314
+5,True,False,0.0014208704233169556
+10,True,False,0.0018348544836044312
+15,True,False,0.0022967904806137085
+20,True,False,0.0031929686665534973

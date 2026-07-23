@@ -1,0 +1,14 @@
+section,item,value,definition
+Actor,Observation,361D,360 lidar + previous speed
+Actor,Action,2D,steering latent + physical speed
+Actor,GRU,420 → 1680,speed embedding concatenated with lidar
+Actor,Parameters,"11,301,482","trainable 11,300,942; fixed 540"
+Actor,Trainable,GRU + output head,BC initialization; frontend frozen
+Actor,Exploration std,0.03 / 0.15,steering latent / physical speed
+Critic,P20 observation,381D,361 actor input + 20 privileged features
+Critic,privilege_gru parameters,"11,309,401",independent BC-initialized GRU + late P20 projection
+PPO,Discount / GAE,0.999 / 0.995,"100 Hz, 8 s horizon"
+PPO,Epochs,2 actor / 5 critic,per formal update
+PPO,Selected batch / clip,"12,800 / 0.20",current observed best-total arm
+Vehicle,Geometry,0.58 m × 0.31 m,length × width
+Simulator,Step / horizon,0.01 s / 8 s,post-step-v2 normally has 802 trace rows

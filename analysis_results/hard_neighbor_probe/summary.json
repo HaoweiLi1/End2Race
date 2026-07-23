@@ -1,0 +1,48 @@
+{
+  "config": {
+    "cache_dir": "/home/haowei/Documents/End2Race/post-trained/collision-cache/default",
+    "model": "/home/haowei/Documents/End2Race/pretrained/end2race.pth",
+    "map_name": "Austin",
+    "random_seed": 42,
+    "seed_selection": "highest local collision support per opponent raceline",
+    "neighbor_definition": "same training ego start, interval +/-1, speed +/-0.05",
+    "pipeline_integration": false
+  },
+  "global_candidate_collision_rate": 0.04450018580453363,
+  "seed_count": 3,
+  "seed_collision_count": 3,
+  "neighbor_count": 18,
+  "neighbor_collision_count": 11,
+  "neighbor_collision_rate": 0.6111111111111112,
+  "collision_rate_enrichment": 13.732776617954071,
+  "source_family_results": {
+    "collision-sp024-ego0518-raceline0-i10-v080": {
+      "opponent_raceline": "raceline0",
+      "neighbor_count": 6,
+      "collision_count": 2,
+      "collision_rate": 0.3333333333333333
+    },
+    "collision-sp071-ego1503-raceline1-i10-v065": {
+      "opponent_raceline": "raceline1",
+      "neighbor_count": 6,
+      "collision_count": 3,
+      "collision_rate": 0.5
+    },
+    "collision-sp025-ego0534-raceline2-i10-v050": {
+      "opponent_raceline": "raceline2",
+      "neighbor_count": 6,
+      "collision_count": 6,
+      "collision_rate": 1.0
+    }
+  },
+  "enriched_source_family_count": 3,
+  "statistical_note": "Descriptive probe only: neighbors within a selected collision family are correlated, so no independent-binomial p-value is reported.",
+  "checks": {
+    "cached_seeds_reproduce_collision": true,
+    "selected_scenarios_are_finite": true,
+    "training_evaluation_separation_at_least_1m": true,
+    "hard_neighbors_enrich_collision_rate": true,
+    "at_least_two_source_families_are_enriched": true
+  },
+  "verdict": "hard_neighbors_are_enriched_probe_candidates"
+}
