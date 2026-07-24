@@ -13,3 +13,7 @@ Dataset_*/
 post-trained/ppo*
 eval_results/
 .pytest*
+analysis*
+tests/
+scripts/
+

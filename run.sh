@@ -94,84 +94,31 @@ evaluate_run() {
 # an independent queue at an exact fraction of collision episode resets. The
 # ordinary/collision role schedule and every PPO hyperparameter remain fixed.
 #
-# Group 10: 20% hard-neighbor within collision resets.
-$PYTHON train_ppo.py --critic privilege_gru --num_updates 45 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 3e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --hard_neighbors --hard_neighbor_fraction 0.20 --hard_neighbor_cache_dir post-trained/collision-cache/boundary-aware-v1 --output_dir post-trained/ppo_privilege_gru_0723_long45_clip020_hard020
-evaluate_run ppo_privilege_gru_0723_long45_clip020_hard020 0001 0005 0010 0015 0020 0025 0030 0035 0040 0045
+# Group 10: completed 20% hard-neighbor run and evaluations.
+# $PYTHON train_ppo.py --critic privilege_gru --num_updates 45 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 3e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --hard_neighbors --hard_neighbor_fraction 0.20 --hard_neighbor_cache_dir post-trained/collision-cache/boundary-aware-v1 --output_dir post-trained/ppo_privilege_gru_0723_long45_clip020_hard020
+# evaluate_run ppo_privilege_gru_0723_long45_clip020_hard020 0001 0005 0010 0015 0020 0025 0030 0035 0040 0045
 
-# Group 11: 10% hard-neighbor within collision resets.
-$PYTHON train_ppo.py --critic privilege_gru --num_updates 45 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 3e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --hard_neighbors --hard_neighbor_fraction 0.10 --hard_neighbor_cache_dir post-trained/collision-cache/boundary-aware-v1 --output_dir post-trained/ppo_privilege_gru_0723_long45_clip020_hard010
-evaluate_run ppo_privilege_gru_0723_long45_clip020_hard010 0001 0005 0010 0015 0020 0025 0030 0035 0040 0045
+# Group 11: training is complete and U1-U25 are evaluated. Resume only the
+# remaining evaluations before the later parameter experiments.
+# $PYTHON train_ppo.py --critic privilege_gru --num_updates 45 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 3e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --hard_neighbors --hard_neighbor_fraction 0.10 --hard_neighbor_cache_dir post-trained/collision-cache/boundary-aware-v1 --output_dir post-trained/ppo_privilege_gru_0723_long45_clip020_hard010
+# evaluate_run ppo_privilege_gru_0723_long45_clip020_hard010 0030 0035 0040 0045
 
-# Group 12: automatically select the safest stable late-training configuration
-# among no-hard, original full hard (40.5% realized share), hard-20%, and
-# hard-10%, then rerun that configuration from the canonical BC actor with only
-# critic LR changed from 3e-4 to 5e-4.  The selector ranks aggregate U35/U40/U45
-# collisions first, so it does not choose a configuration from one lucky
-# checkpoint.  Its selected checkpoint is audit evidence only; using that PPO
-# actor as the new initialization would confound the critic-LR comparison.
-critic_lr_selection_path="analysis_results/critic_lr5e4_candidate_selection.json"
-selected_critic_lr_candidate=$(
-    $PYTHON scripts/select_critic_lr_candidate.py \
-        --output "$critic_lr_selection_path"
-)
-critic_lr_hard_args=()
-case "$selected_critic_lr_candidate" in
-    nohard)
-        ;;
-    hardfull)
-        critic_lr_hard_args=(
-            --hard_neighbors
-            --hard_neighbor_cache_dir post-trained/collision-cache/boundary-aware-v1
-        )
-        ;;
-    hard020)
-        critic_lr_hard_args=(
-            --hard_neighbors
-            --hard_neighbor_fraction 0.20
-            --hard_neighbor_cache_dir post-trained/collision-cache/boundary-aware-v1
-        )
-        ;;
-    hard010)
-        critic_lr_hard_args=(
-            --hard_neighbors
-            --hard_neighbor_fraction 0.10
-            --hard_neighbor_cache_dir post-trained/collision-cache/boundary-aware-v1
-        )
-        ;;
-    *)
-        echo "Unknown critic-LR candidate: $selected_critic_lr_candidate" >&2
-        exit 1
-        ;;
-esac
+# Groups 12-14 use the completed no-hard long45 clip-0.20 run as the fixed
+# parameter baseline. Every run starts independently from the canonical BC
+# actor; there is no model/checkpoint selection.
 
-critic_lr_run_name="ppo_privilege_gru_0723_long45_clip020_criticlr5e4_${selected_critic_lr_candidate}"
-$PYTHON train_ppo.py \
-    --pretrained_model_path pretrained/end2race.pth \
-    --critic privilege_gru \
-    --env_workers 12 \
-    --num_updates 45 \
-    --actor_epochs 2 \
-    --critic_epochs 5 \
-    --batch_size 12800 \
-    --gru_learning_rate 3e-6 \
-    --head_learning_rate 3e-5 \
-    --critic_learning_rate 5e-4 \
-    --steering_latent_std 0.03 \
-    --speed_physical_std 0.15 \
-    --clip_range 0.20 \
-    "${critic_lr_hard_args[@]}" \
-    --output_dir "post-trained/$critic_lr_run_name"
-evaluate_run "$critic_lr_run_name" 0001 0005 0010 0015 0020 0025 0030 0035 0040 0045
+# Group 12: critic LR 3e-4 -> 5e-4; all other baseline parameters unchanged.
+# $PYTHON train_ppo.py --pretrained_model_path pretrained/end2race.pth --critic privilege_gru --env_workers 12 --num_updates 35 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 3e-5 --critic_learning_rate 5e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --output_dir post-trained/ppo_privilege_gru_0723_long35_clip020_criticlr5e4
+evaluate_run ppo_privilege_gru_0723_long35_clip020_criticlr5e4 0015 0020 0025 0030 0035
 
-# Group 13: decouple actor GRU/head learning rates. Together with the completed
-# Group 4 low/low (1e-6/1e-5) and middle/middle (3e-6/3e-5) runs, these two
-# crossed arms form a 2x2 screen. Keep Group 4's clip 0.15 and 20-update horizon
-# so the only intended differences are the two actor optimizer-group LRs.
-#
-# # Group 13a: lower GRU LR, middle head LR.
-# $PYTHON train_ppo.py --critic privilege_gru --env_workers 12 --num_updates 20 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 1e-6 --head_learning_rate 3e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.15 --output_dir post-trained/ppo_privilege_gru_0723_lrgru1_head3_clip015
-# evaluate_run ppo_privilege_gru_0723_lrgru1_head3_clip015 0001 0005 0010 0015 0020
+# # Group 13a: lower GRU LR; head LR remains at the 3e-5 baseline.
+# $PYTHON train_ppo.py --pretrained_model_path pretrained/end2race.pth --critic privilege_gru --env_workers 12 --num_updates 35 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 1e-6 --head_learning_rate 3e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --output_dir post-trained/ppo_privilege_gru_0723_long35_clip020_lrgru1_head3
+# evaluate_run ppo_privilege_gru_0723_long35_clip020_lrgru1_head3 0001 0005 0010 0015 0020 0025 0030 0035 
 
-# # Group 13b: middle GRU LR, lower head LR.
-# $PYTHON train_ppo.py --critic privilege_gru --env_workers 12 --num_updates 20 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 1e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.15 --output_dir post-trained/ppo_privilege_gru_0723_lrgru3_head1_clip015
-# evaluate_run ppo_privilege_gru_0723_lrgru3_head1_clip015 0001 0005 0010 0015 0020
+# # Group 13b: lower head LR; GRU LR remains at the 3e-6 baseline.
+# $PYTHON train_ppo.py --pretrained_model_path pretrained/end2race.pth --critic privilege_gru --env_workers 12 --num_updates 35 --actor_epochs 2 --critic_epochs 5 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 1e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --output_dir post-trained/ppo_privilege_gru_0723_long35_clip020_lrgru3_head1
+# evaluate_run ppo_privilege_gru_0723_long35_clip020_lrgru3_head1 0001 0005 0010 0015 0020 0025 0030 0035
+
+# # Group 14: critic epochs 5 -> 8; all other baseline parameters unchanged.
+# $PYTHON train_ppo.py --pretrained_model_path pretrained/end2race.pth --critic privilege_gru --env_workers 12 --num_updates 35 --actor_epochs 2 --critic_epochs 8 --batch_size 12800 --gru_learning_rate 3e-6 --head_learning_rate 3e-5 --critic_learning_rate 3e-4 --steering_latent_std 0.03 --speed_physical_std 0.15 --clip_range 0.20 --output_dir post-trained/ppo_privilege_gru_0723_long35_clip020_criticepochs8
+# evaluate_run ppo_privilege_gru_0723_long35_clip020_criticepochs8 0001 0005 0010 0015 0020 0025 0030 0035 
