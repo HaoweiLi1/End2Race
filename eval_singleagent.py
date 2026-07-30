@@ -94,7 +94,6 @@ def evaluate_laps(
     min_lap_time = 10.0
     lap_start_time = 0.0
     desired_speeds = []
-    executed_steering = []
     lidar_minima = []
     trace = None
     if save_trace:
@@ -141,7 +140,6 @@ def evaluate_laps(
         ego_steer = np.clip(ego_steer, -0.52, 0.52)
         executed_action = np.array([ego_steer, ego_speed], dtype=np.float32)
         desired_speeds.append(float(ego_speed))
-        executed_steering.append(float(ego_steer))
         lidar_minima.append(float(np.min(raw_lidar_360)))
         if trace is not None:
             trace["time_s"].append(float(lap_time))
@@ -256,10 +254,8 @@ def evaluate_laps(
         "avg_speed": float(avg_speed),
         "speed_variance": float(speed_variance),
         "total_distance": float(total_distance),
-        "avg_desired_speed": scalar_mean(desired_speeds),
-        "max_abs_steer": scalar_max_abs(executed_steering),
-        "max_steer_delta": scalar_max_delta(executed_steering),
-        "min_lidar": scalar_min(lidar_minima),
+        "avg_desired_speed": float(np.mean(desired_speeds)),
+        "min_lidar": float(np.min(lidar_minima)),
     }
     update_singleagent_results(
         output_paths["results"],

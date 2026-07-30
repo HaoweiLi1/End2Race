@@ -1,0 +1,4610 @@
+{
+  "schema_version": 1,
+  "purpose": "seed42 U30 interval-15 difficult-pool single-variable training arm",
+  "source": {
+    "root": "/home/haowei/Documents/End2Race/analysis_results/l12_heldout_hard_instrument_20260726",
+    "design_manifest_sha256": "e1bc517bee0a71d0a0d2788c391d10e2250848529b5d5b30e11dc08aeac9d142",
+    "candidate_scenarios_sha256": "48b3b3cd1c2b2f22143254de37c6eee535ba7b7f4d7eba9862cd0115e58c9c2b",
+    "candidate_labels_sha256": "69ca7f5a884edd4fc60d1f072a244a22ebaba8def41bbc9b25349cc1b20676b7",
+    "selection_actor_sha256": "e7e902d92bb7cbea6ec0c08b9a4754dd9da6fe50dac98dfc2c5abc90096bcba8"
+  },
+  "selection": {
+    "split": "train",
+    "interval_idx": 15,
+    "near_miss_clearance_m": 0.1,
+    "include_outcomes": [
+      "ego_collision",
+      "overtake_or_follow_near_miss"
+    ]
+  },
+  "sampling": {
+    "mode": "uniform_cycle_over_combined_pool",
+    "scenario_count": 229,
+    "source_label_counts": {
+      "ego_collision": 103,
+      "near_miss": 126
+    }
+  },
+  "entries": [
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp003-ego0039-raceline2-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 3,
+        "ego_idx": 39,
+        "opp_idx": 60,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp007-ego0076-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 7,
+        "ego_idx": 76,
+        "opp_idx": 91,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp020-ego0223-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 20,
+        "ego_idx": 223,
+        "opp_idx": 238,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp020-ego0223-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 20,
+        "ego_idx": 223,
+        "opp_idx": 238,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp020-ego0223-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 20,
+        "ego_idx": 223,
+        "opp_idx": 238,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp020-ego0223-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 20,
+        "ego_idx": 223,
+        "opp_idx": 238,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp021-ego0228-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 21,
+        "ego_idx": 228,
+        "opp_idx": 235,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp021-ego0228-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 21,
+        "ego_idx": 228,
+        "opp_idx": 243,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp021-ego0228-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 21,
+        "ego_idx": 228,
+        "opp_idx": 243,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 240,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 240,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 240,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 249,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 249,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 249,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp025-ego0265-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 25,
+        "ego_idx": 265,
+        "opp_idx": 272,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp026-ego0275-raceline1-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 26,
+        "ego_idx": 275,
+        "opp_idx": 290,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp029-ego0301-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 29,
+        "ego_idx": 301,
+        "opp_idx": 310,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp029-ego0301-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 29,
+        "ego_idx": 301,
+        "opp_idx": 322,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp041-ego0443-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 41,
+        "ego_idx": 443,
+        "opp_idx": 453,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp041-ego0443-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 41,
+        "ego_idx": 443,
+        "opp_idx": 453,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp042-ego0448-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 42,
+        "ego_idx": 448,
+        "opp_idx": 459,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp042-ego0448-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 42,
+        "ego_idx": 448,
+        "opp_idx": 459,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp043-ego0464-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 43,
+        "ego_idx": 464,
+        "opp_idx": 475,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp043-ego0464-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 43,
+        "ego_idx": 464,
+        "opp_idx": 479,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp045-ego0479-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 45,
+        "ego_idx": 479,
+        "opp_idx": 488,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp045-ego0479-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 45,
+        "ego_idx": 479,
+        "opp_idx": 494,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp046-ego0485-raceline2-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 46,
+        "ego_idx": 485,
+        "opp_idx": 508,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp060-ego0639-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 60,
+        "ego_idx": 639,
+        "opp_idx": 654,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.5367030764826579,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp060-ego0639-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 60,
+        "ego_idx": 639,
+        "opp_idx": 654,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp062-ego0653-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 62,
+        "ego_idx": 653,
+        "opp_idx": 668,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp064-ego0674-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 64,
+        "ego_idx": 674,
+        "opp_idx": 686,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp064-ego0674-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 64,
+        "ego_idx": 674,
+        "opp_idx": 689,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.5326194278688667,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp064-ego0674-raceline1-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 64,
+        "ego_idx": 674,
+        "opp_idx": 689,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.37579152545179867,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp067-ego0705-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 67,
+        "ego_idx": 705,
+        "opp_idx": 720,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp067-ego0705-raceline2-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 67,
+        "ego_idx": 705,
+        "opp_idx": 723,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.45981762295069073,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp068-ego0710-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 68,
+        "ego_idx": 710,
+        "opp_idx": 725,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 728,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 728,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 728,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 728,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 728,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp080-ego0852-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 80,
+        "ego_idx": 852,
+        "opp_idx": 856,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp083-ego0883-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 83,
+        "ego_idx": 883,
+        "opp_idx": 910,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp086-ego0899-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 86,
+        "ego_idx": 899,
+        "opp_idx": 903,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp088-ego0925-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 88,
+        "ego_idx": 925,
+        "opp_idx": 929,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp089-ego0930-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 89,
+        "ego_idx": 930,
+        "opp_idx": 934,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp100-ego1061-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 100,
+        "ego_idx": 1061,
+        "opp_idx": 1059,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp102-ego1072-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 102,
+        "ego_idx": 1072,
+        "opp_idx": 1070,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp103-ego1087-raceline0-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 103,
+        "ego_idx": 1087,
+        "opp_idx": 1085,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp105-ego1103-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 105,
+        "ego_idx": 1103,
+        "opp_idx": 1118,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp123-ego1297-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 123,
+        "ego_idx": 1297,
+        "opp_idx": 1312,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp127-ego1335-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 127,
+        "ego_idx": 1335,
+        "opp_idx": 1350,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp128-ego1344-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 128,
+        "ego_idx": 1344,
+        "opp_idx": 1344,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp129-ego1349-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 129,
+        "ego_idx": 1349,
+        "opp_idx": 1364,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp140-ego1481-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 140,
+        "ego_idx": 1481,
+        "opp_idx": 1496,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp141-ego1491-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 141,
+        "ego_idx": 1491,
+        "opp_idx": 1506,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp141-ego1491-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 141,
+        "ego_idx": 1491,
+        "opp_idx": 1506,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp141-ego1491-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 141,
+        "ego_idx": 1491,
+        "opp_idx": 1506,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp141-ego1491-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 141,
+        "ego_idx": 1491,
+        "opp_idx": 1506,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp141-ego1491-raceline1-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 141,
+        "ego_idx": 1491,
+        "opp_idx": 1506,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp142-ego1496-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 142,
+        "ego_idx": 1496,
+        "opp_idx": 1511,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp142-ego1496-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 142,
+        "ego_idx": 1496,
+        "opp_idx": 1511,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp142-ego1496-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 142,
+        "ego_idx": 1496,
+        "opp_idx": 1511,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp142-ego1496-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 142,
+        "ego_idx": 1496,
+        "opp_idx": 1511,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp142-ego1496-raceline1-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 142,
+        "ego_idx": 1496,
+        "opp_idx": 1511,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp142-ego1496-raceline1-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 142,
+        "ego_idx": 1496,
+        "opp_idx": 1511,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp143-ego1512-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 143,
+        "ego_idx": 1512,
+        "opp_idx": 1503,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp143-ego1512-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 143,
+        "ego_idx": 1512,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp143-ego1512-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 143,
+        "ego_idx": 1512,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp143-ego1512-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 143,
+        "ego_idx": 1512,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp143-ego1512-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 143,
+        "ego_idx": 1512,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp144-ego1517-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 144,
+        "ego_idx": 1517,
+        "opp_idx": 1508,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp144-ego1517-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 144,
+        "ego_idx": 1517,
+        "opp_idx": 1532,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp144-ego1517-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 144,
+        "ego_idx": 1517,
+        "opp_idx": 1532,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp144-ego1517-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 144,
+        "ego_idx": 1517,
+        "opp_idx": 1532,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp144-ego1517-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 144,
+        "ego_idx": 1517,
+        "opp_idx": 1532,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1516,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1538,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1538,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline1-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1538,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline0-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1548,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp147-ego1547-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 147,
+        "ego_idx": 1547,
+        "opp_idx": 1541,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp147-ego1547-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 147,
+        "ego_idx": 1547,
+        "opp_idx": 1562,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.3713479121127652,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.4576549076924643,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.5207159674482629,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.5681649595164342,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.5981374008364566,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.6149753787326309,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.6238412550969674,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.6274003430421928,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 1.628557899313683,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp148-ego1554-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 148,
+        "ego_idx": 1554,
+        "opp_idx": 1550,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp149-ego1559-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 149,
+        "ego_idx": 1559,
+        "opp_idx": 1557,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp180-ego1900-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 180,
+        "ego_idx": 1900,
+        "opp_idx": 1934,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp183-ego1931-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 183,
+        "ego_idx": 1931,
+        "opp_idx": 1926,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp183-ego1931-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 183,
+        "ego_idx": 1931,
+        "opp_idx": 1926,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp184-ego1936-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 184,
+        "ego_idx": 1936,
+        "opp_idx": 1931,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp186-ego1952-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 186,
+        "ego_idx": 1952,
+        "opp_idx": 1986,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "ego_collision",
+      "source_outcome": "ego_collision",
+      "min_obb_clearance_m": 0.0,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp187-ego1963-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 187,
+        "ego_idx": 1963,
+        "opp_idx": 1958,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "follow",
+      "min_obb_clearance_m": 0.05111823593869911,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp000-ego0013-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 0,
+        "ego_idx": 13,
+        "opp_idx": 23,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09155730594450259,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp000-ego0013-raceline2-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 0,
+        "ego_idx": 13,
+        "opp_idx": 33,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08592060593519173,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp001-ego0018-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 1,
+        "ego_idx": 18,
+        "opp_idx": 27,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05895186948366866,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp003-ego0039-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 3,
+        "ego_idx": 39,
+        "opp_idx": 60,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07888858331780872,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp004-ego0045-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 4,
+        "ego_idx": 45,
+        "opp_idx": 66,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0802633839214371,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp005-ego0055-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 5,
+        "ego_idx": 55,
+        "opp_idx": 76,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08610052522364245,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp006-ego0060-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 6,
+        "ego_idx": 60,
+        "opp_idx": 81,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0673243656462043,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp007-ego0076-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 7,
+        "ego_idx": 76,
+        "opp_idx": 85,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.094509134971788,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp007-ego0076-raceline2-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 7,
+        "ego_idx": 76,
+        "opp_idx": 97,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07397756244557399,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp008-ego0081-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 8,
+        "ego_idx": 81,
+        "opp_idx": 90,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08657895988128604,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp008-ego0081-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 8,
+        "ego_idx": 81,
+        "opp_idx": 102,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09067268700586836,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp009-ego0087-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 9,
+        "ego_idx": 87,
+        "opp_idx": 96,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09398438395803618,
+      "scenario": {
+        "scenario_id": "hardinst-train-b00-sp009-ego0087-raceline2-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 9,
+        "ego_idx": 87,
+        "opp_idx": 108,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0826949599802301,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp020-ego0223-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 20,
+        "ego_idx": 223,
+        "opp_idx": 231,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.04493784224751641,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp020-ego0223-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 20,
+        "ego_idx": 223,
+        "opp_idx": 231,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.04016652813555367,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp021-ego0228-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 21,
+        "ego_idx": 228,
+        "opp_idx": 235,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09189167372206357,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp021-ego0228-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 21,
+        "ego_idx": 228,
+        "opp_idx": 235,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07354135653900182,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp021-ego0228-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 21,
+        "ego_idx": 228,
+        "opp_idx": 235,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0696116897940102,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 240,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.04955682142344967,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp022-ego0234-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 22,
+        "ego_idx": 234,
+        "opp_idx": 249,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "follow",
+      "min_obb_clearance_m": 0.06576522794095477,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp023-ego0249-raceline1-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 23,
+        "ego_idx": 249,
+        "opp_idx": 264,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0919374062839238,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp024-ego0255-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 24,
+        "ego_idx": 255,
+        "opp_idx": 261,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0630013612416556,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp024-ego0255-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 24,
+        "ego_idx": 255,
+        "opp_idx": 261,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09722120203723365,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp026-ego0275-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 26,
+        "ego_idx": 275,
+        "opp_idx": 283,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "follow",
+      "min_obb_clearance_m": 0.024975430455176455,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp026-ego0275-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 26,
+        "ego_idx": 275,
+        "opp_idx": 283,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05562951306956348,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp026-ego0275-raceline2-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 26,
+        "ego_idx": 275,
+        "opp_idx": 298,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.031193862237495585,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp027-ego0286-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 27,
+        "ego_idx": 286,
+        "opp_idx": 295,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08969698946823904,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp027-ego0286-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 27,
+        "ego_idx": 286,
+        "opp_idx": 295,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07816032851224543,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp028-ego0296-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 28,
+        "ego_idx": 296,
+        "opp_idx": 305,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "follow",
+      "min_obb_clearance_m": 0.02239506416359739,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp028-ego0296-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 28,
+        "ego_idx": 296,
+        "opp_idx": 305,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09714201419823021,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp029-ego0301-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 29,
+        "ego_idx": 301,
+        "opp_idx": 310,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.054189672552663215,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp029-ego0301-raceline2-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 29,
+        "ego_idx": 301,
+        "opp_idx": 322,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09958010597807151,
+      "scenario": {
+        "scenario_id": "hardinst-train-b02-sp029-ego0301-raceline2-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 29,
+        "ego_idx": 301,
+        "opp_idx": 322,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06377362589514445,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp040-ego0435-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 40,
+        "ego_idx": 435,
+        "opp_idx": 445,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.041693108356605724,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp040-ego0435-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 40,
+        "ego_idx": 435,
+        "opp_idx": 445,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09771454427883125,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp040-ego0435-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 40,
+        "ego_idx": 435,
+        "opp_idx": 450,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.008723757462750616,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp041-ego0443-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 41,
+        "ego_idx": 443,
+        "opp_idx": 453,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08725091820241183,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp041-ego0443-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 41,
+        "ego_idx": 443,
+        "opp_idx": 463,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.032089056807848494,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp042-ego0448-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 42,
+        "ego_idx": 448,
+        "opp_idx": 459,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.04726619965494566,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp042-ego0448-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 42,
+        "ego_idx": 448,
+        "opp_idx": 459,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.002977616656238971,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp042-ego0448-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 42,
+        "ego_idx": 448,
+        "opp_idx": 459,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09247073401759286,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp043-ego0464-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 43,
+        "ego_idx": 464,
+        "opp_idx": 475,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.071430435947798,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp043-ego0464-raceline2-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 43,
+        "ego_idx": 464,
+        "opp_idx": 484,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08605018333611561,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp044-ego0469-raceline0-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 44,
+        "ego_idx": 469,
+        "opp_idx": 479,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06461515350912164,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp044-ego0469-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 44,
+        "ego_idx": 469,
+        "opp_idx": 479,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.023278929004195457,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp045-ego0479-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 45,
+        "ego_idx": 479,
+        "opp_idx": 488,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09792336204654185,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp045-ego0479-raceline2-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 45,
+        "ego_idx": 479,
+        "opp_idx": 501,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09920354260728052,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp046-ego0485-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 46,
+        "ego_idx": 485,
+        "opp_idx": 493,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05475544059950967,
+      "scenario": {
+        "scenario_id": "hardinst-train-b04-sp049-ego0511-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 49,
+        "ego_idx": 511,
+        "opp_idx": 521,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.03856103845940351,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp060-ego0639-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 60,
+        "ego_idx": 639,
+        "opp_idx": 649,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08252266666746219,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp060-ego0639-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 60,
+        "ego_idx": 639,
+        "opp_idx": 660,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "follow",
+      "min_obb_clearance_m": 0.05497795259877498,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp061-ego0644-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 61,
+        "ego_idx": 644,
+        "opp_idx": 659,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.028374696475339644,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp061-ego0644-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 61,
+        "ego_idx": 644,
+        "opp_idx": 664,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0685476605444698,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp062-ego0653-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 62,
+        "ego_idx": 653,
+        "opp_idx": 673,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0753279479317666,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp063-ego0668-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 63,
+        "ego_idx": 668,
+        "opp_idx": 683,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08040338359894444,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp063-ego0668-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 63,
+        "ego_idx": 668,
+        "opp_idx": 687,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.016149348881853817,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp064-ego0674-raceline2-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 64,
+        "ego_idx": 674,
+        "opp_idx": 692,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.03154017571660761,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp065-ego0682-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 65,
+        "ego_idx": 682,
+        "opp_idx": 700,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06201632221289658,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp066-ego0687-raceline2-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 66,
+        "ego_idx": 687,
+        "opp_idx": 705,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0465784197840061,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp067-ego0705-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 67,
+        "ego_idx": 705,
+        "opp_idx": 717,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09626158468582242,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp067-ego0705-raceline2-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 67,
+        "ego_idx": 705,
+        "opp_idx": 723,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09275268686578145,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp068-ego0710-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 68,
+        "ego_idx": 710,
+        "opp_idx": 722,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06275584103991212,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp068-ego0710-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 68,
+        "ego_idx": 710,
+        "opp_idx": 725,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.04957375186339872,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 728,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.023027718500647578,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline2-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 734,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06652309946204837,
+      "scenario": {
+        "scenario_id": "hardinst-train-b06-sp069-ego0716-raceline2-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 69,
+        "ego_idx": 716,
+        "opp_idx": 734,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "follow",
+      "min_obb_clearance_m": 0.08671812785415285,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp082-ego0864-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 82,
+        "ego_idx": 864,
+        "opp_idx": 868,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.011941712659250715,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp085-ego0894-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 85,
+        "ego_idx": 894,
+        "opp_idx": 898,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.045219082140879774,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp086-ego0899-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 86,
+        "ego_idx": 899,
+        "opp_idx": 903,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07396059862102998,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp086-ego0899-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 86,
+        "ego_idx": 899,
+        "opp_idx": 926,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.054198230913661265,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp087-ego0915-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 87,
+        "ego_idx": 915,
+        "opp_idx": 919,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05605141240284642,
+      "scenario": {
+        "scenario_id": "hardinst-train-b08-sp087-ego0915-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 87,
+        "ego_idx": 915,
+        "opp_idx": 919,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.09434813655169501,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp100-ego1061-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 100,
+        "ego_idx": 1061,
+        "opp_idx": 1059,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.04728101360097491,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp100-ego1061-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 100,
+        "ego_idx": 1061,
+        "opp_idx": 1059,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07168947382061941,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp101-ego1067-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 101,
+        "ego_idx": 1067,
+        "opp_idx": 1064,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0792397118385168,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp102-ego1072-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 102,
+        "ego_idx": 1072,
+        "opp_idx": 1070,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07027028256570655,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp104-ego1093-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 104,
+        "ego_idx": 1093,
+        "opp_idx": 1091,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.025239075623587636,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp106-ego1109-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 106,
+        "ego_idx": 1109,
+        "opp_idx": 1107,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08987408578940534,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp108-ego1129-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 108,
+        "ego_idx": 1129,
+        "opp_idx": 1127,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08062057931490631,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp108-ego1129-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 108,
+        "ego_idx": 1129,
+        "opp_idx": 1127,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0945690125506567,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp108-ego1129-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 108,
+        "ego_idx": 1129,
+        "opp_idx": 1127,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.01890845565030571,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp109-ego1135-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 109,
+        "ego_idx": 1135,
+        "opp_idx": 1133,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.043878787823782815,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp109-ego1135-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 109,
+        "ego_idx": 1135,
+        "opp_idx": 1133,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.059469083402745676,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp109-ego1135-raceline2-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 109,
+        "ego_idx": 1135,
+        "opp_idx": 1168,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06348345381989591,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp109-ego1135-raceline2-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 109,
+        "ego_idx": 1135,
+        "opp_idx": 1168,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06621278495049646,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp109-ego1135-raceline2-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 109,
+        "ego_idx": 1135,
+        "opp_idx": 1168,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07805122084535712,
+      "scenario": {
+        "scenario_id": "hardinst-train-b10-sp109-ego1135-raceline2-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 109,
+        "ego_idx": 1135,
+        "opp_idx": 1168,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.042055446623832975,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp120-ego1271-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 120,
+        "ego_idx": 1271,
+        "opp_idx": 1267,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06329749341303442,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp121-ego1281-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 121,
+        "ego_idx": 1281,
+        "opp_idx": 1277,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08337589387849162,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp122-ego1286-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 122,
+        "ego_idx": 1286,
+        "opp_idx": 1282,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.007384478155055924,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp122-ego1286-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 122,
+        "ego_idx": 1286,
+        "opp_idx": 1282,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06295775195619907,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp122-ego1286-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 122,
+        "ego_idx": 1286,
+        "opp_idx": 1320,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07657546245083832,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp123-ego1297-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 123,
+        "ego_idx": 1297,
+        "opp_idx": 1294,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06410145280008328,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp123-ego1297-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 123,
+        "ego_idx": 1297,
+        "opp_idx": 1294,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0006677952266099464,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp123-ego1297-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 123,
+        "ego_idx": 1297,
+        "opp_idx": 1294,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05296340279831479,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp124-ego1303-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 124,
+        "ego_idx": 1303,
+        "opp_idx": 1301,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.016121679158883333,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp124-ego1303-raceline0-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 124,
+        "ego_idx": 1303,
+        "opp_idx": 1301,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06690215804348958,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp125-ego1313-raceline0-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 125,
+        "ego_idx": 1313,
+        "opp_idx": 1311,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0410904242298059,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp125-ego1313-raceline2-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 125,
+        "ego_idx": 1313,
+        "opp_idx": 1346,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08686511907209482,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp126-ego1323-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 126,
+        "ego_idx": 1323,
+        "opp_idx": 1321,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0810545804876832,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp126-ego1323-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 126,
+        "ego_idx": 1323,
+        "opp_idx": 1356,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05933328090148613,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp127-ego1335-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 127,
+        "ego_idx": 1335,
+        "opp_idx": 1334,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "follow",
+      "min_obb_clearance_m": 0.06480427542913542,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp128-ego1344-raceline1-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 128,
+        "ego_idx": 1344,
+        "opp_idx": 1359,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.008755191282376822,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp128-ego1344-raceline2-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 128,
+        "ego_idx": 1344,
+        "opp_idx": 1375,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06240837440215537,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp129-ego1349-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 129,
+        "ego_idx": 1349,
+        "opp_idx": 1349,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.04703453863039082,
+      "scenario": {
+        "scenario_id": "hardinst-train-b12-sp129-ego1349-raceline2-i15-v0850",
+        "pool": "collision",
+        "startpoint_ordinal": 129,
+        "ego_idx": 1349,
+        "opp_idx": 1380,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.85,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05215429223563185,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp140-ego1481-raceline2-i15-v0450",
+        "pool": "collision",
+        "startpoint_ordinal": 140,
+        "ego_idx": 1481,
+        "opp_idx": 1518,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.45,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05416426722695528,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp140-ego1481-raceline2-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 140,
+        "ego_idx": 1481,
+        "opp_idx": 1518,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07327780074909952,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp141-ego1491-raceline0-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 141,
+        "ego_idx": 1491,
+        "opp_idx": 1483,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06763613029285125,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp141-ego1491-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 141,
+        "ego_idx": 1491,
+        "opp_idx": 1483,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.004777201142855393,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp142-ego1496-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 142,
+        "ego_idx": 1496,
+        "opp_idx": 1488,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0015022394425491064,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp144-ego1517-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 144,
+        "ego_idx": 1517,
+        "opp_idx": 1508,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08955481208176361,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1516,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.07034689282493452,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline0-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1516,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.001038118661765528,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1538,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.049360659733970226,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp145-ego1523-raceline1-i15-v0600",
+        "pool": "collision",
+        "startpoint_ordinal": 145,
+        "ego_idx": 1523,
+        "opp_idx": 1538,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.6,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.009409201613109701,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline0-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05826265726383468,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline0-i15-v0650",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.65,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0675692439215422,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.054736920169011355,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline0-i15-v0750",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1527,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.75,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.05205442317894411,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline1-i15-v0500",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1548,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.5,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.023802882858621505,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp146-ego1533-raceline1-i15-v0550",
+        "pool": "collision",
+        "startpoint_ordinal": 146,
+        "ego_idx": 1533,
+        "opp_idx": 1548,
+        "opp_raceline": "raceline1",
+        "opp_speedscale": 0.55,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.08203308407518202,
+      "scenario": {
+        "scenario_id": "hardinst-train-b14-sp149-ego1559-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 149,
+        "ego_idx": 1559,
+        "opp_idx": 1557,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.0784402466351493,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp184-ego1936-raceline0-i15-v0700",
+        "pool": "collision",
+        "startpoint_ordinal": 184,
+        "ego_idx": 1936,
+        "opp_idx": 1931,
+        "opp_raceline": "raceline0",
+        "opp_speedscale": 0.7,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.06808686408305142,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp188-ego1973-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 188,
+        "ego_idx": 1973,
+        "opp_idx": 2007,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    },
+    {
+      "source_label": "near_miss",
+      "source_outcome": "overtake",
+      "min_obb_clearance_m": 0.03460891874761514,
+      "scenario": {
+        "scenario_id": "hardinst-train-b18-sp189-ego1978-raceline2-i15-v0800",
+        "pool": "collision",
+        "startpoint_ordinal": 189,
+        "ego_idx": 1978,
+        "opp_idx": 2012,
+        "opp_raceline": "raceline2",
+        "opp_speedscale": 0.8,
+        "interval_idx": 15,
+        "map_name": "Austin",
+        "ego_raceline": "raceline1",
+        "sim_duration": 8.0,
+        "timestep": 0.01,
+        "integrator": "RK4"
+      }
+    }
+  ]
+}

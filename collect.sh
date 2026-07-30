@@ -1,23 +1,20 @@
 #!/bin/bash
-export DISPLAY=:1
+
 # Parameters (converted from argparse defaults)
-WORKERS=8
+WORKERS=12
 RENDER=true
 MAP_NAME="Austin"
 EGO_RACELINE="raceline1"
-OPP_RACELINES=("raceline1")
+OPP_RACELINES=("raceline0" "raceline1" "raceline2")
 OPP_SPEED_SCALES=(0.5 0.6 0.7 0.8)
 INTERVAL_IDX=15
 SIM_DURATION=8.0
 NUM_STARTPOINTS=50
-# Generate ego_idx_range
-raceline_path="f1tenth_racetracks/${MAP_NAME}/${EGO_RACELINE}.csv"
-max_waypoints=$(tail -n +3 "$raceline_path" | wc -l)
-ego_idx_range=()
-for ((i=0; i<NUM_STARTPOINTS; i++)); do
-    idx=$((i * (max_waypoints - 1) / (NUM_STARTPOINTS - 1)))
-    ego_idx_range+=($idx)
-done
+
+mapfile -t ego_idx_range < <(
+    python -c 'import sys; from utils import get_circular_startpoints; print(*get_circular_startpoints(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])), sep="\n")' \
+        "$MAP_NAME" "${EGO_RACELINE}.csv" "$NUM_STARTPOINTS" 0
+)
 
 # Calculate total jobs
 total_jobs=$((${#OPP_RACELINES[@]} * ${#OPP_SPEED_SCALES[@]} * ${#ego_idx_range[@]}))
@@ -29,7 +26,6 @@ echo "Ego raceline: ${EGO_RACELINE}"
 echo "Opponent racelines: ${OPP_RACELINES[*]}"
 echo "Speed scales: ${OPP_SPEED_SCALES[*]}"
 echo "Interval: ${INTERVAL_IDX}"
-echo "Time per run: ${SIM_DURATION}s"
 echo "Starting points: $NUM_STARTPOINTS"
 echo "Total jobs: $total_jobs"
 

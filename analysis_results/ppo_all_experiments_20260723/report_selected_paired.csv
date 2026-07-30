@@ -1,8 +1,0 @@
-checkpoint,panel,collision_resolved,collision_shared,collision_created,collision_net_reduction,collision_exact_p,collision_cluster_bootstrap_diff_ci_low,collision_cluster_bootstrap_diff_ci_high,tail_resolved,tail_shared,tail_created,tail_net_reduction,tail_exact_p,tail_cluster_bootstrap_diff_ci_low,tail_cluster_bootstrap_diff_ci_high,bc_tail_scenarios_still_any_collision,bc_tail_scenarios_now_overtake,collision_exact_p_holm_all_valid_panels,tail_exact_p_holm_all_valid_panels
-P20 base U20,ppo_privilege_gru_0721_base_u0020,10,12,2,8,0.03857421875,2.0,15.0,5,6,1,4,0.21875,0.0,9.0,8,3,1.0,1.0
-clip .20 U40,ppo_privilege_gru_0722_long45_clip020_u0040,15,7,4,11,0.0192108154296875,2.0,21.0,8,3,5,3,0.5810546875,-4.0,10.0,3,8,1.0,1.0
-clip .20 U45,ppo_privilege_gru_0722_long45_clip020_u0045,15,7,5,10,0.0413894653320312,1.0,20.0,7,4,3,4,0.34375,-2.0,11.0,4,7,1.0,1.0
-hard U35,ppo_privilege_gru_0722_long45_clip020_hard_u0035,18,4,16,2,0.8641662404406816,-9.0,14.0,11,0,2,9,0.0224609375,2.0,16.0,0,11,1.0,1.0
-hard U45,ppo_privilege_gru_0722_long45_clip020_hard_u0045,15,7,10,5,0.4243562221527099,-5.0,15.0,11,0,4,7,0.1184692382812499,0.0,15.0,0,11,1.0,1.0
-clip .25 U45,ppo_privilege_gru_0722_long45_clip025_u0045,12,10,6,6,0.237884521484375,-2.0,14.0,8,3,4,4,0.3876953125,-3.0,11.0,4,7,1.0,1.0
-clip .20 U30,ppo_privilege_gru_0722_long_clip020_u0030,17,5,6,11,0.0346896648406982,2.0,21.0,10,1,3,7,0.09228515625,0.0,14.0,2,9,1.0,1.0

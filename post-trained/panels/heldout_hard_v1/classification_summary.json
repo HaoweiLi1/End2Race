@@ -1,0 +1,964 @@
+{
+  "schema_version": 1,
+  "design_manifest_sha256": "e1bc517bee0a71d0a0d2788c391d10e2250848529b5d5b30e11dc08aeac9d142",
+  "candidate_scenarios_sha256": "48b3b3cd1c2b2f22143254de37c6eee535ba7b7f4d7eba9862cd0115e58c9c2b",
+  "candidate_labels_sha256": "69ca7f5a884edd4fc60d1f072a244a22ebaba8def41bbc9b25349cc1b20676b7",
+  "candidate_count": 21600,
+  "selection_actor_sha256": "e7e902d92bb7cbea6ec0c08b9a4754dd9da6fe50dac98dfc2c5abc90096bcba8",
+  "split_outcomes": {
+    "heldout_eval": {
+      "ego_collision": 334,
+      "follow": 4158,
+      "invalid": 18,
+      "overtake": 6290
+    },
+    "train": {
+      "ego_collision": 468,
+      "follow": 4006,
+      "overtake": 6326
+    }
+  },
+  "panel_counts": {
+    "heldout_eval_collision": 334,
+    "heldout_eval_difficult": 734,
+    "heldout_eval_near_miss": 400,
+    "train_collision": 468,
+    "train_difficult": 868,
+    "train_near_miss": 400
+  },
+  "valid_minimum_obb_clearance_quantiles_m": {
+    "minimum": 0.0,
+    "p10": 0.1192529187915508,
+    "median": 0.4341847894045566,
+    "p90": 1.2298808343452916,
+    "maximum": 2.6804183907210954
+  },
+  "stratified_outcomes": {
+    "heldout_eval|raceline0|i10|v0.45": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline0|i10|v0.50": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline0|i10|v0.55": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline0|i10|v0.60": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline0|i10|v0.65": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline0|i10|v0.70": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "heldout_eval|raceline0|i10|v0.75": {
+      "ego_collision": 10,
+      "follow": 2,
+      "overtake": 88
+    },
+    "heldout_eval|raceline0|i10|v0.80": {
+      "ego_collision": 10,
+      "follow": 28,
+      "overtake": 62
+    },
+    "heldout_eval|raceline0|i10|v0.85": {
+      "ego_collision": 8,
+      "follow": 57,
+      "overtake": 35
+    },
+    "heldout_eval|raceline0|i12|v0.45": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline0|i12|v0.50": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline0|i12|v0.55": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline0|i12|v0.60": {
+      "overtake": 100
+    },
+    "heldout_eval|raceline0|i12|v0.65": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "heldout_eval|raceline0|i12|v0.70": {
+      "ego_collision": 7,
+      "overtake": 93
+    },
+    "heldout_eval|raceline0|i12|v0.75": {
+      "ego_collision": 5,
+      "follow": 9,
+      "overtake": 86
+    },
+    "heldout_eval|raceline0|i12|v0.80": {
+      "ego_collision": 4,
+      "follow": 32,
+      "overtake": 64
+    },
+    "heldout_eval|raceline0|i12|v0.85": {
+      "ego_collision": 9,
+      "follow": 64,
+      "overtake": 27
+    },
+    "heldout_eval|raceline0|i15|v0.45": {
+      "ego_collision": 1,
+      "invalid": 1,
+      "overtake": 98
+    },
+    "heldout_eval|raceline0|i15|v0.50": {
+      "invalid": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline0|i15|v0.55": {
+      "invalid": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline0|i15|v0.60": {
+      "ego_collision": 1,
+      "invalid": 1,
+      "overtake": 98
+    },
+    "heldout_eval|raceline0|i15|v0.65": {
+      "ego_collision": 5,
+      "invalid": 1,
+      "overtake": 94
+    },
+    "heldout_eval|raceline0|i15|v0.70": {
+      "ego_collision": 3,
+      "invalid": 1,
+      "overtake": 96
+    },
+    "heldout_eval|raceline0|i15|v0.75": {
+      "ego_collision": 5,
+      "follow": 23,
+      "invalid": 1,
+      "overtake": 71
+    },
+    "heldout_eval|raceline0|i15|v0.80": {
+      "ego_collision": 7,
+      "follow": 38,
+      "invalid": 1,
+      "overtake": 54
+    },
+    "heldout_eval|raceline0|i15|v0.85": {
+      "ego_collision": 4,
+      "follow": 74,
+      "invalid": 1,
+      "overtake": 21
+    },
+    "heldout_eval|raceline0|i8|v0.45": {
+      "invalid": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline0|i8|v0.50": {
+      "ego_collision": 2,
+      "invalid": 1,
+      "overtake": 97
+    },
+    "heldout_eval|raceline0|i8|v0.55": {
+      "ego_collision": 3,
+      "invalid": 1,
+      "overtake": 96
+    },
+    "heldout_eval|raceline0|i8|v0.60": {
+      "ego_collision": 3,
+      "invalid": 1,
+      "overtake": 96
+    },
+    "heldout_eval|raceline0|i8|v0.65": {
+      "ego_collision": 4,
+      "invalid": 1,
+      "overtake": 95
+    },
+    "heldout_eval|raceline0|i8|v0.70": {
+      "ego_collision": 7,
+      "invalid": 1,
+      "overtake": 92
+    },
+    "heldout_eval|raceline0|i8|v0.75": {
+      "ego_collision": 9,
+      "follow": 1,
+      "invalid": 1,
+      "overtake": 89
+    },
+    "heldout_eval|raceline0|i8|v0.80": {
+      "ego_collision": 11,
+      "follow": 8,
+      "invalid": 1,
+      "overtake": 80
+    },
+    "heldout_eval|raceline0|i8|v0.85": {
+      "ego_collision": 12,
+      "follow": 39,
+      "invalid": 1,
+      "overtake": 48
+    },
+    "heldout_eval|raceline1|i10|v0.45": {
+      "ego_collision": 8,
+      "follow": 86,
+      "overtake": 6
+    },
+    "heldout_eval|raceline1|i10|v0.50": {
+      "ego_collision": 4,
+      "follow": 95,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i10|v0.55": {
+      "ego_collision": 4,
+      "follow": 95,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i10|v0.60": {
+      "ego_collision": 2,
+      "follow": 98
+    },
+    "heldout_eval|raceline1|i10|v0.65": {
+      "ego_collision": 2,
+      "follow": 98
+    },
+    "heldout_eval|raceline1|i10|v0.70": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i10|v0.75": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i10|v0.80": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i10|v0.85": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i12|v0.45": {
+      "ego_collision": 8,
+      "follow": 89,
+      "overtake": 3
+    },
+    "heldout_eval|raceline1|i12|v0.50": {
+      "ego_collision": 3,
+      "follow": 97
+    },
+    "heldout_eval|raceline1|i12|v0.55": {
+      "ego_collision": 4,
+      "follow": 96
+    },
+    "heldout_eval|raceline1|i12|v0.60": {
+      "follow": 99,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i12|v0.65": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "heldout_eval|raceline1|i12|v0.70": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i12|v0.75": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i12|v0.80": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i12|v0.85": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i15|v0.45": {
+      "ego_collision": 19,
+      "follow": 77,
+      "overtake": 4
+    },
+    "heldout_eval|raceline1|i15|v0.50": {
+      "ego_collision": 8,
+      "follow": 85,
+      "overtake": 7
+    },
+    "heldout_eval|raceline1|i15|v0.55": {
+      "ego_collision": 6,
+      "follow": 93,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i15|v0.60": {
+      "ego_collision": 2,
+      "follow": 98
+    },
+    "heldout_eval|raceline1|i15|v0.65": {
+      "ego_collision": 1,
+      "follow": 98,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i15|v0.70": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i15|v0.75": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "heldout_eval|raceline1|i15|v0.80": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i15|v0.85": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i8|v0.45": {
+      "ego_collision": 8,
+      "follow": 91,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i8|v0.50": {
+      "ego_collision": 5,
+      "follow": 95
+    },
+    "heldout_eval|raceline1|i8|v0.55": {
+      "ego_collision": 4,
+      "follow": 95,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i8|v0.60": {
+      "ego_collision": 3,
+      "follow": 97
+    },
+    "heldout_eval|raceline1|i8|v0.65": {
+      "ego_collision": 2,
+      "follow": 97,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i8|v0.70": {
+      "follow": 99,
+      "overtake": 1
+    },
+    "heldout_eval|raceline1|i8|v0.75": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i8|v0.80": {
+      "follow": 100
+    },
+    "heldout_eval|raceline1|i8|v0.85": {
+      "follow": 100
+    },
+    "heldout_eval|raceline2|i10|v0.45": {
+      "ego_collision": 11,
+      "overtake": 89
+    },
+    "heldout_eval|raceline2|i10|v0.50": {
+      "ego_collision": 8,
+      "overtake": 92
+    },
+    "heldout_eval|raceline2|i10|v0.55": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "heldout_eval|raceline2|i10|v0.60": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline2|i10|v0.65": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline2|i10|v0.70": {
+      "overtake": 100
+    },
+    "heldout_eval|raceline2|i10|v0.75": {
+      "ego_collision": 2,
+      "follow": 1,
+      "overtake": 97
+    },
+    "heldout_eval|raceline2|i10|v0.80": {
+      "follow": 16,
+      "overtake": 84
+    },
+    "heldout_eval|raceline2|i10|v0.85": {
+      "ego_collision": 3,
+      "follow": 50,
+      "overtake": 47
+    },
+    "heldout_eval|raceline2|i12|v0.45": {
+      "ego_collision": 4,
+      "overtake": 96
+    },
+    "heldout_eval|raceline2|i12|v0.50": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "heldout_eval|raceline2|i12|v0.55": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline2|i12|v0.60": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline2|i12|v0.65": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline2|i12|v0.70": {
+      "overtake": 100
+    },
+    "heldout_eval|raceline2|i12|v0.75": {
+      "ego_collision": 2,
+      "follow": 1,
+      "overtake": 97
+    },
+    "heldout_eval|raceline2|i12|v0.80": {
+      "ego_collision": 3,
+      "follow": 15,
+      "overtake": 82
+    },
+    "heldout_eval|raceline2|i12|v0.85": {
+      "ego_collision": 3,
+      "follow": 57,
+      "overtake": 40
+    },
+    "heldout_eval|raceline2|i15|v0.45": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "heldout_eval|raceline2|i15|v0.50": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline2|i15|v0.55": {
+      "overtake": 100
+    },
+    "heldout_eval|raceline2|i15|v0.60": {
+      "overtake": 100
+    },
+    "heldout_eval|raceline2|i15|v0.65": {
+      "overtake": 100
+    },
+    "heldout_eval|raceline2|i15|v0.70": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline2|i15|v0.75": {
+      "ego_collision": 2,
+      "follow": 5,
+      "overtake": 93
+    },
+    "heldout_eval|raceline2|i15|v0.80": {
+      "ego_collision": 1,
+      "follow": 35,
+      "overtake": 64
+    },
+    "heldout_eval|raceline2|i15|v0.85": {
+      "ego_collision": 1,
+      "follow": 71,
+      "overtake": 28
+    },
+    "heldout_eval|raceline2|i8|v0.45": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "heldout_eval|raceline2|i8|v0.50": {
+      "ego_collision": 4,
+      "overtake": 96
+    },
+    "heldout_eval|raceline2|i8|v0.55": {
+      "ego_collision": 6,
+      "overtake": 94
+    },
+    "heldout_eval|raceline2|i8|v0.60": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "heldout_eval|raceline2|i8|v0.65": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "heldout_eval|raceline2|i8|v0.70": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline2|i8|v0.75": {
+      "follow": 1,
+      "overtake": 99
+    },
+    "heldout_eval|raceline2|i8|v0.80": {
+      "ego_collision": 1,
+      "follow": 11,
+      "overtake": 88
+    },
+    "heldout_eval|raceline2|i8|v0.85": {
+      "ego_collision": 2,
+      "follow": 44,
+      "overtake": 54
+    },
+    "train|raceline0|i10|v0.45": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i10|v0.50": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "train|raceline0|i10|v0.55": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i10|v0.60": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "train|raceline0|i10|v0.65": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "train|raceline0|i10|v0.70": {
+      "ego_collision": 10,
+      "overtake": 90
+    },
+    "train|raceline0|i10|v0.75": {
+      "ego_collision": 17,
+      "follow": 2,
+      "overtake": 81
+    },
+    "train|raceline0|i10|v0.80": {
+      "ego_collision": 16,
+      "follow": 19,
+      "overtake": 65
+    },
+    "train|raceline0|i10|v0.85": {
+      "ego_collision": 16,
+      "follow": 44,
+      "overtake": 40
+    },
+    "train|raceline0|i12|v0.45": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i12|v0.50": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline0|i12|v0.55": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i12|v0.60": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i12|v0.65": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "train|raceline0|i12|v0.70": {
+      "ego_collision": 8,
+      "overtake": 92
+    },
+    "train|raceline0|i12|v0.75": {
+      "ego_collision": 9,
+      "follow": 3,
+      "overtake": 88
+    },
+    "train|raceline0|i12|v0.80": {
+      "ego_collision": 6,
+      "follow": 28,
+      "overtake": 66
+    },
+    "train|raceline0|i12|v0.85": {
+      "ego_collision": 14,
+      "follow": 51,
+      "overtake": 35
+    },
+    "train|raceline0|i15|v0.45": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline0|i15|v0.50": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline0|i15|v0.55": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i15|v0.60": {
+      "ego_collision": 6,
+      "overtake": 94
+    },
+    "train|raceline0|i15|v0.65": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "train|raceline0|i15|v0.70": {
+      "ego_collision": 7,
+      "overtake": 93
+    },
+    "train|raceline0|i15|v0.75": {
+      "ego_collision": 4,
+      "follow": 16,
+      "overtake": 80
+    },
+    "train|raceline0|i15|v0.80": {
+      "ego_collision": 7,
+      "follow": 31,
+      "overtake": 62
+    },
+    "train|raceline0|i15|v0.85": {
+      "ego_collision": 13,
+      "follow": 62,
+      "overtake": 25
+    },
+    "train|raceline0|i8|v0.45": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "train|raceline0|i8|v0.50": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i8|v0.55": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i8|v0.60": {
+      "overtake": 100
+    },
+    "train|raceline0|i8|v0.65": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline0|i8|v0.70": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "train|raceline0|i8|v0.75": {
+      "ego_collision": 10,
+      "overtake": 90
+    },
+    "train|raceline0|i8|v0.80": {
+      "ego_collision": 22,
+      "follow": 6,
+      "overtake": 72
+    },
+    "train|raceline0|i8|v0.85": {
+      "ego_collision": 18,
+      "follow": 32,
+      "overtake": 50
+    },
+    "train|raceline1|i10|v0.45": {
+      "ego_collision": 9,
+      "follow": 88,
+      "overtake": 3
+    },
+    "train|raceline1|i10|v0.50": {
+      "ego_collision": 14,
+      "follow": 85,
+      "overtake": 1
+    },
+    "train|raceline1|i10|v0.55": {
+      "ego_collision": 10,
+      "follow": 86,
+      "overtake": 4
+    },
+    "train|raceline1|i10|v0.60": {
+      "ego_collision": 4,
+      "follow": 95,
+      "overtake": 1
+    },
+    "train|raceline1|i10|v0.65": {
+      "ego_collision": 1,
+      "follow": 97,
+      "overtake": 2
+    },
+    "train|raceline1|i10|v0.70": {
+      "ego_collision": 3,
+      "follow": 97
+    },
+    "train|raceline1|i10|v0.75": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "train|raceline1|i10|v0.80": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "train|raceline1|i10|v0.85": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "train|raceline1|i12|v0.45": {
+      "ego_collision": 15,
+      "follow": 82,
+      "overtake": 3
+    },
+    "train|raceline1|i12|v0.50": {
+      "ego_collision": 9,
+      "follow": 91
+    },
+    "train|raceline1|i12|v0.55": {
+      "ego_collision": 8,
+      "follow": 92
+    },
+    "train|raceline1|i12|v0.60": {
+      "ego_collision": 5,
+      "follow": 94,
+      "overtake": 1
+    },
+    "train|raceline1|i12|v0.65": {
+      "ego_collision": 1,
+      "follow": 98,
+      "overtake": 1
+    },
+    "train|raceline1|i12|v0.70": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "train|raceline1|i12|v0.75": {
+      "follow": 100
+    },
+    "train|raceline1|i12|v0.80": {
+      "follow": 100
+    },
+    "train|raceline1|i12|v0.85": {
+      "follow": 100
+    },
+    "train|raceline1|i15|v0.45": {
+      "ego_collision": 18,
+      "follow": 78,
+      "overtake": 4
+    },
+    "train|raceline1|i15|v0.50": {
+      "ego_collision": 8,
+      "follow": 90,
+      "overtake": 2
+    },
+    "train|raceline1|i15|v0.55": {
+      "ego_collision": 9,
+      "follow": 88,
+      "overtake": 3
+    },
+    "train|raceline1|i15|v0.60": {
+      "ego_collision": 8,
+      "follow": 90,
+      "overtake": 2
+    },
+    "train|raceline1|i15|v0.65": {
+      "ego_collision": 3,
+      "follow": 97
+    },
+    "train|raceline1|i15|v0.70": {
+      "ego_collision": 3,
+      "follow": 97
+    },
+    "train|raceline1|i15|v0.75": {
+      "follow": 100
+    },
+    "train|raceline1|i15|v0.80": {
+      "follow": 100
+    },
+    "train|raceline1|i15|v0.85": {
+      "follow": 100
+    },
+    "train|raceline1|i8|v0.45": {
+      "ego_collision": 9,
+      "follow": 83,
+      "overtake": 8
+    },
+    "train|raceline1|i8|v0.50": {
+      "ego_collision": 8,
+      "follow": 87,
+      "overtake": 5
+    },
+    "train|raceline1|i8|v0.55": {
+      "ego_collision": 8,
+      "follow": 89,
+      "overtake": 3
+    },
+    "train|raceline1|i8|v0.60": {
+      "ego_collision": 7,
+      "follow": 93
+    },
+    "train|raceline1|i8|v0.65": {
+      "ego_collision": 2,
+      "follow": 98
+    },
+    "train|raceline1|i8|v0.70": {
+      "ego_collision": 2,
+      "follow": 98
+    },
+    "train|raceline1|i8|v0.75": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "train|raceline1|i8|v0.80": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "train|raceline1|i8|v0.85": {
+      "ego_collision": 1,
+      "follow": 99
+    },
+    "train|raceline2|i10|v0.45": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "train|raceline2|i10|v0.50": {
+      "ego_collision": 3,
+      "overtake": 97
+    },
+    "train|raceline2|i10|v0.55": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i10|v0.60": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i10|v0.65": {
+      "ego_collision": 2,
+      "overtake": 98
+    },
+    "train|raceline2|i10|v0.70": {
+      "ego_collision": 3,
+      "follow": 1,
+      "overtake": 96
+    },
+    "train|raceline2|i10|v0.75": {
+      "ego_collision": 5,
+      "follow": 3,
+      "overtake": 92
+    },
+    "train|raceline2|i10|v0.80": {
+      "ego_collision": 2,
+      "follow": 17,
+      "overtake": 81
+    },
+    "train|raceline2|i10|v0.85": {
+      "ego_collision": 1,
+      "follow": 50,
+      "overtake": 49
+    },
+    "train|raceline2|i12|v0.45": {
+      "ego_collision": 4,
+      "overtake": 96
+    },
+    "train|raceline2|i12|v0.50": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i12|v0.55": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i12|v0.60": {
+      "overtake": 100
+    },
+    "train|raceline2|i12|v0.65": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i12|v0.70": {
+      "follow": 2,
+      "overtake": 98
+    },
+    "train|raceline2|i12|v0.75": {
+      "ego_collision": 4,
+      "follow": 4,
+      "overtake": 92
+    },
+    "train|raceline2|i12|v0.80": {
+      "follow": 16,
+      "overtake": 84
+    },
+    "train|raceline2|i12|v0.85": {
+      "ego_collision": 2,
+      "follow": 62,
+      "overtake": 36
+    },
+    "train|raceline2|i15|v0.45": {
+      "overtake": 100
+    },
+    "train|raceline2|i15|v0.50": {
+      "overtake": 100
+    },
+    "train|raceline2|i15|v0.55": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i15|v0.60": {
+      "overtake": 100
+    },
+    "train|raceline2|i15|v0.65": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i15|v0.70": {
+      "follow": 2,
+      "overtake": 98
+    },
+    "train|raceline2|i15|v0.75": {
+      "ego_collision": 1,
+      "follow": 6,
+      "overtake": 93
+    },
+    "train|raceline2|i15|v0.80": {
+      "ego_collision": 4,
+      "follow": 31,
+      "overtake": 65
+    },
+    "train|raceline2|i15|v0.85": {
+      "follow": 78,
+      "overtake": 22
+    },
+    "train|raceline2|i8|v0.45": {
+      "ego_collision": 5,
+      "overtake": 95
+    },
+    "train|raceline2|i8|v0.50": {
+      "ego_collision": 6,
+      "overtake": 94
+    },
+    "train|raceline2|i8|v0.55": {
+      "ego_collision": 1,
+      "overtake": 99
+    },
+    "train|raceline2|i8|v0.60": {
+      "overtake": 100
+    },
+    "train|raceline2|i8|v0.65": {
+      "ego_collision": 2,
+      "follow": 1,
+      "overtake": 97
+    },
+    "train|raceline2|i8|v0.70": {
+      "ego_collision": 1,
+      "follow": 1,
+      "overtake": 98
+    },
+    "train|raceline2|i8|v0.75": {
+      "ego_collision": 2,
+      "follow": 2,
+      "overtake": 96
+    },
+    "train|raceline2|i8|v0.80": {
+      "ego_collision": 2,
+      "follow": 7,
+      "overtake": 91
+    },
+    "train|raceline2|i8|v0.85": {
+      "ego_collision": 2,
+      "follow": 43,
+      "overtake": 55
+    }
+  },
+  "selection_integrity": {
+    "treatment_actors_consulted": false,
+    "scenario_label_alignment": "pass",
+    "train_heldout_startpoints_disjoint": true,
+    "existing_startpoints_excluded": true,
+    "primary_and_secondary_strata_separate": true
+  }
+}

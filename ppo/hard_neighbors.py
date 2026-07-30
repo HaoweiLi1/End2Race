@@ -785,9 +785,24 @@ def resolve_training_collision_scenarios(
         base_cache_dir,
         base_config,
         base_candidates,
+        allow_pretrained_model_path_mismatch=bool(
+            getattr(
+                args,
+                "allow_collision_cache_actor_mismatch",
+                False,
+            )
+        ),
     )
     if loaded_base_collisions != base_collisions:
         raise RuntimeError("Resolved base collision pool changed while loading its evidence")
+    cached_base_config = _read_json(
+        base_cache_dir / "classification_config.json"
+    )
+    cached_actor_path = str(
+        cached_base_config["pretrained_model_path"]
+    )
+    training_actor_path = str(base_config["pretrained_model_path"])
+    cache_actor_mismatch = cached_actor_path != training_actor_path
     base_info = {
         "mode": "baseline",
         "hard_neighbors": False,
@@ -798,6 +813,16 @@ def resolve_training_collision_scenarios(
         "base_candidate_count": len(base_candidates),
         "base_collision_count": len(base_collisions),
         "collision_count": len(base_collisions),
+        "collision_cache_actor_mismatch": cache_actor_mismatch,
+        "collision_cache_actor_mismatch_allowed": bool(
+            getattr(
+                args,
+                "allow_collision_cache_actor_mismatch",
+                False,
+            )
+        ),
+        "collision_cache_actor_path": cached_actor_path,
+        "training_actor_path": training_actor_path,
     }
     if not bool(args.hard_neighbors):
         return base_collisions, base_info

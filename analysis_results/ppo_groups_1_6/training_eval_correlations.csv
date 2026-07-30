@@ -1,7 +1,0 @@
-metric,label,panels,pearson_with_eval_collision_count,spearman_with_eval_collision_count,scope
-training_collision_rate,Training rollout collision rate,68,-0.05386613200508214,0.17929946886857198,pooled descriptive correlation across heterogeneous runs; not causal
-mean_episode_return,Training mean episode return,68,0.08183868084190803,-0.1977781069749505,pooled descriptive correlation across heterogeneous runs; not causal
-value_loss_post,Critic post-update value loss,68,-0.1143118271257427,0.1354923600670245,pooled descriptive correlation across heterogeneous runs; not causal
-explained_variance_post,Critic post-update explained variance,68,0.024836515835216826,-0.18401379031149034,pooled descriptive correlation across heterogeneous runs; not causal
-approx_kl_mean,Actor mean approximate KL,68,-0.05330957080260553,0.10031908899333741,pooled descriptive correlation across heterogeneous runs; not causal
-clip_fraction_mean,Actor clip fraction,68,0.06857698553543598,0.278657755688801,pooled descriptive correlation across heterogeneous runs; not causal

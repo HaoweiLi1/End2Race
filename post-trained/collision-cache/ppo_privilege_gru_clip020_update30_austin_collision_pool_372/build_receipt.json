@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "purpose": "seed42 U30 risk-longitudinal-clearance A/B",
+  "pretrained_model_path": "/home/haowei/Documents/End2Race/post-trained/ppo_privilege_gru_0722_long_clip020/checkpoints/actor_u0030.pth",
+  "pretrained_model_sha256": "e7e902d92bb7cbea6ec0c08b9a4754dd9da6fe50dac98dfc2c5abc90096bcba8",
+  "cache_dir": "/home/haowei/Documents/End2Race/post-trained/collision-cache/ppo_privilege_gru_clip020_update30_austin_collision_pool_372",
+  "map_name": "Austin",
+  "hidden_scale": 4,
+  "candidate_count": 10800,
+  "collision_count": 372
+}

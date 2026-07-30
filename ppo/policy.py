@@ -12,6 +12,18 @@ from gymnasium import spaces
 from torch import nn
 
 from model import End2Race
+from ppo.exploration import (
+    BASELINE_EXPLORATION_MODE,
+    BASELINE_SPEED_STD,
+    CONDITIONAL_TEMPORAL_EXPLORATION_MODE,
+    CONDITIONAL_TEMPORAL_SPEED_STD,
+    CONDITIONAL_WHITE_EXPLORATION_MODE,
+    CONDITIONAL_WHITE_SPEED_STD,
+    CORRIDOR_TEMPORAL_EXPLORATION_MODE,
+    SPEED_EXPLORATION_MODES,
+    TEMPORAL_GLOBAL_EXPLORATION_MODE,
+    TEMPORAL_RESAMPLE_STEPS,
+)
 from ppo.privileged import PRIVILEGED_FEATURE_SIZE
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
@@ -49,13 +61,22 @@ class EvaluatorCompatibleJointDistribution(Distribution):
     def _atanh(value: torch.Tensor) -> torch.Tensor:
         return 0.5 * (torch.log1p(value) - torch.log1p(-value))
 
-    def proba_distribution(self, raw_mean_actions: torch.Tensor, log_std: torch.Tensor) -> "EvaluatorCompatibleJointDistribution":
+    def proba_distribution(
+        self,
+        raw_mean_actions: torch.Tensor,
+        log_std: torch.Tensor,
+        speed_log_std: torch.Tensor | None = None,
+    ) -> "EvaluatorCompatibleJointDistribution":
         normalized_mode = (raw_mean_actions[:, 0] / self.steer_bound).clamp(-1.0 + self.inverse_tanh_epsilon, 1.0 - self.inverse_tanh_epsilon)
         self.raw_mean_actions = raw_mean_actions
         self.latent_steer_mean = self._atanh(normalized_mode)
         std = log_std.exp()
         self.steer_distribution = torch.distributions.Normal(self.latent_steer_mean, std[0])
-        self.speed_distribution = torch.distributions.Normal(raw_mean_actions[:, 1], std[1])
+        speed_scale = std[1] if speed_log_std is None else speed_log_std.exp()
+        self.speed_distribution = torch.distributions.Normal(
+            raw_mean_actions[:, 1],
+            speed_scale,
+        )
         self.distribution = (self.steer_distribution, self.speed_distribution)
         return self
 
@@ -80,6 +101,25 @@ class EvaluatorCompatibleJointDistribution(Distribution):
         _raw_means, _latent_mean, steer_distribution, speed_distribution = self._parameters()
         steering = self.steer_bound * torch.tanh(steer_distribution.rsample())
         return torch.stack((steering, speed_distribution.rsample()), dim=1)
+
+    def sample_with_speed_standard_noise(
+        self,
+        speed_standard_noise: torch.Tensor,
+    ) -> torch.Tensor:
+        """Sample steering normally while applying an audited speed residual."""
+
+        _raw_means, _latent_mean, steer_distribution, speed_distribution = self._parameters()
+        noise = speed_standard_noise.to(
+            dtype=speed_distribution.loc.dtype,
+            device=speed_distribution.loc.device,
+        ).reshape(-1)
+        if noise.shape != speed_distribution.loc.shape:
+            raise ValueError(
+                "Speed standard noise must match the distribution batch"
+            )
+        steering = self.steer_bound * torch.tanh(steer_distribution.rsample())
+        speed = speed_distribution.loc + speed_distribution.scale * noise
+        return torch.stack((steering, speed), dim=1)
 
     def mode(self) -> torch.Tensor:
         raw_means, latent_mean, _steer_distribution, _speed_distribution = self._parameters()
@@ -282,6 +322,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         critic_learning_rate: float = 5.0e-4,
         steering_latent_std: float = STEERING_LATENT_STD,
         speed_physical_std: float = SPEED_PHYSICAL_STD,
+        speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
         **kwargs: Any,
     ):
         kwargs.pop("use_sde", None)
@@ -289,6 +330,17 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             raise ValueError(f"critic_variant must be one of {CRITIC_VARIANTS}, got {critic_variant!r}")
         if steering_latent_std <= 0 or speed_physical_std <= 0:
             raise ValueError("Exploration standard deviations must be positive")
+        if speed_exploration_mode not in SPEED_EXPLORATION_MODES:
+            raise ValueError(
+                f"speed_exploration_mode must be one of {SPEED_EXPLORATION_MODES}"
+            )
+        if (
+            speed_exploration_mode != BASELINE_EXPLORATION_MODE
+            and abs(float(speed_physical_std) - BASELINE_SPEED_STD) > 1e-12
+        ):
+            raise ValueError(
+                "Structured speed exploration requires the frozen 0.15 baseline std"
+            )
         expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant in P20_CRITIC_VARIANTS else 0)
         if tuple(observation_space.shape) != (expected_observation_size,):
             raise ValueError(
@@ -297,6 +349,12 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         super().__init__(observation_space, action_space, lr_schedule, net_arch=[], ortho_init=False, use_sde=False, log_std_init=0.0, lstm_hidden_size=1, n_lstm_layers=1, shared_lstm=False, enable_critic_lstm=False, **kwargs)
 
         self.critic_variant = critic_variant
+        self.speed_exploration_mode = speed_exploration_mode
+        self._rollout_danger_gates: torch.Tensor | None = None
+        self._rollout_episode_starts: torch.Tensor | None = None
+        self._temporal_speed_noise: torch.Tensor | None = None
+        self._temporal_steps_remaining: torch.Tensor | None = None
+        self._temporal_block_ids: torch.Tensor | None = None
         self.end2race_actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
         checkpoint = Path(checkpoint_path).expanduser().resolve()
         self.end2race_actor.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True), strict=True)
@@ -341,6 +399,21 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.actor_optimizer = self.optimizer_class(actor_groups, lr=gru_learning_rate, **self.optimizer_kwargs)
         self.critic_optimizer = self.optimizer_class(self.critic_parameters, lr=critic_learning_rate, **self.optimizer_kwargs)
         self.optimizer = self.actor_optimizer
+
+    def speed_physical_std(self) -> float:
+        return float(self.log_std.detach().exp()[1].cpu().item())
+
+    def set_speed_physical_std(self, value: float) -> None:
+        if not np.isfinite(value) or value <= 0.0:
+            raise ValueError("Speed physical exploration std must be positive and finite")
+        with torch.no_grad():
+            self.log_std[1].copy_(
+                torch.as_tensor(
+                    np.log(value),
+                    dtype=self.log_std.dtype,
+                    device=self.log_std.device,
+                )
+            )
 
     @property
     def detached_gru_feature_size(self) -> int:
@@ -442,10 +515,262 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         mean_actions = torch.stack(means).transpose(0, 1).reshape(-1, END2RACE_ACTION_SIZE)
         return mean_actions, (hidden, torch.zeros_like(hidden))
 
-    def _distribution(self, mean_actions: torch.Tensor) -> EvaluatorCompatibleJointDistribution:
+    def _actor_replay_collection_equivalent(
+        self,
+        obs: torch.Tensor | dict[str, torch.Tensor],
+        states: tuple[torch.Tensor, torch.Tensor],
+        episode_starts: torch.Tensor,
+        valid_by_timestep: tuple[tuple[bool, ...], ...] | None,
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        """Replay with the same one-logical-slot actor calls used in collection."""
+
+        hidden, dummy_cell = states
+        actor_obs = self._actor_observation(obs)
+        if actor_obs.ndim == 1:
+            actor_obs = actor_obs.unsqueeze(0)
+        if (
+            actor_obs.dtype != torch.float32
+            or hidden.dtype != torch.float32
+            or dummy_cell.dtype != torch.float32
+            or episode_starts.dtype != torch.float32
+        ):
+            raise RuntimeError("Exact actor replay tensors must remain float32")
+        n_seq = hidden.shape[1]
+        if (
+            n_seq <= 0
+            or actor_obs.ndim != 2
+            or actor_obs.shape[1] != END2RACE_OBSERVATION_SIZE
+            or actor_obs.shape[0] % n_seq != 0
+        ):
+            raise RuntimeError("Invalid exact actor replay layout")
+        max_length = actor_obs.shape[0] // n_seq
+        obs_sequence = actor_obs.reshape(
+            n_seq, max_length, END2RACE_OBSERVATION_SIZE
+        ).swapaxes(0, 1)
+        start_sequence = episode_starts.reshape(
+            n_seq, max_length
+        ).swapaxes(0, 1)
+        means: list[torch.Tensor] = []
+        for timestep, (step_obs, episode_start) in enumerate(
+            zip(obs_sequence, start_sequence)
+        ):
+            hidden = hidden * (1.0 - episode_start).view(1, n_seq, 1)
+            active = (
+                list(range(n_seq))
+                if valid_by_timestep is None
+                else [
+                    index
+                    for index, valid in enumerate(
+                        valid_by_timestep[timestep]
+                    )
+                    if valid
+                ]
+            )
+            next_by_slot = [
+                hidden[:, index : index + 1] for index in range(n_seq)
+            ]
+            means_by_slot = [
+                torch.zeros(
+                    (1, END2RACE_ACTION_SIZE),
+                    dtype=actor_obs.dtype,
+                    device=actor_obs.device,
+                )
+                for _ in range(n_seq)
+            ]
+            for slot in active:
+                action_sequence, next_hidden = self.end2race_actor(
+                    step_obs[
+                        slot : slot + 1, :END2RACE_LIDAR_SIZE
+                    ].unsqueeze(1),
+                    step_obs[
+                        slot : slot + 1, END2RACE_LIDAR_SIZE:
+                    ].unsqueeze(1),
+                    hidden[:, slot : slot + 1],
+                )
+                means_by_slot[slot] = action_sequence[:, -1, :]
+                next_by_slot[slot] = next_hidden
+            hidden = torch.cat(next_by_slot, dim=1)
+            means.append(torch.cat(means_by_slot, dim=0))
+        mean_actions = torch.stack(means).transpose(0, 1).reshape(
+            -1, END2RACE_ACTION_SIZE
+        )
+        return mean_actions, (hidden, torch.zeros_like(hidden))
+
+    def _distribution(
+        self,
+        mean_actions: torch.Tensor,
+        speed_log_std: torch.Tensor | None = None,
+    ) -> EvaluatorCompatibleJointDistribution:
         if mean_actions.dtype != torch.float32 or self.log_std.dtype != torch.float32:
             raise RuntimeError("PPO actor distribution tensors must remain float32")
-        return self.action_dist.proba_distribution(mean_actions, self.log_std)
+        return self.action_dist.proba_distribution(
+            mean_actions,
+            self.log_std,
+            speed_log_std=speed_log_std,
+        )
+
+    def prepare_rollout_exploration(
+        self,
+        danger_gates: np.ndarray,
+        episode_starts: np.ndarray,
+    ) -> None:
+        """Stage causal gate/reset state for exactly one vector action."""
+
+        gates = np.asarray(danger_gates, dtype=bool).reshape(-1)
+        starts = np.asarray(episode_starts, dtype=bool).reshape(-1)
+        if gates.shape != starts.shape or gates.size == 0:
+            raise ValueError("Exploration gates and episode starts must align")
+        self._rollout_danger_gates = torch.as_tensor(
+            gates,
+            dtype=torch.bool,
+            device=self.device,
+        )
+        self._rollout_episode_starts = torch.as_tensor(
+            starts,
+            dtype=torch.bool,
+            device=self.device,
+        )
+
+    def _ensure_temporal_state(self, batch_size: int) -> None:
+        if (
+            self._temporal_speed_noise is None
+            or self._temporal_speed_noise.numel() != batch_size
+        ):
+            self._temporal_speed_noise = torch.zeros(
+                batch_size, dtype=torch.float32, device=self.device
+            )
+            self._temporal_steps_remaining = torch.zeros(
+                batch_size, dtype=torch.int64, device=self.device
+            )
+            self._temporal_block_ids = torch.zeros(
+                batch_size, dtype=torch.int64, device=self.device
+            )
+
+    def _structured_rollout_parameters(
+        self,
+        batch_size: int,
+    ) -> tuple[
+        torch.Tensor | None,
+        torch.Tensor | None,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
+        if (
+            self._rollout_danger_gates is None
+            or self._rollout_episode_starts is None
+        ):
+            raise RuntimeError(
+                "Structured exploration must be prepared before policy.forward"
+            )
+        if self._rollout_danger_gates.numel() != batch_size:
+            raise RuntimeError("Prepared exploration batch does not match actor batch")
+        gates = self._rollout_danger_gates
+        starts = self._rollout_episode_starts
+        baseline_log_std = torch.full(
+            (batch_size,),
+            float(np.log(BASELINE_SPEED_STD)),
+            dtype=torch.float32,
+            device=self.device,
+        )
+        inactive = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
+        block_ids = torch.zeros(batch_size, dtype=torch.int64, device=self.device)
+        if self.speed_exploration_mode == CONDITIONAL_WHITE_EXPLORATION_MODE:
+            danger_log_std = torch.full_like(
+                baseline_log_std,
+                float(np.log(CONDITIONAL_WHITE_SPEED_STD)),
+            )
+            speed_log_std = torch.where(gates, danger_log_std, baseline_log_std)
+            return speed_log_std, None, gates, inactive, block_ids
+
+        self._ensure_temporal_state(batch_size)
+        assert self._temporal_speed_noise is not None
+        assert self._temporal_steps_remaining is not None
+        assert self._temporal_block_ids is not None
+        self._temporal_steps_remaining[starts] = 0
+        self._temporal_speed_noise[starts] = 0.0
+
+        if self.speed_exploration_mode == TEMPORAL_GLOBAL_EXPLORATION_MODE:
+            begin = self._temporal_steps_remaining <= 0
+            count = int(begin.sum().item())
+            if count:
+                self._temporal_speed_noise[begin] = torch.randn(
+                    count, dtype=torch.float32, device=self.device
+                )
+                self._temporal_block_ids[begin] += 1
+                self._temporal_steps_remaining[begin] = TEMPORAL_RESAMPLE_STEPS
+            active = torch.ones(batch_size, dtype=torch.bool, device=self.device)
+            noise = self._temporal_speed_noise.clone()
+            block_ids = self._temporal_block_ids.clone()
+            self._temporal_steps_remaining -= 1
+            return baseline_log_std, noise, gates, active, block_ids
+
+        if self.speed_exploration_mode not in (
+            CONDITIONAL_TEMPORAL_EXPLORATION_MODE,
+            CORRIDOR_TEMPORAL_EXPLORATION_MODE,
+        ):
+            raise RuntimeError(
+                f"Unexpected structured exploration mode {self.speed_exploration_mode!r}"
+            )
+        active = self._temporal_steps_remaining > 0
+        begin = ~active & gates
+        count = int(begin.sum().item())
+        if count:
+            self._temporal_speed_noise[begin] = torch.randn(
+                count, dtype=torch.float32, device=self.device
+            )
+            self._temporal_block_ids[begin] += 1
+            self._temporal_steps_remaining[begin] = TEMPORAL_RESAMPLE_STEPS
+        active = self._temporal_steps_remaining > 0
+        fresh = ~active
+        fresh_count = int(fresh.sum().item())
+        if fresh_count:
+            self._temporal_speed_noise[fresh] = torch.randn(
+                fresh_count, dtype=torch.float32, device=self.device
+            )
+        active_speed_std = (
+            BASELINE_SPEED_STD
+            if self.speed_exploration_mode
+            == CORRIDOR_TEMPORAL_EXPLORATION_MODE
+            else CONDITIONAL_TEMPORAL_SPEED_STD
+        )
+        danger_log_std = torch.full_like(
+            baseline_log_std,
+            float(np.log(active_speed_std)),
+        )
+        speed_log_std = torch.where(active, danger_log_std, baseline_log_std)
+        noise = self._temporal_speed_noise.clone()
+        block_ids = torch.where(
+            active,
+            self._temporal_block_ids,
+            torch.zeros_like(self._temporal_block_ids),
+        )
+        self._temporal_steps_remaining[active] -= 1
+        return speed_log_std, noise, gates, active, block_ids
+
+    def _stage_exploration_transition(
+        self,
+        *,
+        mean_actions: torch.Tensor,
+        actions: torch.Tensor,
+        speed_log_std: torch.Tensor,
+        gates: torch.Tensor,
+        temporal_active: torch.Tensor,
+        block_ids: torch.Tensor,
+    ) -> None:
+        rollout_buffer = getattr(self, "_end2race_rollout_buffer", None)
+        if rollout_buffer is None:
+            return
+        standard_residual = (
+            actions[:, 1] - mean_actions[:, 1]
+        ) / speed_log_std.exp()
+        rollout_buffer.stage_exploration(
+            speed_log_std=speed_log_std.detach().cpu().numpy(),
+            danger_gate=gates.detach().cpu().numpy(),
+            temporal_active=temporal_active.detach().cpu().numpy(),
+            block_id=block_ids.detach().cpu().numpy(),
+            standard_residual=standard_residual.detach().cpu().numpy(),
+        )
 
     def _critic_observation(self, obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
         """Slice flat observation rows into the feed-forward critic input."""
@@ -513,9 +838,50 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         deterministic: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, RNNStates]:
         mean_actions, actor_states = self._actor_forward(obs, lstm_states.pi, episode_starts)
-        distribution = self._distribution(mean_actions)
-        actions = distribution.get_actions(deterministic=deterministic)
+        batch_size = mean_actions.shape[0]
+        if (
+            deterministic
+            or self.speed_exploration_mode == BASELINE_EXPLORATION_MODE
+        ):
+            distribution = self._distribution(mean_actions)
+            actions = distribution.get_actions(deterministic=deterministic)
+            speed_log_std = self.log_std[1].expand(batch_size)
+            gates = torch.zeros(
+                batch_size, dtype=torch.bool, device=mean_actions.device
+            )
+            temporal_active = torch.zeros_like(gates)
+            block_ids = torch.zeros(
+                batch_size, dtype=torch.int64, device=mean_actions.device
+            )
+        else:
+            (
+                speed_log_std,
+                speed_standard_noise,
+                gates,
+                temporal_active,
+                block_ids,
+            ) = self._structured_rollout_parameters(batch_size)
+            assert speed_log_std is not None
+            distribution = self._distribution(
+                mean_actions,
+                speed_log_std=speed_log_std,
+            )
+            actions = (
+                distribution.sample()
+                if speed_standard_noise is None
+                else distribution.sample_with_speed_standard_noise(
+                    speed_standard_noise
+                )
+            )
         log_prob = distribution.log_prob(actions)
+        self._stage_exploration_transition(
+            mean_actions=mean_actions,
+            actions=actions,
+            speed_log_std=speed_log_std,
+            gates=gates,
+            temporal_active=temporal_active,
+            block_ids=block_ids,
+        )
         if self.critic_variant == "detached_gru":
             if mean_actions.shape[0] != actor_states[0].shape[1]:
                 raise RuntimeError("Actor-hidden critic collection requires one timestep per sequence slot")
@@ -564,11 +930,30 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         actions: torch.Tensor,
         lstm_states: RNNStates,
         episode_starts: torch.Tensor,
+        collection_equivalent: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         rollout_buffer = getattr(self, "_end2race_rollout_buffer", None)
         valid_by_timestep = None if rollout_buffer is None else rollout_buffer.current_valid_by_timestep
-        mean_actions, _actor_states = self._actor_replay_batched(obs, lstm_states.pi, episode_starts, valid_by_timestep)
-        distribution = self._distribution(mean_actions)
+        replay = (
+            self._actor_replay_collection_equivalent
+            if collection_equivalent
+            else self._actor_replay_batched
+        )
+        mean_actions, _actor_states = replay(
+            obs,
+            lstm_states.pi,
+            episode_starts,
+            valid_by_timestep,
+        )
+        speed_log_std = (
+            None
+            if rollout_buffer is None
+            else rollout_buffer.current_speed_log_stds
+        )
+        distribution = self._distribution(
+            mean_actions,
+            speed_log_std=speed_log_std,
+        )
         return distribution.log_prob(actions), distribution.entropy()
 
     def evaluate_values(self, critic_inputs: torch.Tensor) -> torch.Tensor:

@@ -1,7 +1,0 @@
-metric,unique_policy_panels,pearson_with_eval_collision_count,spearman_with_eval_collision_count,scope
-training_collision_rate,86,0.04312561604721411,0.2544887666118374,pooled descriptive correlation across heterogeneous single-seed runs; not causal
-mean_episode_return,86,-0.031239086533229956,-0.27241584705810645,pooled descriptive correlation across heterogeneous single-seed runs; not causal
-value_loss_post,86,-0.03355773903954216,0.2410392223538437,pooled descriptive correlation across heterogeneous single-seed runs; not causal
-explained_variance_post,86,-0.045634701697941385,-0.2643694150740646,pooled descriptive correlation across heterogeneous single-seed runs; not causal
-approx_kl_mean,86,-0.03226987871416516,0.0714160524017038,pooled descriptive correlation across heterogeneous single-seed runs; not causal
-clip_fraction_mean,86,0.12264744454707015,0.33621470012356386,pooled descriptive correlation across heterogeneous single-seed runs; not causal

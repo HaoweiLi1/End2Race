@@ -17,6 +17,7 @@ from stable_baselines3.common.vec_env.base_vec_env import CloudpickleWrapper, Ve
 from stable_baselines3.common.vec_env.patch_gym import _patch_env
 
 from ppo.environment import EXTERNAL_RESET_OPTION, make_environment
+from ppo.exploration import BASELINE_EXPLORATION_MODE
 from ppo.scenarios import ScenarioScheduler, ScenarioSpec
 
 
@@ -120,7 +121,13 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         ordinary_scenarios: Sequence[ScenarioSpec],
         privileged: bool = False,
         reward_gamma: float = 0.999,
+        risk_longitudinal_clearance_m: float | None = None,
         hard_neighbor_fraction: float | None = None,
+        postpass_penalty: bool = False,
+        postpass_proximity_power: int = 2,
+        speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
+        corridor_gate_front_gap_m: float | None = None,
+        ordinary_offline_fast_fraction: float | None = None,
     ) -> None:
         if worker_count <= 0 or n_envs < worker_count or n_envs % 2 != 0:
             raise ValueError("n_envs must be even and at least worker_count, and worker_count must be positive")
@@ -135,13 +142,26 @@ class CentralScheduleSubprocVecEnv(VecEnv):
             collision_scenarios,
             ordinary_scenarios,
             hard_neighbor_fraction=hard_neighbor_fraction,
+            ordinary_offline_fast_fraction=ordinary_offline_fast_fraction,
         )
         logical_seeds = [
             int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
             for rank in range(n_envs)
         ]
         env_fns = [
-            make_environment(logical_seeds[rank], map_name, privileged, reward_gamma)
+            make_environment(
+                logical_seeds[rank],
+                map_name,
+                privileged=privileged,
+                reward_gamma=reward_gamma,
+                risk_longitudinal_clearance_m=(
+                    risk_longitudinal_clearance_m
+                ),
+                postpass_penalty=postpass_penalty,
+                postpass_proximity_power=postpass_proximity_power,
+                speed_exploration_mode=speed_exploration_mode,
+                corridor_gate_front_gap_m=corridor_gate_front_gap_m,
+            )
             for rank in range(n_envs)
         ]
         self.worker_env_indices = [[] for _ in range(self.worker_count)]

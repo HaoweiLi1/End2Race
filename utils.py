@@ -4,24 +4,6 @@ import tempfile
 from pathlib import Path
 import numpy as np
 
-PROXIMITY_THRESHOLD = 0.15
-
-LIDAR_SECTORS = [
-    ("rear", list(range(0, 30)) + list(range(330, 360))),
-    ("rear_right", list(range(30, 60))),
-    ("right", list(range(60, 120))),
-    ("front_right", list(range(120, 150))),
-    ("front", list(range(150, 210))),
-    ("front_left", list(range(210, 240))),
-    ("left", list(range(240, 300))),
-    ("rear_left", list(range(300, 330))),
-]
-
-STEER_WINDOW_SECONDS = 1.0
-STEER_MAX_REVERSALS = 6
-STEER_MIN_AMP = 0.3
-STEER_MAX_JUMP = 0.6
-
 def load_raceline_waypoints(map_name, raceline_file):
     """Load raceline waypoints as an (N, 4) array of [x, y, theta, speed]"""
     raceline_path = f"f1tenth_racetracks/{map_name}/{raceline_file}"
@@ -206,21 +188,51 @@ def load_positions_and_speeds_from_params(params, map_name):
 
     return positions, initial_speeds
 
-def get_ego_idx_range(map_name, ego_raceline, num_startpoints):
-    """Generate evenly distributed evaluation points"""
-    raceline_path = os.path.join('f1tenth_racetracks', map_name, ego_raceline)
-    waypoints = np.loadtxt(raceline_path, delimiter=';', skiprows=1)
-    max_waypoints = len(waypoints)
-    ego_idx_range = np.linspace(0, max_waypoints - 1, num_startpoints, dtype=int).tolist()
-    return ego_idx_range
+def get_circular_startpoints(map_name, raceline_file, num_startpoints, offset):
+    raceline_path = os.path.join('f1tenth_racetracks', map_name, raceline_file)
+    waypoints = np.loadtxt(raceline_path, delimiter=';', comments='#')
+    unique_waypoints = waypoints[:-1]
+    track_length = waypoints[-1, 0]
+    offset_progress = unique_waypoints[offset % len(unique_waypoints), 0]
+    targets = (offset_progress + np.arange(num_startpoints) * track_length / num_startpoints) % track_length
+    return [int(np.argmin(np.abs(unique_waypoints[:, 0] - target))) for target in targets]
+
+def get_opponent_startpoint(map_name, ego_raceline, opp_raceline, ego_idx, interval_idx):
+    ego_waypoints = load_raceline_waypoints(map_name, f'{ego_raceline}.csv')[:-1]
+    opp_waypoints = load_raceline_waypoints(map_name, f'{opp_raceline}.csv')[:-1]
+    ego_idx = ego_idx % len(ego_waypoints)
+    mapped_idx = ego_idx if opp_raceline == ego_raceline else find_corresponding_waypoint(ego_waypoints[ego_idx], opp_waypoints)
+    return (mapped_idx + interval_idx) % len(opp_waypoints)
 
 # --- Evaluation artifact helpers (paths, JSON results, traces, metrics) ---
 
 def evaluation_root(model_path, map_name, noise_level):
     """Root directory for all evaluation artifacts of one model/map/noise combination"""
-    model_name = Path(model_path).stem
-    noise_suffix = f"_noise{int(noise_level * 100)}" if noise_level > 0 else ""
-    return Path("eval_results") / f"{model_name}_{map_name}{noise_suffix}"
+    model = Path(model_path)
+    update_dir = model.parent
+    experiment_dir = update_dir.parent
+
+    if model.name == "actor.pth" and update_dir.name.startswith("update"):
+        root = (
+            Path("eval_results")
+            / experiment_dir.name
+            / update_dir.name
+            / map_name
+        )
+    elif model.name == "end2race.pth" and model.parent.name == "pretrained":
+        root = Path("eval_results") / "pretrained_end2race" / map_name
+    else:
+        model_name = model.stem
+        noise_suffix = (
+            f"_noise{int(noise_level * 100)}"
+            if noise_level > 0
+            else ""
+        )
+        return Path("eval_results") / f"{model_name}_{map_name}{noise_suffix}"
+
+    if noise_level > 0:
+        root = root / f"noise{int(noise_level * 100)}"
+    return root
 
 def singleagent_paths(model_path, map_name, noise_level, lap_num):
     """Artifact paths for a single-agent evaluation run"""
@@ -265,7 +277,7 @@ def atomic_write_json(path, value):
     temporary_path = Path(temporary_name)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            json.dump(value, stream, indent=2, sort_keys=True, allow_nan=False)
+            json.dump(value, stream, indent=2, allow_nan=False)
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
@@ -283,150 +295,45 @@ def update_singleagent_results(path, lap_key, metrics):
     atomic_write_json(destination, dict(sorted(document.items())))
 
 def save_numeric_npz(path, arrays):
-    """Atomically save aligned numeric arrays as a compressed .npz trace"""
-    converted = {name: np.asarray(value) for name, value in arrays.items()}
-    lengths = set()
-    for name, array in converted.items():
-        if array.ndim < 1:
-            raise ValueError(f"Trace array {name!r} has no leading dimension")
-        if array.dtype == object or not (
-            np.issubdtype(array.dtype, np.number) or np.issubdtype(array.dtype, np.bool_)
-        ):
-            raise TypeError(f"Trace array {name!r} must be numeric or bool, got {array.dtype}")
-        lengths.add(int(array.shape[0]))
-    if len(lengths) != 1:
-        raise ValueError(f"Trace arrays have inconsistent leading dimensions: {sorted(lengths)}")
-
+    """Atomically save arrays as a compressed .npz trace"""
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{destination.name}.", suffix=".npz", dir=destination.parent
-    )
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{destination.name}.", suffix=".npz", dir=destination.parent)
     os.close(descriptor)
     temporary_path = Path(temporary_name)
     try:
-        np.savez_compressed(temporary_path, **converted)
+        np.savez_compressed(temporary_path, **arrays)
         os.replace(temporary_path, destination)
     finally:
         temporary_path.unlink(missing_ok=True)
 
-def scalar_mean(values):
-    return float(np.mean(values)) if values else 0.0
-
-def scalar_variance(values):
-    return float(np.var(values)) if values else 0.0
-
-def scalar_min(values):
-    return float(np.min(values)) if values else 0.0
-
-def scalar_max_abs(values):
-    return float(np.max(np.abs(values))) if values else 0.0
-
-def scalar_max_delta(values):
-    return float(np.max(np.abs(np.diff(values)))) if len(values) > 1 else 0.0
-
-def _lidar_edge_distance(n_beams):
-    """Distance from the vehicle center to its rectangular body edge per beam."""
-    vehicle_length = 0.58
-    vehicle_width = 0.31
-    beam_angles = -np.pi + np.arange(n_beams) * 2.0 * np.pi / n_beams
-    abs_cos = np.abs(np.cos(beam_angles))
-    abs_sin = np.abs(np.sin(beam_angles))
-    length_distance = np.divide(
-        0.5 * vehicle_length,
-        abs_cos,
-        out=np.full(n_beams, np.inf, dtype=np.float64),
-        where=abs_cos > 1e-12,
-    )
-    width_distance = np.divide(
-        0.5 * vehicle_width,
-        abs_sin,
-        out=np.full(n_beams, np.inf, dtype=np.float64),
-        where=abs_sin > 1e-12,
-    )
-    return np.minimum(length_distance, width_distance)
-
-def _surface_distance_from_lidar(lidar):
-    """Convert center-origin LiDAR ranges to distance from the vehicle body."""
-    values = np.asarray(lidar, dtype=np.float64)
-    return np.clip(values - _lidar_edge_distance(values.shape[-1]), 0.0, None)
-
 def evaluate_proximity_quality(lidar_history):
-    """Evaluate historical proximity metrics from raw ego 360-beam LiDAR."""
     lidar = np.asarray(lidar_history, dtype=np.float64)
-    if lidar.ndim != 2 or lidar.shape[1] != 360:
-        raise ValueError(f"lidar_history must have shape [T, 360], got {lidar.shape}")
-    if lidar.shape[0] == 0:
-        return {
-            "global_min_surface_dist": 0.0,
-            "danger_sectors": {},
-            "proximity_below_threshold_timesteps": [],
-        }
-    surface_distance = _surface_distance_from_lidar(lidar)
-    global_minimum = float(np.min(surface_distance))
+    beam_angles = -np.pi + np.arange(360) * 2.0 * np.pi / 360
+    body_edge_distance = np.minimum(
+        0.58 / 2 / np.maximum(np.abs(np.cos(beam_angles)), 1e-12),
+        0.31 / 2 / np.maximum(np.abs(np.sin(beam_angles)), 1e-12),
+    )
+    surface_distance = np.clip(lidar - body_edge_distance, 0.0, None)
     danger_sectors = {}
-    for sector_name, sector_indices in LIDAR_SECTORS:
+    for sector_name, sector_indices in {
+        "rear": list(range(0, 30)) + list(range(330, 360)),
+        "rear_right": range(30, 60),
+        "right": range(60, 120),
+        "front_right": range(120, 150),
+        "front": range(150, 210),
+        "front_left": range(210, 240),
+        "left": range(240, 300),
+        "rear_left": range(300, 330),
+    }.items():
         sector_minimum = float(np.min(surface_distance[:, sector_indices]))
-        if sector_minimum < PROXIMITY_THRESHOLD:
+        if sector_minimum < 0.15:
             danger_sectors[sector_name] = round(sector_minimum, 4)
-    below_threshold = np.flatnonzero(
-        np.min(surface_distance, axis=1) < PROXIMITY_THRESHOLD
-    ).astype(int).tolist()
+    below_threshold = np.flatnonzero(np.min(surface_distance, axis=1) < 0.15).astype(int).tolist()
     return {
-        "global_min_surface_dist": round(global_minimum, 4),
+        "global_min_surface_dist": round(float(np.min(surface_distance)), 4),
         "danger_sectors": danger_sectors,
         "proximity_below_threshold_timesteps": below_threshold,
-    }
-
-def evaluate_steering_quality(steer, sample_interval):
-    """Evaluate the historical jump, reversal, oscillation, and autocorrelation metrics."""
-    steering = np.asarray(steer, dtype=np.float64).reshape(-1)
-    if sample_interval <= 0:
-        raise ValueError("sample_interval must be positive")
-    delta = np.diff(steering)
-    large_delta_indices = np.flatnonzero(np.abs(delta) >= STEER_MIN_AMP)
-    large_delta_signs = np.sign(delta[large_delta_indices])
-    reversal_timesteps = [
-        int(large_delta_indices[index] + 1)
-        for index in range(1, len(large_delta_indices))
-        if large_delta_signs[index] != large_delta_signs[index - 1]
-    ]
-
-    window_size = max(1, int(round(STEER_WINDOW_SECONDS / sample_interval)))
-    max_reversals = 0
-    oscillation_timesteps = set()
-    window_starts = range(max(1, len(steering) - window_size + 1))
-    for window_start in window_starts:
-        window_end = min(len(steering), window_start + window_size)
-        reversal_count = sum(
-            window_start <= timestep < window_end
-            for timestep in reversal_timesteps
-        )
-        max_reversals = max(max_reversals, reversal_count)
-        if reversal_count > STEER_MAX_REVERSALS:
-            oscillation_timesteps.update(range(window_start, window_end))
-
-    jump_timesteps = (np.flatnonzero(np.abs(delta) > STEER_MAX_JUMP) + 1).astype(int)
-    anomaly_timesteps = sorted(
-        set(int(value) for value in jump_timesteps) | oscillation_timesteps
-    )
-    max_steer_delta = float(np.max(np.abs(delta))) if delta.size else 0.0
-
-    if steering.size < 2:
-        autocorrelation = 1.0
-    else:
-        centered = steering - np.mean(steering)
-        denominator = float(np.sum(centered ** 2))
-        if denominator == 0.0:
-            autocorrelation = 1.0
-        else:
-            numerator = float(np.sum(centered[:-1] * centered[1:]))
-            autocorrelation = numerator / denominator
-    return {
-        "steering_anomaly_timesteps": anomaly_timesteps,
-        "max_steer_delta": round(max_steer_delta, 4),
-        "max_steer_reversals": int(max_reversals),
-        "steer_autocorr_lag1": round(float(autocorrelation), 4),
     }
 
 def wrapped_progress_difference(ego_progress, opp_progress, track_length):
@@ -436,25 +343,20 @@ def wrapped_progress_difference(ego_progress, opp_progress, track_length):
 def aggregate_multiagent_batch(results_path, temporary_directory, total_segments):
     """Merge worker-local metrics and exit codes into results_multi.json once."""
     counts = {"following": 0, "overtaking": 0, "collision": 0, "error": 0}
+    collision_counts = {"ego-opp": 0, "ego-wall": 0, "opp-wall": 0}
     categories = {1: "following", 2: "overtaking", 3: "collision"}
     batch_episodes = {}
     batch_metrics = []
     for exit_path in sorted(Path(temporary_directory).glob("*.exit")):
-        try:
-            exit_code = int(exit_path.read_text(encoding="utf-8").strip())
-        except (OSError, ValueError):
-            exit_code = -1
+        exit_code = int(exit_path.read_text(encoding="utf-8").strip())
         counts[categories.get(exit_code, "error")] += 1
         if exit_code not in categories:
             continue
         metrics_path = exit_path.with_suffix(".metrics.json")
-        try:
-            metrics = load_json(metrics_path, None)
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            metrics = None
-        if not isinstance(metrics, dict) or not metrics.get("episode_key"):
-            continue
-        key = str(metrics["episode_key"])
+        metrics = load_json(metrics_path, None)
+        key = str(metrics.pop("episode_key"))
+        if exit_code == 3:
+            collision_counts[metrics["outcome"]] += 1
         batch_episodes[key] = metrics
         batch_metrics.append(metrics)
     success_count = counts["following"] + counts["overtaking"]
@@ -473,6 +375,9 @@ def aggregate_multiagent_batch(results_path, temporary_directory, total_segments
         "overtaking_count": counts["overtaking"],
         "success_count": success_count,
         "collision_count": counts["collision"],
+        "ego_opp_collision_count": collision_counts["ego-opp"],
+        "ego_wall_collision_count": collision_counts["ego-wall"],
+        "opp_wall_collision_count": collision_counts["opp-wall"],
         "error_count": counts["error"],
         "following_rate": following_rate,
         "overtaking_rate": overtaking_rate,
@@ -488,23 +393,5 @@ def aggregate_multiagent_batch(results_path, temporary_directory, total_segments
     if not isinstance(episodes, dict):
         raise ValueError(f"Multi-agent episodes must contain a JSON object: {destination}")
     episodes.update(batch_episodes)
-    atomic_write_json(
-        destination,
-        {"final": final, "episodes": dict(sorted(episodes.items()))},
-    )
+    atomic_write_json(destination, {"final": final, "episodes": dict(sorted(episodes.items()))})
     return final
-
-def _main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Aggregate multi-agent batch evaluation results")
-    parser.add_argument("--model-path", required=True)
-    parser.add_argument("--map-name", required=True)
-    parser.add_argument("--noise", type=float, required=True)
-    parser.add_argument("--temp-dir", required=True)
-    parser.add_argument("--total-segments", type=int, required=True)
-    args = parser.parse_args()
-    paths = multiagent_paths(args.model_path, args.map_name, args.noise)
-    aggregate_multiagent_batch(paths["results"], args.temp_dir, args.total_segments)
-
-if __name__ == "__main__":
-    _main()

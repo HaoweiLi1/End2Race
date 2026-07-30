@@ -21,6 +21,15 @@ def collision_scope_stops_episode(collision_scope, ego_collision, opponent_colli
         return bool(ego_collision)
     raise ValueError(f"Unknown collision scope: {collision_scope}")
 
+def classify_collision(env, collisions):
+    ego_opp = bool(env.unwrapped.sim.collision_idx[0] == 1)
+    ego_wall = bool(collisions[0] and not ego_opp)
+    return (
+        ego_opp,
+        ego_wall,
+        bool(collisions[1] and not ego_opp and not ego_wall),
+    )
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Evaluate model on segment with opponent')
     
@@ -41,29 +50,26 @@ def parse_arguments():
     parser.add_argument("--save_trace", action="store_true")
     parser.add_argument("--metrics_out", type=str, default=None)
     parser.add_argument("--collision_scope", choices=("legacy", "ego"), default="legacy")
-    parser.add_argument("--scenario_id", type=str, default=None)
     
     return parser.parse_args()
 
-def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx, 
+def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx,
                     ego_raceline, opp_raceline, opp_speed_scale, sim_duration,
                     render=False, save_trace=False,
                     model_path="pretrained/end2race.pth", metrics_out=None,
-                    collision_scope="legacy", scenario_id=None):
+                    collision_scope="legacy"):
     """Evaluate a single segment with model against lattice planner opponent"""
     
     np.random.seed(42)
     num_features = 360
 
-    # Calculate opponent index using same logic as run_lattice_planner.py
-    ego_waypoints = load_raceline_waypoints(map_name, f"{ego_raceline}.csv")
-    if opp_raceline != ego_raceline:
-        opp_waypoints = load_raceline_waypoints(map_name, f"{opp_raceline}.csv")
-        ego_waypoint = ego_waypoints[ego_idx % len(ego_waypoints)]
-        ego_map_idx = find_corresponding_waypoint(ego_waypoint, opp_waypoints)
-        opp_idx = (ego_map_idx + interval_idx) % len(opp_waypoints)
-    else:
-        opp_idx = (ego_idx + interval_idx) % len(ego_waypoints)
+    opp_idx = get_opponent_startpoint(
+        map_name,
+        ego_raceline,
+        opp_raceline,
+        ego_idx,
+        interval_idx,
+    )
 
     params = {'ego_raceline': ego_raceline, 'opp_raceline': opp_raceline, 'ego_idx': ego_idx, 'opp_idx': opp_idx}
     key = episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale)
@@ -123,9 +129,6 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     
     # Reset environment
     obs, _, done, _ = env.reset(poses=positions)
-    initial_collisions = np.asarray(obs['collisions'], dtype=bool).reshape(-1)
-    initial_ego_collision = bool(initial_collisions[0])
-    initial_opponent_collision = bool(initial_collisions[1])
     observation_finite = bool(
         all(
             np.isfinite(np.asarray(value)).all()
@@ -154,8 +157,7 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     # Simulation metrics
     lap_time = 0.0
     collision_occurred = False
-    ego_collision_occurred = False
-    opp_collision_occurred = False
+    collision_type = None
     ego_collision_time_s = None
     step_count = 0
     final_state = initial_state
@@ -164,11 +166,9 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     tracker_count = 0
     opp_traj = None
     ego_desired_speeds = []
-    ego_executed_steering = []
     ego_lidar_minima = []
     opp_speeds = []
     opp_desired_speeds = []
-    opp_executed_steering = []
     opp_lidar_minima = []
     ego_raw_lidar_history = []
     trace = None
@@ -185,6 +185,9 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             "ego_pose": [],
             "opp_pose": [],
             "collisions": [],
+            "ego_opp_collision": [],
+            "ego_wall_collision": [],
+            "opp_wall_collision": [],
             "action_applied": [],
             "terminal_post_step": [],
         }
@@ -238,13 +241,15 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             opp_lidar = opp_lidar[indices]
 
         ego_desired_speeds.append(float(ego_speed))
-        ego_executed_steering.append(float(ego_steer))
         ego_lidar_minima.append(float(np.min(raw_lidar_360)))
         ego_raw_lidar_history.append(raw_lidar_360.copy())
         opp_desired_speeds.append(float(opp_speed))
-        opp_executed_steering.append(float(opp_steer))
         opp_lidar_minima.append(float(np.min(opp_lidar)))
         if trace is not None:
+            current_collisions = np.asarray(obs["collisions"], dtype=bool)
+            current_ego_opp, current_ego_wall, current_opp_wall = classify_collision(
+                env, current_collisions
+            )
             trace["time_s"].append(float(lap_time))
             trace["ego_lidar_360"].append(lidar)
             trace["opp_lidar_360"].append(opp_lidar)
@@ -255,7 +260,10 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             trace["opp_measured_speed_mps"].append(float(obs['linear_vels_x'][1]))
             trace["ego_pose"].append([obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0]])
             trace["opp_pose"].append([obs['poses_x'][1], obs['poses_y'][1], obs['poses_theta'][1]])
-            trace["collisions"].append(np.array(obs['collisions'], dtype=np.bool_))
+            trace["collisions"].append(current_collisions)
+            trace["ego_opp_collision"].append(current_ego_opp)
+            trace["ego_wall_collision"].append(current_ego_wall)
+            trace["opp_wall_collision"].append(current_opp_wall)
             trace["action_applied"].append(True)
             trace["terminal_post_step"].append(False)
         
@@ -316,14 +324,22 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         final_state = "overtaking" if relative_unwrapped > 0.0 else "following"
         
         # Check collision
-        step_ego_collision = bool(obs['collisions'][0])
-        step_opp_collision = bool(obs['collisions'][1])
-        ego_collision_occurred = ego_collision_occurred or step_ego_collision
-        opp_collision_occurred = opp_collision_occurred or step_opp_collision
+        step_collisions = np.asarray(obs["collisions"], dtype=bool)
+        step_ego_collision = bool(step_collisions[0])
+        step_opp_collision = bool(step_collisions[1])
+        step_ego_opp, step_ego_wall, step_opp_wall = classify_collision(
+            env, step_collisions
+        )
         if step_ego_collision and ego_collision_time_s is None:
             ego_collision_time_s = float(lap_time)
         if collision_scope_stops_episode(collision_scope, step_ego_collision, step_opp_collision):
             collision_occurred = True
+            if step_ego_opp:
+                collision_type = "ego-opp"
+            if step_ego_wall:
+                collision_type = "ego-wall"
+            if step_opp_wall:
+                collision_type = "opp-wall"
             done = True
 
         if trace is not None and (done or lap_time >= sim_duration):
@@ -357,7 +373,10 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             trace["opp_measured_speed_mps"].append(float(obs['linear_vels_x'][1]))
             trace["ego_pose"].append([obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0]])
             trace["opp_pose"].append([obs['poses_x'][1], obs['poses_y'][1], obs['poses_theta'][1]])
-            trace["collisions"].append(np.array(obs['collisions'], dtype=np.bool_))
+            trace["collisions"].append(step_collisions)
+            trace["ego_opp_collision"].append(step_ego_opp)
+            trace["ego_wall_collision"].append(step_ego_wall)
+            trace["opp_wall_collision"].append(step_opp_wall)
             trace["action_applied"].append(False)
             trace["terminal_post_step"].append(True)
         
@@ -365,7 +384,11 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     
     # Save video if rendering was enabled
     if render and video_frames:
-        state_prefix = "c" if collision_occurred else ("o" if final_state == "overtaking" else "f")
+        state_prefix = (
+            {"ego-opp": "eoc", "ego-wall": "ewc", "opp-wall": "owc"}[collision_type]
+            if collision_occurred
+            else ("o" if final_state == "overtaking" else "f")
+        )
         video_path = multiagent_paths(model_path, map_name, noise_level, key, state_prefix)["video"]
         os.makedirs(video_path.parent, exist_ok=True)
         imageio.mimwrite(video_path, video_frames, fps=100, macro_block_size=1)
@@ -389,6 +412,9 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             "ego_pose": np.float64,
             "opp_pose": np.float64,
             "collisions": np.bool_,
+            "ego_opp_collision": np.bool_,
+            "ego_wall_collision": np.bool_,
+            "opp_wall_collision": np.bool_,
             "action_applied": np.bool_,
             "terminal_post_step": np.bool_,
         }
@@ -397,42 +423,27 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             {name: np.asarray(values, dtype=dtypes.get(name, np.float32)) for name, values in trace.items()},
         )
 
-    # Determine final state
-    if collision_scope == "ego":
-        if ego_collision_occurred:
-            final_state = "ego_collision"
-        else:
-            final_state = "overtake" if relative_unwrapped > 0.0 else "follow"
-        final_state_num = {"follow": 1, "overtake": 2, "ego_collision": 3}[final_state]
-        outcome = final_state
-    else:
-        if collision_occurred:
-            final_state = "collision"
-        final_state_num = {"following": 1, "overtaking": 2, "collision": 3}[final_state]
-        outcome = {"following": "follow", "overtaking": "overtake", "collision": "collision"}[final_state]
+    outcome = (
+        collision_type
+        if collision_occurred
+        else ("overtake" if relative_unwrapped > 0.0 else "follow")
+    )
+    final_state_num = {
+        "follow": 1,
+        "overtake": 2,
+        "ego-opp": 3,
+        "ego-wall": 3,
+        "opp-wall": 3,
+    }[outcome]
     proximity_quality = evaluate_proximity_quality(
         np.asarray(ego_raw_lidar_history, dtype=np.float64)
     )
-    steering_quality = evaluate_steering_quality(
-        np.asarray(ego_executed_steering),
-        sample_interval=0.01,
-    )
     episode_metrics = {
         "episode_key": key,
-        "scenario_id": scenario_id,
-        "collision_scope": collision_scope,
         "outcome": outcome,
-        "state": final_state_num,
-        "state_label": final_state,
         "avg_speed": float(avg_speed),
         "speed_variance": float(speed_variance),
         "total_distance": float(total_distance),
-        "collision_occurred": bool(collision_occurred),
-        "ego_collision_occurred": bool(ego_collision_occurred),
-        "opp_collision_occurred": bool(opp_collision_occurred),
-        "opponent_only_collision": bool(opp_collision_occurred and not ego_collision_occurred),
-        "initial_ego_collision": initial_ego_collision,
-        "initial_opponent_collision": initial_opponent_collision,
         "observation_finite": observation_finite,
         "action_finite": action_finite,
         "ego_collision_time_s": ego_collision_time_s,
@@ -440,15 +451,12 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         "steps": int(step_count),
         "final_relative_position_m": float(relative_unwrapped),
         **proximity_quality,
-        **steering_quality,
-        "ego_avg_desired_speed": scalar_mean(ego_desired_speeds),
-        "ego_max_abs_steer": scalar_max_abs(ego_executed_steering),
-        "ego_min_lidar": scalar_min(ego_lidar_minima),
-        "opp_avg_speed": scalar_mean(opp_speeds),
-        "opp_speed_variance": scalar_variance(opp_speeds),
-        "opp_avg_desired_speed": scalar_mean(opp_desired_speeds),
-        "opp_max_abs_steer": scalar_max_abs(opp_executed_steering),
-        "opp_min_lidar": scalar_min(opp_lidar_minima),
+        "ego_avg_desired_speed": float(np.mean(ego_desired_speeds)),
+        "ego_min_lidar": float(np.min(ego_lidar_minima)),
+        "opp_avg_speed": float(np.mean(opp_speeds)),
+        "opp_speed_variance": float(np.var(opp_speeds)),
+        "opp_avg_desired_speed": float(np.mean(opp_desired_speeds)),
+        "opp_min_lidar": float(np.min(opp_lidar_minima)),
     }
     if metrics_out:
         try:
@@ -488,7 +496,6 @@ if __name__ == "__main__":
             args.sim_duration, args.render, args.save_trace, args.model_path,
             args.metrics_out,
             args.collision_scope,
-            args.scenario_id,
         )
     except Exception as error:
         print(f"EVALUATION_ERROR={error}", file=sys.stderr)
@@ -496,6 +503,8 @@ if __name__ == "__main__":
     
     # Print results
     print(f"STATE={result['state']}")
+    if result["state"] == 3:
+        print(f"COLLISION_TYPE={result['episode_metrics']['outcome']}")
     print(f"AVG_SPEED={result['avg_speed']:.3f}")
     print(f"SPEED_VARIANCE={result['speed_variance']:.3f}")
     print(f"TOTAL_DISTANCE={result['total_distance']:.3f}")

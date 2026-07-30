@@ -517,12 +517,6 @@ def downsample_lidar(lidar_data, original_points=1440, target_points=360):
     downsampled = lidar_array[::step]
     return downsampled[:target_points]
 
-def find_corresponding_waypoint(ego_waypoint, opp_waypoints):
-    """Find the waypoint on opponent raceline closest to ego waypoint spatially"""
-    ego_position = ego_waypoint[:2]
-    distances = np.linalg.norm(opp_waypoints[:, :2] - ego_position, axis=1)
-    return np.argmin(distances)
-
 def load_config(config_path='lattice_config.yaml'):
     """Load lattice planner configuration from YAML file"""
     with open(config_path) as file:

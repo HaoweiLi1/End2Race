@@ -13,6 +13,15 @@ import numpy as np
 import yaml
 
 from ppo.geometry import OccupancyMapClearance
+from ppo.exploration import (
+    BASELINE_EXPLORATION_MODE,
+    CORRIDOR_TEMPORAL_EXPLORATION_MODE,
+    EXPLORATION_GATE_INFO_KEY,
+    EscalatingRequiredDecelerationGate,
+    FrontCorridorGate,
+    FrontCorridorGateConfig,
+    exploration_uses_gate,
+)
 from ppo.policy import END2RACE_LIDAR_SIZE, END2RACE_OBSERVATION_SIZE, NOOP_SPEED_BOUND, STEERING_BOUND, end2race_observation
 from ppo.privileged import PRIVILEGED_FEATURE_SIZE, PrivilegedStateExtractor
 from ppo.reward import PPOTransitionReward
@@ -106,6 +115,11 @@ class End2RaceGymnasiumEnv(gym.Env):
         ego_raceline: str,
         privileged: bool = False,
         reward_gamma: float = 0.999,
+        risk_longitudinal_clearance_m: float | None = None,
+        postpass_penalty: bool = False,
+        postpass_proximity_power: int = 2,
+        speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
+        corridor_gate_front_gap_m: float | None = None,
     ) -> None:
         super().__init__()
         self.f110_env = f110_env
@@ -128,11 +142,46 @@ class End2RaceGymnasiumEnv(gym.Env):
             vehicle_length=vehicle_length,
             vehicle_width=vehicle_width,
             map_clearance=map_clearance,
-            risk_longitudinal_clearance_m=float(PPO_CONFIG["risk_longitudinal_clearance_m"]),
+            risk_longitudinal_clearance_m=float(
+                PPO_CONFIG["risk_longitudinal_clearance_m"]
+                if risk_longitudinal_clearance_m is None
+                else risk_longitudinal_clearance_m
+            ),
             risk_lateral_clearance_m=float(PPO_CONFIG["risk_lateral_clearance_m"]),
             risk_wall_clearance_m=float(PPO_CONFIG["risk_wall_clearance_m"]),
             risk_potential_maximum=float(PPO_CONFIG["risk_potential_maximum"]),
+            postpass_penalty_enabled=postpass_penalty,
+            postpass_proximity_power=postpass_proximity_power,
+            transition_dt_s=SIMULATOR_TIMESTEP,
         )
+        if speed_exploration_mode == CORRIDOR_TEMPORAL_EXPLORATION_MODE:
+            # None keeps FrontCorridorGateConfig's shipped 2.0 m arming gap, so
+            # the CT-v2 training path stays bit-identical unless a width is
+            # explicitly requested.
+            corridor_config = (
+                None
+                if corridor_gate_front_gap_m is None
+                else FrontCorridorGateConfig(
+                    maximum_front_gap_m=float(corridor_gate_front_gap_m)
+                )
+            )
+            self.corridor_gate_config = corridor_config or FrontCorridorGateConfig()
+            self.following_danger_gate = FrontCorridorGate(
+                map_name,
+                ego_raceline,
+                vehicle_length_m=vehicle_length,
+                vehicle_width_m=vehicle_width,
+                config=corridor_config,
+            )
+        elif exploration_uses_gate(speed_exploration_mode):
+            self.following_danger_gate = EscalatingRequiredDecelerationGate(
+                map_name,
+                ego_raceline,
+                vehicle_length_m=vehicle_length,
+                vehicle_width_m=vehicle_width,
+            )
+        else:
+            self.following_danger_gate = None
         if privileged:
             self.privileged_extractor = PrivilegedStateExtractor(
                 map_name,
@@ -167,10 +216,14 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_relative = 0.0
         self._episode_reward_collision = 0.0
         self._episode_reward_risk = 0.0
+        self._episode_reward_postpass = 0.0
         self._episode_abs_reward_risk = 0.0
         self._episode_min_obb_clearance_m = float("inf")
         self._episode_min_wall_clearance_m = float("inf")
         self._episode_risk_active_steps = 0
+        self._episode_postpass_phase_active_steps = 0
+        self._episode_postpass_trigger_steps = 0
+        self._episode_postpass_first_trigger_time_s = None
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][EGO_INDEX]).reshape(-1)
@@ -242,13 +295,24 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_relative = 0.0
         self._episode_reward_collision = 0.0
         self._episode_reward_risk = 0.0
+        self._episode_reward_postpass = 0.0
         self._episode_abs_reward_risk = 0.0
         self._episode_risk_active_steps = 0
+        self._episode_postpass_phase_active_steps = 0
+        self._episode_postpass_trigger_steps = 0
+        self._episode_postpass_first_trigger_time_s = None
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
         scenario_id = str(spec.scenario["scenario_id"])
         self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=EGO_INDEX)
+        if self.following_danger_gate is not None:
+            self.following_danger_gate.reset(
+                raw_observation,
+                elapsed_time_s=0.0,
+                ego_index=EGO_INDEX,
+                opponent_index=OPPONENT_INDEX,
+            )
         self._episode_min_obb_clearance_m = float(self.transition_reward.current_obb_clearance_m)
         self._episode_min_wall_clearance_m = float(self.transition_reward.current_wall_clearance_m)
         self.opponent_controller.reset(spec)
@@ -286,6 +350,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             "episode_reward_relative": self._episode_reward_relative,
             "episode_reward_collision": self._episode_reward_collision,
             "episode_reward_risk": self._episode_reward_risk,
+            "episode_reward_postpass": self._episode_reward_postpass,
             "episode_abs_reward_risk": self._episode_abs_reward_risk,
             "episode_min_obb_clearance_m": self._episode_min_obb_clearance_m,
             "episode_min_wall_clearance_m": self._episode_min_wall_clearance_m,
@@ -293,6 +358,35 @@ class End2RaceGymnasiumEnv(gym.Env):
                 self._episode_risk_active_steps / self._episode_steps
                 if self._episode_steps > 0
                 else 0.0
+            ),
+            "episode_postpass_phase_active_fraction": (
+                self._episode_postpass_phase_active_steps
+                / self._episode_steps
+                if self._episode_steps > 0
+                else 0.0
+            ),
+            "episode_postpass_triggered": (
+                self._episode_postpass_trigger_steps > 0
+            ),
+            "episode_postpass_trigger_steps": (
+                self._episode_postpass_trigger_steps
+            ),
+            "episode_postpass_first_trigger_time_s": (
+                self._episode_postpass_first_trigger_time_s
+            ),
+            "episode_postpass_first_trigger_lead_s": (
+                None
+                if self._episode_postpass_first_trigger_time_s is None
+                else self._elapsed_time
+                - self._episode_postpass_first_trigger_time_s
+            ),
+            "episode_postpass_penalty_used": (
+                -self._episode_reward_postpass
+            ),
+            EXPLORATION_GATE_INFO_KEY: bool(
+                self.following_danger_gate.current_gate
+                if self.following_danger_gate is not None
+                else False
             ),
             "base_info": base_info,
             **reward_info,
@@ -335,6 +429,9 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_reward_relative += float(reward_info["reward_relative"])
         self._episode_reward_collision += float(reward_info["reward_collision"])
         self._episode_reward_risk += float(reward_info["reward_risk"])
+        self._episode_reward_postpass += float(
+            reward_info["reward_postpass"]
+        )
         self._episode_abs_reward_risk += abs(float(reward_info["reward_risk"]))
         obb_clearance_m = float(reward_info["obb_clearance_m"])
         self._episode_min_obb_clearance_m = min(self._episode_min_obb_clearance_m, obb_clearance_m)
@@ -342,6 +439,14 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._episode_min_wall_clearance_m = min(self._episode_min_wall_clearance_m, wall_clearance_m)
         if bool(reward_info["risk_active"]):
             self._episode_risk_active_steps += 1
+        if bool(reward_info["postpass_phase_active"]):
+            self._episode_postpass_phase_active_steps += 1
+        if bool(reward_info["postpass_triggered"]):
+            self._episode_postpass_trigger_steps += 1
+            if self._episode_postpass_first_trigger_time_s is None:
+                self._episode_postpass_first_trigger_time_s = (
+                    self._elapsed_time
+                )
         outcome = None
         if terminated or truncated:
             if ego_collision:
@@ -352,6 +457,13 @@ class End2RaceGymnasiumEnv(gym.Env):
                 outcome = "follow"
         self._raw_observation = raw_observation
         self._previous_ego_speed = previous_ego_speed
+        if self.following_danger_gate is not None:
+            self.following_danger_gate.step(
+                raw_observation,
+                elapsed_time_s=self._elapsed_time,
+                ego_index=EGO_INDEX,
+                opponent_index=OPPONENT_INDEX,
+            )
         info = self._info(
             ego_collision,
             opponent_collision,
@@ -380,6 +492,11 @@ def make_environment(
     map_name: str,
     privileged: bool = False,
     reward_gamma: float = 0.999,
+    risk_longitudinal_clearance_m: float | None = None,
+    postpass_penalty: bool = False,
+    postpass_proximity_power: int = 2,
+    speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
+    corridor_gate_front_gap_m: float | None = None,
 ) -> Callable[[], End2RaceGymnasiumEnv]:
 
     def factory() -> End2RaceGymnasiumEnv:
@@ -402,6 +519,13 @@ def make_environment(
             EGO_RACELINE,
             privileged=privileged,
             reward_gamma=reward_gamma,
+            risk_longitudinal_clearance_m=(
+                risk_longitudinal_clearance_m
+            ),
+            postpass_penalty=postpass_penalty,
+            postpass_proximity_power=postpass_proximity_power,
+            speed_exploration_mode=speed_exploration_mode,
+            corridor_gate_front_gap_m=corridor_gate_front_gap_m,
         )
 
     return factory

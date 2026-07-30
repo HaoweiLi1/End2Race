@@ -1,3 +1,0 @@
-ego_idx_offset,raceline_waypoints,nominal_startpoints,unique_effective_startpoints,duplicated_startpoint_slots,nominal_scenarios,unique_physical_scenarios,duplicated_physical_scenario_slots,effective_start_overlap_with_offset0
-0,2096,50,49,1,600,588,12,49
-1,2096,50,49,1,600,588,12,0

@@ -29,7 +29,8 @@ classifier (same ``make_environment(0, map_name)`` env: postpass OFF, privileged
 OFF; same action clip; same reset-validity check). Therefore the ``ego_collision``
 labels this module produces for the boundary candidates are identical to
 ``boundary-aware-v1``'s, and ``--filter_mode all`` reconstructs that cache's
-final pool exactly. See ``tests/test_outcome_aware_hard.py`` for that anchor.
+final pool exactly. The cleanup-era regression contract for that reconstruction
+is preserved in ``.agents/EXPERIMENTS.md``.
 """
 
 from __future__ import annotations
@@ -44,7 +45,6 @@ import os
 from pathlib import Path
 import shutil
 import tempfile
-import time
 from typing import Any, Sequence
 
 import numpy as np
@@ -366,7 +366,6 @@ def classify_labeled_scenarios(
         raise ValueError("classify_labeled_scenarios requires a non-empty candidate set")
     context = mp.get_context(start_method)
     labels: list[CandidateLabel | None] = [None] * candidate_count
-    started_at = time.perf_counter()
     with ProcessPoolExecutor(
         max_workers=env_workers,
         mp_context=context,
@@ -380,21 +379,15 @@ def classify_labeled_scenarios(
                 raise RuntimeError(f"Outcome-aware replay returned out-of-order result at {completed - 1}")
             labels[label.candidate_index] = label
             if completed % 100 == 0 or completed == candidate_count:
-                elapsed = time.perf_counter() - started_at
-                rate = completed / elapsed
                 print(
-                    f"Outcome-aware replay: {completed}/{candidate_count}, "
-                    f"rate={rate:.2f}/s, ETA={(candidate_count - completed) / rate:.1f}s",
+                    f"Outcome-aware replay: {completed}/{candidate_count}",
                     flush=True,
                 )
     if any(label is None for label in labels):
         raise RuntimeError("Outcome-aware replay did not label every candidate")
-    wall_seconds = time.perf_counter() - started_at
     metadata = {
         "candidate_count": candidate_count,
         "env_workers": int(env_workers),
-        "wall_seconds": wall_seconds,
-        "scenarios_per_second": candidate_count / wall_seconds,
     }
     return [label for label in labels if label is not None], metadata
 

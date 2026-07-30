@@ -1,7 +1,0 @@
-evidence,status,grain,diagnostic_use
-GAE implementation and timeout bootstrap,available,code path,"Correctness audit: recurrent GAE recursion, terminal reset, and timeout value bootstrap."
-Pre-update value loss by role,indirect,update x role,Proxy for raw advantage second moment because returns = stored value + advantage before critic update.
-Explained variance by role,available,update x role,"Shows critic fit to the current lambda-return targets, not unbiased value accuracy."
-Completed-episode returns and collision times,available,completed episode,Describes outcome mixture and event timing; excludes unfinished rollout fragments.
-Raw per-transition advantages and TD residuals,missing,transition,"Required for means, quantiles, tails, sign balance, and exact counterfactual lambda recomputation."
-Transition-aligned terminal type and collision lag,missing,transition x episode,Required to measure how far collision credit propagates before the actual terminal event.

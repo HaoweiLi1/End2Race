@@ -59,6 +59,38 @@ def _write_json(path: Path, payload) -> None:
         file.write("\n")
 
 
+def validate_collision_cache_identity(
+    cached_config: dict,
+    current_config: dict,
+    *,
+    candidate_count: int,
+    allow_pretrained_model_path_mismatch: bool,
+) -> bool:
+    """Validate every identity field, optionally except the actor path."""
+
+    cached_identity = dict(cached_config)
+    current_identity = dict(current_config)
+    cached_actor_path = cached_identity.pop("pretrained_model_path", None)
+    current_actor_path = current_identity.pop("pretrained_model_path", None)
+    actor_path_matches = cached_actor_path == current_actor_path
+    identity_matches = (
+        json.dumps(cached_identity, sort_keys=True)
+        == json.dumps(current_identity, sort_keys=True)
+    )
+    if (
+        not identity_matches
+        or (
+            not actor_path_matches
+            and not allow_pretrained_model_path_mismatch
+        )
+    ):
+        raise RuntimeError(
+            f"Collision cache configuration does not match the current "
+            f"{candidate_count} candidates; use --reclassify_collisions"
+        )
+    return not actor_path_matches
+
+
 def collision_cache_exists(cache_dir: Path) -> bool:
     required_paths = (
         cache_dir / "classification_config.json",
@@ -175,17 +207,22 @@ def load_collision_cache_artifacts(
     cache_dir: Path,
     current_config: dict,
     candidates: tuple[ScenarioSpec, ...],
+    *,
+    allow_pretrained_model_path_mismatch: bool = False,
 ) -> tuple[tuple[ScenarioSpec, ...], list[dict], dict]:
     """Strictly load the collision pool together with its validated evidence."""
 
     with (cache_dir / "classification_config.json").open("r", encoding="utf-8") as file:
         cached_config = json.load(file)
     candidate_count = len(candidates)
-    if json.dumps(cached_config, sort_keys=True) != json.dumps(current_config, sort_keys=True):
-        raise RuntimeError(
-            f"Collision cache configuration does not match the current {candidate_count} candidates; "
-            "use --reclassify_collisions"
-        )
+    validate_collision_cache_identity(
+        cached_config,
+        current_config,
+        candidate_count=candidate_count,
+        allow_pretrained_model_path_mismatch=(
+            allow_pretrained_model_path_mismatch
+        ),
+    )
     outcomes = _load_candidate_outcomes(cache_dir / "candidate_outcomes.jsonl", candidates)
     collision_scenarios = _load_collision_scenarios(cache_dir / "collision_scenarios.json", candidates, outcomes)
     summary = _validate_classification_summary(cache_dir / "classification_summary.json", outcomes, candidate_count)
@@ -196,11 +233,16 @@ def load_collision_cache(
     cache_dir: Path,
     current_config: dict,
     candidates: tuple[ScenarioSpec, ...],
+    *,
+    allow_pretrained_model_path_mismatch: bool = False,
 ) -> tuple[ScenarioSpec, ...]:
     collision_scenarios, _outcomes, _summary = load_collision_cache_artifacts(
         cache_dir,
         current_config,
         candidates,
+        allow_pretrained_model_path_mismatch=(
+            allow_pretrained_model_path_mismatch
+        ),
     )
     return collision_scenarios
 
@@ -266,10 +308,11 @@ def classify_collision_scenarios(
             elif outcome == "invalid":
                 invalid_count += 1
             if completed % 100 == 0 or completed == candidate_count:
-                elapsed = time.perf_counter() - started_at
-                rate = completed / elapsed
-                eta = (candidate_count - completed) / rate
-                print(f"Collision classification: {completed}/{candidate_count}, collision={collision_count}, invalid={invalid_count}, rate={rate:.2f}/s, ETA={eta:.1f}s", flush=True)
+                print(
+                    f"Collision classification: {completed}/{candidate_count}, "
+                    f"collision={collision_count}, invalid={invalid_count}",
+                    flush=True,
+                )
     if not collisions:
         raise RuntimeError(f"The pretrained model produced no ego-collision scenarios from {candidate_count} candidates")
     wall_seconds = time.perf_counter() - started_at
@@ -294,7 +337,18 @@ def resolve_collision_scenarios(args, candidates: tuple[ScenarioSpec, ...], star
     if args.reclassify_collisions:
         print(f"Rebuilding collision classification cache for {candidate_count} candidates", flush=True)
     elif collision_cache_exists(cache_dir):
-        collision_scenarios = load_collision_cache(cache_dir, current_config, candidates)
+        collision_scenarios = load_collision_cache(
+            cache_dir,
+            current_config,
+            candidates,
+            allow_pretrained_model_path_mismatch=bool(
+                getattr(
+                    args,
+                    "allow_collision_cache_actor_mismatch",
+                    False,
+                )
+            ),
+        )
         print(f"Collision cache hit: loaded {len(collision_scenarios)} collision scenarios from {candidate_count} candidates", flush=True)
         return collision_scenarios, True, False
     else:

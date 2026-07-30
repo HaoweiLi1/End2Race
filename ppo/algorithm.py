@@ -4,20 +4,25 @@ from __future__ import annotations
 
 from collections.abc import Generator
 import copy as copy_module
-import time
 from typing import Optional
 
 import numpy as np
 import torch
+from gymnasium import spaces
 from sb3_contrib import RecurrentPPO
 from sb3_contrib.common.recurrent.buffers import RecurrentRolloutBuffer, create_sequencers
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RecurrentRolloutBufferSamples, RNNStates
 from stable_baselines3.common.buffers import RolloutBuffer
-from stable_baselines3.common.utils import FloatSchedule, explained_variance
+from stable_baselines3.common.utils import obs_as_tensor
+from stable_baselines3.common.utils import FloatSchedule, explained_variance, safe_mean
 from stable_baselines3.common.vec_env import VecNormalize
 
 from ppo.policy import END2RACE_OBSERVATION_SIZE, P20_CRITIC_VARIANTS
+from ppo.exploration import (
+    BASELINE_EXPLORATION_MODE,
+    EXPLORATION_GATE_INFO_KEY,
+)
 from ppo.privileged import PRIVILEGED_FEATURE_HIGHS, PRIVILEGED_FEATURE_LOWS
 from ppo.training_records import TrainingRecorder, require_finite_number, require_finite_tensor
 
@@ -27,6 +32,34 @@ WARMUP_PATIENCE = 3
 WARMUP_TRAIN_FRACTION = 0.8
 VALUE_LOSS_COEFFICIENT = 0.5
 MAX_GRAD_NORM = 0.5
+
+
+def linear_speed_std_for_update(
+    initial_std: float,
+    final_std: float | None,
+    anneal_updates: int,
+    formal_update: int,
+) -> float:
+    """Return the rollout speed std assigned to one formal PPO update."""
+
+    if initial_std <= 0.0:
+        raise ValueError("initial_std must be positive")
+    if formal_update <= 0:
+        raise ValueError("formal_update must be positive")
+    if final_std is None:
+        if anneal_updates != 0:
+            raise ValueError(
+                "anneal_updates must be zero when final_std is omitted"
+            )
+        return float(initial_std)
+    if final_std <= 0.0:
+        raise ValueError("final_std must be positive")
+    if anneal_updates < 2:
+        raise ValueError("anneal_updates must be at least 2")
+    if formal_update >= anneal_updates:
+        return float(final_std)
+    fraction = (formal_update - 1) / (anneal_updates - 1)
+    return float(initial_std + fraction * (final_std - initial_std))
 
 
 class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
@@ -45,14 +78,62 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
     def reset(self) -> None:
         RolloutBuffer.reset(self)
         self.hidden_states_pi = np.zeros(self.hidden_state_shape, dtype=np.float32)
+        self.exploration_speed_log_stds = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=np.float32
+        )
+        self.exploration_danger_gates = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=bool
+        )
+        self.exploration_temporal_active = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=bool
+        )
+        self.exploration_block_ids = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=np.int64
+        )
+        self.exploration_standard_residuals = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=np.float32
+        )
         if self.store_independent_gru_hidden:
             self.hidden_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
         if self.detached_gru_feature_size:
             self.detached_gru_features = np.zeros((self.buffer_size, self.n_envs, self.detached_gru_feature_size), dtype=np.float32)
         self._staged_detached_gru_features: np.ndarray | None = None
+        self._staged_exploration: tuple[np.ndarray, ...] | None = None
         self.current_valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None
         self.current_detached_gru_features: torch.Tensor | None = None
         self.current_collision_mask: torch.Tensor | None = None
+        self.current_speed_log_stds: torch.Tensor | None = None
+        self.current_danger_gates: torch.Tensor | None = None
+        self.current_temporal_active: torch.Tensor | None = None
+        self.current_block_ids: torch.Tensor | None = None
+        self.current_standard_residuals: torch.Tensor | None = None
+
+    def stage_exploration(
+        self,
+        *,
+        speed_log_std: np.ndarray,
+        danger_gate: np.ndarray,
+        temporal_active: np.ndarray,
+        block_id: np.ndarray,
+        standard_residual: np.ndarray,
+    ) -> None:
+        arrays = (
+            np.asarray(speed_log_std, dtype=np.float32).reshape(-1),
+            np.asarray(danger_gate, dtype=bool).reshape(-1),
+            np.asarray(temporal_active, dtype=bool).reshape(-1),
+            np.asarray(block_id, dtype=np.int64).reshape(-1),
+            np.asarray(standard_residual, dtype=np.float32).reshape(-1),
+        )
+        if any(array.shape != (self.n_envs,) for array in arrays):
+            raise RuntimeError(
+                f"Exploration transition fields must have shape {(self.n_envs,)}"
+            )
+        if (
+            not np.isfinite(arrays[0]).all()
+            or not np.isfinite(arrays[4]).all()
+        ):
+            raise ValueError("Exploration transition fields must be finite")
+        self._staged_exploration = arrays
 
     def stage_detached_gru_features(self, features: np.ndarray) -> None:
         """Receive the per-step detached critic features computed inside policy.forward."""
@@ -65,6 +146,18 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         self._staged_detached_gru_features = features
 
     def add(self, *args, lstm_states: RNNStates, **kwargs) -> None:
+        if self._staged_exploration is None:
+            raise RuntimeError(
+                "Exploration distribution fields were not staged before add"
+            )
+        (
+            self.exploration_speed_log_stds[self.pos],
+            self.exploration_danger_gates[self.pos],
+            self.exploration_temporal_active[self.pos],
+            self.exploration_block_ids[self.pos],
+            self.exploration_standard_residuals[self.pos],
+        ) = self._staged_exploration
+        self._staged_exploration = None
         self.hidden_states_pi[self.pos] = np.asarray(lstm_states.pi[0].cpu().numpy())
         if self.store_independent_gru_hidden:
             self.hidden_states_vf[self.pos] = np.asarray(lstm_states.vf[0].cpu().numpy())
@@ -80,7 +173,21 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             raise RuntimeError("Rollout buffer must be full before training")
         if not self.generator_ready:
             self.hidden_states_pi = self.hidden_states_pi.swapaxes(1, 2)
-            names = ["observations", "actions", "values", "log_probs", "advantages", "returns", "hidden_states_pi", "episode_starts"]
+            names = [
+                "observations",
+                "actions",
+                "values",
+                "log_probs",
+                "advantages",
+                "returns",
+                "hidden_states_pi",
+                "episode_starts",
+                "exploration_speed_log_stds",
+                "exploration_danger_gates",
+                "exploration_temporal_active",
+                "exploration_block_ids",
+                "exploration_standard_residuals",
+            ]
             if self.store_independent_gru_hidden:
                 self.hidden_states_vf = self.hidden_states_vf.swapaxes(1, 2)
                 names.append("hidden_states_vf")
@@ -109,6 +216,31 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         self.current_valid_by_timestep = tuple(tuple(step < int(length) for length in sequence_lengths) for step in range(max_length))
         collision_by_transition = ((batch_inds // self.buffer_size) % 2 == 0).astype(np.float32)
         self.current_collision_mask = self.to_torch(self.pad_and_flatten(collision_by_transition)) > 0.5
+        self.current_speed_log_stds = self.to_torch(
+            self.pad_and_flatten(
+                self.exploration_speed_log_stds[batch_inds]
+            )
+        )
+        self.current_danger_gates = self.to_torch(
+            self.pad_and_flatten(
+                self.exploration_danger_gates[batch_inds].astype(np.float32)
+            )
+        ) > 0.5
+        self.current_temporal_active = self.to_torch(
+            self.pad_and_flatten(
+                self.exploration_temporal_active[batch_inds].astype(np.float32)
+            )
+        ) > 0.5
+        self.current_block_ids = self.to_torch(
+            self.pad_and_flatten(
+                self.exploration_block_ids[batch_inds].astype(np.float32)
+            )
+        )
+        self.current_standard_residuals = self.to_torch(
+            self.pad_and_flatten(
+                self.exploration_standard_residuals[batch_inds]
+            )
+        )
         if self.detached_gru_feature_size:
             self.current_detached_gru_features = self.to_torch(self.pad(self.detached_gru_features[batch_inds])).reshape(padded_batch_size, self.detached_gru_feature_size)
         else:
@@ -136,17 +268,32 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
 class End2RaceRecurrentPPO(RecurrentPPO):
     """Run critic warm-up, then separate actor and critic PPO phases."""
 
-    def __init__(self, *args, actor_epochs: int, critic_epochs: int, recorder: TrainingRecorder, **kwargs):
+    def __init__(
+        self,
+        *args,
+        actor_epochs: int,
+        critic_epochs: int,
+        recorder: TrainingRecorder,
+        speed_physical_std_final: float | None = None,
+        speed_physical_std_anneal_updates: int = 0,
+        **kwargs,
+    ):
         self.actor_epochs = actor_epochs
         self.critic_epochs = critic_epochs
         self.recorder = recorder
+        self.speed_physical_std_final = speed_physical_std_final
+        self.speed_physical_std_anneal_updates = int(
+            speed_physical_std_anneal_updates
+        )
+        self.initial_speed_physical_std: float | None = None
+        self.rollout_speed_physical_std: float | None = None
         self.warmup_completed = False
         self.rollout_index = 0
         self.current_phase = "warmup"
         self.rollout_for_update = 0
         self.rollout_policy_update = 0
-        self.rollout_wall_seconds = 0.0
         self._rollout_episode_records: list[dict] = []
+        self._last_exploration_gates: np.ndarray | None = None
         kwargs["n_epochs"] = actor_epochs
         super().__init__(*args, **kwargs)
 
@@ -156,6 +303,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.policy = self.policy_class(self.observation_space, self.action_space, self.lr_schedule, use_sde=self.use_sde, **self.policy_kwargs).to(self.device)
         if not isinstance(self.policy, RecurrentActorCriticPolicy) or not self.policy.supports_end2race_rollout_buffer():
             raise TypeError("End2Race PPO requires the End2Race GRU policy")
+        self.initial_speed_physical_std = self.policy.speed_physical_std()
+        self.rollout_speed_physical_std = self.initial_speed_physical_std
 
         lstm = self.policy.lstm_actor
         single_hidden_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
@@ -171,6 +320,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.actor_minibatch_rng = np.random.default_rng(actor_minibatch_seed)  # Formal actor minibatch splits only.
         self.critic_minibatch_rng = np.random.default_rng(critic_minibatch_seed)  # Formal critic minibatch splits only.
         self.telemetry_rng = np.random.default_rng(np.random.SeedSequence([self.seed, 4]))  # Full-buffer value-loss telemetry only.
+        self.ratio_identity_rng = np.random.default_rng(
+            np.random.SeedSequence([self.seed, 5])
+        )
         self.rollout_buffer = End2RaceRolloutBuffer(
             self.n_steps,
             self.observation_space,
@@ -198,17 +350,179 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.current_phase = "warmup" if not self.warmup_completed else "formal"
         self.rollout_for_update = 0 if not self.warmup_completed else self._n_updates + 1
         self.rollout_policy_update = self._n_updates
+        if self.initial_speed_physical_std is None:
+            raise RuntimeError("Initial speed exploration std was not initialized")
+        scheduled_std = linear_speed_std_for_update(
+            self.initial_speed_physical_std,
+            self.speed_physical_std_final,
+            self.speed_physical_std_anneal_updates,
+            max(self.rollout_for_update, 1),
+        )
+        if (
+            self.speed_physical_std_final is not None
+            and scheduled_std != self.rollout_speed_physical_std
+        ):
+            self.policy.set_speed_physical_std(scheduled_std)
+        self.rollout_speed_physical_std = scheduled_std
         self._rollout_episode_records = []
         print(
             f"Rollout {self.rollout_index} start: phase={self.current_phase}, "
-            f"rollout_policy_update={self.rollout_policy_update}, rollout_for_update={self.rollout_for_update}",
+            f"rollout_policy_update={self.rollout_policy_update}, "
+            f"rollout_for_update={self.rollout_for_update}, "
+            f"speed_physical_std={self.rollout_speed_physical_std:.9f}",
             flush=True,
         )
-        started_at = time.perf_counter()
-        completed = super().collect_rollouts(env, callback, rollout_buffer, n_rollout_steps)
-        self.rollout_wall_seconds = time.perf_counter() - started_at
-        print(f"Rollout {self.rollout_index} complete: {self.rollout_wall_seconds:.2f}s", flush=True)
+        if self.policy.speed_exploration_mode == BASELINE_EXPLORATION_MODE:
+            completed = super().collect_rollouts(
+                env, callback, rollout_buffer, n_rollout_steps
+            )
+        else:
+            completed = self._collect_structured_exploration_rollouts(
+                env, callback, rollout_buffer, n_rollout_steps
+            )
+        print(f"Rollout {self.rollout_index} complete", flush=True)
         return completed
+
+    def _collect_structured_exploration_rollouts(
+        self,
+        env,
+        callback,
+        rollout_buffer,
+        n_rollout_steps: int,
+    ) -> bool:
+        """SB3 recurrent collection with one extra causal gate side channel."""
+
+        if not isinstance(rollout_buffer, End2RaceRolloutBuffer):
+            raise TypeError("Structured exploration requires End2RaceRolloutBuffer")
+        if self._last_obs is None:
+            raise RuntimeError("No previous observation was provided")
+        self.policy.set_training_mode(False)
+        n_steps = 0
+        rollout_buffer.reset()
+        callback.on_rollout_start()
+        lstm_states = copy_module.deepcopy(self._last_lstm_states)
+        current_gates = (
+            np.asarray(self._last_exploration_gates, dtype=bool).copy()
+            if self._last_exploration_gates is not None
+            else np.asarray(
+                [
+                    bool(info.get(EXPLORATION_GATE_INFO_KEY, False))
+                    for info in env.reset_infos
+                ],
+                dtype=bool,
+            )
+        )
+
+        while n_steps < n_rollout_steps:
+            self.policy.prepare_rollout_exploration(
+                current_gates,
+                self._last_episode_starts,
+            )
+            with torch.no_grad():
+                obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                episode_starts = torch.as_tensor(
+                    self._last_episode_starts,
+                    dtype=torch.float32,
+                    device=self.device,
+                )
+                actions, values, log_probs, lstm_states = self.policy.forward(
+                    obs_tensor,
+                    lstm_states,
+                    episode_starts,
+                )
+            actions = actions.cpu().numpy()
+            clipped_actions = actions
+            if isinstance(self.action_space, spaces.Box):
+                clipped_actions = np.clip(
+                    actions, self.action_space.low, self.action_space.high
+                )
+            new_obs, rewards, dones, infos = env.step(clipped_actions)
+            self.num_timesteps += env.num_envs
+            callback.update_locals(locals())
+            if not callback.on_step():
+                return False
+            self._update_info_buffer(infos, dones)
+            n_steps += 1
+
+            for index, done in enumerate(dones):
+                if (
+                    done
+                    and infos[index].get("terminal_observation") is not None
+                    and infos[index].get("TimeLimit.truncated", False)
+                ):
+                    terminal_obs = self.policy.obs_to_tensor(
+                        infos[index]["terminal_observation"]
+                    )[0]
+                    with torch.no_grad():
+                        terminal_lstm_state = (
+                            lstm_states.vf[0][:, index : index + 1, :].contiguous(),
+                            lstm_states.vf[1][:, index : index + 1, :].contiguous(),
+                        )
+                        terminal_starts = torch.as_tensor(
+                            [False], dtype=torch.float32, device=self.device
+                        )
+                        terminal_value = self.policy.predict_values(
+                            terminal_obs,
+                            terminal_lstm_state,
+                            terminal_starts,
+                        )[0]
+                    rewards[index] += self.gamma * terminal_value
+
+            rollout_buffer.add(
+                self._last_obs,
+                actions,
+                rewards,
+                self._last_episode_starts,
+                values,
+                log_probs,
+                lstm_states=self._last_lstm_states,
+            )
+            self._last_obs = new_obs
+            self._last_episode_starts = dones
+            self._last_lstm_states = lstm_states
+            current_gates = np.asarray(
+                [
+                    bool(
+                        (
+                            env.reset_infos[index]
+                            if done
+                            else infos[index]
+                        ).get(EXPLORATION_GATE_INFO_KEY, False)
+                    )
+                    for index, done in enumerate(dones)
+                ],
+                dtype=bool,
+            )
+            self._last_exploration_gates = current_gates.copy()
+
+        with torch.no_grad():
+            final_starts = torch.as_tensor(
+                dones, dtype=torch.float32, device=self.device
+            )
+            values = self.policy.predict_values(
+                obs_as_tensor(new_obs, self.device),
+                lstm_states.vf,
+                final_starts,
+            )
+        rollout_buffer.compute_returns_and_advantage(
+            last_values=values,
+            dones=dones,
+        )
+        callback.on_rollout_end()
+        return True
+
+    def dump_logs(self, iteration: int = 0) -> None:
+        assert self.ep_info_buffer is not None
+        assert self.ep_success_buffer is not None
+        if iteration > 0:
+            self.logger.record("time/iterations", iteration, exclude="tensorboard")
+        if self.ep_info_buffer and self.ep_info_buffer[0]:
+            self.logger.record("rollout/ep_rew_mean", safe_mean([info["r"] for info in self.ep_info_buffer]))
+            self.logger.record("rollout/ep_len_mean", safe_mean([info["l"] for info in self.ep_info_buffer]))
+        self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
+        if self.ep_success_buffer:
+            self.logger.record("rollout/success_rate", safe_mean(self.ep_success_buffer))
+        self.logger.dump(step=self.num_timesteps)
 
     def _update_info_buffer(self, infos: list[dict], dones: Optional[np.ndarray] = None) -> None:
         super()._update_info_buffer(infos, dones)
@@ -236,7 +550,36 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "episode_reward_relative": float(info["episode_reward_relative"]),
                 "episode_reward_collision": float(info["episode_reward_collision"]),
                 "episode_reward_risk": float(info["episode_reward_risk"]),
+                "episode_reward_postpass": float(
+                    info["episode_reward_postpass"]
+                ),
                 "episode_abs_reward_risk": float(info["episode_abs_reward_risk"]),
+                "episode_postpass_penalty_used": float(
+                    info["episode_postpass_penalty_used"]
+                ),
+                "episode_postpass_phase_active_fraction": float(
+                    info["episode_postpass_phase_active_fraction"]
+                ),
+                "episode_postpass_triggered": bool(
+                    info["episode_postpass_triggered"]
+                ),
+                "episode_postpass_trigger_steps": int(
+                    info["episode_postpass_trigger_steps"]
+                ),
+                "episode_postpass_first_trigger_time_s": (
+                    None
+                    if info["episode_postpass_first_trigger_time_s"] is None
+                    else float(
+                        info["episode_postpass_first_trigger_time_s"]
+                    )
+                ),
+                "episode_postpass_first_trigger_lead_s": (
+                    None
+                    if info["episode_postpass_first_trigger_lead_s"] is None
+                    else float(
+                        info["episode_postpass_first_trigger_lead_s"]
+                    )
+                ),
                 "episode_min_obb_clearance_m": float(info["episode_min_obb_clearance_m"]),
                 "episode_min_wall_clearance_m": float(info["episode_min_wall_clearance_m"]),
                 "episode_risk_active_fraction": float(info["episode_risk_active_fraction"]),
@@ -366,7 +709,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.policy.critic_optimizer.step()
 
     def _warmup_critic(self) -> None:
-        train_started_at = time.perf_counter()
         train_sequences, validation_sequences = self._warmup_split()
         independent_gru = self.policy.critic_is_independent_gru
         if not independent_gru:
@@ -426,10 +768,10 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.policy.value_net.load_state_dict(best_critic)
         self.policy.critic_optimizer.load_state_dict(best_optimizer)
         self.warmup_completed = True
-        train_wall_seconds = time.perf_counter() - train_started_at
         metrics = {
             "phase": "warmup",
             "critic_variant": self.policy.critic_variant,
+            "rollout_speed_physical_std": self.rollout_speed_physical_std,
             "epochs": epoch + 1,
             "best_epoch": best_epoch,
             "best_validation_loss": best_loss,
@@ -437,8 +779,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "warmup_validation_losses": warmup_validation_losses,
             "critic_grad_norm_mean": float(np.mean(critic_grad_norms)),
             "critic_grad_norm_max": float(np.max(critic_grad_norms)),
-            "rollout_wall_seconds": self.rollout_wall_seconds,
-            "train_wall_seconds": train_wall_seconds,
         }
         checkpoint_path = self.recorder.save_warmup_critic(self.policy.value_net.state_dict())
         metrics["critic_checkpoint"] = str(checkpoint_path)
@@ -513,6 +853,18 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             return None
         return float(np.mean([record[name] for record in records]))
 
+    @staticmethod
+    def _mean_available_episode_metric(
+        records: list[dict],
+        name: str,
+    ) -> float | None:
+        values = [
+            float(record[name])
+            for record in records
+            if record[name] is not None
+        ]
+        return float(np.mean(values)) if values else None
+
     @classmethod
     def _episode_metrics(cls, episodes: list[dict]) -> dict[str, float | int | None]:
         metrics: dict[str, float | int | None] = {
@@ -536,8 +888,50 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 episodes,
                 "episode_abs_reward_risk",
             ),
+            "mean_episode_postpass_penalty_used": cls._mean_episode_metric(
+                episodes,
+                "episode_postpass_penalty_used",
+            ),
+            "mean_episode_postpass_phase_active_fraction": (
+                cls._mean_episode_metric(
+                    episodes,
+                    "episode_postpass_phase_active_fraction",
+                )
+            ),
+            "mean_episode_postpass_trigger_steps": cls._mean_episode_metric(
+                episodes,
+                "episode_postpass_trigger_steps",
+            ),
+            "mean_episode_postpass_first_trigger_lead_s": (
+                cls._mean_available_episode_metric(
+                    episodes,
+                    "episode_postpass_first_trigger_lead_s",
+                )
+            ),
+            "postpass_trigger_episode_count": sum(
+                record["episode_postpass_triggered"]
+                for record in episodes
+            ),
+            "postpass_trigger_episode_rate": (
+                float(
+                    np.mean(
+                        [
+                            record["episode_postpass_triggered"]
+                            for record in episodes
+                        ]
+                    )
+                )
+                if episodes
+                else None
+            ),
         }
-        for component in ("progress", "relative", "collision", "risk"):
+        for component in (
+            "progress",
+            "relative",
+            "collision",
+            "risk",
+            "postpass",
+        ):
             metrics[f"mean_episode_reward_{component}"] = cls._mean_episode_metric(
                 episodes,
                 f"episode_reward_{component}",
@@ -547,6 +941,38 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             metrics[f"{role}_role_episode_count"] = len(role_episodes)
             metrics[f"mean_{role}_episode_return"] = cls._mean_episode_metric(role_episodes, "episode_return")
             metrics[f"mean_{role}_relative_position_m"] = cls._mean_episode_metric(role_episodes, "relative_position_m")
+        for outcome in ("ego_collision", "overtake", "follow"):
+            outcome_episodes = [
+                record
+                for record in episodes
+                if record["episode_outcome"] == outcome
+            ]
+            triggered_count = sum(
+                record["episode_postpass_triggered"]
+                for record in outcome_episodes
+            )
+            metrics[
+                f"{outcome}_postpass_trigger_episode_count"
+            ] = triggered_count
+            metrics[
+                f"{outcome}_postpass_trigger_episode_rate"
+            ] = (
+                triggered_count / len(outcome_episodes)
+                if outcome_episodes
+                else None
+            )
+            metrics[
+                f"mean_{outcome}_postpass_penalty_used"
+            ] = cls._mean_episode_metric(
+                outcome_episodes,
+                "episode_postpass_penalty_used",
+            )
+            metrics[
+                f"mean_{outcome}_postpass_first_trigger_lead_s"
+            ] = cls._mean_available_episode_metric(
+                outcome_episodes,
+                "episode_postpass_first_trigger_lead_s",
+            )
         return metrics
 
     def _critic_input_statistics(self) -> dict:
@@ -575,6 +1001,129 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             }
         return {}
 
+    def _exploration_statistics(self) -> dict[str, float | int | str]:
+        speed_log_std = np.asarray(
+            self.rollout_buffer.exploration_speed_log_stds
+        )
+        danger = np.asarray(self.rollout_buffer.exploration_danger_gates)
+        temporal = np.asarray(
+            self.rollout_buffer.exploration_temporal_active
+        )
+        block_ids = np.asarray(self.rollout_buffer.exploration_block_ids)
+        residuals = np.asarray(
+            self.rollout_buffer.exploration_standard_residuals
+        )
+        expected_shape = (
+            self.rollout_buffer.buffer_size,
+            self.rollout_buffer.n_envs,
+        )
+        if any(
+            array.shape != expected_shape
+            for array in (speed_log_std, danger, temporal, block_ids, residuals)
+        ):
+            raise RuntimeError("Exploration telemetry lost its step/env layout")
+        same_block = (
+            temporal[1:]
+            & temporal[:-1]
+            & (block_ids[1:] == block_ids[:-1])
+            & (block_ids[1:] > 0)
+        )
+        residual_difference = np.abs(residuals[1:] - residuals[:-1])
+        return {
+            "speed_exploration_mode": self.policy.speed_exploration_mode,
+            "exploration_danger_gate_fraction": float(danger.mean()),
+            "exploration_temporal_active_fraction": float(temporal.mean()),
+            "exploration_speed_std_mean": float(np.exp(speed_log_std).mean()),
+            "exploration_speed_std_min": float(np.exp(speed_log_std).min()),
+            "exploration_speed_std_max": float(np.exp(speed_log_std).max()),
+            "exploration_standard_residual_mean": float(residuals.mean()),
+            "exploration_standard_residual_std": float(residuals.std()),
+            "exploration_temporal_same_block_pairs": int(same_block.sum()),
+            "exploration_temporal_same_block_max_residual_error": (
+                float(residual_difference[same_block].max())
+                if np.any(same_block)
+                else 0.0
+            ),
+        }
+
+    def _assert_full_buffer_ratio_identity(self) -> dict[str, float]:
+        """Fail before optimization if rollout/replay distributions differ."""
+
+        def measure(collection_equivalent: bool) -> tuple[float, float]:
+            maximum_log_ratio_error = 0.0
+            maximum_ratio_error = 0.0
+            valid_count = 0
+            with torch.no_grad():
+                for rollout_data in self.rollout_buffer.get(
+                    self.batch_size,
+                    rng=self.ratio_identity_rng,
+                ):
+                    mask = rollout_data.mask > 1e-8
+                    log_prob, _entropy = self.policy.evaluate_actor_actions(
+                        rollout_data.observations,
+                        rollout_data.actions,
+                        rollout_data.lstm_states,
+                        rollout_data.episode_starts,
+                        collection_equivalent=collection_equivalent,
+                    )
+                    log_ratio = log_prob - rollout_data.old_log_prob
+                    ratio = torch.exp(log_ratio)
+                    maximum_log_ratio_error = max(
+                        maximum_log_ratio_error,
+                        float(torch.abs(log_ratio[mask]).max().cpu().item()),
+                    )
+                    maximum_ratio_error = max(
+                        maximum_ratio_error,
+                        float(
+                            torch.abs(ratio[mask] - 1.0).max().cpu().item()
+                        ),
+                    )
+                    valid_count += int(mask.sum().item())
+            expected = (
+                self.rollout_buffer.buffer_size
+                * self.rollout_buffer.n_envs
+            )
+            if valid_count != expected:
+                raise RuntimeError(
+                    f"Ratio identity covered {valid_count} transitions, "
+                    f"expected {expected}"
+                )
+            return maximum_log_ratio_error, maximum_ratio_error
+
+        rng_state = copy_module.deepcopy(
+            self.ratio_identity_rng.bit_generator.state
+        )
+        maximum_log_ratio_error, maximum_ratio_error = measure(False)
+        # Collection intentionally preserves one actor call per logical slot,
+        # while replay batches valid slots per timestep. Across a full recurrent
+        # episode that legacy FP32 accumulation-order difference reaches about
+        # 3.5e-3 with 16 envs. A missing 0.15/0.25/0.50 per-transition std
+        # produces errors orders of magnitude larger. When the batched replay
+        # leaves its 1e-2 legacy envelope, audit the exact one-slot collection
+        # path rather than weakening the training/replay contract.
+        exact_log_ratio_error = 0.0
+        exact_ratio_error = 0.0
+        exact_fallback_used = bool(
+            maximum_log_ratio_error > 1e-2
+            or maximum_ratio_error > 1e-2
+        )
+        if exact_fallback_used:
+            self.ratio_identity_rng.bit_generator.state = rng_state
+            exact_log_ratio_error, exact_ratio_error = measure(True)
+            if exact_log_ratio_error > 5e-5 or exact_ratio_error > 5e-5:
+                raise RuntimeError(
+                    "Collection-equivalent likelihood mismatch before PPO "
+                    f"update: max_log_ratio_error={exact_log_ratio_error:.9g}, "
+                    f"max_ratio_error={exact_ratio_error:.9g}"
+                )
+        return {
+            "preupdate_max_abs_log_ratio": maximum_log_ratio_error,
+            "preupdate_max_abs_ratio_minus_one": maximum_ratio_error,
+            "preupdate_exact_ratio_fallback_used": exact_fallback_used,
+            "preupdate_exact_max_abs_log_ratio": exact_log_ratio_error,
+            "preupdate_exact_max_abs_ratio_minus_one": exact_ratio_error,
+        }
+
     def train(self) -> None:
         self.policy.set_training_mode(True)
         if not self.warmup_completed:
@@ -600,11 +1149,12 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         actor_early_stop_minibatch = None
         actor_early_stop_approx_kl = None
         critic_input_stats = self._critic_input_statistics()
+        exploration_stats = self._exploration_statistics()
         telemetry_rng_state = copy_module.deepcopy(self.telemetry_rng.bit_generator.state)
         value_statistics_pre_update = self._full_buffer_value_statistics()
+        ratio_identity_stats = self._assert_full_buffer_ratio_identity()
 
         print(f"Formal update {update}: actor phase start", flush=True)
-        actor_started_at = time.perf_counter()
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(False)
         for epoch in range(self.actor_epochs):
@@ -653,11 +1203,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 break
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(True)
-        actor_train_wall_seconds = time.perf_counter() - actor_started_at
-        print(f"Formal update {update}: actor phase complete in {actor_train_wall_seconds:.2f}s", flush=True)
+        print(f"Formal update {update}: actor phase complete", flush=True)
 
         print(f"Formal update {update}: critic phase start", flush=True)
-        critic_started_at = time.perf_counter()
         for parameter in self.policy.actor_parameters:
             parameter.requires_grad_(False)
         value_loss_samples: list[tuple[float, int]] = []
@@ -680,8 +1228,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             parameter.requires_grad_(True)
         self.telemetry_rng.bit_generator.state = telemetry_rng_state
         value_statistics_post_update = self._full_buffer_value_statistics()
-        critic_train_wall_seconds = time.perf_counter() - critic_started_at
-        print(f"Formal update {update}: critic phase complete in {critic_train_wall_seconds:.2f}s", flush=True)
+        print(f"Formal update {update}: critic phase complete", flush=True)
 
         self._n_updates += 1
         policy_gradient_loss = float(np.mean(policy_losses)) if policy_losses else 0.0
@@ -699,6 +1246,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "phase": "formal",
             "update": update,
             "critic_variant": self.policy.critic_variant,
+            "rollout_speed_physical_std": self.rollout_speed_physical_std,
             "rollout_policy_update": update - 1,
             "checkpoint_update": update,
             "num_timesteps": self.num_timesteps,
@@ -724,6 +1272,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "return_mean": value_statistics_post_update["return_mean"],
             "return_std": value_statistics_post_update["return_std"],
             **critic_input_stats,
+            **exploration_stats,
+            **ratio_identity_stats,
             "approx_kl_mean": approximate_kl_mean,
             "approx_kl_max": approximate_kl_max,
             "clip_fraction_mean": clip_fraction_mean,
@@ -740,9 +1290,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "actor_grad_norm_max": float(np.max(actor_grad_norms)) if actor_grad_norms else 0.0,
             "critic_grad_norm_mean": float(np.mean(critic_grad_norms)),
             "critic_grad_norm_max": float(np.max(critic_grad_norms)),
-            "rollout_wall_seconds": self.rollout_wall_seconds,
-            "actor_train_wall_seconds": actor_train_wall_seconds,
-            "critic_train_wall_seconds": critic_train_wall_seconds,
             "ego_collision_count": sum(record["episode_outcome"] == "ego_collision" for record in episodes),
             "overtake_count": sum(record["episode_outcome"] == "overtake" for record in episodes),
             "follow_count": sum(record["episode_outcome"] == "follow" for record in episodes),

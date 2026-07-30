@@ -64,7 +64,6 @@ class TrainingRecorder:
 
     def write_run_config(self, args, ppo_config: dict[str, Any], training_constants: dict[str, Any]) -> None:
         recorded_args = dict(vars(args))
-        recorded_args.pop("seed", None)
         payload = {
             "args": recorded_args,
             "ppo_config": ppo_config,

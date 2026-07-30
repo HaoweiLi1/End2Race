@@ -9,7 +9,7 @@ from datetime import datetime
 import imageio
 from latticeplanner.lattice_planner import *
 from latticeplanner.utils import *
-from utils import create_planner_render_callback
+from utils import create_planner_render_callback, get_opponent_startpoint
 
 render_info = {"ego_steer": 0.0, "ego_speed": 0.0, "opp_steer": 0.0, "opp_speed": 0.0}
 draw_grid_pts = []
@@ -175,9 +175,13 @@ def run_lattice_planner(args):
     opp_wpt_xyhs = np.vstack((opp_planner.waypoints[:, 0], opp_planner.waypoints[:, 1], opp_planner.waypoints[:, 3], opp_planner.waypoints[:, 4])).T
     
     # Find corresponding opponent position
-    ego_waypoint = ego_waypoints_xytheta[args.ego_idx]
-    ego_map_idx = find_corresponding_waypoint(ego_waypoint, opp_waypoints_xytheta)
-    opp_idx = (ego_map_idx + args.interval_idx) % len(opp_waypoints_xytheta)
+    opp_idx = get_opponent_startpoint(
+        args.map_name,
+        args.raceline,
+        args.opp_raceline,
+        args.ego_idx,
+        args.interval_idx,
+    )
     opp_pos, _ = random_position(opp_waypoints_xytheta, 1, rng, 0.0, 0.0, opp_idx, 0)
     random_agent_pos = np.vstack([ego_pos, opp_pos])
     
@@ -302,8 +306,6 @@ def run_lattice_planner(args):
             if opp_s < last_opp_s:
                 opp_s = (opp_s + opp_planner.waypoints[-1, 4])
             last_ego_s, last_opp_s = ego_s, opp_s
-    print('Sim elapsed time:', laptime)
-    
     # Generate filename
     state_prefix = "o" if final_state == "overtaking" else "f"
     opp_raceline_num = args.opp_raceline.replace('raceline', '').replace('.csv', '')
