@@ -7,9 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-from ppo.geometry import CurrentStateClearances, OccupancyMapClearance, rectangle_clearance_components
-from ppo.postpass import FixedPostpassPenalty
+from scipy.ndimage import map_coordinates
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +15,135 @@ MAX_PROGRESS_DELTA_M = 1.0
 PROGRESS_WEIGHT = 0.01
 RELATIVE_WEIGHT = 0.02
 COLLISION_PENALTY = -2.0
+
+
+@dataclass(frozen=True)
+class CurrentStateClearances:
+    obb_clearance_m: float
+    obb_longitudinal_clearance_m: float
+    obb_lateral_clearance_m: float
+    wall_clearance_m: float
+
+    def __post_init__(self) -> None:
+        values = np.asarray(
+            (
+                self.obb_clearance_m,
+                self.obb_longitudinal_clearance_m,
+                self.obb_lateral_clearance_m,
+                self.wall_clearance_m,
+            ),
+            dtype=np.float64,
+        )
+        if not np.isfinite(values).all() or np.any(values < 0.0):
+            raise ValueError("Current-state clearances must be finite and non-negative")
+
+
+def _point_segment_vector(point: np.ndarray, start: np.ndarray, end: np.ndarray) -> np.ndarray:
+    segment = end - start
+    norm_sq = float(np.dot(segment, segment))
+    if norm_sq <= 0.0:
+        raise ValueError("Rectangle edges must have positive length")
+    fraction = np.clip(np.dot(point - start, segment) / norm_sq, 0.0, 1.0)
+    return start + fraction * segment - point
+
+
+def _separating_axis_exists(vertices_a: np.ndarray, vertices_b: np.ndarray) -> bool:
+    for vertices in (vertices_a, vertices_b):
+        for index in range(len(vertices)):
+            edge = vertices[(index + 1) % len(vertices)] - vertices[index]
+            axis = np.asarray((-edge[1], edge[0]), dtype=np.float64)
+            projection_a = vertices_a @ axis
+            projection_b = vertices_b @ axis
+            if projection_a.max() < projection_b.min() or projection_b.max() < projection_a.min():
+                return True
+    return False
+
+
+def _validated_rectangles(vertices_a: np.ndarray, vertices_b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    first = np.asarray(vertices_a, dtype=np.float64)
+    second = np.asarray(vertices_b, dtype=np.float64)
+    if first.shape != (4, 2) or second.shape != (4, 2) or not np.isfinite((first, second)).all():
+        raise ValueError("Rectangle clearance requires two finite (4, 2) vertex arrays")
+    return first, second
+
+
+def _rectangle_separation_vector(vertices_a: np.ndarray, vertices_b: np.ndarray) -> np.ndarray:
+    first, second = _validated_rectangles(vertices_a, vertices_b)
+    if not _separating_axis_exists(first, second):
+        return np.zeros(2, dtype=np.float64)
+    best_vector = None
+    best_distance_sq = np.inf
+    for vertices_from, vertices_to in ((first, second), (second, first)):
+        for point in vertices_from:
+            for index in range(len(vertices_to)):
+                vector = _point_segment_vector(point, vertices_to[index], vertices_to[(index + 1) % len(vertices_to)])
+                distance_sq = float(np.dot(vector, vector))
+                if distance_sq < best_distance_sq:
+                    best_distance_sq = distance_sq
+                    best_vector = vector
+    if best_vector is None:
+        raise RuntimeError("Failed to compute rectangle separation")
+    return best_vector
+
+
+def rectangle_clearance(vertices_a: np.ndarray, vertices_b: np.ndarray) -> float:
+    return float(np.linalg.norm(_rectangle_separation_vector(vertices_a, vertices_b)))
+
+
+def rectangle_clearance_components(
+    vertices_a: np.ndarray,
+    vertices_b: np.ndarray,
+    reference_heading: float,
+) -> tuple[float, float, float]:
+    if not np.isfinite(reference_heading):
+        raise ValueError("Reference heading must be finite")
+    vector = _rectangle_separation_vector(vertices_a, vertices_b)
+    longitudinal_axis = np.asarray((np.cos(reference_heading), np.sin(reference_heading)))
+    lateral_axis = np.asarray((-np.sin(reference_heading), np.cos(reference_heading)))
+    longitudinal = abs(float(np.dot(vector, longitudinal_axis)))
+    lateral = abs(float(np.dot(vector, lateral_axis)))
+    return float(np.linalg.norm(vector)), longitudinal, lateral
+
+
+class OccupancyMapClearance:
+
+    def __init__(self, distance_field: np.ndarray, resolution: float, origin: np.ndarray) -> None:
+        field = np.asarray(distance_field, dtype=np.float64)
+        origin_array = np.asarray(origin, dtype=np.float64).reshape(-1)
+        if field.ndim != 2 or field.size == 0 or not np.isfinite(field).all() or np.any(field < 0.0):
+            raise ValueError("Map distance field must be a finite non-negative 2D array")
+        if not np.isfinite(resolution) or resolution <= 0.0:
+            raise ValueError("Map resolution must be finite and positive")
+        if origin_array.shape != (3,) or not np.isfinite(origin_array).all():
+            raise ValueError("Map origin must contain finite x, y, and heading")
+        self.distance_field = field
+        self.resolution = float(resolution)
+        self.origin = origin_array
+
+    def rectangle_clearance(self, vertices: np.ndarray) -> float:
+        rectangle = np.asarray(vertices, dtype=np.float64)
+        if rectangle.shape != (4, 2) or not np.isfinite(rectangle).all():
+            raise ValueError("Map clearance requires one finite (4, 2) rectangle")
+        perimeter = []
+        for index in range(4):
+            start = rectangle[index]
+            end = rectangle[(index + 1) % 4]
+            sample_count = max(2, int(np.ceil(np.linalg.norm(end - start) / (0.5 * self.resolution))) + 1)
+            perimeter.append(np.linspace(start, end, sample_count))
+        points = np.concatenate(perimeter)
+        translated = points - self.origin[:2]
+        cosine = float(np.cos(self.origin[2]))
+        sine = float(np.sin(self.origin[2]))
+        columns = (translated[:, 0] * cosine + translated[:, 1] * sine) / self.resolution
+        rows = (-translated[:, 0] * sine + translated[:, 1] * cosine) / self.resolution
+        distances = map_coordinates(
+            self.distance_field,
+            np.vstack((rows, columns)),
+            order=1,
+            mode="constant",
+            cval=0.0,
+        )
+        return max(0.0, float(distances.min()) - 0.5 * self.resolution)
 
 
 def anisotropic_risk_potential(
@@ -174,7 +301,6 @@ class RewardResult:
     reward_relative: float
     reward_collision: float
     reward_risk: float
-    reward_postpass: float
     reward_total: float
     ego_progress_delta_m: float
     opponent_progress_delta_m: float
@@ -187,18 +313,6 @@ class RewardResult:
     obb_lateral_clearance_m: float
     wall_clearance_m: float
     risk_active: bool
-    postpass_enabled: bool
-    postpass_phase_active: bool
-    postpass_triggered: bool
-    postpass_entered: bool
-    postpass_cleared: bool
-    postpass_signed_rear_gap_m: float | None
-    postpass_rear_half_clearance_m: float | None
-    postpass_ego_induced_closing_m: float
-    postpass_ego_induced_closing_speed_mps: float
-    postpass_ego_induced_closing_time_s: float | None
-    postpass_penalty_basis_m: float
-    postpass_episode_penalty_used: float
     scenario_id: str
 
     def to_info(self) -> dict[str, Any]:
@@ -222,9 +336,6 @@ class PPOTransitionReward:
         risk_lateral_clearance_m: float,
         risk_wall_clearance_m: float,
         risk_potential_maximum: float,
-        postpass_penalty_enabled: bool = False,
-        postpass_proximity_power: int = 2,
-        transition_dt_s: float = 0.01,
     ) -> None:
         self.progress_reference_path = PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
         self.projector = projector or ProgressProjector.from_csv(self.progress_reference_path)
@@ -242,13 +353,6 @@ class PPOTransitionReward:
         self.risk_lateral_clearance_m = float(risk_lateral_clearance_m)
         self.risk_wall_clearance_m = float(risk_wall_clearance_m)
         self.risk_potential_maximum = float(risk_potential_maximum)
-        self.postpass_penalty_enabled = bool(postpass_penalty_enabled)
-        self.postpass_penalty = FixedPostpassPenalty(
-            vehicle_length_m=self.vehicle_length,
-            vehicle_width_m=self.vehicle_width,
-            transition_dt_s=transition_dt_s,
-            proximity_power=postpass_proximity_power,
-        )
         parameters = np.asarray(
             (
                 self.gamma,
@@ -293,14 +397,6 @@ class PPOTransitionReward:
     @staticmethod
     def _heading(raw_observation: dict[str, Any], index: int) -> float:
         return float(np.asarray(raw_observation["poses_theta"])[index])
-
-    @classmethod
-    def _pose(cls, raw_observation: dict[str, Any], index: int) -> np.ndarray:
-        position = cls._position(raw_observation, index)
-        return np.asarray(
-            (position[0], position[1], cls._heading(raw_observation, index)),
-            dtype=np.float64,
-        )
 
     def _clearances(
         self,
@@ -366,7 +462,6 @@ class PPOTransitionReward:
             opponent_progress,
             self.projector.track_length,
         )
-        self.postpass_penalty.reset(self._relative_position_m)
         self._opponent_collision_latched = False
         self._ego_collision_penalty_applied = False
         self._scenario_id = str(scenario_id)
@@ -388,6 +483,7 @@ class PPOTransitionReward:
         scenario_id: str,
         ego_index: int = 0,
     ) -> RewardResult:
+        del previous_raw_observation  # Previous progress is initialized/reset and advanced internally.
         if (
             self._previous_ego_progress is None
             or self._previous_opponent_progress is None
@@ -402,7 +498,6 @@ class PPOTransitionReward:
             raise ValueError(f"PPO reward requires exactly one opponent, got {num_agents - 1}")
         opponent_index = opponent_indices[0]
 
-        previous_relative_position_m = self._relative_position_m
         ego_progress = self.projector.project(self._position(raw_observation, ego_index))
         opponent_progress = self.projector.project(self._position(raw_observation, opponent_index))
         ego_delta = checked_progress_delta(
@@ -425,50 +520,6 @@ class PPOTransitionReward:
 
         if opponent_collision:
             self._opponent_collision_latched = True
-        if self.postpass_penalty_enabled:
-            postpass = self.postpass_penalty.step(
-                previous_relative_progress_m=previous_relative_position_m,
-                current_relative_progress_m=self._relative_position_m,
-                previous_ego_pose=self._pose(
-                    previous_raw_observation,
-                    ego_index,
-                ),
-                current_ego_pose=self._pose(raw_observation, ego_index),
-                current_opponent_pose=self._pose(
-                    raw_observation,
-                    opponent_index,
-                ),
-                opponent_collision_latched=self._opponent_collision_latched,
-            )
-            reward_postpass = postpass.reward
-            postpass_phase_active = postpass.phase_active
-            postpass_triggered = postpass.triggered
-            postpass_entered = postpass.entered
-            postpass_cleared = postpass.cleared
-            postpass_signed_rear_gap_m = postpass.signed_rear_gap_m
-            postpass_rear_half_clearance_m = postpass.rear_half_clearance_m
-            postpass_ego_induced_closing_m = postpass.ego_induced_closing_m
-            postpass_ego_induced_closing_speed_mps = (
-                postpass.ego_induced_closing_speed_mps
-            )
-            postpass_ego_induced_closing_time_s = (
-                postpass.ego_induced_closing_time_s
-            )
-            postpass_penalty_basis_m = postpass.penalty_basis_m
-            postpass_episode_penalty_used = postpass.episode_penalty_used
-        else:
-            reward_postpass = 0.0
-            postpass_phase_active = False
-            postpass_triggered = False
-            postpass_entered = False
-            postpass_cleared = False
-            postpass_signed_rear_gap_m = None
-            postpass_rear_half_clearance_m = None
-            postpass_ego_induced_closing_m = 0.0
-            postpass_ego_induced_closing_speed_mps = 0.0
-            postpass_ego_induced_closing_time_s = None
-            postpass_penalty_basis_m = 0.0
-            postpass_episode_penalty_used = 0.0
         reward_progress = PROGRESS_WEIGHT * ego_delta
         reward_relative = 0.0 if self._opponent_collision_latched else RELATIVE_WEIGHT * (ego_delta - opponent_delta)
         if ego_collision and not self._ego_collision_penalty_applied:
@@ -493,19 +544,12 @@ class PPOTransitionReward:
             terminated=terminated,
         )
         self._previous_risk_potential = next_risk_potential
-        reward_total = (
-            reward_progress
-            + reward_relative
-            + reward_collision
-            + reward_risk
-            + reward_postpass
-        )
+        reward_total = reward_progress + reward_relative + reward_collision + reward_risk
         return RewardResult(
             reward_progress=float(reward_progress),
             reward_relative=float(reward_relative),
             reward_collision=float(reward_collision),
             reward_risk=float(reward_risk),
-            reward_postpass=float(reward_postpass),
             reward_total=float(reward_total),
             ego_progress_delta_m=float(ego_delta),
             opponent_progress_delta_m=float(opponent_delta),
@@ -518,35 +562,5 @@ class PPOTransitionReward:
             obb_lateral_clearance_m=float(self.current_clearances.obb_lateral_clearance_m),
             wall_clearance_m=float(self.current_clearances.wall_clearance_m),
             risk_active=bool(physical_risk_potential < 0.0),
-            postpass_enabled=self.postpass_penalty_enabled,
-            postpass_phase_active=bool(postpass_phase_active),
-            postpass_triggered=bool(postpass_triggered),
-            postpass_entered=bool(postpass_entered),
-            postpass_cleared=bool(postpass_cleared),
-            postpass_signed_rear_gap_m=(
-                None
-                if postpass_signed_rear_gap_m is None
-                else float(postpass_signed_rear_gap_m)
-            ),
-            postpass_rear_half_clearance_m=(
-                None
-                if postpass_rear_half_clearance_m is None
-                else float(postpass_rear_half_clearance_m)
-            ),
-            postpass_ego_induced_closing_m=float(
-                postpass_ego_induced_closing_m
-            ),
-            postpass_ego_induced_closing_speed_mps=float(
-                postpass_ego_induced_closing_speed_mps
-            ),
-            postpass_ego_induced_closing_time_s=(
-                None
-                if postpass_ego_induced_closing_time_s is None
-                else float(postpass_ego_induced_closing_time_s)
-            ),
-            postpass_penalty_basis_m=float(postpass_penalty_basis_m),
-            postpass_episode_penalty_used=float(
-                postpass_episode_penalty_used
-            ),
             scenario_id=str(scenario_id),
         )

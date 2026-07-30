@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy as copy_module
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable
 
@@ -12,25 +13,370 @@ from gymnasium import spaces
 from torch import nn
 
 from model import End2Race
-from ppo.exploration import (
-    BASELINE_EXPLORATION_MODE,
-    BASELINE_SPEED_STD,
-    CONDITIONAL_TEMPORAL_EXPLORATION_MODE,
-    CONDITIONAL_TEMPORAL_SPEED_STD,
-    CONDITIONAL_WHITE_EXPLORATION_MODE,
-    CONDITIONAL_WHITE_SPEED_STD,
-    CORRIDOR_TEMPORAL_EXPLORATION_MODE,
-    SPEED_EXPLORATION_MODES,
-    TEMPORAL_GLOBAL_EXPLORATION_MODE,
-    TEMPORAL_RESAMPLE_STEPS,
-)
-from ppo.privileged import PRIVILEGED_FEATURE_SIZE
+from ppo.reward import CurrentStateClearances, ProgressProjector, wrapped_progress_delta
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution
 
 
-CRITIC_VARIANTS = ("mlp", "detached_gru", "independent_gru", "priviledge_mlp", "privilege_gru")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BASELINE_EXPLORATION_MODE = "baseline"
+TEMPORAL_GLOBAL_EXPLORATION_MODE = "temporal_global"
+CORRIDOR_TEMPORAL_EXPLORATION_MODE = "corridor_temporal"
+SPEED_EXPLORATION_MODES = (
+    BASELINE_EXPLORATION_MODE,
+    TEMPORAL_GLOBAL_EXPLORATION_MODE,
+    CORRIDOR_TEMPORAL_EXPLORATION_MODE,
+)
+BASELINE_SPEED_STD = 0.15
+TEMPORAL_RESAMPLE_STEPS = 50
+EXPLORATION_GATE_INFO_KEY = "exploration_danger_gate"
+
+
+def exploration_uses_gate(mode: str) -> bool:
+    if mode not in SPEED_EXPLORATION_MODES:
+        raise ValueError(f"Unknown speed exploration mode: {mode!r}")
+    return mode == CORRIDOR_TEMPORAL_EXPLORATION_MODE
+
+
+def exploration_metadata(mode: str, corridor_gate_config=None) -> dict[str, Any]:
+    if mode not in SPEED_EXPLORATION_MODES:
+        raise ValueError(f"Unknown speed exploration mode: {mode!r}")
+    if mode == CORRIDOR_TEMPORAL_EXPLORATION_MODE:
+        if corridor_gate_config is None:
+            raise ValueError("Front-corridor exploration metadata requires its gate configuration")
+        gate_type = f"front_corridor_overlap_gap{corridor_gate_config.maximum_front_gap_m:g}"
+        gate = asdict(corridor_gate_config)
+    else:
+        gate_type = "none"
+        gate = None
+    return {
+        "mode": mode,
+        "baseline_speed_std": BASELINE_SPEED_STD,
+        "corridor_temporal_speed_std": BASELINE_SPEED_STD,
+        "temporal_resample_steps": TEMPORAL_RESAMPLE_STEPS,
+        "gate_type": gate_type,
+        "gate": gate,
+        "training_only": True,
+        "deterministic_evaluation_unchanged": True,
+    }
+
+
+PRIVILEGED_FEATURE_NAMES = (
+    "delta_s",
+    "relative_lateral",
+    "relative_long_velocity",
+    "relative_lat_velocity",
+    "sin_relative_heading",
+    "cos_relative_heading",
+    "ego_speed",
+    "ego_yaw_rate",
+    "relative_yaw_rate",
+    "obb_longitudinal_clearance",
+    "obb_lateral_clearance",
+    "wall_clearance",
+    "ego_steering_angle",
+    "ego_slip_angle",
+    "left_body_margin",
+    "right_body_margin",
+    "sin_track_heading_error",
+    "cos_track_heading_error",
+    "current_curvature",
+    "lookahead_mean_curvature",
+)
+PRIVILEGED_FEATURE_SIZE = len(PRIVILEGED_FEATURE_NAMES)
+PRIVILEGED_FEATURE_LOWS = (
+    -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+    0.0, 0.0, 0.0,
+    -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,
+)
+PRIVILEGED_FEATURE_HIGHS = (1.0,) * PRIVILEGED_FEATURE_SIZE
+
+DELTA_S_SCALE_M = 10.0
+RELATIVE_LATERAL_SCALE_M = 2.0
+LONGITUDINAL_VELOCITY_SCALE_MPS = 10.0
+LATERAL_VELOCITY_SCALE_MPS = 5.0
+EGO_SPEED_SCALE_MPS = 10.0
+YAW_RATE_SCALE_RADPS = 5.0
+SLIP_ANGLE_SCALE_RAD = 0.5
+CURVATURE_SCALE_PERCENTILE = 95.0
+CURVATURE_LOOKAHEAD_M = 1.0
+CURVATURE_LOOKAHEAD_SAMPLES = 16
+DYNAMIC_MODEL_SPEED_THRESHOLD_MPS = 0.5
+CLEARANCE_NORMALIZATION_VERSION = "p20_clearance_softsign_v2"
+CLEARANCE_NORMALIZATION_FORMULA = "min(distance_m / (distance_m + half_response_m), nextafter(1, 0))"
+OBB_LONGITUDINAL_CLEARANCE_HALF_RESPONSE_M = 0.6
+OBB_LATERAL_CLEARANCE_HALF_RESPONSE_M = 0.2
+WALL_CLEARANCE_HALF_RESPONSE_M = 0.2
+
+
+def wrap_to_pi(angle: float) -> float:
+    if not np.isfinite(angle):
+        raise ValueError("Angle must be finite")
+    return float((float(angle) + np.pi) % (2.0 * np.pi) - np.pi)
+
+
+def soft_normalize_clearance(distance_m: float, half_response_m: float) -> float:
+    values = np.asarray((distance_m, half_response_m), dtype=np.float64)
+    if not np.isfinite(values).all() or distance_m < 0.0 or half_response_m <= 0.0:
+        raise ValueError("Clearance and its half-response scale must be finite, with clearance >= 0 and scale > 0")
+    if distance_m <= half_response_m:
+        ratio = float(distance_m / half_response_m)
+        return float(ratio / (1.0 + ratio))
+    normalized = float(1.0 / (1.0 + half_response_m / distance_m))
+    return min(normalized, float(np.nextafter(1.0, 0.0)))
+
+
+@dataclass(frozen=True)
+class BodyTrackState:
+    signed_offset_m: float
+    width_left_m: float
+    width_right_m: float
+    track_heading_rad: float
+    heading_error_rad: float
+    lateral_extent_m: float
+    left_margin_m: float
+    right_margin_m: float
+    normalized_left_margin: float
+    normalized_right_margin: float
+
+
+class BoundaryDistanceReference:
+
+    def __init__(self, lane_path: str | Path) -> None:
+        data = np.loadtxt(Path(lane_path), delimiter=",", comments="#", dtype=np.float64)
+        if data.ndim != 2 or data.shape[1] != 4 or data.shape[0] < 3 or not np.isfinite(data).all():
+            raise ValueError(f"Expected finite x/y/w_tr_right/w_tr_left rows in lane CSV: {lane_path}")
+        if np.linalg.norm(data[-1, :2] - data[0, :2]) <= 1e-9:
+            data = data[:-1]
+        self.points = data[:, :2]
+        self.width_right = data[:, 2]
+        self.width_left = data[:, 3]
+        if np.any(self.width_right <= 0.0) or np.any(self.width_left <= 0.0):
+            raise ValueError(f"Lane CSV boundary widths must be positive: {lane_path}")
+        self._segment_vector = np.roll(self.points, -1, axis=0) - self.points
+        self._segment_norm_sq = np.einsum("ij,ij->i", self._segment_vector, self._segment_vector)
+        if np.any(self._segment_norm_sq <= 0.0):
+            raise ValueError(f"Lane CSV contains a zero-length cyclic segment: {lane_path}")
+
+    def body_track_state(self, point_xy: np.ndarray, heading: float, vehicle_length: float, vehicle_width: float) -> BodyTrackState:
+        point = np.asarray(point_xy, dtype=np.float64).reshape(-1)
+        values = np.asarray((heading, vehicle_length, vehicle_width), dtype=np.float64)
+        if point.shape != (2,) or not np.isfinite(point).all() or not np.isfinite(values).all():
+            raise ValueError("Body-track geometry requires finite position, heading, and dimensions")
+        if vehicle_length <= 0.0 or vehicle_width <= 0.0:
+            raise ValueError("Vehicle length and width must be positive")
+        offset = point - self.points
+        fraction = np.clip(np.einsum("ij,ij->i", offset, self._segment_vector) / self._segment_norm_sq, 0.0, 1.0)
+        closest = self.points + fraction[:, None] * self._segment_vector
+        residual = point - closest
+        index = int(np.argmin(np.einsum("ij,ij->i", residual, residual)))
+        direction = self._segment_vector[index] / np.sqrt(self._segment_norm_sq[index])
+        signed_offset = float(direction[0] * residual[index, 1] - direction[1] * residual[index, 0])
+        next_index = (index + 1) % len(self.points)
+        weight = float(fraction[index])
+        width_left = float((1.0 - weight) * self.width_left[index] + weight * self.width_left[next_index])
+        width_right = float((1.0 - weight) * self.width_right[index] + weight * self.width_right[next_index])
+        track_heading = float(np.arctan2(direction[1], direction[0]))
+        heading_error = wrap_to_pi(float(heading) - track_heading)
+        lateral_extent = 0.5 * (
+            float(vehicle_length) * abs(float(np.sin(heading_error)))
+            + float(vehicle_width) * abs(float(np.cos(heading_error)))
+        )
+        left_margin = width_left - signed_offset - lateral_extent
+        right_margin = width_right + signed_offset - lateral_extent
+        epsilon = np.finfo(np.float64).eps
+        left_capacity = max(width_left - lateral_extent, epsilon)
+        right_capacity = max(width_right - lateral_extent, epsilon)
+        return BodyTrackState(
+            signed_offset_m=signed_offset,
+            width_left_m=width_left,
+            width_right_m=width_right,
+            track_heading_rad=track_heading,
+            heading_error_rad=heading_error,
+            lateral_extent_m=float(lateral_extent),
+            left_margin_m=float(left_margin),
+            right_margin_m=float(right_margin),
+            normalized_left_margin=float(np.clip(left_margin / left_capacity, -1.0, 1.0)),
+            normalized_right_margin=float(np.clip(right_margin / right_capacity, -1.0, 1.0)),
+        )
+
+
+class PrivilegedStateExtractor:
+
+    def __init__(
+        self,
+        map_name: str,
+        ego_raceline: str,
+        projector: ProgressProjector,
+        vehicle_length: float,
+        vehicle_width: float,
+        *,
+        steering_min_rad: float,
+        steering_max_rad: float,
+    ) -> None:
+        if not ego_raceline.startswith("raceline"):
+            raise ValueError(f"Cannot derive a lane boundary file from ego raceline {ego_raceline!r}")
+        track_dir = PROJECT_ROOT / "f1tenth_racetracks" / map_name
+        raceline = np.loadtxt(track_dir / f"{ego_raceline}.csv", delimiter=";", comments="#", dtype=np.float64)
+        if raceline.ndim != 2 or raceline.shape[1] < 5 or not np.isfinite(raceline[:, (0, 4)]).all():
+            raise ValueError(f"Ego raceline CSV must provide finite s and curvature columns: {ego_raceline}")
+        if abs(float(raceline[-1, 0]) - projector.track_length) > 1e-6:
+            raise ValueError("Ego raceline closing s must match the progress projector track length")
+        if raceline.shape[0] < 4 or np.any(np.diff(raceline[:, 0]) <= 0.0):
+            raise ValueError("Ego raceline progress must be strictly increasing")
+        self.projector = projector
+        self._curvature_s = np.concatenate((raceline[:-1, 0], (projector.track_length,)))
+        self._curvature = np.concatenate((raceline[:-1, 4], (raceline[0, 4],)))
+        self._curvature_scale = float(np.percentile(np.abs(raceline[:, 4]), CURVATURE_SCALE_PERCENTILE))
+        if not np.isfinite(self._curvature_scale) or self._curvature_scale <= np.finfo(np.float64).eps:
+            raise ValueError(f"Ego raceline must provide a positive curvature scale: {ego_raceline}")
+        self.boundary = BoundaryDistanceReference(track_dir / f"{ego_raceline.replace('raceline', 'lane', 1)}.csv")
+        self.vehicle_length = float(vehicle_length)
+        self.vehicle_width = float(vehicle_width)
+        self.steering_scale_rad = max(abs(float(steering_min_rad)), abs(float(steering_max_rad)))
+        self.obb_longitudinal_clearance_half_response_m = OBB_LONGITUDINAL_CLEARANCE_HALF_RESPONSE_M
+        self.obb_lateral_clearance_half_response_m = OBB_LATERAL_CLEARANCE_HALF_RESPONSE_M
+        self.wall_clearance_half_response_m = WALL_CLEARANCE_HALF_RESPONSE_M
+        parameters = np.asarray(
+            (
+                self.vehicle_length,
+                self.vehicle_width,
+                self.steering_scale_rad,
+                self.obb_longitudinal_clearance_half_response_m,
+                self.obb_lateral_clearance_half_response_m,
+                self.wall_clearance_half_response_m,
+            ),
+            dtype=np.float64,
+        )
+        if not np.isfinite(parameters).all() or np.any(parameters <= 0.0):
+            raise ValueError("Privileged extractor dimensions and normalization scales must be positive")
+
+    @property
+    def curvature_scale(self) -> float:
+        return self._curvature_scale
+
+    @staticmethod
+    def _agent_state(raw_observation: dict[str, Any], index: int) -> tuple[np.ndarray, float, float, float]:
+        position = np.asarray((raw_observation["poses_x"][index], raw_observation["poses_y"][index]), dtype=np.float64)
+        heading = float(np.asarray(raw_observation["poses_theta"])[index])
+        speed = float(np.asarray(raw_observation["linear_vels_x"])[index])
+        yaw_rate = float(np.asarray(raw_observation["ang_vels_z"])[index])
+        if not np.isfinite(np.concatenate((position, (heading, speed, yaw_rate)))).all():
+            raise ValueError("Privileged raw simulator state must be finite")
+        return position, heading, speed, yaw_rate
+
+    @staticmethod
+    def _world_velocity(heading: float, speed: float, slip_angle: float) -> np.ndarray:
+        velocity_heading = float(heading)
+        if abs(float(speed)) >= DYNAMIC_MODEL_SPEED_THRESHOLD_MPS:
+            velocity_heading += float(slip_angle)
+        return float(speed) * np.asarray((np.cos(velocity_heading), np.sin(velocity_heading)), dtype=np.float64)
+
+    def curvature_at(self, progress_m: float) -> float:
+        if not np.isfinite(progress_m):
+            raise ValueError("Curvature progress must be finite")
+        wrapped_progress = float(progress_m) % self.projector.track_length
+        return float(np.interp(wrapped_progress, self._curvature_s, self._curvature))
+
+    def lookahead_mean_curvature_at(self, progress_m: float) -> float:
+        samples = (
+            float(progress_m)
+            + np.arange(1, CURVATURE_LOOKAHEAD_SAMPLES + 1, dtype=np.float64)
+            * (CURVATURE_LOOKAHEAD_M / CURVATURE_LOOKAHEAD_SAMPLES)
+        ) % self.projector.track_length
+        return float(np.mean([self.curvature_at(sample) for sample in samples]))
+
+    def normalization_metadata(self) -> dict[str, Any]:
+        return {
+            "version": CLEARANCE_NORMALIZATION_VERSION,
+            "delta_s_m": DELTA_S_SCALE_M,
+            "relative_lateral_m": RELATIVE_LATERAL_SCALE_M,
+            "relative_long_velocity_mps": LONGITUDINAL_VELOCITY_SCALE_MPS,
+            "relative_lat_velocity_mps": LATERAL_VELOCITY_SCALE_MPS,
+            "ego_speed_mps": EGO_SPEED_SCALE_MPS,
+            "yaw_rate_radps": YAW_RATE_SCALE_RADPS,
+            "clearance_formula": CLEARANCE_NORMALIZATION_FORMULA,
+            "clearance_scale_source": "fixed_privileged_contract",
+            "obb_longitudinal_clearance_half_response_m": self.obb_longitudinal_clearance_half_response_m,
+            "obb_lateral_clearance_half_response_m": self.obb_lateral_clearance_half_response_m,
+            "wall_clearance_half_response_m": self.wall_clearance_half_response_m,
+            "ego_steering_angle_rad": self.steering_scale_rad,
+            "ego_slip_angle_rad": SLIP_ANGLE_SCALE_RAD,
+            "curvature_abs_percentile": CURVATURE_SCALE_PERCENTILE,
+            "curvature_radpm": self._curvature_scale,
+            "curvature_lookahead_m": CURVATURE_LOOKAHEAD_M,
+            "curvature_lookahead_samples": CURVATURE_LOOKAHEAD_SAMPLES,
+        }
+
+    def features(
+        self,
+        raw_observation: dict[str, Any],
+        *,
+        ego_index: int,
+        opponent_index: int,
+        ego_steering_angle: float,
+        ego_slip_angle: float,
+        opponent_slip_angle: float,
+        clearances: CurrentStateClearances,
+    ) -> np.ndarray:
+        ego_position, ego_heading, ego_speed, ego_yaw_rate = self._agent_state(raw_observation, ego_index)
+        opponent_position, opponent_heading, opponent_speed, opponent_yaw_rate = self._agent_state(raw_observation, opponent_index)
+        physical_state = np.asarray((ego_steering_angle, ego_slip_angle, opponent_slip_angle), dtype=np.float64)
+        if not np.isfinite(physical_state).all():
+            raise ValueError("Privileged steering and slip angles must be finite")
+        if not isinstance(clearances, CurrentStateClearances):
+            raise TypeError("Privileged features require reward's current-state clearance result")
+        ego_progress = self.projector.project(ego_position)
+        opponent_progress = self.projector.project(opponent_position)
+        delta_s = wrapped_progress_delta(ego_progress, opponent_progress, self.projector.track_length)
+        cos_ego, sin_ego = np.cos(ego_heading), np.sin(ego_heading)
+        relative_position = opponent_position - ego_position
+        relative_lateral = -sin_ego * relative_position[0] + cos_ego * relative_position[1]
+        relative_heading = wrap_to_pi(opponent_heading - ego_heading)
+        ego_velocity_world = self._world_velocity(ego_heading, ego_speed, ego_slip_angle)
+        opponent_velocity_world = self._world_velocity(opponent_heading, opponent_speed, opponent_slip_angle)
+        velocity_delta_world = opponent_velocity_world - ego_velocity_world
+        relative_long_velocity = cos_ego * velocity_delta_world[0] + sin_ego * velocity_delta_world[1]
+        relative_lat_velocity = -sin_ego * velocity_delta_world[0] + cos_ego * velocity_delta_world[1]
+        body_track = self.boundary.body_track_state(ego_position, ego_heading, self.vehicle_length, self.vehicle_width)
+        current_curvature = self.curvature_at(ego_progress)
+        lookahead_curvature = self.lookahead_mean_curvature_at(ego_progress)
+        features = np.asarray(
+            (
+                np.clip(delta_s / DELTA_S_SCALE_M, -1.0, 1.0),
+                np.clip(relative_lateral / RELATIVE_LATERAL_SCALE_M, -1.0, 1.0),
+                np.clip(relative_long_velocity / LONGITUDINAL_VELOCITY_SCALE_MPS, -1.0, 1.0),
+                np.clip(relative_lat_velocity / LATERAL_VELOCITY_SCALE_MPS, -1.0, 1.0),
+                np.sin(relative_heading),
+                np.cos(relative_heading),
+                np.clip(ego_speed / EGO_SPEED_SCALE_MPS, -1.0, 1.0),
+                np.clip(ego_yaw_rate / YAW_RATE_SCALE_RADPS, -1.0, 1.0),
+                np.clip((opponent_yaw_rate - ego_yaw_rate) / YAW_RATE_SCALE_RADPS, -1.0, 1.0),
+                soft_normalize_clearance(clearances.obb_longitudinal_clearance_m, self.obb_longitudinal_clearance_half_response_m),
+                soft_normalize_clearance(clearances.obb_lateral_clearance_m, self.obb_lateral_clearance_half_response_m),
+                soft_normalize_clearance(clearances.wall_clearance_m, self.wall_clearance_half_response_m),
+                np.clip(float(ego_steering_angle) / self.steering_scale_rad, -1.0, 1.0),
+                np.clip(float(ego_slip_angle) / SLIP_ANGLE_SCALE_RAD, -1.0, 1.0),
+                body_track.normalized_left_margin,
+                body_track.normalized_right_margin,
+                np.sin(body_track.heading_error_rad),
+                np.cos(body_track.heading_error_rad),
+                np.clip(current_curvature / self._curvature_scale, -1.0, 1.0),
+                np.clip(lookahead_curvature / self._curvature_scale, -1.0, 1.0),
+            ),
+            dtype=np.float32,
+        )
+        lows = np.asarray(PRIVILEGED_FEATURE_LOWS, dtype=np.float32)
+        highs = np.asarray(PRIVILEGED_FEATURE_HIGHS, dtype=np.float32)
+        if features.shape != (PRIVILEGED_FEATURE_SIZE,) or features.dtype != np.float32:
+            raise RuntimeError(f"Privileged feature contract violated: shape={features.shape}, dtype={features.dtype}")
+        if not np.isfinite(features).all() or np.any(features < lows) or np.any(features > highs):
+            raise ValueError(f"Privileged features must be finite and within declared bounds, got {features!r}")
+        return features
+
+
+CRITIC_VARIANTS = ("mlp", "independent_gru", "priviledge_mlp", "privilege_gru")
 P20_CRITIC_VARIANTS = ("priviledge_mlp", "privilege_gru")
 END2RACE_OBSERVATION_SIZE = 361
 END2RACE_LIDAR_SIZE = 360
@@ -175,29 +521,6 @@ class MLPCritic(nn.Module):
         pressure = (-1.0 / (1.0 + torch.exp(-self.k * lidar)) + 1.0) * 2.0
         speed_embedding = self.speed_mlp(previous_speed)
         return self.value_head(torch.cat((pressure, speed_embedding), dim=-1))
-
-
-class DetachedGRUCritic(nn.Module):
-    """MLP critic over detached actor GRU hidden states frozen at rollout time."""
-
-    def __init__(self, hidden_size: int, processed_feature_size: int):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.LayerNorm(hidden_size),
-            nn.Linear(hidden_size, processed_feature_size),
-            nn.ReLU(),
-            nn.Linear(processed_feature_size, 1),
-        )
-        self._initialize_linear_layers()
-
-    def _initialize_linear_layers(self) -> None:
-        for module in self.network.modules():
-            if isinstance(module, nn.Linear):
-                nn.init.xavier_uniform_(module.weight)
-                nn.init.zeros_(module.bias)
-
-    def forward(self, features: torch.Tensor) -> torch.Tensor:
-        return self.network(features)
 
 
 class PriviledgeMLPCritic(nn.Module):
@@ -367,11 +690,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.critic = None
         if critic_variant == "mlp":
             self.value_net = MLPCritic(self.end2race_actor)
-        elif critic_variant == "detached_gru":
-            self.value_net = DetachedGRUCritic(
-                self.end2race_actor.gru.hidden_size,
-                self.end2race_actor.gru.input_size,
-            )
         elif critic_variant == "independent_gru":
             self.value_net = IndependentGRUCritic(self.end2race_actor)
         elif critic_variant == "privilege_gru":
@@ -402,24 +720,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
     def speed_physical_std(self) -> float:
         return float(self.log_std.detach().exp()[1].cpu().item())
-
-    def set_speed_physical_std(self, value: float) -> None:
-        if not np.isfinite(value) or value <= 0.0:
-            raise ValueError("Speed physical exploration std must be positive and finite")
-        with torch.no_grad():
-            self.log_std[1].copy_(
-                torch.as_tensor(
-                    np.log(value),
-                    dtype=self.log_std.dtype,
-                    device=self.log_std.device,
-                )
-            )
-
-    @property
-    def detached_gru_feature_size(self) -> int:
-        """Per-transition stored critic feature width, zero when unused."""
-
-        return self.end2race_actor.gru.hidden_size if self.critic_variant == "detached_gru" else 0
 
     @property
     def critic_is_independent_gru(self) -> bool:
@@ -675,14 +975,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         )
         inactive = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
         block_ids = torch.zeros(batch_size, dtype=torch.int64, device=self.device)
-        if self.speed_exploration_mode == CONDITIONAL_WHITE_EXPLORATION_MODE:
-            danger_log_std = torch.full_like(
-                baseline_log_std,
-                float(np.log(CONDITIONAL_WHITE_SPEED_STD)),
-            )
-            speed_log_std = torch.where(gates, danger_log_std, baseline_log_std)
-            return speed_log_std, None, gates, inactive, block_ids
-
         self._ensure_temporal_state(batch_size)
         assert self._temporal_speed_noise is not None
         assert self._temporal_steps_remaining is not None
@@ -705,10 +997,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             self._temporal_steps_remaining -= 1
             return baseline_log_std, noise, gates, active, block_ids
 
-        if self.speed_exploration_mode not in (
-            CONDITIONAL_TEMPORAL_EXPLORATION_MODE,
-            CORRIDOR_TEMPORAL_EXPLORATION_MODE,
-        ):
+        if self.speed_exploration_mode != CORRIDOR_TEMPORAL_EXPLORATION_MODE:
             raise RuntimeError(
                 f"Unexpected structured exploration mode {self.speed_exploration_mode!r}"
             )
@@ -728,15 +1017,9 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             self._temporal_speed_noise[fresh] = torch.randn(
                 fresh_count, dtype=torch.float32, device=self.device
             )
-        active_speed_std = (
-            BASELINE_SPEED_STD
-            if self.speed_exploration_mode
-            == CORRIDOR_TEMPORAL_EXPLORATION_MODE
-            else CONDITIONAL_TEMPORAL_SPEED_STD
-        )
         danger_log_std = torch.full_like(
             baseline_log_std,
-            float(np.log(active_speed_std)),
+            float(np.log(BASELINE_SPEED_STD)),
         )
         speed_log_std = torch.where(active, danger_log_std, baseline_log_std)
         noise = self._temporal_speed_noise.clone()
@@ -882,16 +1165,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             temporal_active=temporal_active,
             block_ids=block_ids,
         )
-        if self.critic_variant == "detached_gru":
-            if mean_actions.shape[0] != actor_states[0].shape[1]:
-                raise RuntimeError("Actor-hidden critic collection requires one timestep per sequence slot")
-            features = actor_states[0].detach()
-            values = self.value_net(features[0])
-            rollout_buffer = getattr(self, "_end2race_rollout_buffer", None)
-            if rollout_buffer is not None:
-                rollout_buffer.stage_detached_gru_features(features[0].cpu().numpy())
-            vf_states = (features.clone(), torch.zeros_like(features))
-        elif self.critic_is_independent_gru:
+        if self.critic_is_independent_gru:
             values, vf_states = self._independent_gru_forward_collection(obs, lstm_states.vf, episode_starts)
         else:
             values = self.value_net(self._critic_observation(obs))
@@ -915,9 +1189,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     ) -> torch.Tensor:
         """Value for bootstrap targets, continuing the correct hidden state when recurrent."""
 
-        if self.critic_variant == "detached_gru":
-            _mean_actions, actor_states = self._actor_forward(obs, lstm_states, episode_starts)
-            return self.value_net(actor_states[0][0].detach())
         if self.critic_is_independent_gru:
             values, _critic_states = self._independent_gru_forward_collection(obs, lstm_states, episode_starts)
             return values
@@ -961,10 +1232,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
 
         if self.critic_is_independent_gru:
             raise RuntimeError("Independent-GRU critic values require evaluate_values_independent_gru")
-        if self.critic_variant == "detached_gru":
-            if critic_inputs.shape[-1] != self.end2race_actor.gru.hidden_size:
-                raise RuntimeError("detached_gru critic expects stored rollout GRU features")
-            return self.value_net(critic_inputs.float())
         return self.value_net(self._critic_observation(critic_inputs))
 
     def evaluate_values_independent_gru(

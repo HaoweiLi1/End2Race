@@ -18,13 +18,15 @@ from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.utils import FloatSchedule, explained_variance, safe_mean
 from stable_baselines3.common.vec_env import VecNormalize
 
-from ppo.policy import END2RACE_OBSERVATION_SIZE, P20_CRITIC_VARIANTS
-from ppo.exploration import (
+from ppo.policy import (
     BASELINE_EXPLORATION_MODE,
+    END2RACE_OBSERVATION_SIZE,
     EXPLORATION_GATE_INFO_KEY,
+    P20_CRITIC_VARIANTS,
+    PRIVILEGED_FEATURE_HIGHS,
+    PRIVILEGED_FEATURE_LOWS,
 )
-from ppo.privileged import PRIVILEGED_FEATURE_HIGHS, PRIVILEGED_FEATURE_LOWS
-from ppo.training_records import TrainingRecorder, require_finite_number, require_finite_tensor
+from utils import TrainingRecorder, require_finite_number, require_finite_tensor
 
 
 WARMUP_MAX_EPOCHS = 30
@@ -34,45 +36,11 @@ VALUE_LOSS_COEFFICIENT = 0.5
 MAX_GRAD_NORM = 0.5
 
 
-def linear_speed_std_for_update(
-    initial_std: float,
-    final_std: float | None,
-    anneal_updates: int,
-    formal_update: int,
-) -> float:
-    """Return the rollout speed std assigned to one formal PPO update."""
-
-    if initial_std <= 0.0:
-        raise ValueError("initial_std must be positive")
-    if formal_update <= 0:
-        raise ValueError("formal_update must be positive")
-    if final_std is None:
-        if anneal_updates != 0:
-            raise ValueError(
-                "anneal_updates must be zero when final_std is omitted"
-            )
-        return float(initial_std)
-    if final_std <= 0.0:
-        raise ValueError("final_std must be positive")
-    if anneal_updates < 2:
-        raise ValueError("anneal_updates must be at least 2")
-    if formal_update >= anneal_updates:
-        return float(final_std)
-    fraction = (formal_update - 1) / (anneal_updates - 1)
-    return float(initial_std + fraction * (final_std - initial_std))
-
-
 class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
-    """Store the real actor GRU hidden state and materialize dummy states per batch.
+    """Store the real actor and independent-critic GRU streams."""
 
-    Optionally stores detached-GRU features or the independent-GRU hidden stream.
-    """
-
-    def __init__(self, *args, detached_gru_feature_size: int = 0, store_independent_gru_hidden: bool = False, **kwargs):
-        self.detached_gru_feature_size = int(detached_gru_feature_size)
+    def __init__(self, *args, store_independent_gru_hidden: bool = False, **kwargs):
         self.store_independent_gru_hidden = bool(store_independent_gru_hidden)
-        if self.detached_gru_feature_size < 0 or (self.detached_gru_feature_size and self.store_independent_gru_hidden):
-            raise ValueError("Critic feature storage and critic hidden storage are mutually exclusive")
         super().__init__(*args, **kwargs)
 
     def reset(self) -> None:
@@ -95,12 +63,8 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         )
         if self.store_independent_gru_hidden:
             self.hidden_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
-        if self.detached_gru_feature_size:
-            self.detached_gru_features = np.zeros((self.buffer_size, self.n_envs, self.detached_gru_feature_size), dtype=np.float32)
-        self._staged_detached_gru_features: np.ndarray | None = None
         self._staged_exploration: tuple[np.ndarray, ...] | None = None
         self.current_valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None
-        self.current_detached_gru_features: torch.Tensor | None = None
         self.current_collision_mask: torch.Tensor | None = None
         self.current_speed_log_stds: torch.Tensor | None = None
         self.current_danger_gates: torch.Tensor | None = None
@@ -135,16 +99,6 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             raise ValueError("Exploration transition fields must be finite")
         self._staged_exploration = arrays
 
-    def stage_detached_gru_features(self, features: np.ndarray) -> None:
-        """Receive the per-step detached critic features computed inside policy.forward."""
-
-        if not self.detached_gru_feature_size:
-            return
-        features = np.asarray(features, dtype=np.float32)
-        if features.shape != (self.n_envs, self.detached_gru_feature_size):
-            raise RuntimeError(f"Staged detached-GRU features must have shape {(self.n_envs, self.detached_gru_feature_size)}, got {features.shape}")
-        self._staged_detached_gru_features = features
-
     def add(self, *args, lstm_states: RNNStates, **kwargs) -> None:
         if self._staged_exploration is None:
             raise RuntimeError(
@@ -161,11 +115,6 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         self.hidden_states_pi[self.pos] = np.asarray(lstm_states.pi[0].cpu().numpy())
         if self.store_independent_gru_hidden:
             self.hidden_states_vf[self.pos] = np.asarray(lstm_states.vf[0].cpu().numpy())
-        if self.detached_gru_feature_size:
-            if self._staged_detached_gru_features is None:
-                raise RuntimeError("Detached-GRU features were not staged before adding a transition")
-            self.detached_gru_features[self.pos] = self._staged_detached_gru_features
-            self._staged_detached_gru_features = None
         RolloutBuffer.add(self, *args, **kwargs)
 
     def get(self, batch_size: Optional[int] = None, *, rng: np.random.Generator) -> Generator[RecurrentRolloutBufferSamples, None, None]:
@@ -191,8 +140,6 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             if self.store_independent_gru_hidden:
                 self.hidden_states_vf = self.hidden_states_vf.swapaxes(1, 2)
                 names.append("hidden_states_vf")
-            if self.detached_gru_feature_size:
-                names.append("detached_gru_features")
             for name in names:
                 self.__dict__[name] = self.swap_and_flatten(self.__dict__[name])
             self.generator_ready = True
@@ -241,10 +188,6 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
                 self.exploration_standard_residuals[batch_inds]
             )
         )
-        if self.detached_gru_feature_size:
-            self.current_detached_gru_features = self.to_torch(self.pad(self.detached_gru_features[batch_inds])).reshape(padded_batch_size, self.detached_gru_feature_size)
-        else:
-            self.current_detached_gru_features = None
         actor_hidden = self.to_torch(self.hidden_states_pi[batch_inds][self.seq_start_indices].swapaxes(0, 1)).contiguous()
         actor_cell = torch.zeros_like(actor_hidden)
         if self.store_independent_gru_hidden:
@@ -274,18 +217,11 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         actor_epochs: int,
         critic_epochs: int,
         recorder: TrainingRecorder,
-        speed_physical_std_final: float | None = None,
-        speed_physical_std_anneal_updates: int = 0,
         **kwargs,
     ):
         self.actor_epochs = actor_epochs
         self.critic_epochs = critic_epochs
         self.recorder = recorder
-        self.speed_physical_std_final = speed_physical_std_final
-        self.speed_physical_std_anneal_updates = int(
-            speed_physical_std_anneal_updates
-        )
-        self.initial_speed_physical_std: float | None = None
         self.rollout_speed_physical_std: float | None = None
         self.warmup_completed = False
         self.rollout_index = 0
@@ -303,8 +239,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.policy = self.policy_class(self.observation_space, self.action_space, self.lr_schedule, use_sde=self.use_sde, **self.policy_kwargs).to(self.device)
         if not isinstance(self.policy, RecurrentActorCriticPolicy) or not self.policy.supports_end2race_rollout_buffer():
             raise TypeError("End2Race PPO requires the End2Race GRU policy")
-        self.initial_speed_physical_std = self.policy.speed_physical_std()
-        self.rollout_speed_physical_std = self.initial_speed_physical_std
+        self.rollout_speed_physical_std = self.policy.speed_physical_std()
 
         lstm = self.policy.lstm_actor
         single_hidden_shape = (lstm.num_layers, self.n_envs, lstm.hidden_size)
@@ -332,7 +267,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             gamma=self.gamma,
             gae_lambda=self.gae_lambda,
             n_envs=self.n_envs,
-            detached_gru_feature_size=self.policy.detached_gru_feature_size,
             store_independent_gru_hidden=self.policy.critic_is_independent_gru,
         )
         self.policy._end2race_rollout_buffer = self.rollout_buffer
@@ -350,20 +284,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.current_phase = "warmup" if not self.warmup_completed else "formal"
         self.rollout_for_update = 0 if not self.warmup_completed else self._n_updates + 1
         self.rollout_policy_update = self._n_updates
-        if self.initial_speed_physical_std is None:
-            raise RuntimeError("Initial speed exploration std was not initialized")
-        scheduled_std = linear_speed_std_for_update(
-            self.initial_speed_physical_std,
-            self.speed_physical_std_final,
-            self.speed_physical_std_anneal_updates,
-            max(self.rollout_for_update, 1),
-        )
-        if (
-            self.speed_physical_std_final is not None
-            and scheduled_std != self.rollout_speed_physical_std
-        ):
-            self.policy.set_speed_physical_std(scheduled_std)
-        self.rollout_speed_physical_std = scheduled_std
+        if self.rollout_speed_physical_std is None:
+            raise RuntimeError("Speed exploration std was not initialized")
         self._rollout_episode_records = []
         print(
             f"Rollout {self.rollout_index} start: phase={self.current_phase}, "
@@ -550,36 +472,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "episode_reward_relative": float(info["episode_reward_relative"]),
                 "episode_reward_collision": float(info["episode_reward_collision"]),
                 "episode_reward_risk": float(info["episode_reward_risk"]),
-                "episode_reward_postpass": float(
-                    info["episode_reward_postpass"]
-                ),
                 "episode_abs_reward_risk": float(info["episode_abs_reward_risk"]),
-                "episode_postpass_penalty_used": float(
-                    info["episode_postpass_penalty_used"]
-                ),
-                "episode_postpass_phase_active_fraction": float(
-                    info["episode_postpass_phase_active_fraction"]
-                ),
-                "episode_postpass_triggered": bool(
-                    info["episode_postpass_triggered"]
-                ),
-                "episode_postpass_trigger_steps": int(
-                    info["episode_postpass_trigger_steps"]
-                ),
-                "episode_postpass_first_trigger_time_s": (
-                    None
-                    if info["episode_postpass_first_trigger_time_s"] is None
-                    else float(
-                        info["episode_postpass_first_trigger_time_s"]
-                    )
-                ),
-                "episode_postpass_first_trigger_lead_s": (
-                    None
-                    if info["episode_postpass_first_trigger_lead_s"] is None
-                    else float(
-                        info["episode_postpass_first_trigger_lead_s"]
-                    )
-                ),
                 "episode_min_obb_clearance_m": float(info["episode_min_obb_clearance_m"]),
                 "episode_min_wall_clearance_m": float(info["episode_min_wall_clearance_m"]),
                 "episode_risk_active_fraction": float(info["episode_risk_active_fraction"]),
@@ -623,8 +516,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         return np.concatenate(parts) if parts else np.asarray([], dtype=np.int64)
 
     def _flat_critic_inputs(self) -> np.ndarray:
-        if self.policy.detached_gru_feature_size:
-            return self.rollout_buffer.detached_gru_features.reshape(-1, self.policy.detached_gru_feature_size)
         return self.rollout_buffer.observations.reshape(-1, *self.rollout_buffer.obs_shape)
 
     def _critic_batch_loss(self, flat_inputs: np.ndarray, flat_returns: np.ndarray, indices: np.ndarray) -> torch.Tensor:
@@ -795,11 +686,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             return self.policy.evaluate_values_independent_gru(
                 rollout_data.observations, critic_states, rollout_data.episode_starts, self.rollout_buffer.current_valid_by_timestep
             ).flatten()
-        if self.policy.detached_gru_feature_size:
-            features = self.rollout_buffer.current_detached_gru_features
-            if features is None:
-                raise RuntimeError("Stored critic features are missing for the current minibatch")
-            return self.policy.evaluate_values(features).flatten()
         return self.policy.evaluate_values(rollout_data.observations).flatten()
 
     def _full_buffer_value_statistics(self) -> dict[str, float]:
@@ -853,18 +739,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             return None
         return float(np.mean([record[name] for record in records]))
 
-    @staticmethod
-    def _mean_available_episode_metric(
-        records: list[dict],
-        name: str,
-    ) -> float | None:
-        values = [
-            float(record[name])
-            for record in records
-            if record[name] is not None
-        ]
-        return float(np.mean(values)) if values else None
-
     @classmethod
     def _episode_metrics(cls, episodes: list[dict]) -> dict[str, float | int | None]:
         metrics: dict[str, float | int | None] = {
@@ -888,50 +762,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 episodes,
                 "episode_abs_reward_risk",
             ),
-            "mean_episode_postpass_penalty_used": cls._mean_episode_metric(
-                episodes,
-                "episode_postpass_penalty_used",
-            ),
-            "mean_episode_postpass_phase_active_fraction": (
-                cls._mean_episode_metric(
-                    episodes,
-                    "episode_postpass_phase_active_fraction",
-                )
-            ),
-            "mean_episode_postpass_trigger_steps": cls._mean_episode_metric(
-                episodes,
-                "episode_postpass_trigger_steps",
-            ),
-            "mean_episode_postpass_first_trigger_lead_s": (
-                cls._mean_available_episode_metric(
-                    episodes,
-                    "episode_postpass_first_trigger_lead_s",
-                )
-            ),
-            "postpass_trigger_episode_count": sum(
-                record["episode_postpass_triggered"]
-                for record in episodes
-            ),
-            "postpass_trigger_episode_rate": (
-                float(
-                    np.mean(
-                        [
-                            record["episode_postpass_triggered"]
-                            for record in episodes
-                        ]
-                    )
-                )
-                if episodes
-                else None
-            ),
         }
-        for component in (
-            "progress",
-            "relative",
-            "collision",
-            "risk",
-            "postpass",
-        ):
+        for component in ("progress", "relative", "collision", "risk"):
             metrics[f"mean_episode_reward_{component}"] = cls._mean_episode_metric(
                 episodes,
                 f"episode_reward_{component}",
@@ -941,50 +773,11 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             metrics[f"{role}_role_episode_count"] = len(role_episodes)
             metrics[f"mean_{role}_episode_return"] = cls._mean_episode_metric(role_episodes, "episode_return")
             metrics[f"mean_{role}_relative_position_m"] = cls._mean_episode_metric(role_episodes, "relative_position_m")
-        for outcome in ("ego_collision", "overtake", "follow"):
-            outcome_episodes = [
-                record
-                for record in episodes
-                if record["episode_outcome"] == outcome
-            ]
-            triggered_count = sum(
-                record["episode_postpass_triggered"]
-                for record in outcome_episodes
-            )
-            metrics[
-                f"{outcome}_postpass_trigger_episode_count"
-            ] = triggered_count
-            metrics[
-                f"{outcome}_postpass_trigger_episode_rate"
-            ] = (
-                triggered_count / len(outcome_episodes)
-                if outcome_episodes
-                else None
-            )
-            metrics[
-                f"mean_{outcome}_postpass_penalty_used"
-            ] = cls._mean_episode_metric(
-                outcome_episodes,
-                "episode_postpass_penalty_used",
-            )
-            metrics[
-                f"mean_{outcome}_postpass_first_trigger_lead_s"
-            ] = cls._mean_available_episode_metric(
-                outcome_episodes,
-                "episode_postpass_first_trigger_lead_s",
-            )
         return metrics
 
     def _critic_input_statistics(self) -> dict:
-        """Per-rollout critic input telemetry for the stored-feature and privileged variants."""
+        """Per-rollout critic input telemetry for privileged variants."""
 
-        if self.policy.detached_gru_feature_size:
-            features = self.rollout_buffer.detached_gru_features
-            return {
-                "detached_gru_feature_mean": float(features.mean()),
-                "detached_gru_feature_std": float(features.std()),
-                "detached_gru_feature_abs_max": float(np.abs(features).max()),
-            }
         if self.policy.critic_variant in P20_CRITIC_VARIANTS:
             features = self.rollout_buffer.observations.reshape(-1, self.rollout_buffer.obs_shape[0])[:, END2RACE_OBSERVATION_SIZE:]
             lows = np.asarray(PRIVILEGED_FEATURE_LOWS, dtype=np.float32)
@@ -1144,10 +937,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             // self.batch_size
         )
         actor_optimizer_steps_completed = 0
-        actor_early_stop_triggered = False
-        actor_early_stop_epoch = None
-        actor_early_stop_minibatch = None
-        actor_early_stop_approx_kl = None
         critic_input_stats = self._critic_input_statistics()
         exploration_stats = self._exploration_statistics()
         telemetry_rng_state = copy_module.deepcopy(self.telemetry_rng.bit_generator.state)
@@ -1177,18 +966,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                     require_finite_number("Approximate KL", approximate_kl)
                     approximate_kls.append(approximate_kl)
                     clip_fractions.append(float((torch.abs(ratio - 1) > clip_range)[mask].float().mean().cpu().item()))
-                if self.target_kl is not None and approximate_kl > 1.5 * self.target_kl:
-                    actor_early_stop_triggered = True
-                    actor_early_stop_epoch = epoch + 1
-                    actor_early_stop_minibatch = minibatch
-                    actor_early_stop_approx_kl = approximate_kl
-                    print(
-                        f"Formal update {update}: actor early stop at epoch {actor_early_stop_epoch}, "
-                        f"minibatch {minibatch}: approx_kl={approximate_kl:.6f} > "
-                        f"threshold={1.5 * self.target_kl:.6f}",
-                        flush=True,
-                    )
-                    break
                 policy_loss = -torch.min(advantages * ratio, advantages * torch.clamp(ratio, 1 - clip_range, 1 + clip_range))[mask].mean()
                 require_finite_tensor("Policy loss", policy_loss)
                 self.policy.actor_optimizer.zero_grad()
@@ -1199,8 +976,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 self.policy.actor_optimizer.step()
                 actor_optimizer_steps_completed += 1
                 policy_losses.append(float(policy_loss.item()))
-            if actor_early_stop_triggered:
-                break
         for parameter in self.policy.critic_parameters:
             parameter.requires_grad_(True)
         print(f"Formal update {update}: actor phase complete", flush=True)
@@ -1278,14 +1053,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "approx_kl_max": approximate_kl_max,
             "clip_fraction_mean": clip_fraction_mean,
             "clip_fraction_max": clip_fraction_max,
-            "actor_target_kl": self.target_kl,
-            "actor_kl_stop_threshold": None if self.target_kl is None else 1.5 * self.target_kl,
             "actor_optimizer_steps_planned": actor_optimizer_steps_planned,
             "actor_optimizer_steps_completed": actor_optimizer_steps_completed,
-            "actor_early_stop_triggered": actor_early_stop_triggered,
-            "actor_early_stop_epoch": actor_early_stop_epoch,
-            "actor_early_stop_minibatch": actor_early_stop_minibatch,
-            "actor_early_stop_approx_kl": actor_early_stop_approx_kl,
             "actor_grad_norm_mean": float(np.mean(actor_grad_norms)) if actor_grad_norms else 0.0,
             "actor_grad_norm_max": float(np.max(actor_grad_norms)) if actor_grad_norms else 0.0,
             "critic_grad_norm_mean": float(np.mean(critic_grad_norms)),
@@ -1306,7 +1075,6 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.logger.record("train/approx_kl", approximate_kl_mean)
         self.logger.record("train/clip_fraction", clip_fraction_mean)
         self.logger.record("train/actor_optimizer_steps", actor_optimizer_steps_completed)
-        self.logger.record("train/actor_early_stop", int(actor_early_stop_triggered))
         self.logger.record("train/explained_variance", value_statistics_post_update["explained_variance"])
         print(
             f"Formal update {update}: policy_gradient_loss={policy_gradient_loss:.6f}, value_loss={value_loss_mean:.6f}, "

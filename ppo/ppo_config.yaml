@@ -22,6 +22,9 @@ ordinary_startpoint_count: 50
 ordinary_interval_index: 15
 ordinary_speed_scales: [0.5, 0.6, 0.7, 0.8]
 ordinary_startpoint_min_distance: 1.0
+# Research-only ordinary sampling weight. null keeps the production uniform
+# queue; 0.6 reproduces the retained off-line-fast reweighting experiment.
+ordinary_offline_fast_fraction: null
 
 # Collision Scenario Generation
 collision_startpoint_count: 100
@@ -29,7 +32,6 @@ collision_interval_indices: [8, 10, 12, 15]
 collision_speed_scales: [0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85]
 collision_startpoint_min_distance: 1.0
 
-# Boundary-aware hard-neighbor cache. The current Austin grid generates at
-# most 22 candidates in one (ego start, opponent raceline) family, so this cap
-# does not discard any current candidate and only guards future maps/configs.
-hard_neighbor_max_candidates_per_family: 24
+# Front-corridor temporal exploration gate. The 1.0 m arm lost the same-line
+# benefit; 2.0 m is the retained setting. This does not affect baseline mode.
+front_corridor_gate_maximum_gap_m: 2.0

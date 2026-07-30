@@ -37,7 +37,7 @@ Independent oracle
 Parts 3 and 4 are a self-contained geometry and reward implementation, migrated
 from the retired standalone Post-pass shadow probe. It **deliberately imports
 neither ``ppo`` nor the simulator**, including its own SAT/point-segment
-``rectangle_clearance`` rather than ``ppo.geometry``'s. That independence is the
+``rectangle_clearance`` rather than the production reward module's. That independence is the
 entire point: it exists to cross-check a production-side implementation, and
 cross-checking against the code under test proves nothing.
 
@@ -554,7 +554,7 @@ def _separating_axis_exists(first: np.ndarray, second: np.ndarray) -> bool:
 def rectangle_clearance(first: np.ndarray, second: np.ndarray) -> float:
     """Exact OBB surface distance, zero at contact or overlap.
 
-    Independent of ``ppo.geometry`` on purpose: this is the oracle side of a
+    Independent of the production reward geometry on purpose: this is the oracle side of a
     cross-check, so it must not share code with the implementation under test.
     """
 

@@ -13,7 +13,6 @@ from demonstration import setup_opp_planner
 from ppo.reward import ProgressProjector
 from utils import *
 
-
 def collision_scope_stops_episode(collision_scope, ego_collision, opponent_collision):
     if collision_scope == "legacy":
         return bool(ego_collision or opponent_collision)
