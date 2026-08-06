@@ -15,6 +15,10 @@
 - 除非用户明确重新授权，保持 actor 网络、输入接口和部署方式不变。
 - 除非用户明确重新授权，采用单阶段 PPO；不把 imitation、蒸馏或二次微调混入
   PPO 单变量实验。
+- 当前研究合同固定为 **只在 Austin 训练**。Hockenheim、MoscowRaceway 和
+  Nuerburgring 只用于测试泛化，不得进入训练场景、collision cache、课程、阈值设计、
+  checkpoint 选择或逐地图调参。multi-map PPO 当前被用户明确禁止；只有用户重新定义
+  研究问题并明确授权后才能讨论，不能把产品便利性当作默认授权。
 
 ## 2. 实验设计
 
@@ -118,6 +122,22 @@ actor 热启动只加载 actor 权重，critic、optimizer、update计数、RNG�
 这些细节记录在 `eval_manifest.json`，不全部编码进目录名。评估协议发生实质变化时，
 必须使用新的 `PANEL_ID`，不能继续沿用旧名称。
 
+### 4.0 地图的评测合同与"未见地图"的正确做法
+
+现有双车评测与 privileged boundary 要求每张地图同时具备 `raceline0/1/2.csv`、
+`lane0/1/2.csv` 与 map PNG/YAML。2026-08-06 实测：`f1tenth_racetracks/` 下 30 个赛道目录
+中**只有 Austin、Hockenheim、MoscowRaceway、Nuerburgring 满足这套完整合同**；其余目录通常
+只有单条 `<Map>_raceline.csv`，不能直接运行三 raceline 协议。因此"任选 1--3 张未使用地图
+再评一次"不能按现状直接执行。
+
+由此得到三条边界：
+
+1. 如果四图就是实际部署范围，额外的未见地图确认不是 production 切换的必要条件；
+2. 如果要对外声称 unseen-map 泛化，必须先用 `f1tenth_racetracks/generate_raceline.py`
+   生成并验证至少一张新地图的三 raceline、三 lane 和评测合同，**封存后只评一次**
+   BC/候选模型，评完不得再调参；
+3. 新 startpoint/interval panel 只能作为场景鲁棒性确认，**不得冒充新地图泛化**。
+
 ### 4.1 Panel 的角色
 
 每个 panel 在一次实验中承担哪种角色，必须在预注册时写清，事后不得更换：
@@ -146,7 +166,8 @@ opp-wall单列，并报告配对身份变化；更严格的改进目标和checkp
 ### 4.2 评估要求
 
 - 正式评测固定使用 CUDA/GPU；不要为同一模型重复运行 CPU 对照，也不能将 CPU 与 CUDA
-  结果配对。若 CUDA 不可用则停止并修复运行环境，不静默退回 CPU。
+  结果配对。若 CUDA 不可用则停止并修复运行环境，不静默退回 CPU。正式manifest必须显式
+  记录`device=cuda`和collision scope；缺失device的历史包只能作为待确认历史证据。
 - 对照组和实验组使用完全相同的 panel。
 - 保存每个 episode 的数值 trace。
 - 结论以固定场景的配对身份变化为主，同时报告总量。
@@ -161,6 +182,9 @@ opp-wall单列，并报告配对身份变化；更严格的改进目标和checkp
 - 训练 metrics 只用于解释学习过程，不能代替确定性 evaluation。
 - 正式 panel 必须检查预期 episode 数、唯一场景数、error 数、结果与 trace key
   一致性、数值有限性、collision marker 和 terminal row 合同。
+- 如果manifest通过外部`panel_file`定义场景身份，该panel输入必须与结果包一起长期保留；
+  不得留下指向已删除panel的manifest。确需清理时，应先把完整场景身份与生成协议迁入仍存的
+  规范panel，而不是只保留摘要计数。
 
 ### 4.3 多臂对照的 trace 命名
 

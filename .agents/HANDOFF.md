@@ -1,6 +1,6 @@
 # End2Race 当前 HANDOFF
 
-更新时间：2026-08-06（Asia/Singapore；BC四图ego-scope对照包补全，前向走廊时间相关速度探索U44通过四图配对验收）
+更新时间：2026-08-06（Asia/Singapore；四图碰撞身份与接触几何诊断完成，等待外部审查）
 
 ## 0. 文档职责和读取顺序
 
@@ -175,8 +175,28 @@ U35/U40/U45只用于收敛性记录。本文当前状态统一称其为`producti
   当前BC验收目标已由U44满足，而该方案会引入冻结teacher和第二actor loss，不再是纯PPO
   exploration。只有用户把目标提高为“保留Production U30超车同时保留U44安全”，并明确授权
   训练期策略保持目标时，才重开same-prefix teacher有效性、mask覆盖和fixed-beta虚拟更新预检。
-- **当前唯一未决是产品选择，不是新实验：**安全优先则将U44提升为production；
-  优先现有最高超车数则保留U30。在用户明确选择前不改production路径或默认训练配置。
+- ordinary异线高速重加权比例0.6的U30在旧协议中因near400显著退化被否决；用户把正式
+  验收改为四图逐图BC下限后，现有U27--U30结果需要重新判读。四个checkpoint均逐图满足
+  BC线，U30为`Austin 16/368、Hockenheim 17/368、MoscowRaceway 17/389、
+  Nuerburgring 23/391`，四图合计`73/1516`。相对BC的四图配对为collision
+  `129→73`（removed/created `84/28`，`p=1.11e-7`），overtake `1445→1516`
+  （lost/gained `26/97`，`p=7.97e-11`）。它不是相对U44的Pareto改进：相对U44为
+  `+11 collisions / +38 overtakes`，collision removed/created `37/48`（`p=0.278`），
+  overtake lost/gained `41/79`（`p=6.67e-4`）。旧near400仍为`64/302`，明显差于
+  Production U30的`28/325`和U44的`37/288`。
+- 上述重加权结果由完整600-trace重建包支持，四图场景身份与BC/U44逐图一致，但旧manifest
+  没有记录CUDA device和顶层collision scope，因此它现在是**计数与配对已验证、正式CUDA
+  provenance待确认的产品候选**，不能直接取代已完成CUDA正式验收的U44。
+- **当前未决是三档产品取舍，不是新训练：**四图安全优先选U44（`62/1478`）；四图超车
+  优先且接受中间安全点时，先对重加权U30做一次固定CUDA四图确认（当前`73/1516`）；Austin
+  主场或贴身成功能力优先则保留Production U30（headline `94/1508`，near400 `28/325`）。
+  在用户明确选择前不改production路径或默认训练配置，不启动K25、reference-KL或新探索臂。
+- 用户把更高目标明确为四图`collision < 40`且`overtake > 1500`，同时规定**训练只能使用
+  Austin**；Hockenheim、MoscowRaceway和Nuerburgring只允许测试泛化，禁止multi-map PPO。
+  §9.9和`ANALYSIS.md` §28表明现有结果不是物理/actor容量上限，而是当前Austin-only PPO的
+  经验前沿：U44主要保留same-line安全，重加权U30主要保留off-line-fast超车，两者修复大量
+  BC碰撞同时各自新造约二十余次碰撞。当前不授权继续扫重加权比例、hold、std、gate或updates；
+  若要追求新目标，先审查§28提出的Austin-only相位可分性诊断，再决定是否存在合法新训练轴。
 
 - Production U30 固定面板基线：
 
@@ -189,9 +209,10 @@ U35/U40/U45只用于收敛性记录。本文当前状态统一称其为`producti
 
 Austin600、near400和hard73都有production逐episode结果。三张跨地图的历史canonical GPU
 trace在旧评估器搬移缺陷触发后已不可用；一次性CUDA结果包曾复现上表数值，但不含trace且已在
-文档固化后清理。因此不能把现存跨地图目录称为规范结果包；但当前正式最低对照是
-canonical BC，不是Production U30。BC四图逐episode包与U44配对现已完成；只有未来要宣称
-“超过Production U30”时，才需要fresh重评Production四图并保存trace。
+文档固化后清理。现存Hockenheim package未记录device、没有trace，且其`26/355`与已记录CUDA
+`26/356`不一致；MoscowRaceway和Nuerburgring当前没有保留结果包。因此不能把现存跨地图目录
+称为规范CUDA结果包。当前正式最低对照是canonical BC，不是Production U30；只有未来要宣称
+“超过Production U30”或做正式U30配对时，才fresh重评Production四图并保存trace。
 near400 与 hard73 的包是 2026-07-30 清理后用
 `scripts/evaluate_scenario_panel.py` 重新评估补齐的：清理删掉了旧的 near400 trace 目录，
 而这两个面板此前没有 production 侧的规范包。重评精确复现了上表数字
@@ -201,16 +222,18 @@ near400 与 hard73 的包是 2026-07-30 清理后用
   opp-wall 1）、overtake 339、follow 228。历史 `22/344/234` 来自旧起点公式，
   不能与当前 production U30 的 `14/366/220` 配对。
 - 目前最重要的正面机制发现：
-  时间相关和走廊门控探索能显著改善 same-line 跟车碰撞；失败不是“没有学会”，
-  而是共享 actor 在 off-line 状态产生新的速度/安全代价。
+  时间相关和走廊门控探索能显著改善same-line跟车碰撞；同时可观测到off-line状态出现新的
+  速度/安全代价。门在off-line几乎不触发，所以这是门外的间接学习迁移，而不是直接误触发；
+  但其精确优化机制尚未识别。
 - 目前最重要的负面结论：
   继续加 reward 剂量、加困难池、加全局探索幅度、把走廊门控时间相关探索延长到
   45 updates，或重加权
-  ordinary 异线高速，都没有得到同时通过 Austin、near 和泛化要求的单一模型。
-- 2026-08-05无训练审计进一步定位了失败迁移：same-line安全偏好与off-line/near行为保持
-  偏好的冲突主要集中在共享output head，而不是首先表现为GRU层冲突。严格
-  counterfactual改善子集上，S-O/S-N output-head cosine为`-0.962/-0.959`，O-N为`+0.998`；
-  当前证据优先支持隔离输出映射/优化干扰，不支持先增加actor输入或重开critic/reward。
+  ordinary 异线高速，都没有得到同时通过**旧Austin+near+泛化协议**的单一模型；该历史
+  结论不等于它们在当前四图BC最低线下仍无资格，重判见上文和`ANALYSIS.md` §26--§27。
+- 2026-08-05人工成功动作偏好审计在共享output head上得到S-O/S-N cosine
+  `-0.962/-0.959`；但2026-08-06 fresh真实PPO rollout复核没有稳定复现该冲突，实际走廊
+  探索的U10/U20/U30 aggregate cosine为`+0.663/+0.622/-0.186`。因此人工偏好结果只能作为
+  局部动作方向描述，不能据此隔离output head或训练梯度投影；当前迁移机制仍未定位。
 - Oracle 诊断证明残余碰撞在动作接口上可解，但使用未来碰撞时刻和离线搜索；
   它不是模型成绩，不允许作为 runtime shield 或部署后处理。
 
@@ -994,14 +1017,14 @@ steering修正必要20，另有91条在固定1.5秒干预库下未解决；标�
 - 线性探针没有建立hidden的稳定优势。全部有效场景的减速标签中，group-held-out AUROC
   中位数为observation `0.811`、hidden `0.695`；O+N的production动作标签为`0.614/0.603`，
   分组切分区间很宽。hidden的窗口预测更平稳，但不能据此判定输入充分或缺失。
-- 梯度冲突结论稳定。全部cohort的S-O/S-N output-head cosine为`-0.967/-0.971`；只保留
-  full-window counterfactual真正改善结局的`36/20/17`条S/O/N后仍为`-0.962/-0.959`，
-  而O-N为`+0.998`。最后steering/speed行同样近乎反向；GRU冲突较弱。
+- 人工成功动作偏好梯度在全部cohort上的S-O/S-N output-head cosine为`-0.967/-0.971`；
+  只保留full-window counterfactual真正改善结局的`36/20/17`条S/O/N后仍为
+  `-0.962/-0.959`，而O-N为`+0.998`。这描述固定actor上的局部动作偏好，不是历史PPO、
+  Adam或fresh PPO rollout梯度；§9.7已经否决将它外推成稳定优化冲突。
 
-因此当前下一步边界是：保持361D输入、现有reward和critic，不再用强度旋钮修复；只有能
-隔离same-line与O/N输出映射或优化更新的新控制才值得进入训练。Advantage/credit审计本轮
-没有触发，也没有证明GAE正确；若先消除output-head冲突后仍失败，或新鲜配对rollout出现
-动作收益与advantage符号不一致，再执行该子审计。
+因此本节不再提供“隔离same-line与O/N输出映射”的训练准入依据。保持361D输入、现有reward
+和critic；Advantage/credit审计本轮没有触发，也没有证明GAE正确。只有新的任务目标或新的
+fresh PPO证据先稳定识别可干预机制，才重新设计训练控制。
 
 本轮按用户要求只保留Markdown结果与`.agents`权威记录；一次性脚本和分析产物已删除。
 不得仅为“复核已有结论”重新生成analysis结果树或复活这些脚本；只有输入模型、面板、
@@ -1050,6 +1073,43 @@ ordinary role净亏，当前50/50混合把它算成正收益；把collision role
 因此不把role配比写成已识别根因，也不运行25% collision-role臂。只有在seed 42、多个预先
 固定checkpoint上用scenario-identity匹配或等价固定队列证明role收益符号稳定，并给出不改变
 recurrent minibatch语义的单变量实现，才可重开。用户不要求多seed，不为此增加seed sweep。
+本轮transition-level临时张量已经按清理决定删除；这不推翻已写入本文的结论，但意味着未来
+若满足重开条件，必须fresh采样新的transition/advantage数据，不能把重开描述为零成本历史重放。
+
+### 9.9 四图碰撞身份与接触几何诊断（2026-08-06，无训练）
+
+使用BC、前向走廊时间相关速度探索U44和ordinary异线高速重加权U30的四图同场景结果与
+numeric traces复算；没有训练、没有新checkpoint。Production U30跨地图完整trace未保留，
+只在regime总量表中使用已记录headline，不参与本节碰撞角和身份Venn复算。
+
+| 模型 | same-line | off-line | 四图总collision | 四图overtake |
+|---|---:|---:|---:|---:|
+| BC | 64 | 65 | 129 | 1445 |
+| Production U30（headline） | 74 | 20 | 94 | 1508 |
+| 前向走廊时间相关速度探索U44 | **21** | 41 | **62** | 1478 |
+| ordinary异线高速重加权U30 | 35 | 38 | 73 | **1516** |
+
+U44相对BC消除94次、继承35次并新造27次collision；重加权U30消除84次、继承45次并
+新造28次。BC的129次collision中仅18个场景在三者上都碰撞；两个PPO模型合计新造48个
+不同场景，仅7个被两者共同新造。结论是**失败身份迁移**，不是剩余一小批不可解硬例。
+
+新增ego-opponent碰撞的几何高度一致：U44为23次，其中21次相对yaw不超过30度、21次对手
+位于ego侧方或后方，相对yaw中位`4.54°`；重加权U30为25次，全部相对yaw不超过30度、22次
+位于侧方或后方，中位`4.55°`。两臂新增ego-wall仅`4/3`次。这里的方位是碰撞帧对手中心在
+ego车体系中的bearing，不是接触法向；能支持的结论是新增失败以平行侧擦/超车后侧后接触为主，
+不能把它写成精确撞击角。
+
+按三个粗regime事后拼接最佳现有actor，只能到约`58 collision / 1527 overtake`，仍过不了
+`<40`目标；按每个episode未来结局事后选择U44或重加权U30可到`25/1557`。后者不可部署，
+但证明目标行为已分散存在于同结构actor中。当前最精确的机制判断是：单个actor没有学会在
+同一regime内部按“对手在前/并排/刚落后、净空是否收缩”选择正确的纵横向动作；精确优化器
+根因仍未知，§9.7已经否决把它简化成稳定output-head梯度冲突。
+
+停止/重开规则：不据此直接训练新臂；不再用粗regime权重或探索剂量旋钮追`<40/>1500`。
+只有Austin-only、按startpoint分组的离线诊断能在仍有操控权的提前窗口，用actor可见历史
+稳定区分“成功通过”与“未来平行侧后碰撞”，才重开一个保持actor结构、无runtime shield、
+不使用测试地图训练的条件策略学习设计；若不能区分，应把当前361D观测合同视为候选瓶颈，
+而不是继续扫PPO参数。
 
 ---
 
@@ -1068,9 +1128,11 @@ recurrent minibatch语义的单变量实现，才可重开。用户不要求多s
 7. 0.40→0.15退火；
 8. 前向走廊门控时间相关速度噪声的1米/2米门宽；
 9. 前向走廊门控时间相关速度噪声延长到45 updates；
-10. ordinary异线高速重加权比例0.6或继续增加异线高速权重；
+10. 不再训练ordinary异线高速重加权比例0.6或继续增加异线高速权重；现有固定U30仅按§1.3
+    与`ANALYSIS.md` §27作为产品候选重判，不能把候选资格误写成授权继续扫权重；
 11. 在没有新证据时先扩actor输入、改critic/reward，或重复一般物理量可观测性probe；
 12. 依据人工偏好梯度直接训练same-line/offline-fast对称梯度投影。
+13. multi-map PPO；用户明确规定仅在Austin训练，其余三图只用于泛化测试。
 
 ### 10.2 未完成但不是高优先
 
@@ -1147,11 +1209,14 @@ pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[e]val_multiagent\.py|[e]valuate\.sh' || tr
 
 当前交接终点：
 
-> 架构与实验接口已经覆盖reward、pool、采样和探索多个方向。在用户最新“四图都不差于
-> canonical BC”的验收线下，前向走廊门控时间相关速度噪声U44已通过完整四图配对：
-> collision `129→62`（removed/created `94/27`，`p=7.14e-10`），overtake `1445→1478`
-> （lost/gained `41/74`，`p=0.00269`）；U45作为相邻通过checkpoint支持稳定性。U44现为
-> 正式接受的四图BC验收候选，不再启动reference-KL或新探索训练。Production部署别名暂时
-> 仍指向U30，直到用户明确切换。当前活动训练代码仍只保留逐步独立速度高斯噪声、全局时间相关
-> 速度噪声、前向走廊门控时间相关速度噪声和默认关闭的ordinary异线高速重加权。
-> 当前没有未完成run。
+> 架构与实验接口已经覆盖reward、pool、采样和探索多个方向。当前不启动新训练。正式CUDA
+> 四图BC验收已经确认前向走廊门控时间相关速度噪声U44为安全候选：`62/1478`，相对BC
+> collision removed/created `94/27`（`p=7.14e-10`），overtake lost/gained `41/74`
+> （`p=0.00269`）。旧ordinary异线高速重加权U30在新口径下计数为`73/1516`，相对BC也
+> 显著双轴改善，但其历史package未记录CUDA device，故只列为待一次固定CUDA确认的高超车
+> 候选；旧near400 `64/302`仍是明确副作用。碰撞身份与姿态复算进一步表明当前是失败迁移：
+> U44/RW30分别新造`27/28`次，新增车辆碰撞绝大多数为相对yaw约`4.5°`的平行侧后接触。
+> 粗regime最优拼接只有`58/1527`，而不可部署的逐episode事后上界为`25/1557`，所以更高目标
+> 缺的是regime内部的状态条件选择，不是继续增加探索/采样剂量。用户明确禁止multi-map PPO；
+> 训练只可使用Austin。Production部署别名暂时仍指向U30，当前没有未完成run，等待其他agent
+> 和GPT Pro审查§9.9/`ANALYSIS.md` §28后再决定是否只做Austin离线可分性诊断。
