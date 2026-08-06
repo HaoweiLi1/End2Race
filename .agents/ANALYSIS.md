@@ -1903,7 +1903,8 @@ K=50 的实现与结果；K10/K25 没有运行产物，当前结论只能是“�
 ### 18.5 停止规则和未完成问题
 
 本节是实验完成时使用的历史多面板停止规则。2026-08-06之后的新实验验收以§25.6为准：
-只由Austin600接受或否决；这里的near400/跨地图要求不再作为当前准入门。
+Austin600与三张跨地图各600都必须正式评估，Austin600和crossmap1800都具有验收权；near400
+和hard子集只作机制诊断。这里的旧阈值不自动成为新实验阈值，仍须逐实验预注册。
 
 停止规则：
 
@@ -3097,11 +3098,176 @@ episode长度、完成数、状态访问、GAE和队列推进都会变化，不�
 25% collision-role训练。** 本审计没有否决所有role-sampling研究，只否决以单个fresh U30
 episode-return切片作为准入依据。
 
-用户当前把**Austin600设为唯一模型验收指标**。near400、hard73和三张跨地图只保留历史
-机制/迁移诊断意义，不再单独否决新模型；历史章节中的多面板判据仍用于解释当时为什么作出
-历史决策，不再约束后续实验。
+用户最新把**Austin、Hockenheim、MoscowRaceway和Nuerburgring各600 episode**设为默认
+正式验收集合。Austin600与三张跨地图合计crossmap1800都具有验收权，三张跨地图还必须逐图
+报告。最低验收线是canonical BC：Austin、Hockenheim、MoscowRaceway和Nuerburgring的
+当前ego-scope `collision/overtake`分别为`33/339、27/343、43/373、26/390`，候选在每张地图上都必须满足
+ego collision不高于BC且overtake不低于BC，opp-wall单列；Production U30继续作为当前部署模型和机制/reference
+对照，但不是最低验收线。near400和hard73只保留机制/特化诊断意义。三张跨地图已经参与走廊探索设计，因此是
+当前开发验收集，不得称为从未参与设计的最终泛化留出。历史章节中的旧多面板阈值仍只用于
+解释当时为什么作出历史决策；新实验只需为高于BC最低线的额外目标和checkpoint band重新预注册。
+
+该口径改变后应先重判已有模型，不应直接启动reference-KL新训练。前向走廊门控时间相关速度
+噪声U44逐图为`18/344、16/347、15/390、13/397`，U45逐图为
+`17/345、20/344、11/391、13/396`，顺序均为Austin、Hockenheim、MoscowRaceway、
+Nuerburgring的`ego collision/overtake`。U44与U45都严格通过四张地图各自的BC计数下限。
+四图合计U44为`62/1478`、U45为`61/1476`，当前ego-scope BC为`129/1445`。旧Austin trace的
+`ol0_e629_o638_s0.8`在4.09s因opponent-wall被legacy口径截断；2026-08-06的单场景CUDA
+ego-scope补跑显示episode继续后在4.83s发生ego-opponent collision，所以Austin仍为`33/339`。
+Hockenheim的4个与Nuerburgring的2个opponent-wall event均已在8.01s终点完整记录且均为
+overtake；它们已包含在`343/390`中，不得再重复相加。2026-08-06已补全BC四图
+规范`results_multi.json`/manifest并完成U44逐episode配对；结果见§26。U44已通过当前
+四图BC验收线，因此不启动训练期reference-policy regularization。
 
 重开必须同时满足：seed 42下多个预先固定checkpoint使用严格scenario-identity匹配或等价固定
 队列，role收益方向稳定；分析对象是transition advantage而非只看episode return；实现能改变
 role采样而不改变recurrent minibatch/seed语义，或明确把这些混淆预注册为多变量实验。否则保持
 50/50 production合同，不继续扫role比例。
+
+## 26. 前向走廊时间相关速度探索U44四图BC验收（2026-08-06）
+
+本节数值单位均为`ego collision / overtake`。
+
+| 模型 | 训练身份 | 四图合计 | 口径 | 判决 |
+|---|---|---:|---|---|
+| Canonical BC | 原始End2Race actor | `129 / 1445` | 正式ego-scope对照 | 每图最低验收线 |
+| **Production U30** | BC fresh-start，逐步独立速度噪声，30 updates | `94 / 1508` | 历史headline；跨图缺完整配对包 | 当前production，不是本次最低对照 |
+| 前向走廊时间相关速度探索 U44 | BC fresh-start，corridor-temporal，该轨迹的update 44 | `62 / 1478` | 完整四图配对 | **接受为四图BC验收候选** |
+| 同轨迹 U45 | 同一fresh 45-update run的终点 | `61 / 1476` | 完整四图计数 | 只作相邻checkpoint稳定性支持 |
+
+U44是历史旧称`CT-v2`的轨迹checkpoint，**不是Production U30续训到update 44**。
+两条轨迹都从`pretrained/end2race.pth`fresh-start；前者run config的`num_updates=45`、
+`speed_exploration_mode=corridor_temporal`，后者用baseline逐步独立噪声。U44相对Production U30
+同时差了exploration方式与update数，所以不能把`94/1508→62/1478`写成单变量因果效应；
+本次判决只问U44是否通过用户定义的BC绝对下限。
+
+### 26.1 为什么只补跑一个BC episode
+
+BC四图各保留600条numeric trace，U44四图各保留600条trace和逐episode result，两侧
+scenario key逐图完全相等。绝大多数BC trace可直接按当前`collision_scope=ego`重建终局。
+唯一例外是Austin `ol0_e629_o638_s0.8`：旧trace在4.09s因opponent-wall被legacy口径
+提前截断，截断前终局不能代表ego-scope下的8s结果。因此只对该场景使用canonical BC、
+CUDA、零噪声和ego scope fresh补跑：opponent撞墙后episode继续，ego在4.83s与opponent
+碰撞。Austin总结果仍是`33 collisions / 339 overtakes`，但该场景的子类从`opp-wall`
+改为`ego-opp`。
+
+Hockenheim的4个和Nuerburgring的2个opponent-wall event均在8.01s终点出现，旧trace已保留
+完整终局，且六个均已按最终relative progress计为overtake。因此正式BC四图为：
+
+| 地图 | collision | overtake | ego-opp | ego-wall | opponent-wall event |
+|---|---:|---:|---:|---:|---:|
+| Austin | 33 | 339 | 28 | 5 | 1 |
+| Hockenheim | 27 | 343 | 27 | 0 | 4 |
+| MoscowRaceway | 43 | 373 | 43 | 0 | 0 |
+| Nuerburgring | 26 | 390 | 25 | 1 | 2 |
+| 四图合计 | 129 | 1445 | 123 | 6 | 7 |
+
+重建前先用Austin的599个未变episode对旧评估器直接result交叉检查：outcome全部一致，
+速度/距离/动作等指标最大浮点差小于`1e-6`；快速进度投影与production
+`ProgressProjector`sampling cross-check的最大差为0。只有上述单episode按fresh ego-scope结果
+改变。
+
+### 26.2 配对结果
+
+| 地图 | BC→U44 collision | removed / created | exact p | BC→U44 overtake | lost / gained | exact p |
+|---|---:|---:|---:|---:|---:|---:|
+| Austin | `33→18` | `24 / 9` | `0.01353099` | `339→344` | `11 / 16` | `0.44206834` |
+| Hockenheim | `27→16` | `18 / 7` | `0.04328525` | `343→347` | `14 / 18` | `0.59661490` |
+| MoscowRaceway | `43→15` | `37 / 9` | `4.0560e-5` | `373→390` | `12 / 29` | `0.01150779` |
+| Nuerburgring | `26→13` | `15 / 2` | `0.00234985` | `390→397` | `4 / 11` | `0.11846924` |
+| 四图合计 | `129→62` | `94 / 27` | `7.1351e-10` | `1445→1478` | `41 / 74` | `0.00268570` |
+
+碰撞子型BC→U44逐图为：ego-opp `28→13、27→15、43→15、25→13`；ego-wall
+`5→5、0→1、0→0、1→0`。opponent-wall event保持`1/4/0/2`不变。四图池化结果同时
+显著降低ego collision和增加overtake，所以U44对BC不是“用放弃超车换安全”。
+
+U44新造collision identity（安全副作用守门集）：
+
+- Austin：`ol0_e1090_o1088_s0.8`、`ol0_e1425_o1428_s0.7`、`ol0_e1509_o1500_s0.7`、
+  `ol0_e461_o472_s0.5`、`ol1_e2012_o2027_s0.7`、`ol1_e377_o392_s0.5`、
+  `ol1_e629_o644_s0.6`、`ol2_e2054_o2088_s0.8`、`ol2_e461_o480_s0.6`。
+- Hockenheim：`ol0_e1150_o1152_s0.7`、`ol0_e1545_o1545_s0.6`、`ol1_e395_o410_s0.7`、
+  `ol2_e1222_o1239_s0.8`、`ol2_e395_o408_s0.8`、`ol2_e431_o444_s0.8`、
+  `ol2_e719_o743_s0.8`。
+- MoscowRaceway：`ol0_e1223_o1227_s0.8`、`ol0_e1319_o1330_s0.7`、`ol0_e1577_o1574_s0.8`、
+  `ol0_e193_o208_s0.7`、`ol0_e97_o110_s0.8`、`ol1_e1480_o1495_s0.5`、
+  `ol1_e1577_o1592_s0.6`、`ol1_e483_o498_s0.5`、`ol2_e740_o760_s0.8`。
+- Nuerburgring：`ol0_e1961_o1956_s0.8`、`ol0_e2094_o2089_s0.5`。
+
+U44丢失overtake identity（性能副作用守门集）：
+
+- Austin：`ol0_e1090_o1088_s0.8`、`ol0_e1425_o1428_s0.7`、`ol0_e1509_o1500_s0.7`、
+  `ol0_e377_o383_s0.7`、`ol0_e461_o472_s0.5`、`ol0_e755_o759_s0.7`、
+  `ol2_e1174_o1210_s0.8`、`ol2_e1509_o1547_s0.8`、`ol2_e2054_o2088_s0.8`、
+  `ol2_e461_o480_s0.6`、`ol2_e838_o865_s0.8`。
+- Hockenheim：`ol0_e1150_o1152_s0.7`、`ol0_e1150_o1152_s0.8`、`ol0_e1545_o1545_s0.6`、
+  `ol1_e431_o446_s0.6`、`ol1_e755_o770_s0.5`、`ol2_e1006_o1028_s0.8`、
+  `ol2_e1042_o1067_s0.8`、`ol2_e1222_o1239_s0.8`、`ol2_e1545_o1572_s0.8`、
+  `ol2_e1689_o1719_s0.8`、`ol2_e1725_o1755_s0.8`、`ol2_e395_o408_s0.8`、
+  `ol2_e431_o444_s0.8`、`ol2_e719_o743_s0.8`。
+- MoscowRaceway：`ol0_e1223_o1227_s0.8`、`ol0_e1255_o1259_s0.8`、`ol0_e1319_o1330_s0.7`、
+  `ol0_e1577_o1574_s0.8`、`ol0_e193_o208_s0.7`、`ol0_e97_o110_s0.8`、
+  `ol1_e1158_o1173_s0.5`、`ol1_e1480_o1495_s0.5`、`ol1_e1577_o1592_s0.6`、
+  `ol1_e386_o401_s0.7`、`ol2_e322_o339_s0.8`、`ol2_e740_o760_s0.8`。
+- Nuerburgring：`ol0_e1025_o1031_s0.8`、`ol0_e1961_o1956_s0.8`、
+  `ol0_e2094_o2089_s0.5`、`ol1_e446_o461_s0.6`。
+
+### 26.3 完整性与checkpoint判决
+
+BC和U44共8个四图包全部通过：每包600 unique episode、0 errors、result/trace key精确相等、
+全数值有限、ego-opp/ego-wall marker与outcome一致、碰撞子型互斥、terminal row恰好一行且
+`action_applied=false`只出现在该行。
+
+四图后期band：
+
+| update | Austin | Hockenheim | MoscowRaceway | Nuerburgring | 四图合计 |
+|---:|---:|---:|---:|---:|---:|
+| 42 | `20/332` | `17/336` | `15/385` | `14/396` | `66/1449` |
+| 43 | `20/335` | `18/345` | `10/391` | `15/394` | `63/1465` |
+| 44 | `18/344` | `16/347` | `15/390` | `13/397` | `62/1478` |
+| 45 | `17/345` | `20/344` | `11/391` | `13/396` | `61/1476` |
+
+U42/U43的Austin overtake低于BC `339`，U44/U45则是相邻两个逐图通过checkpoint。
+U44是在配对前已固定的验收候选，所以正式接受U44，把U45作为后期稳定性支持，
+不事后按总collision的`62 vs 61`重选单点。
+
+**判决：U44通过用户当前“四图都不差于canonical BC”的正式验收。** 它不是相对
+Production U30的Pareto改进：历史headline合计下，U30约为`94 collisions / 1508 overtakes`，
+U44为`62 / 1478`，即更安全但少30次超车。当前用户明确的最低对照是BC，所以U44可接受；
+若未来把目标提高为“不差于Production U30”，必须先fresh重建U30四图完整trace再配对，
+不得用上述headline直接声称显著性。当前不启动reference-KL、hold/gap/std继续扫描或其他
+新训练。
+
+旧near400诊断面板上的确定性结果是Production U30 `28 collisions / 325 overtakes`、U44
+`37 / 288`。这不是当前正式验收panel，不能否决已经完成的四图BC判决；但它仍是已观测到的
+副作用边界：U44在U30原本贴身但成功的困难场景上多9次碰撞、少37次超车。因此“四图通过”
+只能解释为达到用户当前BC下限，不能扩大为“所有自然/近失分布均改善”或“全面优于U30”。
+若未来目标改为保留U30性能，near400应恢复为机制守门，与fresh四图U30配对结果一起使用。
+
+### 26.4 为什么当前结束exploration，以及什么情况才重开
+
+前向走廊时间相关速度探索本身已经完成了它的机制目标：训练期只在对手位于前方
+同走廊、表面纵向gap在`(0, 2m)`、对手相对ego raceline横向偏移不超过0.25m且OBB有正横向
+重叠时，把同一速度高斯残差保持50步（0.5s）。噪声边际std仍为0.15，门外仍逐步独立采样；
+确定性eval时不存在该噪声或运行时shield，最终actor仍是原End2Race 361D输入和12-key
+checkpoint。因此这条线是纯训练期exploration改动，不是reward、imitation或部署后处理。
+
+GPT Pro后续提出的U30 reference-policy regularization用冻结Production U30在异线高速状态上约束
+student。该提案的目标是将U44的same-line安全与U30的off-line超车合并到一个actor，但它：
+
+1. 没有进入正式训练，所以不能写成已证伪；
+2. 依赖预先训练的U30 teacher和第二actor objective，属于“单阶段PPO + 训练期策略保持”，
+   不是纯PPO exploration；
+3. 原本需要failure coverage、same-prefix teacher validity和fixed-beta virtual update三项零训练
+   准入检查，但当前BC验收目标已由U44满足，这些检查与正式训练现在都是多余成本。
+
+因此本方向的状态是**当前目标下关闭，未被理论或实验永久否决**。只在以下条件同时满足时重开：
+
+- 任务目标明确提高为“不仅通过BC线，还要保留Production U30超车表现并保留U44安全收益”；
+- 用户明确允许冻结teacher和训练期辅助actor loss；
+- 先用同observation prefix证明U30在U44受损状态上是可靠teacher，mask覆盖真实损害而几乎不覆盖
+  same-line目标，一个预先固定的beta虚拟更新同时保留same-line PPO方向并降off-line reference KL。
+
+当前不需要任何新训练或新评测。只剩一个产品选择：若安全优先，将U44切换为production；
+若当前最高超车数优先，保持Production U30。在用户明确选择前，不改默认模型路径、训练参数或
+production登记。

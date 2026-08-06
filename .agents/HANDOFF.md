@@ -1,6 +1,6 @@
 # End2Race 当前 HANDOFF
 
-更新时间：2026-08-06（Asia/Singapore；fresh PPO梯度诊断、role-mix复核与CUDA评测协议收口）
+更新时间：2026-08-06（Asia/Singapore；BC四图ego-scope对照包补全，前向走廊时间相关速度探索U44通过四图配对验收）
 
 ## 0. 文档职责和读取顺序
 
@@ -115,21 +115,83 @@ U35/U40/U45只用于收敛性记录。本文当前状态统一称其为`producti
   作为默认关闭的研究工具保留。
 - Production speed exploration 保持逐步独立速度白噪声。条件白噪声放大、全局时间相关
   速度噪声、条件时间相关速度噪声、走廊门控时间相关速度噪声、延长训练和异线高速
-  重加权在历史多面板协议下均未通过。用户随后收口验收协议：后续模型接受/否决只看
-  **Austin600**；near400、hard73和跨地图只保留历史机制/迁移诊断意义，不再拥有否决权。
+  重加权在历史多面板协议下均未通过。用户最新明确：后续正式验收默认必须运行
+  **Austin、Hockenheim、MoscowRaceway和Nuerburgring各600 episode**；Austin600与
+  三张跨地图合计crossmap1800都具有正式验收权，三张跨地图也必须逐图报告。near400和
+  hard73只保留机制/特化诊断意义，不再拥有独立否决权。最低验收线是canonical BC：每张
+  正式地图的ego collision不得高于BC、overtake不得低于BC，opp-wall单列；Production U30仍是当前部署模型和
+  reference候选，但不是新模型必须逐项超过的最低线。
+- Canonical BC四图正式验收下限（当前`collision_scope=ego`口径）：
+
+| 地图 | ego collision | overtake |
+|---|---:|---:|
+| Austin | 33 | 339 |
+| Hockenheim | 27 | 343 |
+| MoscowRaceway | 43 | 373 |
+| Nuerburgring | 26 | 390 |
+| 三张跨地图合计 | 96 | 1106 |
+
+- 旧Austin trace中`ol0_e629_o638_s0.8`在4.09s因opponent-wall被legacy口径提前截断，
+  不能从该截断trace推断ego-scope终局。2026-08-06仅对该场景做CUDA ego-scope补跑：
+  opponent撞墙后episode继续，ego在4.83s发生ego-opponent collision，因此Austin仍为`33/339`，
+  只是碰撞子类从`opp-wall`改为`ego-opp`。Hockenheim的4个和Nuerburgring的2个
+  opponent-wall event均发生在8.01s终点，trace已包含完整终局且均为overtake；它们已在
+  `343/390`中，不得再重复相加。所以当前ego-scope四图总基线为`129 collisions / 1445 overtakes`。
+- 新四图BC下限使前向走廊门控时间相关速度噪声U44/U45重新进入复核，而不是产生新训练需求。
+  现有规范结果中的逐图`collision/overtake`为：U44 `Austin 18/344、Hockenheim 16/347、
+  MoscowRaceway 15/390、Nuerburgring 13/397`；U45为`17/345、20/344、11/391、13/396`。
+  U44与U45都逐图严格满足BC计数下限；U45的Hockenheim overtake `344 >= 343`。
+  这不推翻该实验在旧Austin+near协议下的历史否决，而是任务验收线改变后对同一结果的重新
+  判读。2026-08-06已补齐BC四图规范result/manifest并完成配对验收：
+
+| 地图 | BC→U44 collision | removed / created | collision p | BC→U44 overtake | lost / gained | overtake p |
+|---|---:|---:|---:|---:|---:|---:|
+| Austin | `33→18` | `24 / 9` | `0.0135` | `339→344` | `11 / 16` | `0.442` |
+| Hockenheim | `27→16` | `18 / 7` | `0.0433` | `343→347` | `14 / 18` | `0.597` |
+| MoscowRaceway | `43→15` | `37 / 9` | `4.06e-5` | `373→390` | `12 / 29` | `0.0115` |
+| Nuerburgring | `26→13` | `15 / 2` | `0.00235` | `390→397` | `4 / 11` | `0.118` |
+| 四图合计 | `129→62` | `94 / 27` | `7.14e-10` | `1445→1478` | `41 / 74` | `0.00269` |
+
+  BC→U44的ego-opp逐图为`28→13、27→15、43→15、25→13`，ego-wall为
+  `5→5、0→1、0→0、1→0`；opponent-wall event保持`1/4/0/2`不变。四图两侧均通过
+  600 unique、0 errors、finite trace、result/trace key精确相等、collision marker和terminal row合同。
+  后期band中U42/U43的Austin overtake为`332/335 < 339`，U44/U45则连续逐图通过BC线；
+  因此预先固定复核的U44现正式接受为**四图BC验收候选**，U45只作相邻checkpoint
+  稳定性支持，不事后改选单点。Production部署别名暂时仍为U30，直到用户明确切换；
+  不启动reference-KL或其他新训练。
+- 上述U44是历史旧称`CT-v2`的**前向走廊门控时间相关速度探索**轨迹的formal
+  update 44，不是Production U30续训。它从canonical BC fresh-start，该run预计45 updates；
+  与Production的核心差异是训练期在2m前向走廊内将同一速度噪声残差保持50步（0.5s），
+  speed std仍为0.15；确定性eval与部署actor结构不变。
+- 按现存headline合计，Production U30约为`94 collisions / 1508 overtakes`，U44为
+  `62 / 1478`。因此U44通过的是“四图都不差于canonical BC”，不是相对Production U30
+  的Pareto改进；它比U30少32次碰撞、也少30次超车。Production跨地图缺完整逐episode
+  规范包，这里只能作总量trade-off说明，不报配对显著性。
+- 旧near400诊断仍显示U44为`37 collisions / 288 overtakes`，Production U30为`28 / 325`。
+  near400按用户当前口径没有正式否决权，因此不推翻四图BC验收；但它明确说明旧协议下发现的
+  “贴身成功场景受损”副作用没有被证明消失。若将来把验收目标提高到Production级性能或近失
+  鲁棒性，这组`+9 collisions / -37 overtakes`必须重新成为守门依据，不能只引用四图总量。
+- GPT Pro提出的训练期U30 reference-policy regularization现在**停止而非实验否决**：
+  当前BC验收目标已由U44满足，而该方案会引入冻结teacher和第二actor loss，不再是纯PPO
+  exploration。只有用户把目标提高为“保留Production U30超车同时保留U44安全”，并明确授权
+  训练期策略保持目标时，才重开same-prefix teacher有效性、mask覆盖和fixed-beta虚拟更新预检。
+- **当前唯一未决是产品选择，不是新实验：**安全优先则将U44提升为production；
+  优先现有最高超车数则保留U30。在用户明确选择前不改production路径或默认训练配置。
+
 - Production U30 固定面板基线：
 
 | 面板 | collision | overtake | 角色 | production逐episode结果 |
 |---|---:|---:|---|---|
-| Austin600 | 14 | 366 | **当前唯一验收指标**；不是独立地图留出 | `update30/Austin/multiagents/` |
+| Austin600 | 14 | 366 | 正式验收；不是独立地图留出 | `update30/Austin/multiagents/` |
 | near400 | 28 | 325 | 历史贴身成功诊断；当前无否决权 | `update30/Austin/near400/` |
 | hard73 | 54 | 12 | 专门化诊断，不是验收门 | `update30/Austin/hard73/` |
-| 三张跨地图合计1800 | 80 | 1142 | 历史地图迁移诊断；当前无验收权 | `update30/<MAP>/multiagents/` |
+| 三张跨地图合计1800 | 80 | 1142 | 正式验收；必须同时逐图报告；已参与走廊探索设计，不是干净最终留出 | `update30/<MAP>/multiagents/` |
 
 Austin600、near400和hard73都有production逐episode结果。三张跨地图的历史canonical GPU
 trace在旧评估器搬移缺陷触发后已不可用；一次性CUDA结果包曾复现上表数值，但不含trace且已在
-文档固化后清理。因此不能把现存跨地图目录称为规范结果包；若未来重新启用该诊断，必须用CUDA
-fresh评估并直接保存完整trace，不能从旧路径重建。
+文档固化后清理。因此不能把现存跨地图目录称为规范结果包；但当前正式最低对照是
+canonical BC，不是Production U30。BC四图逐episode包与U44配对现已完成；只有未来要宣称
+“超过Production U30”时，才需要fresh重评Production四图并保存trace。
 near400 与 hard73 的包是 2026-07-30 清理后用
 `scripts/evaluate_scenario_panel.py` 重新评估补齐的：清理删掉了旧的 near400 trace 目录，
 而这两个面板此前没有 production 侧的规范包。重评精确复现了上表数字
@@ -216,6 +278,7 @@ SHA 的用途仅是确认评测模型身份、识别等价 checkpoint 和检测 
 | 全局时间相关速度噪声 U30 | `post-trained/ppo_global_temporal_speed_noise_0p15_hold50steps/update30/actor.pth` | `2920c30ff88dff78a61e2bd4afbeb1faf83f2c5d9c3a66b2d910049a34db2b91` |
 | 条件时间相关速度噪声 U30 | `post-trained/ppo_conditional_temporal_speed_noise_0p25_hold50steps/update30/actor.pth` | `28bb4aafe1a81d6041750c8f1eae6f087c005334401544a2a32b1f6096516390` |
 | 前向走廊门控时间相关速度噪声、2米门宽 U30 | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update30/actor.pth` | `b8ecc0a52bc01e521f1daff6abf2611091d5d33df2e5aef73a3b93f091b89182` |
+| **前向走廊门控时间相关速度噪声 U44，四图BC验收候选** | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update44/actor.pth` | `fb0c9895eb2ff004e414da09e4ee27675e825f0e6413a095377d66838e411bf7` |
 | 前向走廊门控时间相关速度噪声 U45 | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update45/actor.pth` | `305dfa8160a987e2b166d8ce548009cd667fa8cfdd0722880f43249ccb07295c` |
 | ordinary异线高速重加权、比例0.6 U30 | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps_ordinary_offline_fast_reweight_0p60/update30/actor.pth` | `4c10ff9f4e2e2f76afadb51e8f18f86173815c364da346ad07d88ebc1c29a341` |
 
@@ -1050,7 +1113,9 @@ Hard-neighbor 10%另行归档为“训练完成但晚期eval未完成、用户�
 5. 每次只改一个轴；若不得不多变量，预注册每个变化和不可分离的限制。
 6. 从canonical BC fresh-start，除非问题明确是checkpoint continuation。
 7. 不使用自动checkpoint选择器；预先固定update或报告完整checkpoint band。
-8. 当前验收只使用Austin600；其他历史面板如被运行，只能作机制诊断，不得推翻Austin600判决。
+8. 当前正式验收默认运行Austin、Hockenheim、MoscowRaceway和Nuerburgring各600 episode；
+   Austin600与crossmap1800都具有验收权且跨地图必须逐图报告；每图ego collision不得高于
+   canonical BC且overtake不得低于canonical BC，opp-wall单列。near400和hard子集只能作机制诊断。
 9. 同场景必须报告removed/created、lost/gained和配对p。
 10. 训练统计不能替代deterministic eval。
 11. output目录必须为空；禁止覆盖已有run。
@@ -1082,12 +1147,11 @@ pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[e]val_multiagent\.py|[e]valuate\.sh' || tr
 
 当前交接终点：
 
-> 架构与实验接口已经覆盖reward、pool、采样和探索多个方向；只有全局时间相关速度噪声和
-> 前向走廊门控时间相关速度噪声明确学到了目标same-line能力，但全部已测单模型配置都在
-> Austin或near守门上付出不可接受的off-line代价。Production保持production baseline U30
-> 与默认reward、pool和逐步独立速度高斯噪声。当前活动训练代码只保留逐步独立速度高斯
-> 噪声、全局时间相关速度噪声、前向走廊门控时间相关速度噪声，以及YAML控制的ordinary
-> 异线高速重加权；条件门控高方差逐步独立速度噪声、旧所需减速度门控时间相关速度噪声、
-> target-KL、退火及hard/outcome-aware源码已移除。清理后已通过55项reward回归、三种保留
-> 探索模式的policy/环境/VecEnv与tiny PPO formal-update smoke、479 cache严格加载，以及
-> ordinary重加权0.6的3000次精确配比与scheduler state round-trip。当前没有未完成run。
+> 架构与实验接口已经覆盖reward、pool、采样和探索多个方向。在用户最新“四图都不差于
+> canonical BC”的验收线下，前向走廊门控时间相关速度噪声U44已通过完整四图配对：
+> collision `129→62`（removed/created `94/27`，`p=7.14e-10`），overtake `1445→1478`
+> （lost/gained `41/74`，`p=0.00269`）；U45作为相邻通过checkpoint支持稳定性。U44现为
+> 正式接受的四图BC验收候选，不再启动reference-KL或新探索训练。Production部署别名暂时
+> 仍指向U30，直到用户明确切换。当前活动训练代码仍只保留逐步独立速度高斯噪声、全局时间相关
+> 速度噪声、前向走廊门控时间相关速度噪声和默认关闭的ordinary异线高速重加权。
+> 当前没有未完成run。
