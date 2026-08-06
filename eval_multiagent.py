@@ -56,7 +56,7 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
                     ego_raceline, opp_raceline, opp_speed_scale, sim_duration,
                     render=False, save_trace=False,
                     model_path="pretrained/end2race.pth", metrics_out=None,
-                    collision_scope="legacy"):
+                    collision_scope="legacy", trace_output_path=None):
     """Evaluate a single segment with model against lattice planner opponent"""
     
     np.random.seed(42)
@@ -73,6 +73,8 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     params = {'ego_raceline': ego_raceline, 'opp_raceline': opp_raceline, 'ego_idx': ego_idx, 'opp_idx': opp_idx}
     key = episode_key(opp_raceline, ego_idx, opp_idx, opp_speed_scale)
     output_paths = multiagent_paths(model_path, map_name, noise_level, key)
+    if trace_output_path is not None:
+        output_paths["trace"] = trace_output_path
     
     # Setup environment
     env = gym.make("f110-v0", map=f"f1tenth_racetracks/{map_name}/{map_name}_map", map_ext=".png", num_agents=2, timestep=0.01, integrator=Integrator.RK4)
@@ -481,8 +483,9 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     try:
-        # Set device - prefer CUDA if available, otherwise CPU
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is required for formal evaluation")
+        device = torch.device("cuda")
         model = End2Race(hidden_scale=args.hidden_scale).to(device)
         model.load_state_dict(torch.load(args.model_path, map_location=device, weights_only=True), strict=True)
         model.eval()

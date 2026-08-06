@@ -18,8 +18,8 @@ Contract
 * One deterministic episode per scenario in a ``forkserver`` pool with worker
   threads pinned to 1.
 * Writes ``results_multi.json`` (aggregate + per-episode) and
-  ``eval_manifest.json`` into ``--output-dir``; optionally relocates the numeric
-  NPZ traces there too.
+  ``eval_manifest.json`` into ``--output-dir``; when requested, writes numeric
+  NPZ traces directly into ``--output-dir/traces``.
 * Resumable: an existing ``episodes.partial.jsonl`` is reused and only missing
   scenarios are run.
 """
@@ -32,7 +32,6 @@ import json
 import multiprocessing as mp
 import os
 from pathlib import Path
-import shutil
 import sys
 import tempfile
 
@@ -58,7 +57,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("--hidden-scale", type=int, default=4)
     parser.add_argument("--sim-duration", type=float, default=8.0)
-    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="cuda")
     # Frozen panels use ego scope: an opponent-only wall collision must not
     # terminate or relabel the episode, it is recorded as an event instead.
     parser.add_argument("--collision-scope", choices=("legacy", "ego"), default="ego")
@@ -155,6 +154,8 @@ def evaluate_one(task: dict) -> dict:
     if requested == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     else:
+        if requested == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("CUDA evaluation requested but CUDA is unavailable")
         device = torch.device(requested)
     model = End2Race(hidden_scale=task["hidden_scale"]).to(device)
     model.load_state_dict(
@@ -182,6 +183,7 @@ def evaluate_one(task: dict) -> dict:
             task["model_path"],
             metrics_path,
             task["collision_scope"],
+            task["trace_output_path"],
         )
         metrics = json.loads(Path(metrics_path).read_text(encoding="utf-8"))
     finally:
@@ -270,9 +272,11 @@ def main() -> None:
     scenarios = load_panel(args.panel)
     verify_panel(scenarios, args.map_name)
 
-    from utils import episode_key, multiagent_paths
+    from utils import episode_key
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if args.save_traces:
+        (args.output_dir / "traces").mkdir(parents=True, exist_ok=True)
     partial_path = args.output_dir / "episodes.partial.jsonl"
     done: dict[str, dict] = {}
     if partial_path.exists():
@@ -301,6 +305,7 @@ def main() -> None:
                 "device": args.device,
                 "save_traces": args.save_traces,
                 "collision_scope": args.collision_scope,
+                "trace_output_path": str(args.output_dir / "traces" / f"{key}.npz") if args.save_traces else None,
             }
         )
 
@@ -324,19 +329,7 @@ def main() -> None:
             f"expected {len(scenarios)} episodes, collected {len(done)}"
         )
 
-    # Relocate traces written under the model-derived evaluation root.
-    trace_moved = 0
-    if args.save_traces:
-        source_root = Path(
-            multiagent_paths(str(args.model_path), args.map_name, 0.0)["root"]
-        ) / "traces"
-        destination = args.output_dir / "traces"
-        destination.mkdir(parents=True, exist_ok=True)
-        for key in done:
-            source = source_root / f"{key}.npz"
-            if source.exists():
-                shutil.move(str(source), str(destination / f"{key}.npz"))
-                trace_moved += 1
+    trace_count = sum((args.output_dir / "traces" / f"{key}.npz").is_file() for key in done) if args.save_traces else 0
 
     opponent_wall_events = opponent_wall_event_episodes(
         args.output_dir / "traces", sorted(done)
@@ -369,11 +362,12 @@ def main() -> None:
         "noise": 0.0,
         "sim_duration_s": args.sim_duration,
         "collision_scope": args.collision_scope,
+        "device": args.device,
         "hidden_scale": args.hidden_scale,
         "save_traces": bool(args.save_traces),
-        "trace_count": trace_moved,
+        "trace_count": trace_count,
         "trace_result_key_sets_equal": (not args.save_traces)
-        or trace_moved == len(done),
+        or trace_count == len(done),
         "panel_opp_idx_verified_against_generator": True,
         "retention_note": (
             "Fresh deterministic evaluation, not a trace reconstruction. The panel "

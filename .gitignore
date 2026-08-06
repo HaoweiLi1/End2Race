@@ -2,7 +2,6 @@ __pycache__/
 build/
 install/
 .vscode/
-.agents/
 .claude/
 .codex/
 AGENTS.md
