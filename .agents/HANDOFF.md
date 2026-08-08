@@ -1,6 +1,6 @@
 # End2Race 当前 HANDOFF
 
-更新时间：2026-08-06（Asia/Singapore；四图碰撞身份与接触几何诊断完成，等待外部审查）
+更新时间：2026-08-07（Asia/Singapore；当前交互几何表征缺口预检完成：缺口不成立，该量族辅助目标不准入）
 
 ## 0. 文档职责和读取顺序
 
@@ -64,7 +64,9 @@ environment 或 recurrent state，不能称为 exact resume。
 regime审计Markdown；其全部结论已经由本地§9.6和`ANALYSIS.md` §23覆盖。没有把远端旧版
 HANDOFF覆盖回本地，也不保留第二份根目录审计文档。
 
-最新完成活动见§9.7及`ANALYSIS.md` §24。fresh诊断不是历史update replay：checkpoint不含
+最新完成活动见§9.11及`ANALYSIS.md` §30。2026-08-07只完成了Austin开发面板上的无训练
+interaction-phase早期可分性筛查；没有新actor、正式eval或训练。更早的fresh PPO梯度诊断
+见§9.7及`ANALYSIS.md` §24，它不是历史update replay：checkpoint不含
 scheduler、optimizer或environment state；它只测固定场景队列上、ratio约等于1时的首步PPO
 梯度。K10/K20/K30没有稳定复现人工偏好审计的`-0.96`冲突，虚拟投影也未持续保护两个主
 regime，因此不启动30-update梯度投影臂。
@@ -1111,6 +1113,141 @@ ego车体系中的bearing，不是接触法向；能支持的结论是新增失�
 不使用测试地图训练的条件策略学习设计；若不能区分，应把当前361D观测合同视为候选瓶颈，
 而不是继续扫PPO参数。
 
+### 9.10 Phase-spillover与Pressure-conditioning最小诊断（2026-08-07，无训练）
+
+仅用BC与前向走廊门控时间相关速度探索U44的匹配Austin600 traces，完成外部审查要求的两个
+最小筛查，没有训练、代码改动或新checkpoint：
+
+- U44相对BC新造的6个ego-opponent collision在碰撞前1.5s内，按当前2m走廊门和50步hold
+  精确重建均为`0/6`出现gate、active block或跨相位block；24个同raceline/speed且两模型都
+  安全的近起点对照同为`0/24`。正向对照中，U44修复的9个same-line BC collision重建出
+  28个block、1009个active step，`5/9`有gate关闭后的active step，说明零结果不是重建失效。
+- 三个提前时刻上，新造collision的18个opponent-bearing关键回波全部在LiDAR FOV内；pressure
+  中位`0.539`、`|dp/dx|`中位`0.311/m`，没有一个低于`0.05`。相邻5-beam共90个样本的中位为
+  `0.404/0.300m^-1`，同样零低值；没有出现失败特异的pressure饱和或灵敏度塌缩。
+
+**判决：phase-bounded和trainable pressure都不准入正式训练。** 前者在实际Austin新造碰撞
+窗口没有block可截断，后者没有conditioning瓶颈证据；不再做shadow gradient、LR、hold或
+gate扫描。只有fresh训练分布证明跨相位block在匹配失败窗口富集，或新的匹配Austin数据证明
+关键LiDAR回波被BC pressure明显压平，才分别重开。完整cohort、数值和证据边界见
+`ANALYSIS.md`对应专题。
+
+### 9.11 Interaction-phase早期可分性最小诊断（2026-08-07，无训练）
+
+外部审查提出的完整`observability + action response + PPO credit`联合审计方向合理，但一次
+捆绑四类问题不符合最小实验原则。本轮只执行其第一个准入门：在U44 Austin near400开发
+面板上，用30个平行侧/后ego-opponent collision和288个安全overtake构造同opponent raceline、
+同speed、同当前interaction phase的最近匹配对照；按50-waypoint startpoint sector做5折，
+每折固定6个collision。只用固定linear ridge，不扫超参、不训练actor、不运行闭环响应面。
+
+| 距事件 | 样本数（collision） | geometry AUROC | raw LiDAR+speed | frozen pressure+speed | GRU hidden |
+|---|---:|---:|---:|---:|---:|
+| 1.5s | 132（30） | 0.487 | 0.627 | 0.606 | 0.529 |
+| 1.0s | 141（30） | 0.556 | 0.690 | **0.773** | 0.617 |
+| 0.5s | 144（30） | 0.667 | 0.572 | 0.598 | 0.580 |
+
+唯一较高的1.0s pressure结果分组范围仍为`0.538--1.000`；其余actor-visible结果没有跨时间
+稳定，GRU hidden三个时刻均不超过`0.617`。0.5s时geometry本身已达`0.667`，不能把晚期
+可分性归因于actor学出了可靠危险表征。GRU从episode起点按评估器真实首帧速度合同逐步重放，
+参与样本的最大raw-action误差为0；此前用reset后0速替代raceline初始速度的临时结果作废。
+
+**判决：不继续动作响应、PPO-credit或side-phase steering正式训练。** 当前证据最多支持
+“1.0s pressure可能含有局部信号”，不支持“在仍有操控权的早期窗口稳定识别未来平行侧后
+碰撞”。该负结果不证明361D观测永久不可用，也不否决未来在更多独立Austin正例上复核；只有
+预先固定的actor-visible表征在startpoint分组下稳定跨fold、跨提前时刻通过，才重开联合审计。
+完整设计、fold范围和证据边界见`ANALYSIS.md` §30。
+
+### 9.12 真值几何/速率对当前策略失败的线性早期可分性预检（2026-08-07，无训练）
+
+用户提出：粗旋钮（reward、探索剂量、采样比例、训练长度）在纯PPO内基本到头，但"改变GRU
+如何形成状态表征"仍未验证，因此考虑训练期辅助表征损失——只用Austin当前时刻pre-action
+物理真值，辅助头训练时存在、部署前删除，actor保持12-key契约，准确命名为
+"PPO + 训练期辅助表征学习"。用户给出的是**条件授权**：先做最小预检，通过才训练。
+
+本轮先检验了一个更窄的命题：**在U44当前策略产生的轨迹上，privileged真值几何与一阶速率
+经固定线性ridge，能否在仍有操控权的提前窗口预测未来的平行侧/后碰撞。** 这不是原预检，
+也**不是信息论上界**——测得的只是固定线性读出可抽取的量，属于这些真值特征信息含量的下界；
+GRU、辅助头与actor都是非线性模型。
+
+cohort独立重建后与§30.3完全一致（37 collision / 288 overtake，接触几何`23/7/4/3`，主正例
+30）；`G5`复现得到`0.490/0.589/0.692`对§30记录的`0.487/0.556/0.667`。
+
+| 特征集 | 1.5s | 1.0s | 0.75s | 0.5s | 0.25s |
+|---|---:|---:|---:|---:|---:|
+| `GEO static`真值 | 0.418 | 0.559 | 0.674 | 0.582 | 0.825 |
+| `RATE only`真值 | 0.567 | 0.604 | 0.535 | 0.670 | **0.481** |
+| `GEO+RATE`（合并） | 0.429 | **0.725** | 0.667 | 0.656 | **0.861** |
+
+预注册准入门为"中位AUROC ≥0.75、fold下界 >0.6，且位于仍有操控权的窗口"。1.5--0.5s四个
+时刻全部不通过（最好的1.0s为`0.725`、fold下界仅`0.361`）；唯一通过的0.25s约相当于接触前
+`1.4m`，已在操控权边界。`lambda`取`0.1/1.0/10.0`形态不变；200次标签置换null的95分位为
+1.0s `0.659`、0.25s `0.630`，所以这两点信号真实（`p<=0.005`），但不足以支撑逐episode判别。
+
+**判决：本轮不直接启动`CT-v2 + 辅助表征loss`的完整训练；辅助表征方向未被否决。**
+准确成立的只有三条：该量族在此预测任务上没有通过本轮预注册门；closing rate无决定性独立
+增益；因此不应据此直接开训。
+
+**以下推论不成立，引用本节时必须一并引用：** 本轮不是表征学习上界（线性读出≠信息含量）；
+辅助目标的用途是让PPO更容易依据当前几何选动作，而不是部署未来碰撞分类器，因此"对当前
+策略失败预测力弱"不蕴含"对改进策略无价值"；闭环轨迹属性与早期状态属性不互斥，且本轮未
+覆盖ego指令历史、yaw rate/slip与横向动态、墙面余量与赛道结构、对手planner意图以及GRU
+更长历史的非线性交互；30个正例、每折6个的"fold下界"是小样本fold最小值，不是统计置信
+下界，该门槛设计不应照抄。
+
+**下一步仍回到原最小预检，用途限定为：** 比较raw/frozen pressure与GRU hidden对**当前
+连续几何**的解码能力，指标用`R^2`/`MAE`而非未来collision；必须带滞后对照（hidden解码
+`t-0.1/0.2/0.3s`同一量，排除"只是时间平滑"）、维度匹配对照（raw 361D vs hidden 1680D，
+并报train/test差）和按startpoint分组的十万量级样本。若显示真实内部表征缺口，只授权**一次**
+`PPO + auxiliary representation loss`训练，不保证最终安全收益，且首次不叠加reference KL、
+行为锚或其他变量。完整设计、fold范围、稳健性检验和证据边界见`ANALYSIS.md` §31。
+
+### 9.13 当前交互几何的表征缺口预检（2026-08-07，无训练）
+
+执行§31.6规定的预检，判据拟合前写死：判定存在真实内部表征缺口须同时满足输入侧`R^2>=0.5`、
+`hidden R^2 <= 输入 - 0.25`、5折范围不重叠、不能被最佳滞后解释、且在维度匹配读出下仍存在。
+
+固定控制：U44、Austin near400的400条trace、seed 42、CUDA逐步回放、按50-waypoint startpoint
+sector分组5折、ridge且`lambda`由训练折内分组内层CV选出。**回放合同校验：全部400条trace、
+所有`action_applied`行的raw action最大绝对误差为`0`**（首帧speed为ego raceline起点参考速度
+的`0.9x`，取`load_raceline_waypoints`第4列；早期误用raceline CSV第3列即heading，产生`5.45`
+误差的版本已作废）。样本`31,345`个、24个sector、9个连续目标（对齐P20物理量，保留物理单位）。
+
+维度匹配读出（**fold-local** PCA K=256，每个outer fold内只用训练sector拟合均值与主成分
+方向再变换test sector）分组5折test `R^2`：
+
+| 目标 | raw+speed | pressure+speed | GRU hidden |
+|---|---:|---:|---:|
+| `delta_s` | 0.212 | 0.296 | **0.703** |
+| `obb_lon_clearance` | 0.146 | 0.316 | **0.553** |
+| `relative_long_velocity` | 0.260 | 0.314 | **0.607** |
+| `relative_lat_velocity` | 0.084 | 0.114 | **0.465** |
+| `wall_clearance` | 0.066 | 0.229 | **0.516** |
+| `left_margin` | 0.497 | 0.598 | **0.731** |
+| `right_margin` | 0.537 | 0.603 | **0.705** |
+
+**hidden在9/9目标上严格优于两种输入**，K=256优势`0.102--0.407`、K=64优势`0.086--0.340`。
+滞后对照（fold-local PCA-256解码`t/-0.1/-0.2/-0.3s`）中9个目标有8个在lag 0最优（唯一例外
+`relative_lat_velocity`在-0.3s高`0.018`），所以hidden对准的是**当前**几何而非被平滑成过去。
+
+初版控制在全部31,345样本上拟合PCA后才做分组CV，test sector参与了均值与主成分估计，属于
+数据泄漏；已全部改为fold-local重算。修正前后差异`<0.01`（如`delta_s` `0.699->0.703`），
+结论不变，但初版数值不得再引用。
+
+**判决：预注册条件未满足且符号相反，不启动`PPO + auxiliary representation loss`训练。**
+用户假说中"信息可能存在于输入却没有稳定进入内部表征"被本预检否定——GRU hidden对当前交互
+几何的线性可解码性不低于、且维度匹配下一致高于actor自身361D输入，把这些几何量压进hidden
+缺乏可指望的增量。
+
+**边界：** 不能说这些量被编码得"好"（绝对`R^2`只有`0.19--0.73`）；不能说辅助表征学习整体
+无效（本节只否定该量族的缺口前提，未覆盖其他量族或正则化/优化通路）；线性可解码性仍不等于
+信息含量，但这里方向对hidden有利，所以"hidden丢了信息"在**本可以支持它的同一口径下**没有
+成立。附带独立结论：冻结BC pressure在9个目标中8个优于raw LiDAR，与§29不解冻`k`的决定一致。
+
+**方法学警告（对后续所有probe有效）：不得在未做维度匹配的情况下比较361D与1680D读出；
+任何降维必须在fold内拟合。** 同一数据在朴素固定`lambda`、内层选`lambda`、PCA维度匹配三种
+设定下给出了三种相反结论；PCA的fold-local与全样本拟合此次差异`<0.01`，但不可预先假定无害。
+完整设计、逐折数值、控制A/B与证据边界见`ANALYSIS.md` §32。
+
 ---
 
 ## 10. 当前允许与不允许的下一步
@@ -1133,9 +1270,18 @@ ego车体系中的bearing，不是接触法向；能支持的结论是新增失�
 11. 在没有新证据时先扩actor输入、改critic/reward，或重复一般物理量可观测性probe；
 12. 依据人工偏好梯度直接训练same-line/offline-fast对称梯度投影。
 13. multi-map PPO；用户明确规定仅在Austin训练，其余三图只用于泛化测试。
+14. 在没有新的失败窗口富集证据时训练phase-bounded temporal block；
+15. 在没有新的关键LiDAR压缩证据时解冻actor pressure `k`或扫描其学习率。
+16. 在interaction-phase早期可分性未稳定通过时运行side-phase steering响应面、fresh PPO
+    credit审计或正式训练相位门控转向探索。
 
 ### 10.2 未完成但不是高优先
 
+- 训练期辅助表征学习（PPO + auxiliary representation loss）：§31.6规定的准入预检已在
+  §32执行完毕，**结论是缺口不存在且符号相反**——维度匹配下GRU hidden在9/9几何目标上优于
+  actor输入。因此以该9个几何/速率量族为辅助目标的训练**不准入**。这不否决辅助表征学习
+  整体：换用不属于该量族的目标（对手planner意图代理、ego动作序列可达性量等）必须按§32.2
+  同一口径重做缺口预检，不得继承结论或跳过预检；
 - temporal hold K10/K25：仅提出，未训练；
 - Group13 GRU/head LR 2×2：未运行；
 - outcome-aware hard：历史上有实现、没有独立A/B；源码已删除，只有重建合同。
@@ -1217,6 +1363,9 @@ pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[e]val_multiagent\.py|[e]valuate\.sh' || tr
 > 候选；旧near400 `64/302`仍是明确副作用。碰撞身份与姿态复算进一步表明当前是失败迁移：
 > U44/RW30分别新造`27/28`次，新增车辆碰撞绝大多数为相对yaw约`4.5°`的平行侧后接触。
 > 粗regime最优拼接只有`58/1527`，而不可部署的逐episode事后上界为`25/1557`，所以更高目标
-> 缺的是regime内部的状态条件选择，不是继续增加探索/采样剂量。用户明确禁止multi-map PPO；
-> 训练只可使用Austin。Production部署别名暂时仍指向U30，当前没有未完成run，等待其他agent
-> 和GPT Pro审查§9.9/`ANALYSIS.md` §28后再决定是否只做Austin离线可分性诊断。
+> 缺的是regime内部的状态条件选择，不是继续增加探索/采样剂量。2026-08-07的最小Austin诊断
+> 又否决了两个直接候选：U44新造的6个车辆碰撞窗口没有走廊block可作phase-bounded截断，关键
+> LiDAR回波也没有frozen pressure饱和。随后30个平行侧/后碰撞的startpoint分组线性probe
+> 仅在1.0s出现不稳定的pressure AUROC 0.773，1.5s/0.5s分别为0.606/0.598，GRU hidden最高
+> 0.617，因此不准入动作响应、PPO-credit或相位门控转向探索。用户明确禁止multi-map PPO；训练只可使用Austin。
+> Production部署别名暂时仍指向U30，当前没有未完成run，也没有已获准的新训练臂。
