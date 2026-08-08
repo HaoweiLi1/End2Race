@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "panel_set_id": "standard_multiagent_600_v1",
+  "generation": {
+    "ego_raceline": "raceline1",
+    "startpoint_rule": "get_circular_startpoints(map_name, raceline1.csv, 50, 0)",
+    "opponent_racelines": [
+      "raceline0",
+      "raceline1",
+      "raceline2"
+    ],
+    "opponent_speed_scales": [
+      0.5,
+      0.6,
+      0.7,
+      0.8
+    ],
+    "interval_idx": 15,
+    "sim_duration_s": 8.0,
+    "expected_scenarios_per_map": 600
+  },
+  "maps": {
+    "Austin": {
+      "scenario_count": 600,
+      "unique_episode_key_count": 600,
+      "identity_fields_match_existing_bc_and_u44": true,
+      "identity_check_sources": [
+        "eval_results/pretrained_end2race/Austin/multiagents/results_multi.json",
+        "eval_results/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update44/Austin/multiagents/results_multi.json"
+      ]
+    },
+    "Hockenheim": {
+      "scenario_count": 600,
+      "unique_episode_key_count": 600,
+      "identity_fields_match_existing_bc_and_u44": true,
+      "identity_check_sources": [
+        "eval_results/pretrained_end2race/Hockenheim/multiagents/results_multi.json",
+        "eval_results/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update44/Hockenheim/multiagents/results_multi.json"
+      ]
+    },
+    "MoscowRaceway": {
+      "scenario_count": 600,
+      "unique_episode_key_count": 600,
+      "identity_fields_match_existing_bc_and_u44": true,
+      "identity_check_sources": [
+        "eval_results/pretrained_end2race/MoscowRaceway/multiagents/results_multi.json",
+        "eval_results/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update44/MoscowRaceway/multiagents/results_multi.json"
+      ]
+    },
+    "Nuerburgring": {
+      "scenario_count": 600,
+      "unique_episode_key_count": 600,
+      "identity_fields_match_existing_bc_and_u44": true,
+      "identity_check_sources": [
+        "eval_results/pretrained_end2race/Nuerburgring/multiagents/results_multi.json",
+        "eval_results/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update44/Nuerburgring/multiagents/results_multi.json"
+      ]
+    }
+  }
+}

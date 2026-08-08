@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import yaml
 
-from ppo.env import CentralScheduleSubprocVecEnv, FrontCorridorGateConfig
+from ppo.env import CentralScheduleSubprocVecEnv, FrontCorridorGateConfig, load_prefix_reset_panel
 from ppo.policy import (
     BASELINE_EXPLORATION_MODE,
     CRITIC_VARIANTS,
@@ -63,6 +63,8 @@ def parse_arguments():
     parser.add_argument("--n_envs", type=int, default=16)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/pretrained_end2race_austin_collision_pool_479")
+    parser.add_argument("--prefix_reset_panel", type=str, default="")
+    parser.add_argument("--prefix_reset_interval", type=int, default=0)
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -116,6 +118,8 @@ def validate_arguments(args) -> None:
             raise ValueError(f"PPO output directory must be empty: {output_dir}")
     if args.n_envs <= 0 or args.n_envs % 2 != 0:
         raise ValueError("n_envs must be positive and even")
+    if bool(args.prefix_reset_panel.strip()) != (args.prefix_reset_interval > 0):
+        raise ValueError("prefix_reset_panel and a positive prefix_reset_interval must be enabled together")
     for name in ("hidden_scale", "n_steps", "batch_size", "num_updates", "actor_epochs", "critic_epochs"):
         if getattr(args, name) <= 0:
             raise ValueError(f"{name} must be positive")
@@ -199,6 +203,7 @@ def main() -> None:
         f"speed_exploration_mode={args.speed_exploration_mode}, "
         f"front_corridor_gate_maximum_gap_m={PPO_CONFIG['front_corridor_gate_maximum_gap_m']}, "
         f"ordinary_offline_fast_fraction={PPO_CONFIG['ordinary_offline_fast_fraction']}, "
+        f"prefix_reset_panel={args.prefix_reset_panel or 'disabled'}, prefix_reset_interval={args.prefix_reset_interval}, "
         f"seed={args.seed}",
         flush=True,
     )
@@ -224,6 +229,7 @@ def main() -> None:
     }
     print("[3/5] Building ordinary scenarios", flush=True)
     ordinary_scenario_set = ordinary_scenarios(args.map_name)
+    prefix_reset_inputs = load_prefix_reset_panel(args.prefix_reset_panel) if args.prefix_reset_panel.strip() else ()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}", flush=True)
     recorder = TrainingRecorder(args.output_dir, args.hidden_scale)
@@ -243,6 +249,8 @@ def main() -> None:
         privileged=args.critic in P20_CRITIC_VARIANTS,
         reward_gamma=args.gamma,
         speed_exploration_mode=args.speed_exploration_mode,
+        prefix_reset_inputs=prefix_reset_inputs,
+        prefix_reset_interval=args.prefix_reset_interval,
     )
     try:
         privileged_normalization = (

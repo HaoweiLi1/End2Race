@@ -5,9 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 import copy as copy_module
 from dataclasses import dataclass
+import hashlib
+import json
 import multiprocessing as mp
 import os
 from pathlib import Path
+import pickle
 import traceback
 from typing import Any
 import warnings
@@ -51,6 +54,50 @@ NUM_AGENTS = 2
 EXTERNAL_RESET_OPTION = "end2race_episode_reset_spec"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _PLANNER_TEMPLATE_CACHE: dict[tuple[str, str], Any] = {}
+PREFIX_RESET_SEED_TAG = 0x50524658
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def load_prefix_reset_panel(path: str | Path) -> tuple[dict[str, Any], ...]:
+    root = Path(path).expanduser().resolve()
+    manifest_path = root / "prefix_reset_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("schema_version") != 1 or manifest.get("panel_id") != "prefix_reset_consensus_v1":
+        raise RuntimeError("Prefix-reset panel manifest is unsupported")
+    tasks = manifest.get("tasks")
+    if not isinstance(tasks, list) or len(tasks) != 28 or len({task["episode_key"] for task in tasks}) != 28:
+        raise RuntimeError("Prefix-reset panel must contain 28 unique tasks")
+    loaded = []
+    total_prefix_rows = 0
+    for task in tasks:
+        snapshot_path = root / task["snapshot_file"]
+        prefix_path = root / task["prefix_file"]
+        if _sha256_file(snapshot_path) != task["snapshot_sha256"] or _sha256_file(prefix_path) != task["prefix_sha256"]:
+            raise RuntimeError(f"Prefix-reset panel content changed: {task['episode_key']}")
+        with snapshot_path.open("rb") as stream:
+            snapshot = pickle.load(stream)
+        with np.load(prefix_path, allow_pickle=False) as arrays:
+            if set(arrays.files) != {"prefix_observations", "window_observation"}:
+                raise RuntimeError(f"Prefix-reset array schema changed: {task['episode_key']}")
+            prefix = np.asarray(arrays["prefix_observations"], dtype=np.float32)
+            window_observation = np.asarray(arrays["window_observation"], dtype=np.float32)
+        expected_length = int(task["prefix_length"])
+        if prefix.shape != (expected_length, 381) or window_observation.shape != (381,) or not np.isfinite(prefix).all() or not np.isfinite(window_observation).all():
+            raise RuntimeError(f"Prefix-reset observation contract failed: {task['episode_key']}")
+        if not np.array_equal(window_observation, np.asarray(snapshot["observation"], dtype=np.float32)):
+            raise RuntimeError(f"Prefix-reset window observation changed: {task['episode_key']}")
+        total_prefix_rows += expected_length
+        loaded.append({"episode_key": str(task["episode_key"]), "snapshot": snapshot, "prefix_observations": prefix, "prefix_length": expected_length})
+    if total_prefix_rows != 9589:
+        raise RuntimeError(f"Prefix-reset panel must contain 9,589 prefix rows, got {total_prefix_rows}")
+    return tuple(loaded)
 
 
 @dataclass(frozen=True)
@@ -485,6 +532,72 @@ class End2RaceGymnasiumEnv(gym.Env):
         info = self._info(False, False, False, False, None, None, base_info, {})
         return self._observation(raw_observation), info
 
+    def restore_prefix_snapshot(self, snapshot: dict[str, Any], episode_key: str, seed: int | None = None) -> tuple[np.ndarray, dict[str, Any]]:
+        if snapshot.get("schema_version") != 1 or set(snapshot) != {"schema_version", "environment", "observation", "actor_hidden", "critic_hidden"}:
+            raise RuntimeError("Prefix-reset snapshot schema is incomplete or unsupported")
+        state = snapshot["environment"]
+        required = {"schema_version", "order_enforcing_has_reset", "racecars", "simulator", "f110_core", "f110_current_obs", "opponent_controller", "reward", "wrapper", "reset_rng_state", "corridor_gate_current"}
+        if state.get("schema_version") != 1 or set(state) != required:
+            raise RuntimeError("Prefix-reset environment state is incomplete or unsupported")
+        spec = copy_module.deepcopy(state["wrapper"]["_current_spec"])
+        self.reset(seed=seed, options={EXTERNAL_RESET_OPTION: spec})
+        core = self.f110_env.unwrapped
+        if len(state["racecars"]) != len(core.sim.agents):
+            raise RuntimeError("Prefix-reset RaceCar count changed")
+        for agent, saved in zip(core.sim.agents, state["racecars"]):
+            agent.state = np.asarray(saved["state"]).copy()
+            agent.opp_poses = copy_module.deepcopy(saved["opp_poses"])
+            agent.accel = float(saved["accel"])
+            agent.steer_angle_vel = float(saved["steer_angle_vel"])
+            agent.steer_buffer = np.asarray(saved["steer_buffer"]).copy()
+            agent.in_collision = bool(saved["in_collision"])
+            agent.scan_rng.bit_generator.state = copy_module.deepcopy(saved["scan_rng_state"])
+        core.sim.agent_poses = np.asarray(state["simulator"]["agent_poses"]).copy()
+        core.sim.collisions = np.asarray(state["simulator"]["collisions"]).copy()
+        core.sim.collision_idx = np.asarray(state["simulator"]["collision_idx"]).copy()
+        for name, value in state["f110_core"].items():
+            setattr(core, name, copy_module.deepcopy(value))
+        type(core).current_obs = copy_module.deepcopy(state["f110_current_obs"])
+        if hasattr(self.f110_env, "_has_reset"):
+            self.f110_env._has_reset = bool(state["order_enforcing_has_reset"])
+        controller = self.opponent_controller
+        controller_state = state["opponent_controller"]
+        controller.trajectory = copy_module.deepcopy(controller_state["trajectory"])
+        controller.tracker_count = int(controller_state["tracker_count"])
+        controller.speed_scale = float(controller_state["speed_scale"])
+        planner = controller.planner
+        for name, value in controller_state["planner"].items():
+            setattr(planner, name, copy_module.deepcopy(value))
+        planner.selection_func = None if controller_state["selection_func"] == "none" else np.argmin
+        tracker = planner.tracker
+        tracker.prev_error = float(controller_state["tracker_prev_error"])
+        tracker.drawn_waypoints = []
+        if controller_state["tracker_has_nearest_dist"]:
+            tracker.nearest_dist = float(controller_state["tracker_nearest_dist"])
+        elif hasattr(tracker, "nearest_dist"):
+            delattr(tracker, "nearest_dist")
+        for name, value in state["reward"].items():
+            setattr(self.transition_reward, name, copy_module.deepcopy(value))
+        for name, value in state["wrapper"].items():
+            setattr(self, name, copy_module.deepcopy(value))
+        self._reset_rng.bit_generator.state = copy_module.deepcopy(state["reset_rng_state"])
+        if self.following_danger_gate is not None:
+            if state["corridor_gate_current"] is None:
+                raise RuntimeError("Prefix-reset corridor gate state is missing")
+            self.following_danger_gate.current_gate = bool(state["corridor_gate_current"])
+        scenario = dict(self._current_spec.scenario)
+        scenario["pool"] = "prefix_reset_consensus_v1"
+        scenario["sampler_branch"] = "prefix_reset"
+        scenario["env_role"] = "collision"
+        self._current_spec.scenario = scenario
+        observation = self._observation(self._raw_observation)
+        if not np.array_equal(observation, np.asarray(snapshot["observation"], dtype=np.float32)):
+            raise RuntimeError(f"Prefix-reset restored observation changed: {episode_key}")
+        info = self._info(False, False, False, False, None, None, {}, {})
+        info["prefix_reset"] = True
+        info["prefix_reset_key"] = str(episode_key)
+        return observation, info
+
     def _info(
         self,
         ego_collision: bool,
@@ -679,6 +792,10 @@ def _worker(remote: Any, parent_remote: Any, env_fn_wrapper: CloudpickleWrapper,
                     options={EXTERNAL_RESET_OPTION: spec},
                 )
                 remote.send(("ok", (rank, observation, reset_info)))
+            elif command == "reset_prefix":
+                seed, snapshot, episode_key = data
+                observation, reset_info = env.restore_prefix_snapshot(snapshot, episode_key, seed=seed)
+                remote.send(("ok", (rank, observation, reset_info)))
             elif command == "render":
                 remote.send(("ok", env.render()))
             elif command == "get_spaces":
@@ -735,6 +852,8 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         privileged: bool = False,
         reward_gamma: float = 0.999,
         speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
+        prefix_reset_inputs: Sequence[dict[str, Any]] = (),
+        prefix_reset_interval: int = 0,
     ) -> None:
         if n_envs <= 0 or n_envs % 2 != 0:
             raise ValueError("n_envs must be positive and even")
@@ -744,6 +863,19 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         self.closed = False
         self.actions = None
         self.scheduler = ScenarioScheduler(seed, collision_scenarios, ordinary_scenarios)
+        self.prefix_reset_inputs = tuple(prefix_reset_inputs)
+        self.prefix_reset_interval = int(prefix_reset_interval)
+        if bool(self.prefix_reset_inputs) != (self.prefix_reset_interval > 0):
+            raise ValueError("Prefix-reset inputs and interval must be enabled together")
+        if self.prefix_reset_inputs and (len(self.prefix_reset_inputs) != 28 or len({item["episode_key"] for item in self.prefix_reset_inputs}) != 28):
+            raise ValueError("Prefix-reset integration requires 28 unique inputs")
+        self.prefix_reset_enabled = bool(self.prefix_reset_inputs)
+        self.prefix_reset_rng = np.random.default_rng(np.random.SeedSequence([seed, PREFIX_RESET_SEED_TAG]))
+        self.prefix_reset_order = np.asarray(self.prefix_reset_rng.permutation(len(self.prefix_reset_inputs)), dtype=np.int64) if self.prefix_reset_inputs else np.empty(0, dtype=np.int64)
+        self.prefix_reset_cursor = 0
+        self.prefix_reset_cycle = 1 if self.prefix_reset_inputs else 0
+        self.collision_reset_count = 0
+        self.reset_history: list[dict[str, Any]] = []
         logical_seeds = [
             int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
             for rank in range(n_envs)
@@ -819,15 +951,47 @@ class CentralScheduleSubprocVecEnv(VecEnv):
                 process.join(timeout=2.0)
         self.closed = True
 
+    def _next_prefix_reset(self) -> dict[str, Any]:
+        if self.prefix_reset_cursor == len(self.prefix_reset_order):
+            self.prefix_reset_order = np.asarray(self.prefix_reset_rng.permutation(len(self.prefix_reset_inputs)), dtype=np.int64)
+            self.prefix_reset_cursor = 0
+            self.prefix_reset_cycle += 1
+        item = self.prefix_reset_inputs[int(self.prefix_reset_order[self.prefix_reset_cursor])]
+        self.prefix_reset_cursor += 1
+        return item
+
     def _reset_round(self, indices: list[int], seeds: list[int | None]) -> list[VecEnvObs]:
+        requests = {}
         for rank, seed in zip(indices, seeds):
-            self.remotes[rank].send(("reset", (seed, self.scheduler.next(rank))))
+            use_prefix = False
+            if rank % 2 == 0:
+                self.collision_reset_count += 1
+                use_prefix = self.prefix_reset_enabled and self.collision_reset_count % self.prefix_reset_interval == 0
+            if use_prefix:
+                item = self._next_prefix_reset()
+                requests[rank] = ("prefix_reset", item)
+                self.remotes[rank].send(("reset_prefix", (seed, item["snapshot"], item["episode_key"])))
+            else:
+                requests[rank] = ("standard", None)
+                self.remotes[rank].send(("reset", (seed, self.scheduler.next(rank))))
         observations = []
         for rank in indices:
             returned_rank, observation, reset_info = self._recv_checked(rank)
             if returned_rank != rank:
                 raise RuntimeError(f"Environment worker rank mismatch: expected {rank}, got {returned_rank}")
+            source, item = requests[rank]
+            if source == "prefix_reset":
+                reset_info["prefix_reset"] = True
+                reset_info["prefix_reset_key"] = item["episode_key"]
+                reset_info["prefix_observations"] = item["prefix_observations"]
+                reset_info["prefix_length"] = int(item["prefix_length"])
+            else:
+                reset_info["prefix_reset"] = False
+                reset_info["prefix_reset_key"] = None
+                reset_info["prefix_observations"] = np.empty((0, self.observation_space.shape[0]), dtype=np.float32)
+                reset_info["prefix_length"] = 0
             self.reset_infos[rank] = reset_info
+            self.reset_history.append({"rank": int(rank), "env_role": str(reset_info["env_role"]), "source": source, "prefix_reset_key": reset_info["prefix_reset_key"], "prefix_length": int(reset_info["prefix_length"]), "scenario_id": str(reset_info["scenario_id"])})
             observations.append(observation)
         return observations
 
@@ -930,7 +1094,29 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         return [self._recv_checked(rank) for rank in ranks]
 
     def state_dict(self) -> dict[str, Any]:
-        return {"scheduler": self.scheduler.state_dict()}
+        return {
+            "scheduler": self.scheduler.state_dict(),
+            "prefix_reset": {
+                "enabled": self.prefix_reset_enabled,
+                "interval": self.prefix_reset_interval,
+                "order": self.prefix_reset_order.copy(),
+                "cursor": self.prefix_reset_cursor,
+                "cycle": self.prefix_reset_cycle,
+                "collision_reset_count": self.collision_reset_count,
+                "rng_state": copy_module.deepcopy(self.prefix_reset_rng.bit_generator.state),
+            },
+        }
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
         self.scheduler.load_state_dict(state["scheduler"])
+        prefix = state["prefix_reset"]
+        if bool(prefix["enabled"]) != self.prefix_reset_enabled or int(prefix["interval"]) != self.prefix_reset_interval:
+            raise ValueError("Prefix-reset scheduler configuration does not match")
+        order = np.asarray(prefix["order"], dtype=np.int64)
+        if sorted(order.tolist()) != list(range(len(self.prefix_reset_inputs))):
+            raise ValueError("Prefix-reset scheduler order is invalid")
+        self.prefix_reset_order = order.copy()
+        self.prefix_reset_cursor = int(prefix["cursor"])
+        self.prefix_reset_cycle = int(prefix["cycle"])
+        self.collision_reset_count = int(prefix["collision_reset_count"])
+        self.prefix_reset_rng.bit_generator.state = copy_module.deepcopy(prefix["rng_state"])

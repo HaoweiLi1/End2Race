@@ -1,0 +1,5402 @@
+[
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e0_o15_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e0_o15_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e0_o15_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e0_o15_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e0_o15_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e0_o15_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e0_o15_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e0_o15_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e0_o16_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 16,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e0_o16_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 16,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e0_o16_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 16,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e0_o16_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 0,
+    "opp_idx": 16,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e32_o43_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 43,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e32_o43_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 43,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e32_o43_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 43,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e32_o43_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 43,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e32_o47_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 47,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e32_o47_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 47,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e32_o47_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 47,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e32_o47_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 47,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e32_o52_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 52,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e32_o52_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 52,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e32_o52_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 52,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e32_o52_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 32,
+    "opp_idx": 52,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e64_o78_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 78,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e64_o78_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 78,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e64_o78_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 78,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e64_o78_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 78,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e64_o79_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e64_o79_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e64_o79_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e64_o79_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e64_o79_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e64_o79_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e64_o79_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e64_o79_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 64,
+    "opp_idx": 79,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e97_o110_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 110,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e97_o110_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 110,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e97_o110_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 110,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e97_o110_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 110,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e97_o112_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 112,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e97_o112_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 112,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e97_o112_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 112,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e97_o112_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 112,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e97_o114_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 114,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e97_o114_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 114,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e97_o114_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 114,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e97_o114_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 97,
+    "opp_idx": 114,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e129_o142_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 142,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e129_o142_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 142,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e129_o142_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 142,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e129_o142_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 142,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e129_o144_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 144,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e129_o144_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 144,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e129_o144_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 144,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e129_o144_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 144,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e129_o146_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 146,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e129_o146_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 146,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e129_o146_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 146,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e129_o146_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 129,
+    "opp_idx": 146,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e161_o174_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 174,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e161_o174_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 174,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e161_o174_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 174,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e161_o174_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 174,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e161_o176_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 176,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e161_o176_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 176,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e161_o176_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 176,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e161_o176_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 176,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e161_o178_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 178,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e161_o178_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 178,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e161_o178_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 178,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e161_o178_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 161,
+    "opp_idx": 178,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e193_o208_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e193_o208_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e193_o208_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e193_o208_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e193_o208_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e193_o208_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e193_o208_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e193_o208_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e193_o208_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e193_o208_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e193_o208_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e193_o208_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 193,
+    "opp_idx": 208,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e225_o240_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e225_o240_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e225_o240_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e225_o240_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e225_o240_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e225_o240_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e225_o240_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e225_o240_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e225_o240_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e225_o240_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e225_o240_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e225_o240_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 225,
+    "opp_idx": 240,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e257_o271_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 271,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e257_o271_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 271,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e257_o271_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 271,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e257_o271_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 271,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e257_o272_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e257_o272_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e257_o272_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e257_o272_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e257_o272_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e257_o272_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e257_o272_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e257_o272_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 257,
+    "opp_idx": 272,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e290_o307_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 307,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e290_o307_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 307,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e290_o307_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 307,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e290_o307_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 307,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e290_o305_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 305,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e290_o305_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 305,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e290_o305_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 305,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e290_o305_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 305,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e290_o303_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 303,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e290_o303_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 303,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e290_o303_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 303,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e290_o303_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 290,
+    "opp_idx": 303,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e322_o334_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 334,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e322_o334_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 334,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e322_o334_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 334,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e322_o334_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 334,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e322_o337_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 337,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e322_o337_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 337,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e322_o337_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 337,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e322_o337_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 337,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e322_o339_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e322_o339_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e322_o339_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e322_o339_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 322,
+    "opp_idx": 339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e354_o363_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 363,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e354_o363_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 363,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e354_o363_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 363,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e354_o363_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 363,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e354_o369_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 369,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e354_o369_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 369,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e354_o369_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 369,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e354_o369_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 369,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e354_o375_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 375,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e354_o375_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 375,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e354_o375_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 375,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e354_o375_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 354,
+    "opp_idx": 375,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e386_o397_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 397,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e386_o397_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 397,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e386_o397_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 397,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e386_o397_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 397,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e386_o401_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 401,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e386_o401_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 401,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e386_o401_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 401,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e386_o401_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 401,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e386_o405_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 405,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e386_o405_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 405,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e386_o405_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 405,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e386_o405_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 386,
+    "opp_idx": 405,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e418_o433_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e418_o433_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e418_o433_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e418_o433_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e418_o433_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e418_o433_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e418_o433_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e418_o433_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e418_o433_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e418_o433_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e418_o433_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e418_o433_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 418,
+    "opp_idx": 433,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e451_o469_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 469,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e451_o469_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 469,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e451_o469_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 469,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e451_o469_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 469,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e451_o466_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 466,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e451_o466_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 466,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e451_o466_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 466,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e451_o466_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 466,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e451_o463_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 463,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e451_o463_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 463,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e451_o463_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 463,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e451_o463_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 451,
+    "opp_idx": 463,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e483_o502_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 502,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e483_o502_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 502,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e483_o502_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 502,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e483_o502_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 502,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e483_o498_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 498,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e483_o498_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 498,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e483_o498_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 498,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e483_o498_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 498,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e483_o493_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 493,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e483_o493_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 493,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e483_o493_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 493,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e483_o493_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 483,
+    "opp_idx": 493,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e515_o535_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 535,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e515_o535_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 535,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e515_o535_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 535,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e515_o535_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 535,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e515_o530_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 530,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e515_o530_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 530,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e515_o530_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 530,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e515_o530_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 530,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e515_o525_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e515_o525_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e515_o525_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e515_o525_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 515,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e547_o565_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 565,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e547_o565_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 565,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e547_o565_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 565,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e547_o565_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 565,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e547_o562_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 562,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e547_o562_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 562,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e547_o562_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 562,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e547_o562_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 562,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e547_o559_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 559,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e547_o559_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 559,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e547_o559_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 559,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e547_o559_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 547,
+    "opp_idx": 559,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e579_o592_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 592,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e579_o592_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 592,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e579_o592_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 592,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e579_o592_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 592,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e579_o594_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 594,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e579_o594_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 594,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e579_o594_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 594,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e579_o594_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 594,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e579_o596_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 596,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e579_o596_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 596,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e579_o596_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 596,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e579_o596_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 579,
+    "opp_idx": 596,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e611_o624_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 624,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e611_o624_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 624,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e611_o624_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 624,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e611_o624_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 624,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e611_o626_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e611_o626_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e611_o626_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e611_o626_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e611_o627_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 627,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e611_o627_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 627,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e611_o627_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 627,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e611_o627_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 611,
+    "opp_idx": 627,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e644_o656_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 656,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e644_o656_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 656,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e644_o656_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 656,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e644_o656_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 656,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e644_o659_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 659,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e644_o659_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 659,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e644_o659_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 659,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e644_o659_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 659,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e644_o662_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 662,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e644_o662_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 662,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e644_o662_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 662,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e644_o662_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 644,
+    "opp_idx": 662,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e676_o686_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e676_o686_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e676_o686_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e676_o686_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e676_o691_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 691,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e676_o691_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 691,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e676_o691_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 691,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e676_o691_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 691,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e676_o696_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 696,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e676_o696_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 696,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e676_o696_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 696,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e676_o696_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 676,
+    "opp_idx": 696,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e708_o718_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 718,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e708_o718_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 718,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e708_o718_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 718,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e708_o718_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 718,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e708_o723_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 723,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e708_o723_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 723,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e708_o723_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 723,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e708_o723_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 723,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e708_o728_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 728,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e708_o728_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 728,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e708_o728_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 728,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e708_o728_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 708,
+    "opp_idx": 728,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e740_o750_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 750,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e740_o750_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 750,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e740_o750_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 750,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e740_o750_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 750,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e740_o755_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 755,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e740_o755_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 755,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e740_o755_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 755,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e740_o755_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 755,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e740_o760_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 760,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e740_o760_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 760,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e740_o760_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 760,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e740_o760_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 740,
+    "opp_idx": 760,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e772_o782_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 782,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e772_o782_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 782,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e772_o782_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 782,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e772_o782_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 782,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e772_o787_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 787,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e772_o787_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 787,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e772_o787_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 787,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e772_o787_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 787,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e772_o792_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 792,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e772_o792_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 792,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e772_o792_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 792,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e772_o792_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 772,
+    "opp_idx": 792,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e804_o814_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 814,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e804_o814_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 814,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e804_o814_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 814,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e804_o814_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 814,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e804_o819_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 819,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e804_o819_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 819,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e804_o819_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 819,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e804_o819_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 819,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e804_o824_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 824,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e804_o824_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 824,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e804_o824_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 824,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e804_o824_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 804,
+    "opp_idx": 824,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e837_o846_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 846,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e837_o846_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 846,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e837_o846_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 846,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e837_o846_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 846,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e837_o852_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 852,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e837_o852_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 852,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e837_o852_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 852,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e837_o852_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 852,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e837_o858_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 858,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e837_o858_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 858,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e837_o858_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 858,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e837_o858_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 837,
+    "opp_idx": 858,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e869_o872_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 872,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e869_o872_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 872,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e869_o872_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 872,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e869_o872_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 872,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e869_o884_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 884,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e869_o884_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 884,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e869_o884_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 884,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e869_o884_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 884,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e869_o896_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 896,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e869_o896_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 896,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e869_o896_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 896,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e869_o896_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 869,
+    "opp_idx": 896,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e901_o904_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e901_o904_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e901_o904_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e901_o904_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e901_o916_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 916,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e901_o916_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 916,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e901_o916_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 916,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e901_o916_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 916,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e901_o928_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 928,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e901_o928_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 928,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e901_o928_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 928,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e901_o928_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 901,
+    "opp_idx": 928,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e933_o936_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 936,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e933_o936_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 936,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e933_o936_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 936,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e933_o936_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 936,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e933_o948_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 948,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e933_o948_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 948,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e933_o948_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 948,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e933_o948_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 948,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e933_o960_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 960,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e933_o960_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 960,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e933_o960_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 960,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e933_o960_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 933,
+    "opp_idx": 960,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e965_o968_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e965_o968_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e965_o968_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e965_o968_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e965_o980_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 980,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e965_o980_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 980,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e965_o980_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 980,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e965_o980_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 980,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e965_o992_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e965_o992_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e965_o992_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e965_o992_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 965,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e998_o1001_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1001,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e998_o1001_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1001,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e998_o1001_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1001,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e998_o1001_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1001,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e998_o1013_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1013,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e998_o1013_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1013,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e998_o1013_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1013,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e998_o1013_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1013,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e998_o1025_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1025,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e998_o1025_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1025,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e998_o1025_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1025,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e998_o1025_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 998,
+    "opp_idx": 1025,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1030_o1033_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1030_o1033_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1030_o1033_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1030_o1033_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1030_o1045_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1045,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1030_o1045_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1045,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1030_o1045_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1045,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1030_o1045_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1045,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1030_o1057_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1030_o1057_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1030_o1057_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1030_o1057_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1030,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1062_o1065_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1065,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1062_o1065_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1065,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1062_o1065_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1065,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1062_o1065_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1065,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1062_o1077_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1077,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1062_o1077_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1077,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1062_o1077_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1077,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1062_o1077_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1077,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1062_o1089_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1089,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1062_o1089_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1089,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1062_o1089_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1089,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1062_o1089_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1062,
+    "opp_idx": 1089,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1094_o1098_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1098,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1094_o1098_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1098,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1094_o1098_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1098,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1094_o1098_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1098,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1094_o1109_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1109,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1094_o1109_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1109,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1094_o1109_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1109,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1094_o1109_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1109,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1094_o1121_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1121,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1094_o1121_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1121,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1094_o1121_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1121,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1094_o1121_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1094,
+    "opp_idx": 1121,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1126_o1129_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1126_o1129_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1126_o1129_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1126_o1129_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1126_o1141_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1126_o1141_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1126_o1141_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1126_o1141_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1126_o1153_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1153,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1126_o1153_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1153,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1126_o1153_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1153,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1126_o1153_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1126,
+    "opp_idx": 1153,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1158_o1162_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1162,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1158_o1162_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1162,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1158_o1162_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1162,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1158_o1162_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1162,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1158_o1173_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1173,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1158_o1173_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1173,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1158_o1173_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1173,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1158_o1173_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1173,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1158_o1185_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1185,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1158_o1185_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1185,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1158_o1185_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1185,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1158_o1185_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1158,
+    "opp_idx": 1185,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1191_o1195_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1195,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1191_o1195_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1195,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1191_o1195_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1195,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1191_o1195_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1195,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1191_o1206_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1206,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1191_o1206_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1206,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1191_o1206_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1206,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1191_o1206_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1206,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1191_o1218_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1218,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1191_o1218_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1218,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1191_o1218_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1218,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1191_o1218_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1191,
+    "opp_idx": 1218,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1223_o1227_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1227,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1223_o1227_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1227,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1223_o1227_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1227,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1223_o1227_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1227,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1223_o1238_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1238,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1223_o1238_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1238,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1223_o1238_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1238,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1223_o1238_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1238,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1223_o1250_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1250,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1223_o1250_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1250,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1223_o1250_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1250,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1223_o1250_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1223,
+    "opp_idx": 1250,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1255_o1259_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1259,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1255_o1259_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1259,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1255_o1259_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1259,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1255_o1259_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1259,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1255_o1270_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1270,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1255_o1270_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1270,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1255_o1270_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1270,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1255_o1270_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1270,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1255_o1282_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1282,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1255_o1282_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1282,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1255_o1282_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1282,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1255_o1282_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1255,
+    "opp_idx": 1282,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1287_o1297_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1297,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1287_o1297_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1297,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1287_o1297_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1297,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1287_o1297_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1297,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1287_o1302_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1302,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1287_o1302_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1302,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1287_o1302_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1302,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1287_o1302_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1302,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1287_o1308_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1308,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1287_o1308_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1308,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1287_o1308_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1308,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1287_o1308_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1287,
+    "opp_idx": 1308,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1319_o1330_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1330,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1319_o1330_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1330,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1319_o1330_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1330,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1319_o1330_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1330,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1319_o1334_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1334,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1319_o1334_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1334,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1319_o1334_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1334,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1319_o1334_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1334,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1319_o1339_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1319_o1339_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1319_o1339_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1319_o1339_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1319,
+    "opp_idx": 1339,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1352_o1357_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1357,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1352_o1357_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1357,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1352_o1357_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1357,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1352_o1357_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1357,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1352_o1367_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1352_o1367_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1352_o1367_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1352_o1367_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1352_o1378_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1378,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1352_o1378_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1378,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1352_o1378_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1378,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1352_o1378_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1352,
+    "opp_idx": 1378,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1384_o1389_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1389,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1384_o1389_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1389,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1384_o1389_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1389,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1384_o1389_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1389,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1384_o1399_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1399,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1384_o1399_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1399,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1384_o1399_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1399,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1384_o1399_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1399,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1384_o1410_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1410,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1384_o1410_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1410,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1384_o1410_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1410,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1384_o1410_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1384,
+    "opp_idx": 1410,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1416_o1420_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1420,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1416_o1420_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1420,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1416_o1420_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1420,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1416_o1420_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1420,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1416_o1431_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1431,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1416_o1431_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1431,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1416_o1431_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1431,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1416_o1431_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1431,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1416_o1442_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1442,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1416_o1442_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1442,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1416_o1442_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1442,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1416_o1442_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1416,
+    "opp_idx": 1442,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1448_o1445_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1445,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1448_o1445_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1445,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1448_o1445_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1445,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1448_o1445_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1445,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1448_o1463_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1463,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1448_o1463_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1463,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1448_o1463_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1463,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1448_o1463_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1463,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1448_o1481_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1481,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1448_o1481_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1481,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1448_o1481_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1481,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1448_o1481_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1448,
+    "opp_idx": 1481,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1480_o1478_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1478,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1480_o1478_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1478,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1480_o1478_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1478,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1480_o1478_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1478,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1480_o1495_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1495,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1480_o1495_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1495,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1480_o1495_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1495,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1480_o1495_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1495,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1480_o1512_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1512,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1480_o1512_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1512,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1480_o1512_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1512,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1480_o1512_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1480,
+    "opp_idx": 1512,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1512_o1514_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1514,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1512_o1514_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1514,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1512_o1514_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1514,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1512_o1514_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1514,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1512_o1527_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1527,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1512_o1527_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1527,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1512_o1527_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1527,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1512_o1527_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1527,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1512_o1541_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1541,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1512_o1541_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1541,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1512_o1541_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1541,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1512_o1541_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1512,
+    "opp_idx": 1541,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1545_o1545_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1545_o1545_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1545_o1545_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1545_o1545_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1545_o1560_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1545_o1560_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1545_o1560_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1545_o1560_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1545_o1576_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1576,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1545_o1576_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1576,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1545_o1576_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1576,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1545_o1576_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1545,
+    "opp_idx": 1576,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1577_o1574_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1574,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1577_o1574_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1574,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1577_o1574_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1574,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol0_e1577_o1574_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1574,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1577_o1592_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1592,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1577_o1592_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1592,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1577_o1592_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1592,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol1_e1577_o1592_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1592,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1577_o1611_s0.5",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1577_o1611_s0.6",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1577_o1611_s0.7",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-MoscowRaceway-ol2_e1577_o1611_s0.8",
+    "map_name": "MoscowRaceway",
+    "ego_idx": 1577,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  }
+]

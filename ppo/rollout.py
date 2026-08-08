@@ -46,6 +46,9 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
     def reset(self) -> None:
         RolloutBuffer.reset(self)
         self.hidden_states_pi = np.zeros(self.hidden_state_shape, dtype=np.float32)
+        self.recurrent_resets = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=bool
+        )
         self.exploration_speed_log_stds = np.zeros(
             (self.buffer_size, self.n_envs), dtype=np.float32
         )
@@ -64,6 +67,7 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         if self.store_independent_gru_hidden:
             self.hidden_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
         self._staged_exploration: tuple[np.ndarray, ...] | None = None
+        self._staged_recurrent_resets: np.ndarray | None = None
         self.current_valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None
         self.current_collision_mask: torch.Tensor | None = None
         self.current_speed_log_stds: torch.Tensor | None = None
@@ -99,7 +103,15 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             raise ValueError("Exploration transition fields must be finite")
         self._staged_exploration = arrays
 
-    def add(self, *args, lstm_states: RNNStates, **kwargs) -> None:
+    def stage_recurrent_resets(self, recurrent_resets: np.ndarray) -> None:
+        resets = np.asarray(recurrent_resets, dtype=bool).reshape(-1)
+        if resets.shape != (self.n_envs,):
+            raise RuntimeError(
+                f"Recurrent reset fields must have shape {(self.n_envs,)}"
+            )
+        self._staged_recurrent_resets = resets
+
+    def add(self, obs, action, reward, episode_start, value, log_prob, *, lstm_states: RNNStates) -> None:
         if self._staged_exploration is None:
             raise RuntimeError(
                 "Exploration distribution fields were not staged before add"
@@ -112,10 +124,21 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             self.exploration_standard_residuals[self.pos],
         ) = self._staged_exploration
         self._staged_exploration = None
+        recurrent_resets = (
+            np.asarray(episode_start, dtype=bool).reshape(-1)
+            if self._staged_recurrent_resets is None
+            else self._staged_recurrent_resets
+        )
+        if recurrent_resets.shape != (self.n_envs,):
+            raise RuntimeError(
+                f"Recurrent reset fields must have shape {(self.n_envs,)}"
+            )
+        self.recurrent_resets[self.pos] = recurrent_resets
+        self._staged_recurrent_resets = None
         self.hidden_states_pi[self.pos] = np.asarray(lstm_states.pi[0].cpu().numpy())
         if self.store_independent_gru_hidden:
             self.hidden_states_vf[self.pos] = np.asarray(lstm_states.vf[0].cpu().numpy())
-        RolloutBuffer.add(self, *args, **kwargs)
+        RolloutBuffer.add(self, obs, action, reward, episode_start, value, log_prob)
 
     def get(self, batch_size: Optional[int] = None, *, rng: np.random.Generator) -> Generator[RecurrentRolloutBufferSamples, None, None]:
         if not self.full:
@@ -131,6 +154,7 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
                 "returns",
                 "hidden_states_pi",
                 "episode_starts",
+                "recurrent_resets",
                 "exploration_speed_log_stds",
                 "exploration_danger_gates",
                 "exploration_temporal_active",
@@ -203,7 +227,7 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             advantages=self.pad_and_flatten(self.advantages[batch_inds]),
             returns=self.pad_and_flatten(self.returns[batch_inds]),
             lstm_states=RNNStates((actor_hidden, actor_cell), (critic_hidden, critic_cell)),
-            episode_starts=self.pad_and_flatten(self.episode_starts[batch_inds]),
+            episode_starts=self.pad_and_flatten(self.recurrent_resets[batch_inds].astype(np.float32)),
             mask=self.pad_and_flatten(np.ones_like(self.returns[batch_inds])),
         )
 
@@ -230,6 +254,16 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.rollout_policy_update = 0
         self._rollout_episode_records: list[dict] = []
         self._last_exploration_gates: np.ndarray | None = None
+        self._last_recurrent_resets: np.ndarray | None = None
+        self._last_prefix_active: np.ndarray | None = None
+        self._last_prefix_steps: np.ndarray | None = None
+        self._last_prefix_keys: list[str | None] | None = None
+        self.last_prefix_transition_mask: np.ndarray | None = None
+        self.last_prefix_window_mask: np.ndarray | None = None
+        self.last_prefix_step_indices: np.ndarray | None = None
+        self.last_prefix_key_rows: list[list[str | None]] | None = None
+        self.last_rollout_final_values: np.ndarray | None = None
+        self.last_rollout_dones: np.ndarray | None = None
         kwargs["n_epochs"] = actor_epochs
         super().__init__(*args, **kwargs)
 
@@ -279,6 +313,42 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         if self.device.type == "cuda":
             torch.cuda.manual_seed_all(action_seed)
 
+    def _prefix_reset_state(self, env, episode_starts: np.ndarray, states: RNNStates) -> tuple[RNNStates, np.ndarray, np.ndarray, np.ndarray, list[str | None]]:
+        recurrent_resets = np.asarray(episode_starts, dtype=bool).copy()
+        active = np.zeros(self.n_envs, dtype=bool)
+        steps = np.zeros(self.n_envs, dtype=np.int64)
+        keys: list[str | None] = [None] * self.n_envs
+        actor_hidden = states.pi[0].clone()
+        actor_cell = states.pi[1].clone()
+        critic_hidden = states.vf[0].clone()
+        critic_cell = states.vf[1].clone()
+        for index, started in enumerate(episode_starts):
+            if not started:
+                continue
+            info = env.reset_infos[index]
+            if not bool(info.get("prefix_reset", False)):
+                continue
+            prefix = np.asarray(info["prefix_observations"], dtype=np.float32)
+            if prefix.shape != (int(info["prefix_length"]), self.observation_space.shape[0]) or not np.isfinite(prefix).all():
+                raise RuntimeError("Prefix-reset burn-in observations are invalid")
+            actor_state = (torch.zeros_like(actor_hidden[:, index : index + 1]), torch.zeros_like(actor_cell[:, index : index + 1]))
+            critic_state = (torch.zeros_like(critic_hidden[:, index : index + 1]), torch.zeros_like(critic_cell[:, index : index + 1]))
+            zero_start = torch.zeros(1, dtype=torch.float32, device=self.device)
+            with torch.no_grad():
+                for observation in prefix:
+                    observation_tensor = torch.as_tensor(observation, dtype=torch.float32, device=self.device).reshape(1, -1)
+                    _mean, actor_state = self.policy._actor_forward(observation_tensor, actor_state, zero_start)
+                    if self.policy.critic_is_independent_gru:
+                        _value, critic_state = self.policy._independent_gru_forward_collection(observation_tensor, critic_state, zero_start)
+            actor_hidden[:, index : index + 1] = actor_state[0]
+            actor_cell[:, index : index + 1] = actor_state[1]
+            critic_hidden[:, index : index + 1] = critic_state[0]
+            critic_cell[:, index : index + 1] = critic_state[1]
+            recurrent_resets[index] = False
+            active[index] = True
+            keys[index] = str(info["prefix_reset_key"])
+        return RNNStates((actor_hidden, actor_cell), (critic_hidden, critic_cell)), recurrent_resets, active, steps, keys
+
     def collect_rollouts(self, env, callback, rollout_buffer, n_rollout_steps: int) -> bool:
         self.rollout_index += 1
         self.current_phase = "warmup" if not self.warmup_completed else "formal"
@@ -294,7 +364,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             f"speed_physical_std={self.rollout_speed_physical_std:.9f}",
             flush=True,
         )
-        if self.policy.speed_exploration_mode == BASELINE_EXPLORATION_MODE:
+        if bool(getattr(env, "prefix_reset_enabled", False)):
+            completed = self._collect_prefix_reset_rollouts(env, callback, rollout_buffer, n_rollout_steps)
+        elif self.policy.speed_exploration_mode == BASELINE_EXPLORATION_MODE:
             completed = super().collect_rollouts(
                 env, callback, rollout_buffer, n_rollout_steps
             )
@@ -304,6 +376,92 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             )
         print(f"Rollout {self.rollout_index} complete", flush=True)
         return completed
+
+    def _collect_prefix_reset_rollouts(self, env, callback, rollout_buffer, n_rollout_steps: int) -> bool:
+        if not isinstance(rollout_buffer, End2RaceRolloutBuffer):
+            raise TypeError("Prefix reset requires End2RaceRolloutBuffer")
+        if self._last_obs is None:
+            raise RuntimeError("No previous observation was provided")
+        self.policy.set_training_mode(False)
+        n_steps = 0
+        rollout_buffer.reset()
+        callback.on_rollout_start()
+        lstm_states = copy_module.deepcopy(self._last_lstm_states)
+        if self._last_recurrent_resets is None:
+            lstm_states, recurrent_resets, prefix_active, prefix_steps, prefix_keys = self._prefix_reset_state(env, self._last_episode_starts, lstm_states)
+        else:
+            recurrent_resets = self._last_recurrent_resets.copy()
+            prefix_active = self._last_prefix_active.copy()
+            prefix_steps = self._last_prefix_steps.copy()
+            prefix_keys = list(self._last_prefix_keys)
+        current_gates = np.asarray([bool(info.get(EXPLORATION_GATE_INFO_KEY, False)) for info in env.reset_infos], dtype=bool)
+        prefix_transition_rows = []
+        prefix_window_rows = []
+        prefix_step_rows = []
+        prefix_key_rows = []
+
+        while n_steps < n_rollout_steps:
+            self.policy.prepare_rollout_exploration(current_gates, self._last_episode_starts)
+            rollout_buffer.stage_recurrent_resets(recurrent_resets)
+            prefix_transition_rows.append(prefix_active.copy())
+            prefix_window_rows.append(prefix_active & (prefix_steps < 150))
+            prefix_step_rows.append(prefix_steps.copy())
+            prefix_key_rows.append(list(prefix_keys))
+            with torch.no_grad():
+                obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                recurrent_starts_tensor = torch.as_tensor(recurrent_resets, dtype=torch.float32, device=self.device)
+                actions, values, log_probs, next_lstm_states = self.policy.forward(obs_tensor, lstm_states, recurrent_starts_tensor)
+            actions = actions.cpu().numpy()
+            clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high) if isinstance(self.action_space, spaces.Box) else actions
+            new_obs, rewards, dones, infos = env.step(clipped_actions)
+            self.num_timesteps += env.num_envs
+            callback.update_locals(locals())
+            if not callback.on_step():
+                return False
+            self._update_info_buffer(infos, dones)
+            n_steps += 1
+
+            for index, done in enumerate(dones):
+                if done and infos[index].get("terminal_observation") is not None and infos[index].get("TimeLimit.truncated", False):
+                    terminal_obs = self.policy.obs_to_tensor(infos[index]["terminal_observation"])[0]
+                    with torch.no_grad():
+                        terminal_state = (next_lstm_states.vf[0][:, index : index + 1].contiguous(), next_lstm_states.vf[1][:, index : index + 1].contiguous())
+                        terminal_value = self.policy.predict_values(terminal_obs, terminal_state, torch.zeros(1, dtype=torch.float32, device=self.device))[0]
+                    rewards[index] += self.gamma * terminal_value
+
+            rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs, lstm_states=lstm_states)
+            prefix_steps[prefix_active] += 1
+            next_states, next_recurrent_resets, new_prefix_active, new_prefix_steps, new_prefix_keys = self._prefix_reset_state(env, dones, next_lstm_states)
+            continuing = ~dones
+            new_prefix_active[continuing] = prefix_active[continuing]
+            new_prefix_steps[continuing] = prefix_steps[continuing]
+            for index in np.flatnonzero(continuing):
+                new_prefix_keys[int(index)] = prefix_keys[int(index)]
+            self._last_obs = new_obs
+            self._last_episode_starts = dones
+            lstm_states = next_states
+            recurrent_resets = next_recurrent_resets
+            prefix_active = new_prefix_active
+            prefix_steps = new_prefix_steps
+            prefix_keys = new_prefix_keys
+            current_gates = np.asarray([bool((env.reset_infos[index] if done else infos[index]).get(EXPLORATION_GATE_INFO_KEY, False)) for index, done in enumerate(dones)], dtype=bool)
+
+        with torch.no_grad():
+            values = self.policy.predict_values(obs_as_tensor(new_obs, self.device), lstm_states.vf, torch.as_tensor(recurrent_resets, dtype=torch.float32, device=self.device))
+        rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
+        self._last_lstm_states = lstm_states
+        self._last_recurrent_resets = recurrent_resets.copy()
+        self._last_prefix_active = prefix_active.copy()
+        self._last_prefix_steps = prefix_steps.copy()
+        self._last_prefix_keys = list(prefix_keys)
+        self.last_prefix_transition_mask = np.asarray(prefix_transition_rows, dtype=bool)
+        self.last_prefix_window_mask = np.asarray(prefix_window_rows, dtype=bool)
+        self.last_prefix_step_indices = np.asarray(prefix_step_rows, dtype=np.int64)
+        self.last_prefix_key_rows = prefix_key_rows
+        self.last_rollout_final_values = values.detach().cpu().numpy().reshape(-1).astype(np.float32)
+        self.last_rollout_dones = np.asarray(dones, dtype=bool).copy()
+        callback.on_rollout_end()
+        return True
 
     def _collect_structured_exploration_rollouts(
         self,
@@ -462,6 +620,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "scenario_id": str(info["scenario_id"]),
                 "scenario_pool": str(info["scenario"]["pool"]),
                 "env_role": str(info["env_role"]),
+                "sampler_branch": str(info["sampler_branch"]),
                 "episode_outcome": str(info["episode_outcome"]),
                 "episode_return": float(info["episode_return"]),
                 "episode_steps": int(info["episode_steps"]),
@@ -564,7 +723,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         for slot, (env_index, start, end) in enumerate(sequences):
             length = end - start
             observations[slot, :length] = buffer.observations[start:end, env_index]
-            episode_starts[slot, :length] = buffer.episode_starts[start:end, env_index]
+            episode_starts[slot, :length] = buffer.recurrent_resets[start:end, env_index]
             returns[slot, :length] = buffer.returns[start:end, env_index]
             valid[slot, :length] = True
             hidden[:, slot] = buffer.hidden_states_vf[start, :, env_index]
@@ -670,6 +829,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "warmup_validation_losses": warmup_validation_losses,
             "critic_grad_norm_mean": float(np.mean(critic_grad_norms)),
             "critic_grad_norm_max": float(np.max(critic_grad_norms)),
+            **self._prefix_reset_statistics(),
         }
         checkpoint_path = self.recorder.save_warmup_critic(self.policy.value_net.state_dict())
         metrics["critic_checkpoint"] = str(checkpoint_path)
@@ -839,6 +999,27 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             ),
         }
 
+    def _prefix_reset_statistics(self) -> dict[str, float | int]:
+        if self.last_prefix_transition_mask is None or self.last_prefix_window_mask is None:
+            return {
+                "prefix_reset_transition_count": 0,
+                "prefix_reset_transition_fraction": 0.0,
+                "prefix_reset_window_transition_count": 0,
+                "prefix_reset_window_transition_fraction": 0.0,
+                "prefix_reset_boundary_count": 0,
+            }
+        transition_count = int(self.last_prefix_transition_mask.sum())
+        window_count = int(self.last_prefix_window_mask.sum())
+        total = self.rollout_buffer.buffer_size * self.rollout_buffer.n_envs
+        boundaries = np.asarray(self.rollout_buffer.episode_starts, dtype=bool) & ~np.asarray(self.rollout_buffer.recurrent_resets, dtype=bool)
+        return {
+            "prefix_reset_transition_count": transition_count,
+            "prefix_reset_transition_fraction": float(transition_count / total),
+            "prefix_reset_window_transition_count": window_count,
+            "prefix_reset_window_transition_fraction": float(window_count / total),
+            "prefix_reset_boundary_count": int(boundaries.sum()),
+        }
+
     def _assert_full_buffer_ratio_identity(self) -> dict[str, float]:
         """Fail before optimization if rollout/replay distributions differ."""
 
@@ -942,6 +1123,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         telemetry_rng_state = copy_module.deepcopy(self.telemetry_rng.bit_generator.state)
         value_statistics_pre_update = self._full_buffer_value_statistics()
         ratio_identity_stats = self._assert_full_buffer_ratio_identity()
+        if bool(getattr(self.env, "prefix_reset_enabled", False)) and max(ratio_identity_stats["preupdate_max_abs_log_ratio"], ratio_identity_stats["preupdate_max_abs_ratio_minus_one"]) >= 0.02:
+            raise RuntimeError("Prefix-reset batched replay exceeded the adjudicated 0.02 causal guardrail")
 
         print(f"Formal update {update}: actor phase start", flush=True)
         for parameter in self.policy.critic_parameters:
@@ -1048,6 +1231,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "return_std": value_statistics_post_update["return_std"],
             **critic_input_stats,
             **exploration_stats,
+            **self._prefix_reset_statistics(),
             **ratio_identity_stats,
             "approx_kl_mean": approximate_kl_mean,
             "approx_kl_max": approximate_kl_max,

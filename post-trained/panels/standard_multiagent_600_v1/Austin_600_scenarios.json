@@ -1,0 +1,5402 @@
+[
+  {
+    "scenario_id": "standard600-Austin-ol0_e0_o15_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e0_o15_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e0_o15_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e0_o15_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e0_o15_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e0_o15_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e0_o15_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e0_o15_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e0_o15_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e0_o15_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e0_o15_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e0_o15_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e42_o51_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 51,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e42_o51_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 51,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e42_o51_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 51,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e42_o51_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 51,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e42_o57_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 57,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e42_o57_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 57,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e42_o57_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 57,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e42_o57_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 57,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e42_o63_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 63,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e42_o63_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 63,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e42_o63_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 63,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e42_o63_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 42,
+    "opp_idx": 63,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e84_o93_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 93,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e84_o93_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 93,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e84_o93_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 93,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e84_o93_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 93,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e84_o99_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 99,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e84_o99_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 99,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e84_o99_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 99,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e84_o99_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 99,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e84_o105_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 105,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e84_o105_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 105,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e84_o105_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 105,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e84_o105_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 84,
+    "opp_idx": 105,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e126_o135_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 135,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e126_o135_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 135,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e126_o135_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 135,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e126_o135_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 135,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e126_o141_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e126_o141_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e126_o141_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e126_o141_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 141,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e126_o147_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 147,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e126_o147_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 147,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e126_o147_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 147,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e126_o147_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 126,
+    "opp_idx": 147,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e168_o176_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 176,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e168_o176_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 176,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e168_o176_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 176,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e168_o176_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 176,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e168_o183_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 183,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e168_o183_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 183,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e168_o183_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 183,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e168_o183_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 183,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e168_o191_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 191,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e168_o191_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 191,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e168_o191_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 191,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e168_o191_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 168,
+    "opp_idx": 191,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e210_o218_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 218,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e210_o218_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 218,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e210_o218_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 218,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e210_o218_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 218,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e210_o225_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 225,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e210_o225_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 225,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e210_o225_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 225,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e210_o225_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 225,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e210_o233_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 233,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e210_o233_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 233,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e210_o233_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 233,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e210_o233_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 210,
+    "opp_idx": 233,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e252_o257_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 257,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e252_o257_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 257,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e252_o257_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 257,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e252_o257_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 257,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e252_o267_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e252_o267_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e252_o267_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e252_o267_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e252_o278_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 278,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e252_o278_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 278,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e252_o278_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 278,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e252_o278_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 252,
+    "opp_idx": 278,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e293_o302_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 302,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e293_o302_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 302,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e293_o302_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 302,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e293_o302_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 302,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e293_o308_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 308,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e293_o308_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 308,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e293_o308_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 308,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e293_o308_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 308,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e293_o314_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 314,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e293_o314_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 314,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e293_o314_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 314,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e293_o314_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 293,
+    "opp_idx": 314,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e335_o342_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 342,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e335_o342_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 342,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e335_o342_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 342,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e335_o342_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 342,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e335_o350_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 350,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e335_o350_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 350,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e335_o350_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 350,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e335_o350_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 350,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e335_o359_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 359,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e335_o359_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 359,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e335_o359_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 359,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e335_o359_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 335,
+    "opp_idx": 359,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e377_o383_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 383,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e377_o383_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 383,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e377_o383_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 383,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e377_o383_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 383,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e377_o392_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 392,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e377_o392_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 392,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e377_o392_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 392,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e377_o392_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 392,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e377_o402_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 402,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e377_o402_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 402,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e377_o402_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 402,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e377_o402_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 377,
+    "opp_idx": 402,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e419_o428_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e419_o428_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e419_o428_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e419_o428_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e419_o434_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 434,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e419_o434_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 434,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e419_o434_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 434,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e419_o434_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 434,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e419_o441_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 441,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e419_o441_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 441,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e419_o441_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 441,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e419_o441_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 419,
+    "opp_idx": 441,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e461_o472_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 472,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e461_o472_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 472,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e461_o472_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 472,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e461_o472_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 472,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e461_o476_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 476,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e461_o476_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 476,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e461_o476_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 476,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e461_o476_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 476,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e461_o480_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e461_o480_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e461_o480_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e461_o480_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 461,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e503_o512_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 512,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e503_o512_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 512,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e503_o512_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 512,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e503_o512_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 512,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e503_o518_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e503_o518_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e503_o518_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e503_o518_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e503_o525_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e503_o525_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e503_o525_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e503_o525_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 503,
+    "opp_idx": 525,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e545_o555_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 555,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e545_o555_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 555,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e545_o555_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 555,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e545_o555_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 555,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e545_o560_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e545_o560_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e545_o560_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e545_o560_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e545_o566_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 566,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e545_o566_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 566,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e545_o566_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 566,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e545_o566_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 545,
+    "opp_idx": 566,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e587_o596_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 596,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e587_o596_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 596,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e587_o596_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 596,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e587_o596_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 596,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e587_o602_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 602,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e587_o602_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 602,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e587_o602_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 602,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e587_o602_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 602,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e587_o609_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 609,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e587_o609_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 609,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e587_o609_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 609,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e587_o609_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 587,
+    "opp_idx": 609,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e629_o638_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 638,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e629_o638_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 638,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e629_o638_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 638,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e629_o638_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 638,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e629_o644_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 644,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e629_o644_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 644,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e629_o644_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 644,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e629_o644_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 644,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e629_o650_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 650,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e629_o650_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 650,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e629_o650_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 650,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e629_o650_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 629,
+    "opp_idx": 650,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e671_o683_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 683,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e671_o683_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 683,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e671_o683_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 683,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e671_o683_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 683,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e671_o686_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 686,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e671_o686_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 686,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e671_o686_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 686,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e671_o686_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 686,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e671_o689_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 689,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e671_o689_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 689,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e671_o689_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 689,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e671_o689_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 671,
+    "opp_idx": 689,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e713_o725_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 725,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e713_o725_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 725,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e713_o725_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 725,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e713_o725_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 725,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e713_o728_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 728,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e713_o728_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 728,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e713_o728_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 728,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e713_o728_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 728,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e713_o731_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 731,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e713_o731_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 731,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e713_o731_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 731,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e713_o731_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 713,
+    "opp_idx": 731,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e755_o759_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 759,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e755_o759_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 759,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e755_o759_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 759,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e755_o759_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 759,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e755_o770_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e755_o770_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e755_o770_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e755_o770_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e755_o782_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 782,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e755_o782_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 782,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e755_o782_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 782,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e755_o782_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 755,
+    "opp_idx": 782,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e796_o800_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 800,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e796_o800_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 800,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e796_o800_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 800,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e796_o800_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 800,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e796_o811_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 811,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e796_o811_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 811,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e796_o811_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 811,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e796_o811_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 811,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e796_o823_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 823,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e796_o823_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 823,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e796_o823_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 823,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e796_o823_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 796,
+    "opp_idx": 823,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e838_o842_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 842,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e838_o842_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 842,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e838_o842_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 842,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e838_o842_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 842,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e838_o853_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 853,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e838_o853_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 853,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e838_o853_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 853,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e838_o853_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 853,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e838_o865_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 865,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e838_o865_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 865,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e838_o865_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 865,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e838_o865_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 838,
+    "opp_idx": 865,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e880_o884_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 884,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e880_o884_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 884,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e880_o884_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 884,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e880_o884_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 884,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e880_o895_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 895,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e880_o895_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 895,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e880_o895_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 895,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e880_o895_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 895,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e880_o907_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 907,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e880_o907_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 907,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e880_o907_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 907,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e880_o907_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 880,
+    "opp_idx": 907,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e922_o926_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 926,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e922_o926_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 926,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e922_o926_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 926,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e922_o926_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 926,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e922_o937_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 937,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e922_o937_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 937,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e922_o937_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 937,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e922_o937_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 937,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e922_o949_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 949,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e922_o949_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 949,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e922_o949_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 949,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e922_o949_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 922,
+    "opp_idx": 949,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e964_o968_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e964_o968_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e964_o968_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e964_o968_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 968,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e964_o979_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 979,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e964_o979_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 979,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e964_o979_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 979,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e964_o979_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 979,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e964_o991_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 991,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e964_o991_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 991,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e964_o991_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 991,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e964_o991_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 964,
+    "opp_idx": 991,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1006_o1010_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1010,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1006_o1010_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1010,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1006_o1010_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1010,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1006_o1010_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1010,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1006_o1021_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1006_o1021_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1006_o1021_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1006_o1021_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1006_o1033_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1006_o1033_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1006_o1033_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1006_o1033_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1006,
+    "opp_idx": 1033,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1048_o1048_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1048,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1048_o1048_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1048,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1048_o1048_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1048,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1048_o1048_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1048,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1048_o1063_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1063,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1048_o1063_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1063,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1048_o1063_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1063,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1048_o1063_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1063,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1048_o1078_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1048_o1078_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1048_o1078_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1048_o1078_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1048,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1090_o1088_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1088,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1090_o1088_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1088,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1090_o1088_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1088,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1090_o1088_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1088,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1090_o1105_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1105,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1090_o1105_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1105,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1090_o1105_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1105,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1090_o1105_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1105,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1090_o1123_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1090_o1123_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1090_o1123_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1090_o1123_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1090,
+    "opp_idx": 1123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1132_o1130_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1130,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1132_o1130_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1130,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1132_o1130_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1130,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1132_o1130_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1130,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1132_o1147_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1147,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1132_o1147_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1147,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1132_o1147_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1147,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1132_o1147_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1147,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1132_o1165_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1132_o1165_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1132_o1165_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1132_o1165_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1132,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1174_o1168_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1168,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1174_o1168_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1168,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1174_o1168_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1168,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1174_o1168_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1168,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1174_o1189_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1189,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1174_o1189_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1189,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1174_o1189_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1189,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1174_o1189_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1189,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1174_o1210_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1174_o1210_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1174_o1210_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1174_o1210_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1174,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1216_o1210_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1216_o1210_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1216_o1210_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1216_o1210_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1210,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1216_o1231_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1216_o1231_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1216_o1231_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1216_o1231_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1216_o1252_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1252,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1216_o1252_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1252,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1216_o1252_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1252,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1216_o1252_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1216,
+    "opp_idx": 1252,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1258_o1253_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1253,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1258_o1253_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1253,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1258_o1253_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1253,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1258_o1253_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1253,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1258_o1273_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1258_o1273_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1258_o1273_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1258_o1273_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1258_o1293_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1293,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1258_o1293_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1293,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1258_o1293_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1293,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1258_o1293_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1258,
+    "opp_idx": 1293,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1300_o1298_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1298,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1300_o1298_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1298,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1300_o1298_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1298,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1300_o1298_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1298,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1300_o1315_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1315,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1300_o1315_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1315,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1300_o1315_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1315,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1300_o1315_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1315,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1300_o1333_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1333,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1300_o1333_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1333,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1300_o1333_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1333,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1300_o1333_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1300,
+    "opp_idx": 1333,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1341_o1341_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1341,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1341_o1341_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1341,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1341_o1341_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1341,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1341_o1341_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1341,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1341_o1356_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1356,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1341_o1356_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1356,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1341_o1356_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1356,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1341_o1356_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1356,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1341_o1372_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1341_o1372_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1341_o1372_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1341_o1372_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1341,
+    "opp_idx": 1372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1383_o1386_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1386,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1383_o1386_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1386,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1383_o1386_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1386,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1383_o1386_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1386,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1383_o1398_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1398,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1383_o1398_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1398,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1383_o1398_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1398,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1383_o1398_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1398,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1383_o1412_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1412,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1383_o1412_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1412,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1383_o1412_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1412,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1383_o1412_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1383,
+    "opp_idx": 1412,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1425_o1428_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1425_o1428_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1425_o1428_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1425_o1428_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1428,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1425_o1440_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1440,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1425_o1440_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1440,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1425_o1440_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1440,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1425_o1440_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1440,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1425_o1454_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1454,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1425_o1454_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1454,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1425_o1454_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1454,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1425_o1454_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1425,
+    "opp_idx": 1454,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1467_o1461_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1461,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1467_o1461_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1461,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1467_o1461_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1461,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1467_o1461_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1461,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1467_o1482_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1467_o1482_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1467_o1482_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1467_o1482_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1467_o1502_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1502,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1467_o1502_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1502,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1467_o1502_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1502,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1467_o1502_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1467,
+    "opp_idx": 1502,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1509_o1500_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1500,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1509_o1500_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1500,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1509_o1500_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1500,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1509_o1500_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1500,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1509_o1524_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1509_o1524_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1509_o1524_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1509_o1524_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1509_o1547_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1547,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1509_o1547_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1547,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1509_o1547_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1547,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1509_o1547_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1509,
+    "opp_idx": 1547,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1551_o1546_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1546,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1551_o1546_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1546,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1551_o1546_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1546,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1551_o1546_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1546,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1551_o1566_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1566,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1551_o1566_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1566,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1551_o1566_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1566,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1551_o1566_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1566,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1551_o1585_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1585,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1551_o1585_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1585,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1551_o1585_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1585,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1551_o1585_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1551,
+    "opp_idx": 1585,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1593_o1594_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1594,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1593_o1594_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1594,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1593_o1594_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1594,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1593_o1594_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1594,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1593_o1608_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1608,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1593_o1608_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1608,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1593_o1608_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1608,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1593_o1608_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1608,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1593_o1622_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1622,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1593_o1622_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1622,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1593_o1622_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1622,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1593_o1622_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1593,
+    "opp_idx": 1622,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1635_o1635_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1635,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1635_o1635_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1635,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1635_o1635_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1635,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1635_o1635_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1635,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1635_o1650_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1650,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1635_o1650_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1650,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1635_o1650_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1650,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1635_o1650_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1650,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1635_o1664_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1664,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1635_o1664_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1664,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1635_o1664_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1664,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1635_o1664_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1635,
+    "opp_idx": 1664,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1677_o1671_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1671,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1677_o1671_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1671,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1677_o1671_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1671,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1677_o1671_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1671,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1677_o1692_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1692,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1677_o1692_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1692,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1677_o1692_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1692,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1677_o1692_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1692,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1677_o1711_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1711,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1677_o1711_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1711,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1677_o1711_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1711,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1677_o1711_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1677,
+    "opp_idx": 1711,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1719_o1713_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1713,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1719_o1713_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1713,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1719_o1713_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1713,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1719_o1713_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1713,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1719_o1734_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1719_o1734_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1719_o1734_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1719_o1734_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1719_o1753_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1753,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1719_o1753_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1753,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1719_o1753_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1753,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1719_o1753_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1719,
+    "opp_idx": 1753,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1761_o1755_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1761_o1755_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1761_o1755_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1761_o1755_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1761_o1776_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1761_o1776_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1761_o1776_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1761_o1776_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1761_o1795_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1795,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1761_o1795_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1795,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1761_o1795_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1795,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1761_o1795_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1761,
+    "opp_idx": 1795,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1803_o1798_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1803_o1798_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1803_o1798_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1803_o1798_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1803_o1818_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1818,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1803_o1818_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1818,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1803_o1818_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1818,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1803_o1818_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1818,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1803_o1837_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1837,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1803_o1837_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1837,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1803_o1837_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1837,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1803_o1837_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1803,
+    "opp_idx": 1837,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1844_o1839_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1839,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1844_o1839_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1839,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1844_o1839_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1839,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1844_o1839_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1839,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1844_o1859_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1859,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1844_o1859_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1859,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1844_o1859_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1859,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1844_o1859_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1859,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1844_o1878_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1878,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1844_o1878_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1878,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1844_o1878_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1878,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1844_o1878_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1844,
+    "opp_idx": 1878,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1886_o1881_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1881,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1886_o1881_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1881,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1886_o1881_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1881,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1886_o1881_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1881,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1886_o1901_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1901,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1886_o1901_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1901,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1886_o1901_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1901,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1886_o1901_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1901,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1886_o1920_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1920,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1886_o1920_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1920,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1886_o1920_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1920,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1886_o1920_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1886,
+    "opp_idx": 1920,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1928_o1923_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1923,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1928_o1923_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1923,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1928_o1923_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1923,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1928_o1923_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1923,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1928_o1943_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1943,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1928_o1943_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1943,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1928_o1943_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1943,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1928_o1943_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1943,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1928_o1962_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1962,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1928_o1962_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1962,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1928_o1962_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1962,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1928_o1962_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1928,
+    "opp_idx": 1962,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1970_o1965_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1965,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1970_o1965_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1965,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1970_o1965_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1965,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e1970_o1965_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1965,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1970_o1985_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1970_o1985_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1970_o1985_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e1970_o1985_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 1985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1970_o2004_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 2004,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1970_o2004_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 2004,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1970_o2004_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 2004,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e1970_o2004_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 1970,
+    "opp_idx": 2004,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2012_o2007_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2007,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2012_o2007_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2007,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2012_o2007_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2007,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2012_o2007_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2007,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2012_o2027_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2027,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2012_o2027_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2027,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2012_o2027_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2027,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2012_o2027_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2027,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2012_o2046_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2046,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2012_o2046_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2046,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2012_o2046_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2046,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2012_o2046_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 2012,
+    "opp_idx": 2046,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2054_o2049_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2049,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2054_o2049_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2049,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2054_o2049_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2049,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol0_e2054_o2049_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2049,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2054_o2069_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2069,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2054_o2069_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2069,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2054_o2069_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2069,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol1_e2054_o2069_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2069,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2054_o2088_s0.5",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2088,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2054_o2088_s0.6",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2088,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2054_o2088_s0.7",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2088,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Austin-ol2_e2054_o2088_s0.8",
+    "map_name": "Austin",
+    "ego_idx": 2054,
+    "opp_idx": 2088,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  }
+]

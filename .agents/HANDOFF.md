@@ -1,6 +1,6 @@
 # End2Race 当前 HANDOFF
 
-更新时间：2026-08-07（Asia/Singapore；当前交互几何表征缺口预检完成：缺口不成立，该量族辅助目标不准入）
+更新时间：2026-08-09（Asia/Singapore；Round Z9 collision-cost Constrained PPO preflight完成：机械链路通过、起点OOF三门失败，formal停止）
 
 ## 0. 文档职责和读取顺序
 
@@ -9,7 +9,13 @@
 
 - `ANALYSIS.md`：完整实验设计、面板定义、配对结果、分层数据、机制判断和证据边界；
 - `EXPERIMENTS.md`：历史实验工具与回归测试的实现逻辑和重建合同；
-- `GUIDE.md`：用户要求的实验执行、命名和文件布局规范。
+- `GUIDE.md`：用户要求的实验执行、命名和文件布局规范；
+- `GATES.md`：后 U44 六类候选方法的**预注册、执行与判决全记录**。它由原
+  `SELECTIVE_BC_SAFE_BEHAVIOR_ANCHORING_PREREGISTRATION_FINAL_REVIEWED.md` 与
+  `COUNTERFACTUAL_ACTION_GATE_COMPLETE_REPORT.md` 于 2026-08-09 无损合并而成
+  （第一部分 §0--§35 = 原预注册；附录 A §A1--§A23 = Round Z2 完整技术报告；
+  附录 B §B24--§B29 = 原报告追加节；附录 C = Claude 独立复核与跨轮汇总）。
+  本文件 §9.17--§9.28 的判决与它一致；冲突时以本文件为准。
 
 如果本文件和 `ANALYSIS.md` 的历史数字冲突：
 
@@ -38,6 +44,115 @@
 
 ### 1.1 运行状态
 
+2026-08-09 Round Z9 collision-cost Constrained PPO preflight已完成，无Z9 actor update。固定实例
+从reward return逐行移除首次collision `-2.0`，同一事件只作cost；102,400 transition中153个
+完整episode、57 collision、85起点。Cost event=collision episode=57、reward去重误差0、cost
+advantage std `.27325`，dual按37.25% rate从1升至`1.13627`；合成actor梯度相对reward-only
+差分L2为31.1%，证明cost链路非零。但startpoint五折OOF的MSE skill/episode-start AUROC/
+early≥100步AUROC仅`.04038/.42855/.60703`，均低于`.05/.65/.65`。按预注册停止当前
+`P20 MLP × d=.10 × dual_lr=.5`实例，不运行30-update或四图、不扫参；不否决Constrained PPO
+方法类。两次更早执行只触发类型/valid-mask机械错误，均无actor update和科学report。见§9.27与
+`ANALYSIS.md` §46。
+
+2026-08-09 Round Z8 GRU-changing paired action-response auxiliary Gate已完成，无PPO、新仿真或
+actor checkpoint。456条late输入按真实batch-size-one recurrent语义重建U44 hidden/action最大
+误差0；两seed五fold的GRU参数与test hidden均确实改变。Seed7100 treatment为target 50、controls
+collision/loss `14/15`，低于frozen 58、`12/13`；seed8100为58、`12/13`，低于frozen 61、
+`19/20`且绝对harm仍超5/5；lost恢复仅0/1。两seed均失败target88、相对frozen+9、lost4和controls
+门。关闭当前paired collision/progress、late50、10-epoch具体2b，不调参、不进validation/PPO；
+不否决所有representation-only辅助目标。见§9.26与`ANALYSIS.md` §45。
+
+2026-08-09 Round Z7 collision-only BC anchoring overlap-supported独立重开已完成，无训练。
+新40起点×2 raceline×4 interval×9 speed的2,880条Austin panel与历史heldout/Austin600起点精确
+零交集；BC/U44全面板和U42/U43/U45的59条潜在source共完成5,937 result/trace，0 error。稳定
+eligible source为41条，精确同raceline/speed无放回control也是41条，覆盖21起点、r0/r2=`31/10`，
+V0全部通过，旧Z3的support阻断已解除。branch0在82条上全部动作、pose/speed、双LiDAR最大误差
+0；full-BC只救回`18/41 < 21`，虽18/18均overtake，但control新collision与overtake loss各
+`4/41 > 2`。判决为严谨关闭当前canonical BC × overlap-supported stable collision × 固定1.5秒
+窗口实例；没有anchor、shadow beta或actor，不扫teacher/window/support/beta。见§9.25与
+`ANALYSIS.md` §44。
+
+2026-08-09 Round Z6-F正式训练与U27--U30四图评测完成，当前无训练/评测进程。31行metrics、
+30对actor/critic、5,166条训练episode全部finite；30个actor均12-key且每update完成16/16 actor
+steps。Pre-update batched ratio最大`0.019095 < 0.02`，exact最大0；prefix/window最低
+`8.43%/4.26%`。16个CUDA deterministic包共9,600 result/trace全部通过key、finite、terminal与
+typed collision合同。U30逐图`21/365、27/365、33/393、22/399`，合计`103/1522`：最低BC线
+通过，但`collision<40`最终目标失败；U27/U29在Hockenheim分别`29/28 > 27`，只有U28/U30通过，
+连续稳定性失败。判决为高超车端经验前沿扩展、目标未完成；tested配置关闭，不否决方法类，
+production不变。见§9.24与`ANALYSIS.md` §43。
+
+2026-08-08 Round Z6-C与Z6-CR已完成，无actor更新。Baseline/treatment各完成102,400 transition，
+role均严格`51,200/51,200`；treatment有39次prefix reset、28 key全覆盖，prefix/window transition
+为`8.43%/5.31%`，GAE误差0、collection-equivalent ratio误差0、参数不变，墙钟比baseline
+`1.1349x`。原Z6-C因普通batched最大`|ratio-1|=0.010755`略超事前`0.01`而保留machine fail；
+独立预注册Z6-CR完整复现后，clip fraction为0、mean KL `9.05e-10`，8-minibatch dry actor梯度
+cosine `0.9999838`、相对L2差`0.005706`，通过因果裁决。这只准入§9.23固定的一次正式
+prefix-reset PPO，不证明方法有效。完整数字见`ANALYSIS.md` §42。
+
+2026-08-08 Round Z6-B及独立Z6-BR测量裁决已完成，无actor更新或formal训练。28条source
+snapshot observation/hidden精确；U45 current-network fast burn-in相对逐步reference最大
+hidden/action/value误差`5.84e-6 / 2.38e-6 / 1.49e-7`，26/26非零prefix确认旧U44 state不可复用。
+Boundary/GAE advantage/return误差`1.49e-8 / 0`；baseline与corridor collection-equivalent
+log-ratio均0。原strict report唯一false是从action反算telemetry residual有`3.18885e-6` FP32误差；
+原machine fail保留，Z6-BR直接测内部noise首50步误差0并通过全部事前裁决线，确认这是非因果
+测量false fail。科学判决是语义必要条件通过，只准入Z6-C no-update训练密度/吞吐Gate，不准入PPO。
+
+2026-08-08 Round Z6-A prefix-reset snapshot no-op工程门已完成，无actor更新。Gate A冻结的
+28条U42--U45至少3/4共识development任务全部在窗口起点保存F110、LatticePlanner、reward/
+wrapper与U44 actor/critic hidden，pickle往返后恢复并重跑确定性后缀。28/28通过；381D
+observation、hidden、actor/opponent action、critic value、reward分量、两车state/steering buffer、
+双LiDAR、collision与terminal/outcome全部最大误差0。26条prefix大于0，中位345.5步，合计可跳过
+9,589/16,385步（58.5%，不是wall-clock测速）。这只准入下一道current-network burn-in与GAE/
+bootstrap语义Gate，不准入PPO；不得复用旧U44 hidden或退回replay-to-prefix。见§9.21与
+`ANALYSIS.md` §40。
+
+2026-08-08 Round Z5 budget-constrained frozen-hidden operating-point Gate已完成，零新仿真、无actor
+更新。456条既有branch outcome按ego startpoint做5 outer x 4 inner nested CV；`lambda/noop`
+阈值只在inner-OOF选择。独立outer seeds的frozen selector为target 69、controls `1/3`；恢复
+Z4原outer seeds的复核为66、`3/4`，均在不高于fixed `5/5` harm时低于fixed target 79。
+配对`p=0.268/0.154`，准确科学表述是未检出严格优于fixed，不是显著劣于fixed；外层又只用了
+`1/3`与`3/4`预算，故不是精确用满`5/5`的harm matched比较。事后全OOF选点在独立seed可读84，
+但nested仅69；该乐观值不承担判决。当前tested selector按预注册关闭，2b仍未测；未运行
+validation、actor接入或PPO。见§9.20与`ANALYSIS.md` §39。
+
+2026-08-08 Round Z4-A representation-changing action-response Gate已完成，无actor更新。
+它复用Round Z2已验证的456条development task与late 13-action真实终局，按70个ego startpoint
+做五折OOF；treatment只增加动作前50步actor可见LiDAR+previous-speed GRU。treatment恢复
+inherited/created/lost为`68/109、32/46、2/13`，controls新collision/overtake loss=`13/21`，
+target success `102`低于同监督frozen-hidden control的`104`。按预注册关闭该具体表征实例，
+没有运行Z4-B validation candidate、共享student GRU或PPO。见§9.19与`ANALYSIS.md` §38。
+
+2026-08-08 Round Z3 collision-only BC anchoring独立validation Gate已停止，无branch、无训练。
+从未打开的150条/19起点validation完成BC、U42--U45共750条CUDA replay，全部result/
+trace合同通过；得到7条、6起点的稳定U44 collision cohort，raceline0/2=`6/1`。
+但预注册的同raceline、同speed、无放回matched controls在`r0/s0.60`缺2条、`r0/s0.85`
+缺1条，任何精确匹配都无解。runner在plan阶段fail closed，没有运行branch0/full-BC。
+判决为**inconclusive / matched-control support insufficient**，不证明collision-only teacher通过或失败；
+不得在当前panel上放宽匹配或直接训练。见§9.18与`ANALYSIS.md` §37。
+
+2026-08-08 Round Z2反事实动作Gate已完成，无actor更新。456条Austin development场景完成
+456次精确U44 no-op和10,944次early/late固定动作branch，11,400条trace合同全部通过。oracle动作
+在early对inherited/created/lost救回`93/109、44/46、10/13`，late为`96/109、45/46、7/13`；
+但startpoint分组外推head在early只有`19/109、11/46、1/13`并误伤17/225 controls，late为
+`34/109、17/46、0/13`且target success `51 < 79` fixed-action baseline。当前fixed-library
+action-conditioned与first-action preference关闭；prefix-reset不准入；MoE继续因12-key边界
+关闭。Constrained PPO、prefix-reset的实际训练机制和MoE架构本身均未被该Gate直接检验；
+后两者分别只是未过旧程序触发条件、以及违反当前12-key部署边界，不能写成科学否决。见§9.17与
+`ANALYSIS.md` §36。
+
+同日 BC-safe anchoring Gate B已完成并科学失败，无训练。Gate A冻结的28条cohort和28条
+matched controls完成branch 0、完整BC、steering-only、speed-only共224次CUDA replay；branch 0
+的action、opponent action、两车pose/speed、双360D LiDAR最大误差全部为0，224条trace合同均
+通过。完整BC在C层救回`10/19`碰撞且10条全为overtake，但L层恢复`0/9`，safe controls又损失
+`2/28`次overtake；两个独立门失败。按预注册关闭本方向，不生成anchor dataset，不进入Gate C/D
+或45-update formal训练；validation未运行branch。当前没有训练或评估进程。见§9.16与
+`ANALYSIS.md` §35。Gate A的cohort证据仍有效，见§9.15与`ANALYSIS.md` §34。
+
+同日Round Z0也已完成，无训练：固定U42--U45按float64等权平均得到12-key actor，四图CUDA为
+`67 collision / 1465 overtake`，相对U44 `62/1478`双轴变差；Hockenheim `19/341`低于BC的
+overtake下限343。该臂按预注册关闭，不改band或权重重试。2,800条正式/诊断episode均通过结果
+与trace完整性合同。完整配对、core-14机制结果与停止规则见§9.14及`ANALYSIS.md` §33。
+
 2026-08-06 fresh first-step PPO regime梯度诊断已经完成并按预注册否决梯度投影训练；没有
 `train_ppo.py`训练任务，也没有产生新actor。production U30跨地图固定面板也已完成fresh复核：
 CUDA结果精确复现历史合计`80 collisions / 1142 overtakes`和same-line/off-line碰撞`66/14`；
@@ -56,7 +171,8 @@ CPU为`78/1142`和`64/14`；碰撞差来自两个临界episode，另有三条fol
 pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[e]val_multiagent\.py|[e]valuate\.sh' || true
 ```
 
-当前没有需要续跑的实验。已有 run 目录均视为完成、否决、被替代或封存，禁止在原目录续写。
+除上文明确记录的Z6-F活动评测外，没有需要续跑的实验。其他已有 run 目录均视为完成、否决、
+被替代或封存，禁止在原目录续写。
 中断后若需重跑，必须使用新目录；当前 checkpoint 不包含 optimizer、scenario queue、
 environment 或 recurrent state，不能称为 exact resume。
 
@@ -64,8 +180,10 @@ environment 或 recurrent state，不能称为 exact resume。
 regime审计Markdown；其全部结论已经由本地§9.6和`ANALYSIS.md` §23覆盖。没有把远端旧版
 HANDOFF覆盖回本地，也不保留第二份根目录审计文档。
 
-最新完成活动见§9.11及`ANALYSIS.md` §30。2026-08-07只完成了Austin开发面板上的无训练
-interaction-phase早期可分性筛查；没有新actor、正式eval或训练。更早的fresh PPO梯度诊断
+Round Z0之前的最新完成活动见§9.13及`ANALYSIS.md` §32；其直接前置诊断见§9.12及`ANALYSIS.md` §31。
+2026-08-07只完成了Austin开发面板上的真值几何/速率早期可分性与当前交互几何表征缺口两项
+无训练预检；没有新actor、正式eval或训练。更早的interaction-phase线性筛查见§9.11及
+`ANALYSIS.md` §30，fresh PPO梯度诊断
 见§9.7及`ANALYSIS.md` §24，它不是历史update replay：checkpoint不含
 scheduler、optimizer或environment state；它只测固定场景队列上、ratio约等于1时的首步PPO
 梯度。K10/K20/K30没有稳定复现人工偏好审计的`-0.96`冲突，虚拟投影也未持续保护两个主
@@ -306,6 +424,14 @@ SHA 的用途仅是确认评测模型身份、识别等价 checkpoint 和检测 
 | **前向走廊门控时间相关速度噪声 U44，四图BC验收候选** | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update44/actor.pth` | `fb0c9895eb2ff004e414da09e4ee27675e825f0e6413a095377d66838e411bf7` |
 | 前向走廊门控时间相关速度噪声 U45 | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update45/actor.pth` | `305dfa8160a987e2b166d8ce548009cd667fa8cfdd0722880f43249ccb07295c` |
 | ordinary异线高速重加权、比例0.6 U30 | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps_ordinary_offline_fast_reweight_0p60/update30/actor.pth` | `4c10ff9f4e2e2f76afadb51e8f18f86173815c364da346ad07d88ebc1c29a341` |
+| U42--U45等权平均，Round Z0已否决 | `post-trained/zero_train_ctv2_u42_u45_equal_average/actor.pth` | `41b57c6a589fc5b960409d3bef63a9a815609659b8171c47d03d7bd219633e50` |
+| Prefix-reset Z6-F U27，late band | `post-trained/ppo_prefix_reset_consensus1of3/update27/actor.pth` | `918c1d122fa78788f864d3060b7441c5178595cdf0a265566a8d72740a54d7dd` |
+| Prefix-reset Z6-F U28，late band唯一非主通过点 | `post-trained/ppo_prefix_reset_consensus1of3/update28/actor.pth` | `02144c38972665820353dc96c6ef222ed02bf91785c1930d75b92e7983e6f9b4` |
+| Prefix-reset Z6-F U29，late band | `post-trained/ppo_prefix_reset_consensus1of3/update29/actor.pth` | `8367e5460719a67f70b965a64b46f689bf52603130499daf242ecea9d61052d3` |
+| Prefix-reset Z6-F U30，主判决点、最低BC线通过但目标未完成 | `post-trained/ppo_prefix_reset_consensus1of3/update30/actor.pth` | `872674b42ca940772281d1b7f2a4745341e3772d8da754e504adcf2f182a6121` |
+
+Round Z0的评估别名`CTv2_U42_U45_EQUAL_AVG.pth`与表中`actor.pth`是同inode硬链接且SHA一致；
+它只是避免trace串臂的等价入口，不是第二个模型。摘要实测于2026-08-08。
 
 **条件门控高方差逐步独立速度噪声的特殊状态**：其 U30 checkpoint 与评测**保留**，但 2026-07-30 已从
 训练代码移除 `conditional_white` 模式及其 `EscalatingRequiredDecelerationGate`。
@@ -1238,19 +1364,420 @@ sector分组5折、ridge且`lambda`由训练折内分组内层CV选出。**回�
 几何的线性可解码性不低于、且维度匹配下一致高于actor自身361D输入，把这些几何量压进hidden
 缺乏可指望的增量。
 
-**边界：** 不能说这些量被编码得"好"（绝对`R^2`只有`0.19--0.73`）；不能说辅助表征学习整体
+**边界：** 不能说这些量被编码得"好"（fold-local维度匹配下hidden的`R^2`为K=64
+`0.158--0.671`、K=256 `0.272--0.731`）；不能说辅助表征学习整体
 无效（本节只否定该量族的缺口前提，未覆盖其他量族或正则化/优化通路）；线性可解码性仍不等于
 信息含量，但这里方向对hidden有利，所以"hidden丢了信息"在**本可以支持它的同一口径下**没有
-成立。附带独立结论：冻结BC pressure在9个目标中8个优于raw LiDAR，与§29不解冻`k`的决定一致。
+成立。附带独立结论：冻结BC pressure在全维读出中9/9目标优于raw LiDAR；fold-local维度匹配
+K=64与K=256均为8/9，唯一例外是`relative_lateral`。这与§29不解冻`k`的决定一致。
 
 **方法学警告（对后续所有probe有效）：不得在未做维度匹配的情况下比较361D与1680D读出；
 任何降维必须在fold内拟合。** 同一数据在朴素固定`lambda`、内层选`lambda`、PCA维度匹配三种
 设定下给出了三种相反结论；PCA的fold-local与全样本拟合此次差异`<0.01`，但不可预先假定无害。
 完整设计、逐折数值、控制A/B与证据边界见`ANALYSIS.md` §32。
 
+### 9.14 Round Z0：U42--U45等权checkpoint平均（2026-08-08，无训练）
+
+固定U42--U45四个相邻actor等权平均，浮点tensor以float64按update顺序累加后cast回原dtype，
+非浮点要求逐值相同；输出通过12-key、finite和fresh strict-load。四图CUDA/ego-scope结果：
+
+| 地图 | BC | U44 | 等权平均 |
+|---|---:|---:|---:|
+| Austin | `33/339` | `18/344` | `18/342` |
+| Hockenheim | `27/343` | `16/347` | `19/341` |
+| MoscowRaceway | `43/373` | `15/390` | `16/386` |
+| Nuerburgring | `26/390` | `13/397` | `14/396` |
+| 四图 | `129/1445` | `62/1478` | **`67/1465`** |
+
+相对U44，collision removed/created为`13/18`（`p=0.473`），overtake lost/gained为`24/11`
+（`p=0.0410`）；相对BC为`94/32`（`p=2.91e-8`）和`49/69`（`p=0.0798`）。near400为
+`32/285`，相对U44 collision `13/8`（`p=0.383`）、overtake `15/12`（`p=0.701`）。
+
+机制假说同样失败：U42--U45共同created core-14中有13个仍被平均actor保留，而平均actor共
+created 32个，另有19个core外失败；权重平均没有把闭环行为变成失败集合交集。Round Z0关闭，
+不做三点、非等权、EMA/SWA或事后权重选择；production保持U30。完整逐图配对、完整性合同、
+证据边界和重开规则见`ANALYSIS.md` §33。
+
+### 9.15 BC-safe anchoring Gate A（2026-08-08，无训练）
+
+Gate A只检验Austin训练侧是否存在可供后续反事实接管审计的稳定锚定对象。868条困难场景的
+91个起点在任何actor评估前按预注册identity hash冻结：development为718条/72起点，validation
+为150条/19起点，两侧起点与scenario key零交集。只对development运行canonical BC和U42--U45
+五次fresh deterministic CUDA replay，validation没有运行actor评估。
+
+| actor | ego collision | overtake | follow |
+|---|---:|---:|---:|
+| BC | 308 | 318 | 92 |
+| U42 | 191 | 377 | 150 |
+| U43 | 187 | 385 | 146 |
+| U44 | 214 | 373 | 131 |
+| U45 | 202 | 377 | 139 |
+
+先按BC定义得到308条raceline0/2 safe overtake；U44单点回归46条，要求U44回归且四个晚期
+checkpoint至少3个回归后，固定主cohort为28条。它覆盖21个起点，raceline0/2=`20/8`，
+U44 collision/lost-overtake=`19/9`；速度`0.45/0.50/0.55/0.60/0.65/0.70/0.75/0.80/0.85`
+分别为`1/1/0/3/2/2/5/7/7`，其中0.55是真实零计数而非筛后删除。六条Gate A门全部通过，且
+`C=19、L=9`均达到Gate B前置的每层8条。
+
+五臂共3,590条trace全部通过result/panel/trace key一致、七字段scenario identity、数组finite与
+逐行对齐、collision marker和terminal row合同，0 error且无partial结果。**机制结论只到
+“稳定对象存在”**：单点46条中有18条未进入共识，说明临界身份波动真实存在，但28条稳定对象
+仍足以继续；它不证明BC动作从U44已访问状态接管能救回碰撞和丢失超车。
+
+判决：Gate A通过；28条development cohort冻结，不得退回U44单点集合或从validation补样本。
+下一合法节点是Gate B branch-0精确重放与BC反事实接管；按用户要求当前先停在Gate A汇报，
+Gate B尚未启动。完整定义、质量检查、分层、证据边界和停止规则见`ANALYSIS.md` §34。
+
+### 9.16 BC-safe anchoring Gate B（2026-08-08，无训练）
+
+28条Gate A cohort均满足固定窗口至少50个动作步，另从development无放回匹配28条BC/U44共同
+安全overtake controls，短窗口剔除0条。12个persistent CUDA worker各只加载一次BC/U44，依次
+完成56条branch 0与三组56条干预；执行层加速没有减少分支、字段或改变阈值。
+
+branch 0在56/56上精确复现保存U44：ego raw/executed action、opponent action、两车pose/speed、
+双360D LiDAR全局最大误差均为0，outcome、首次collision、长度、marker与terminal逐条相同。
+四branch共224条trace的key、finite、对齐、窗口、action source与执行动作合同全部通过。
+
+| 正式完整BC分层 | 实测 | 门 | 判决 |
+|---|---:|---:|---|
+| C碰撞救回 | `10/19`，10条全为overtake | 至少10；救回中至少80%超车 | 通过 |
+| C覆盖 | 9起点，raceline0/2=`8/2` | 至少2起点，两线各2 | 通过 |
+| L恢复超车 | **`0/9`** | 至少8 | **失败** |
+| L新碰撞 | `0` | 至多0 | 通过 |
+| controls | 0新碰撞，**2/28丢超车** | 各至多1 | **失败** |
+
+组件诊断：steering-only在C/L/control恢复或保有overtake为`7/19、1/9、28/28`；speed-only为
+`5/19、1/9、26/28`且control新造1次collision。它们不能事后替代完整二维branch。机制上BC
+确有局部碰撞修复能力，但不具备当前方法要求的统一状态条件teacher能力：它没有恢复任何L，
+还破坏两个safe control的progress结果。
+
+判决：Gate B科学失败，BC functional regularization方向关闭。不得删L、放宽control门、换窗口
+或改成单分量重试；不生成anchor dataset，不进入Gate C/D或formal训练。若复用已验证branch
+engine研究动作库/first-action preference，必须独立预注册并由用户明确改选。完整证据与边界见
+`ANALYSIS.md` §35。
+
+### 9.17 Round Z2：反事实动作存在性与可排序性（2026-08-08，无actor更新）
+
+只用Austin Gate A development且事件前至少有150步的456条：109 inherited collision、46
+created collision、13 lost-overtake、63 inherited-follow诊断、225 safe controls。456/456 no-op
+逐动作、opponent action、pose/speed、双LiDAR、marker与terminal全局最大误差0；early/late各
+12个固定residual共10,944条branch，合计11,400条trace、8,185,913行全部通过合同。
+
+| Gate | early `[event-150,event-100)` | late `[event-100,event-50)` | 判决 |
+|---|---:|---:|---|
+| oracle inherited/created/lost | `93/109、44/46、10/13` | `96/109、45/46、7/13` | 两侧存在性通过 |
+| OOF head inherited/created/lost | `19/109、11/46、1/13` | `34/109、17/46、0/13` | 两侧rankability失败 |
+| OOF head controls collision/loss | `15/17` | `3/5` | early失败；late通过 |
+| OOF target success vs fixed | `31 vs 0(noop)` | `51 vs 79` | late状态条件选择不如固定动作 |
+
+相对no-op，early head collision removed/created=`41/19`（exact `p=0.00622`）、overtake
+lost/gained=`17/36`（`p=0.0127`）；late head为`56/7`（`p=1.36e-10`）与`5/54`
+（`p=1.91e-11`）。这些净改善只发生在按未来event选择的训练侧prefix，不能当作部署actor结果；
+head仍未过lost-overtake和状态条件增益门。late固定动作甚至为`79/17`与`5/83`，说明瓶颈不是
+局部动作不存在，而是何时、对谁选择动作及progress保持。
+
+判决：关闭当前fixed-library action-conditioned controllability和first-action preference形式；
+不得改动作库、阈值或只报oracle上界重试。prefix-reset没有出现“early通过、late失败”的旧程序
+触发条件，故当时未准入，但该条件不是对“重置后PPO能否利用更密梯度”的直接检验，不能写成
+科学否决；Residual/MoE违反当前12-key兼容边界，架构本身也未测。Constrained PPO同样未被本
+Gate检验。完整证据与边界见`ANALYSIS.md` §36。
+
+### 9.18 Round Z3：collision-only BC anchoring validation（2026-08-08，inconclusive）
+
+本轮是用户重新区分“科学否决”与“项目关闭”后的第一个独立验证：只保留Gate B
+中有正面数据的collision层，删除L-anchor，但不改canonical BC teacher、稳定回归定义、
+1.5秒窗口和control匹配。任何validation outcome可见前已冻结数据、阈值和停止规则。
+
+| 阶段 | 实测 | 判决 |
+|---|---:|---|
+| 五actor validation screen | 5 x 150 = 750条，0 error，750 traces | 通过 |
+| 稳定collision cohort | 7条，6起点，raceline0/2=`6/1` | 通过样本门 |
+| control support | `r0/s0.60: 2 source/0 control`；`r0/s0.85: 3/2` | **无解** |
+| branch0/full-BC/formal training | `0/0/0` | 未运行 |
+
+该分层缺口意味着不存在同opponent raceline、同speed、无放回的1:1对照，不是匹配算法
+选错。放宽speed、有放回、从development补样或删source都是看数后改方法，因此本轮不做。
+
+判决：只能写`inconclusive`；collision-only变体仍未被科学否决，但当前也不准入训练。
+只有一个在actor outcome前冻结、起点独立且预先保证同raceline/speed control support的新
+Austin panel才能重开；不在当前validation上修改匹配重跑。完整边界见`ANALYSIS.md` §37。
+
+### 9.19 Round Z4-A：representation-changing action-response（2026-08-08，无actor更新）
+
+本轮严格补测Round Z2没有触及的“新增可训练历史表征”必要条件，但不直接改student GRU。
+复用已通过质量合同的456条task、late prefix和12个residual，加noop得到5,928个真实
+collision/follow/overtake标签。70个ego startpoint按冻结hash分5折；输入只含最近50步actor
+可见LiDAR与previous measured speed，经冻结U44前端形成`50x420`历史，禁止pose、opponent状态、
+stratum、event距离或未来outcome进入feature。
+
+| OOF selector | inherited / created / lost恢复 | target total | controls collision / overtake loss |
+|---|---:|---:|---:|
+| grouped fixed | `45 / 33 / 1` | `79` | `5 / 5` |
+| frozen-hidden control | `68 / 33 / 3` | **`104`** | `13 / 20` |
+| 50-step history treatment | **`68 / 32 / 2`** | **`102`** | **`13 / 21`** |
+
+history的三分类accuracy为`65.92%`，略高于control `64.49%`，但动作选择未获得增量：target
+少2条，lost-overtake只有`2/13 < 4/13`，controls两条门也均失败。按预注册判
+`fail_close_tested_representation_instance`；不运行independent validation、full-development
+训练、actor接入或PPO。
+
+关闭范围只限`late 50-step history × fixed 12-action × class-weighted 3-class outcome × fixed
+probability score`，不能扩写成所有representation learning失败。不得扫描history长度、网络、
+loss或score重开本实例；全新监督机制仍需独立必要条件。Constrained PPO与本Gate正交，仍未测。
+完整证据见`ANALYSIS.md` §38。
+
+### 9.20 Round Z5：budget-constrained frozen-hidden operating point（2026-08-08，零新仿真）
+
+Z2的51与Z4-A的104处在不同noop率/control harm上，原比较不能承担类级判决。本轮保持
+456 task、late 12-action、5,928真实outcome、模型/loss和outer folds不变，在每个outer-train
+内部新增4-fold startpoint OOF，只用inner outcome选择11个lambda和全部可实现noop margin；
+预算固定为fixed的两项`5/225`，outer-test只评估一次。
+
+| 合同 | target | controls collision / loss | 判决 |
+|---|---:|---:|---|
+| grouped fixed | **79** | `5 / 5` | 对照 |
+| frozen，independent outer seeds | **69** | **`1 / 3`** | target失败 |
+| frozen，exact Z4 outer seeds | **66** | **`3 / 4`** | target失败 |
+| history，independent / exact Z4 seeds | `63 / 55` | `6/8、7/7` | target/harm失败 |
+
+frozen相对fixed的target配对为`28/38`（`p=0.268`）与`29/42`（`p=0.154`）。诊断性事后全局
+扫描在independent seeds可得到`84 @ 3/5`，但nested只有69；exact Z4 seeds的事后matched-harm
+最高也仅`72 @ 4/5`。不得使用84替代无泄漏判决。
+
+判决：预注册的`target > 79`两次均未满足，关闭当前`frozen hidden × 3-class outcome × nested
+operating point × late fixed 12 actions`；`p=0.268/0.154`表示未检出优势，不是证明显著劣于
+fixed。Nested只约束harm率`<=5/225`，外层实际欠用预算到`1/3`和`3/4`，不能称为恰好harm
+matched；无泄漏条件下不能强迫outer恰好用满5/5。Z2 top-1具体extraction继续关闭，Z4未约束
+104不再作为同budget优于fixed的证据。关闭不是hidden信息论上限，会反传进student GRU的2b
+仍未测。完整证据见`ANALYSIS.md` §39。
+
+### 9.21 Round Z6-A：prefix-reset snapshot no-op（2026-08-08，无actor更新）
+
+固定Gate A的28条U42--U45至少3/4共识development任务（来源分层collision/lost=`19/9`、21个ego
+startpoint），直接复用Gate B窗口。每条在当前381D observation被消费前保存完整F110物理/
+steering delay/scan RNG/lap/collision状态、LatticePlanner与PurePursuit动态状态、PPO wrapper/
+reward/corridor gate，以及U44 actor与同update privilege-GRU critic hidden；snapshot必须先经过
+pickle序列化/反序列化。
+
+28/28原后缀与恢复后缀逐位相同。恢复点observation和两路hidden、每步actor raw/executed action、
+opponent action、critic value、reward及四分量、双车7D state/steering buffer、双360D LiDAR、
+collision flags、terminal/outcome/首次collision step的最大误差全部为0；28份snapshot、28+28份
+finite对齐trace与terminal-post-step合同经独立重读通过。Prefix为0--701步，26/28大于0、
+中位345.5；完整轨迹16,385步中prefix合计9,589步（58.5%）。这只是可避免仿真步比例，不是
+wall-clock加速测量。当前环境原后缀终局为14次ego collision、6次overtake、8次follow；它们只
+用于证明三类终局都可精确恢复，不重估Gate A的来源标签或U44性能。
+
+判决：**机械snapshot必要条件通过**，不再因“只能replay-to-prefix”停止；但formal训练仍不
+准入。以下是Z6-A完成时的下一步，后来已由§9.22完成：用保存的actor-visible observation prefix对当前更新后网络无梯度
+burn-in，逐位对齐正常起点执行的actor/critic hidden、action/value。本轮只跑确定性mean action，
+没有审计训练期exploration RNG/residual block；Z6-B还必须冻结窗口后探索状态语义并验证
+log-probability重建、prefix transition不进入loss/GAE、窗口边界bootstrap和真实terminal/
+truncated符合标准RecurrentPPO。任一失败即停止，不复用旧U44 hidden、不以replay-to-prefix
+fallback。完整证据见`ANALYSIS.md` §40。
+
+### 9.22 Round Z6-B/Z6-BR：current-network burn-in与GAE语义（2026-08-08，无actor更新）
+
+固定Z6-A的28条Austin development任务与9,589个prefix observation；U44作source snapshot，
+同一真实训练轨迹U45 actor/critic固定作参数改变后的current network。U44逐步重放对snapshot的
+window observation与actor/critic hidden最大误差全0；U45整段fast burn-in相对逐步reference最大
+actor hidden `5.84e-6`、critic hidden `4.77e-6`、action `2.38e-6`、value `1.49e-7`，通过事前
+`5e-5`线。26条非零prefix全部至少有一项U45 state/output不同于旧U44，旧hidden不得复用。
+
+Rollout buffer新增opt-in `recurrent_resets`：snapshot的`episode_starts=true`继续切断GAE并建立
+新sequence，`recurrent_resets=false`保留该sequence的burn-in hidden；普通collector未stage时
+逐元素复制episode start，默认行为不变。合成terminated/timeout/rollout-cut合同的advantage/
+return误差`1.49e-8 / 0`，切段`0/3/5`、actor initial hidden`1/2/3`、critic`11/12/13`全部符合。
+Prefix transition计数0。
+
+Baseline 28 transition与corridor 1,428 transition的collection-equivalent `max |log_ratio|`和
+`max |ratio-1|`均0。原strict machine verdict因反算telemetry residual在50步内误差
+`3.18885e-6 > 0`失败；该字段只用于telemetry，不进入PPO likelihood。独立预注册Z6-BR保持
+U45、seed、任务、51步与原`5e-5`界不变，直接读取内部temporal noise：首50步误差0，第51步
+inactive/block 0，revisit新residual，全部通过。因此保留原machine fail，同时科学裁决为
+`pass_prefix_reset_semantics_after_measurement_adjudication`。
+
+判决只准入Z6-C no-update training-density/integration Gate。U44来源fast path曾有hidden约
+`0.0040`误差，说明fast path不能跨update无条件外推；Z6-C必须用逐步exact burn-in，或每个update
+先fail-closed校准fast path，并实测102,400-transition布局、ratio identity、GAE与wall-clock。
+Snapshot比例、role/cache语义、探索模式、PPO学习收益和四图性能均未测；formal训练仍不准入。
+完整证据见`ANALYSIS.md` §41。
+
+### 9.23 Round Z6-C/Z6-CR：no-update训练密度与batched replay裁决（2026-08-08，无actor更新）
+
+固定canonical BC、fresh privilege-GRU critic、Austin seed42、16×6,400、batch12,800、baseline
+独立速度高斯、479 collision cache和600 ordinary pool。Baseline与treatment都完成102,400行，
+collision/ordinary严格`51,200/51,200`、finite、参数不变、GAE/return误差0、collection-equivalent
+ratio误差0。Treatment只把每第3次collision reset换为共识snapshot：119次collision reset中
+39次prefix，28 key全覆盖；prefix transition 8,634（8.43%），首150步窗口5,438（5.31%）。
+Baseline/treatment墙钟`98.97/112.32s`，比值`1.1349`。
+
+原Z6-C 12项只失败普通batched envelope：treatment最大`|log-ratio|/|ratio-1|`为
+`0.010697/0.010755 > 0.01`，因此原`fail_stop_prefix_reset_density_or_integration`必须保留。
+Z6-CR在再次完整收集前冻结因果线，同一8个minibatch的普通/exact dry actor epoch得到gradient
+cosine `0.9999838`、相对L2差`0.005706`、最大policy-loss差`4.73e-7`，clip fraction 0、mean KL
+`9.05e-10`且参数未step，故独立裁决通过。它只说明该刀锋最大值未实质改变当前PPO actor更新。
+
+下一步仅允许预注册的`ppo_prefix_reset_consensus1of3`单次fresh Austin训练：30 formal updates，
+每update exact ratio`<=5e-5`、batched最大ratio偏差`<0.02`硬停止；完成后固定CUDA评估U27--U30
+四图各600，不选点、不扫prefix比例/窗口/panel/LR/exploration/updates、不延长U45。无论结果如何
+关闭本实例；方法2b、collision-only与Constrained PPO不由本实验代判。完整证据见
+`ANALYSIS.md` §42。
+
+### 9.24 Round Z6-F：prefix-reset单次正式PPO（2026-08-09，完成并关闭tested配置）
+
+从canonical BC fresh start，唯一变化为collision角色每3次reset中1次使用28项共识prefix；Austin
+seed42、privilege-GRU、16×6,400、warmup+30 formal、50/50 role、479/600 pools与baseline探索
+均保持production。训练31行metrics、30对finite checkpoint、12-key和16/16 actor step均通过；
+batched ratio最大U26 `0.019095 < 0.02`、exact全0，prefix/window最低`8.43%/4.26%`。
+
+16个正式包共9,600 episode/trace全部通过完整性合同。逐图`collision/overtake`：
+
+| update | Austin | Hockenheim | Moscow | Nuerburgring | 四图 | BC逐图门 |
+|---:|---:|---:|---:|---:|---:|---|
+| U27 | `17/365` | `29/363` | `36/391` | `23/399` | `105/1518` | 失败 |
+| U28 | `20/367` | `27/365` | `32/395` | `22/398` | `101/1525` | 通过 |
+| U29 | `23/367` | `28/362` | `27/399` | `23/400` | `101/1528` | 失败 |
+| U30 | `21/365` | `27/365` | `33/393` | `22/399` | **`103/1522`** | **通过** |
+
+U30相对BC collision removed/created `60/34, p=0.00955`，overtake lost/gained
+`16/93, p=2.21e-14`，最低验收通过。相对U44则collision `40/81, p=0.000244`显著更差、
+overtake `33/77, p=3.30e-5`显著更好，是安全--超车交易。最终`<40/>1500`只通过超车；U28/U30
+通过但不连续，稳定性失败。相邻band aggregate在`101--105/1518--1528`，配对变化均不显著；
+不能把Hockenheim刀锋失败夸大成显著崩溃，也不能放宽硬门。
+
+判决：**高超车端经验前沿扩展，最终目标未完成，关闭本tested配置。** 不扫interval/panel/window/
+LR/exploration/updates，不延长U45，不从U28挑production。它证明prefix密度可改变前沿，但没有
+解决跨状态/地图的安全--progress统一选择；不科学否决prefix-reset方法类。方法2b、collision-only
+与Constrained PPO仍需各自必要条件。完整证据见`ANALYSIS.md` §43。
+
+### 9.25 Round Z7：collision-only BC anchoring独立重开（2026-08-09，无训练）
+
+本轮没有修改旧Z3的7条panel或匹配门，而是在actor outcome前冻结全新2,880条Austin Cartesian
+panel，并把estimand事前限定为每个raceline/speed层同时有exact safe control support的稳定
+collision。BC/U44各跑2,880条；只对59条`BC=overtake、U44=collision`候选补跑U42/U43/U45，
+与完整source screen等价且少8,463次无信息仿真。5,937条result/trace全部通过质量合同。
+
+最终41条稳定source全部有support，匹配41 controls，覆盖21起点、r0/r2=`31/10`。V0五门全部
+通过；branch0在82条上raw/executed/opponent action、两车pose/speed和双LiDAR最大误差均0。
+full-BC必要条件如下：
+
+| 条件 | 实测 | 线 | 判决 |
+|---|---:|---:|---|
+| collision rescue | `18/41` | `>=21` | **失败** |
+| rescued overtake | `18/18` | `>=15` | 通过 |
+| rescue覆盖 | 11起点，r0/r2=`16/2` | 2起点、每线1 | 通过 |
+| control新collision | `4/41` | `<=2` | **失败** |
+| control overtake loss | `4/41` | `<=2` | **失败** |
+
+这是样本充分、exact control闭合、branch0精确后的必要条件反例，故严谨关闭
+`canonical BC × overlap-supported stable collision × fixed 1.5s window × collision-only`实例。
+不得生成anchor dataset、做shadow beta或formal PPO，也不得扫描teacher/window/support cap/
+门限。正面机制证据保留：18条救援全部成为overtake；但它不能抵消23条未救和4条safe-control
+伤害。结论不外推其他teacher/窗口/一般BC正则化；旧Z3仍是inconclusive历史事实。
+
+### 9.26 Round Z8：GRU-changing paired action-response auxiliary（2026-08-09，无PPO）
+
+本轮是2b首次直接检验：复用456条/70起点development与late 13-action真实结局，control在frozen
+U44 hidden上训练response head；treatment让同一`collision indicator + progress delta vs noop`
+loss反传进U44初始化的原1680D GRU，`k`、speed MLP、actor output layer冻结。每个test fold固定
+下一foldcalibration、其余三fold训练；lambda/noop门只看calibration，两个seed都必须通过。
+
+正式recurrent重建456/456 hidden/action最大误差0。两seed五fold的GRU参数相对L2均约
+`0.0021--0.0026`、test hidden平均相对L2约`0.0094--0.0123`，故不是“表征没变”。结果：
+
+| seed | frozen target @ control collision/loss | trainable GRU target @ control collision/loss | lost |
+|---:|---:|---:|---:|
+| 7100 | `58 @ 12/13` | **`50 @ 14/15`** | 0 |
+| 8100 | `61 @ 19/20` | **`58 @ 12/13`** | 1 |
+
+Seed7100相对frozen target配对`2/10, p=0.0386`，显著更差；seed8100 target `11/14, p=0.690`，
+虽control harm少7次（`1/8, p=0.0391`），绝对12/13仍远超5/5。两seed都未达到target88、相对
+frozen+9、lost4与controls门。关闭
+`U44 GRU × late50 × paired collision/progress × 10 epoch × rotating calibration`具体实例；
+不运行独立validation/PPO，不扫epoch/LR/loss/操作点。该结果不否决所有2b方法类。
+
+### 9.27 Round Z9：collision-cost Constrained PPO preflight（2026-08-09，无actor更新）
+
+固定目标把现有首次碰撞`-2.0`从reward GAE精确移除，只保留`cost=1[first ego collision]`；
+reward critic仍为`privilege_gru`，独立训练期cost critic为P20 MLP。预算`.10`、lambda初值1、
+dual LR.5、范围0--20，全部在rollout前冻结。
+
+有效rollout为102,400 transition；153个完整episode中57 collision，覆盖85起点。57个cost event
+与57个collision episode相等，reward去重最大误差0，cost advantage/return std
+`.27325/.25761`。Dual `1→1.13627`。Reward-only/合成actor梯度L2 `25.3429/20.0068`，差分相对
+L2 `.31087`、cosine `.96687`；cost信号与优化调用链成立。
+
+按ego起点五折、每fold17个test起点，collision episode `11/14/14/9/9`。OOF MSE
+`.10857`对常数`.11314`，skill `.04038 < .05`；episode-start AUROC
+`.42855 < .65`；early≥100步 AUROC `.60703 < .65`。三条可学习性门失败，machine verdict为
+`fail_stop_exact_constrained_implementation`。Formal和四图未运行，actor不变。关闭当前
+`reward去collision + P20 MLP + d=.10 + lambda0=1 + dual_lr=.5`实例；不把OOF gate误写成
+Constrained PPO方法类的数学证伪。
+
 ---
 
+### 9.28 跨轮汇总与证据级别（2026-08-09，Claude 独立复核，无新仿真）
+
+本节只做两件既有各轮小结没有并排给出的事：把全部可部署点放进同一张**带证据级别**的表，
+以及记录一条按不适用前提被关闭的轴。完整推导见 `GATES.md` 附录 C。
+
+**证据级别必须与数字一起引用。** 四图 `collision / overtake`：
+
+| 模型 | 四图 | 证据级别 |
+|---|---:|---|
+| Canonical BC | `129 / 1445` | 正式 CUDA |
+| Production U30 | `94 / 1508` | Austin600 正式；跨地图 headline，Moscow 仅 `160/600` 中断残留、Nuerburgring 仅 traces |
+| 前向走廊时间相关探索 U44 | `62 / 1478` | 正式 CUDA 四图配对包 |
+| ordinary 异线高速重加权 U30 | `73 / 1516` | **trace 重建包**；`direct_evaluator_aggregate_retained=false`、manifest 无 `device`/无顶层 `collision_scope`；600×4 完整 trace 齐备，计数与配对可复算 |
+| U42--U45 等权平均 | `67 / 1465` | 正式 CUDA |
+| prefix-reset U30（Z6-F） | `103 / 1522` | 正式 CUDA，U27--U30 共 16 包 |
+| 粗 regime 事后拼接 | `58 / 1527` | 不可部署上界 |
+| 逐 episode hindsight oracle | `25 / 1557` | 不可部署上界 |
+
+三条由上表得到的判断：
+
+1. 六个可部署点近似落在同一条安全--超车前沿上；**已执行的全部方法都在这条线上滑动。**
+2. 重加权 U30 是唯一在四图两轴上同时优于 production 的点（`-21` collision、`+8` overtake），
+   但证据级别低于 U44/SWA/BC。**切换 production 前必须补一次固定 CUDA 四图确认**，同时
+   production 自身缺 Moscow/Nuerburgring 规范包，当前比较是"重建对 headline"。
+   补齐成本为 `2400 + 1200 = 3600` episode、零训练。
+3. prefix-reset U30 在四图上被重加权 U30 **双轴支配**（`103/1522` 对 `73/1516`）。这不改变
+   §9.24 "扩展前沿、目标未完成"的判决，只说明它不是前沿进攻端的最优点。
+
+**一条按不适用前提被关闭的轴（需要用户裁定，未授权）。** §10.1 第 16 条关闭 side-phase
+steering exploration 的理由是"缺少可靠部署期 conditioning"。已核实的两个事实是：
+
+- 历史上全部 8 条训练臂的 `STEERING_LATENT_STD` 一律为 `0.03`，**转向探索通道从未被改变过**，
+  §18 的五组探索实验全部只动速度通道；
+- 探索是纯训练期机制：`eval_multiagent.py` 评测时直接取 mean action、无噪声无门；
+  `FrontCorridorGate` 本身条件在模拟器特权几何上，**同样没有部署期 conditioning**。
+
+因此该理由适用于**部署期相位门控**，不适用于**训练期探索门**。相关已测证据（新造失败的
+接触几何以近平行侧/后擦碰为主、相对 yaw 中位 `3.67°`；Z2 最强单一固定干预是
+`steer +0.02 / speed +0.5`，带转向分量）指向横向通道。**这是未测假说，不是发现**；在用户
+明确裁定并重新预注册前，§10.1 第 16 条继续有效，不得据此开跑。
+
 ## 10. 当前允许与不允许的下一步
+
+BC Gate、Round Z2、Round Z4-A和Round Z5具体实例均已关闭；Round Z3历史validation仍因
+matched-control support不足而inconclusive，但Round Z7已经用新独立panel闭合support并严格否决
+当前collision-only teacher/window实例。必须分开“科学未决”和“当前工程
+准入”：
+
+- 当前canonical BC × stable collision × 1.5秒collision-only变体已由Z7严谨关闭；只有更换teacher
+  或机制性窗口定义才是新方法，不能继续调panel、support cap或beta；
+- prefix-reset的Z6-A--Z6-F完整链已测：U30最低BC线通过且扩展高超车端前沿，但最终安全目标与
+  连续稳定性未通过；当前tested配置关闭，方法类未被严谨否决；
+- Constrained PPO当前固定实例已完成reward/cost唯一化与preflight；机械链路通过但startpoint
+  OOF三门失败，formal按合同停止。只关闭该P20/budget/dual实例，不否决方法类；
+- representation-only大类不是信息论上被否决；Z8已首次直接训练student GRU，并关闭paired
+  collision/progress、late50、10-epoch具体2b。其他全新监督仍属新方法，但不得调Z8参数重试；
+- MoE架构本身未测，但在最终actor必须保持12-key兼容的当前任务合同下工程不合法；只有用户
+  明确放弃该边界才值得科学检验。
+
+当前没有仍在队列中的已授权实验：Z6、Z7、Z8与Z9具体实例都已完成各自允许的最深Gate或formal，
+并按停止规则关闭。下一步若存在，必须是用户重新授权、带新机制假说的新预注册；不能现场调
+prefix、teacher、2b loss、cost budget、dual或critic继续试。
 
 ### 10.1 已关闭
 
@@ -1274,6 +1801,33 @@ sector分组5折、ridge且`lambda`由训练折内分组内层CV选出。**回�
 15. 在没有新的关键LiDAR压缩证据时解冻actor pressure `k`或扫描其学习率。
 16. 在interaction-phase早期可分性未稳定通过时运行side-phase steering响应面、fresh PPO
     credit审计或正式训练相位门控转向探索。
+17. U42--U45三点/非等权平均、EMA/SWA或根据四图结果选择checkpoint组合；固定等权Round Z0
+    已以`67/1465`失败，见§9.14。
+18. 当前BC functional regularization的anchor dataset、Gate C/D与formal训练；Gate B已因L恢复
+    `0/9`和controls丢超车`2/28`关闭，见§9.16。
+19. 当前12动作、early/late prefix、frozen-hidden ActionScorer及其first-action extraction；oracle
+    动作存在但两侧rankability均失败，见§9.17。不得改动作幅度、窗口、阈值或只报oracle重试；
+20. 按Round Z2旧触发规则直接启动prefix-reset；“early通过、late失败”没有出现，所以旧方案
+    没有自动准入。该项是程序停止，不是科学否决；若继续必须改用直接检验reset训练密度的独立预注册；
+21. Residual/MoE/runtime selector在361D/12-key兼容要求不变时不合法。
+22. 在当前collision-only validation panel上放宽speed/raceline匹配、改成有放回control、
+    从development补control或删除难匹配source；Round Z3已因control support确定性不足
+    而inconclusive，不是teacher失败。
+23. Round Z4-A固定的50步历史GRU、12动作、三分类loss与概率score；它没有超过frozen-hidden
+    control，并独立失败lost-overtake与safe-control门。不得扫描history长度、网络或score重试。
+24. Round Z5的lambda/noop阈值、harm预算、nested folds或seed；两套outer seed合同均未达到
+    `target > 79`准入线，不得使用事后OOF 84或增加网格重开；该项目关闭不等于统计显著劣于fixed。
+25. 复用U44旧hidden、绕过每update likelihood硬门，或重跑/扫描Z6-C的prefix比例、窗口、panel、
+    exploration、updates与学习率；Z6-C原machine fail与Z6-CR追加裁决都必须保留。
+26. 重跑或扫描Z7 collision-only的canonical BC teacher、1.5秒窗口、support cap、门限或beta；
+    新独立panel已在41 source/41 exact control上得到rescue `18<21`和control harm `4>2`，当前
+    方法实例已严谨关闭。更换teacher或机制性窗口属于新方法，必须另行预注册。
+27. 重跑或扫描Z8的late50窗口、paired collision/progress loss、10 epoch、GRU/head LR、loss
+    权重、lambda或noop threshold；两seed已真实改变GRU但都失败target、lost与absolute control
+    门。新辅助监督属于新方法，不能继承Z8准入。
+28. 重跑或扫描Z9的P20 cost critic、`d=.10`、lambda初值1、dual LR.5或其上下界；reward/cost与
+    actor梯度链路已通过，但startpoint OOF的skill/AUROC三门失败，formal按预注册停止。不同
+    constraint目标或cost representation属于新方法，且本Gate不构成方法类数学否决。
 
 ### 10.2 未完成但不是高优先
 
@@ -1281,7 +1835,9 @@ sector分组5折、ridge且`lambda`由训练折内分组内层CV选出。**回�
   §32执行完毕，**结论是缺口不存在且符号相反**——维度匹配下GRU hidden在9/9几何目标上优于
   actor输入。因此以该9个几何/速率量族为辅助目标的训练**不准入**。这不否决辅助表征学习
   整体：换用不属于该量族的目标（对手planner意图代理、ego动作序列可达性量等）必须按§32.2
-  同一口径重做缺口预检，不得继承结论或跳过预检；
+  同一口径重做缺口预检，不得继承结论或跳过预检。Round Z4-A已进一步否决固定50步历史与
+  12动作三分类结果监督；Round Z8又直接训练原GRU并否决paired collision/progress的具体2b；
+  新目标不得复用两者失败配置做参数扫描；
 - temporal hold K10/K25：仅提出，未训练；
 - Group13 GRU/head LR 2×2：未运行；
 - outcome-aware hard：历史上有实现、没有独立A/B；源码已删除，只有重建合同。
@@ -1345,7 +1901,8 @@ git status --short
 pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[e]val_multiagent\.py|[e]valuate\.sh' || true
 ```
 
-5. 复用cache前核对canonical BC哈希；身份不匹配则新cache或reclassify。
+5. 复用cache前核对canonical BC哈希；身份不匹配则使用新cache目录按当前分类actor重建，
+   禁止复用身份不匹配的cache。
 6. 解释旧run时先读它的 `run_config.json`，不要套当前defaults。
 7. 检查metrics行、checkpoint、final actor和进程状态后再宣布run完成。
 8. 新eval使用唯一actor alias，防止同名checkpoint trace覆盖。
@@ -1353,9 +1910,10 @@ pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[e]val_multiagent\.py|[e]valuate\.sh' || tr
 10. 验证面板scenario数、0 errors、trace key、marker和finite数值。
 11. 任何production变更必须同时更新本文件的§1、§2、§3.8和对应判决。
 
-当前交接终点：
+历史交接快照（Round Z6前，已被§1.1与§9.27取代，不可作为当前行动）：
 
-> 架构与实验接口已经覆盖reward、pool、采样和探索多个方向。当前不启动新训练。正式CUDA
+> 架构与实验接口已经覆盖reward、pool、采样和探索多个方向。当前不启动新训练；已开始执行
+> BC-anchor预注册的训练前Gate链。正式CUDA
 > 四图BC验收已经确认前向走廊门控时间相关速度噪声U44为安全候选：`62/1478`，相对BC
 > collision removed/created `94/27`（`p=7.14e-10`），overtake lost/gained `41/74`
 > （`p=0.00269`）。旧ordinary异线高速重加权U30在新口径下计数为`73/1516`，相对BC也
@@ -1367,5 +1925,41 @@ pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[e]val_multiagent\.py|[e]valuate\.sh' || tr
 > 又否决了两个直接候选：U44新造的6个车辆碰撞窗口没有走廊block可作phase-bounded截断，关键
 > LiDAR回波也没有frozen pressure饱和。随后30个平行侧/后碰撞的startpoint分组线性probe
 > 仅在1.0s出现不稳定的pressure AUROC 0.773，1.5s/0.5s分别为0.606/0.598，GRU hidden最高
-> 0.617，因此不准入动作响应、PPO-credit或相位门控转向探索。用户明确禁止multi-map PPO；训练只可使用Austin。
-> Production部署别名暂时仍指向U30，当前没有未完成run，也没有已获准的新训练臂。
+> 0.617，因此不准入动作响应、PPO-credit或相位门控转向探索。§31随后显示所测真值几何/
+> 速率在`>=0.5s`的线性早期可分性仍未通过预注册门；§32的fold-local维度匹配读出则显示
+> hidden在9/9当前几何目标上优于输入，否定了该量族“输入有信息但hidden丢失”的缺口前提，
+> 因而不启动这9个目标的辅助表征训练。随后Round Z0等权checkpoint平均得到`67/1465`，
+> Hockenheim `19/341`未过BC超车下限，且core-14仍保留13个，已按预注册关闭并禁止改权重重试。
+> BC-safe anchoring Gate A随后在冻结的718条Austin development困难场景上完成：BC-safe
+> overtake 308条，U44单点回归46条，3/4共识28条，覆盖21个起点，raceline0/2=`20/8`，
+> U44 collision/lost-overtake=`19/9`；五臂3,590条trace合同全部通过，validation未评估。
+> Gate A六条准入线全部通过；随后Gate B branch 0在56条上以全部字段最大误差0精确复现U44。
+> 完整BC接管能把C层`10/19`碰撞全部救成超车，但L恢复为`0/9`，safe controls另有`2/28`
+> 丢超车，因此按预注册科学失败并关闭BC anchoring方向。224条branch trace合同全部通过，
+> validation未运行branch；没有anchor dataset、Gate C/D、formal训练或新actor。
+> Round Z2随后在456条更宽Austin development场景上完成456次精确no-op和10,944次固定动作
+> branch。early/late oracle均证明局部动作广泛存在，但五折hidden ActionScorer分别只恢复
+> lost-overtake `1/13、0/13`，early误伤17/225 controls，late target success `51 < 79`固定动作
+> baseline，故fixed-library action-conditioned/preference关闭，prefix-reset不准入。六类方法中
+> prefix-reset训练机制与MoE架构本身仍未被直接检验；后者受12-key工程边界排除。随后Round Z3
+> 用150条独立validation找到7条稳定collision
+> cohort，但精确matched controls分层不足，在任何branch前按预注册停止；collision-only BC
+> 变体只能判inconclusive。Round Z4-A再用Round Z2的5,928个真实late action-outcome标签检验
+> 50步actor-visible历史GRU：treatment为`68/32/2`、controls `13/21`、target `102`，低于同协议
+> frozen-hidden control的104，因此关闭该具体表征实例，未进入validation或训练。
+> Round Z5随后以5x4 nested startpoint CV约束fixed的control预算：frozen selector在独立outer
+> seeds为`69 @ 1/3`，恢复Z4 outer seeds为`66 @ 3/4`，均未达到`target > 79`准入线；配对
+> `p=0.268/0.154`，所以是未检出优势而非显著劣于fixed。独立seed的事后全OOF曲线虽可读到84，
+> 但无泄漏nested只有69；故当前tested selector关闭，不进入validation或PPO，2b仍未测。
+> Round Z6-A随后完成28条共识任务的完整snapshot pickle往返与后缀复跑，所有state/action/
+> value/reward/LiDAR/terminal字段最大误差0；26条为非零prefix，中位345.5步，机械Gate通过。
+> Round Z6-B随后用真实相邻U45完成current-network burn-in、boundary/hidden mask、GAE和两种
+> exploration likelihood审计；原strict report只因非因果telemetry反算舍入失败，独立Z6-BR
+> 直接测内部noise后通过。下一步不是训练，而是Z6-C no-update训练密度/吞吐Gate；旧U44 hidden和
+> replay-to-prefix都不是fallback。当前科学未决项还包括collision-only新panel、prefix-reset
+> 训练密度、Constrained PPO以及不同机制的全新representation目标；MoE只有放弃12-key边界才
+> 进入候选。Constrained PPO的
+> collision-cost定义与当前reward collision项重复，必须先
+> 由用户选择“移出reward后约束collision”或“保留reward并约束overtake”，不能代替用户决定。
+> 用户明确禁止multi-map PPO；训练只可使用Austin。Production部署别名暂时仍指向U30，当前
+> 没有未完成run；Constrained PPO尚未预注册，当前不启动formal训练。

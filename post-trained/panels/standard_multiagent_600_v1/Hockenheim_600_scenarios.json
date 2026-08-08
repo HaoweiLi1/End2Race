@@ -1,0 +1,5402 @@
+[
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e0_o14_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e0_o14_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e0_o14_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e0_o14_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e0_o15_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e0_o15_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e0_o15_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e0_o15_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 15,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e0_o14_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e0_o14_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e0_o14_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e0_o14_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 0,
+    "opp_idx": 14,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e36_o46_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 46,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e36_o46_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 46,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e36_o46_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 46,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e36_o46_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 46,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e36_o51_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 51,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e36_o51_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 51,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e36_o51_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 51,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e36_o51_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 51,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e36_o54_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 54,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e36_o54_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 54,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e36_o54_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 54,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e36_o54_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 36,
+    "opp_idx": 54,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e72_o85_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 85,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e72_o85_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 85,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e72_o85_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 85,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e72_o85_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 85,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e72_o87_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e72_o87_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e72_o87_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e72_o87_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e72_o87_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e72_o87_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e72_o87_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e72_o87_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 72,
+    "opp_idx": 87,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e108_o121_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 121,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e108_o121_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 121,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e108_o121_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 121,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e108_o121_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 121,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e108_o123_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e108_o123_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e108_o123_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e108_o123_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e108_o123_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e108_o123_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e108_o123_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e108_o123_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 108,
+    "opp_idx": 123,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e144_o157_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 157,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e144_o157_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 157,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e144_o157_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 157,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e144_o157_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 157,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e144_o159_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e144_o159_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e144_o159_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e144_o159_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e144_o159_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e144_o159_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e144_o159_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e144_o159_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 144,
+    "opp_idx": 159,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e180_o194_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e180_o194_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e180_o194_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e180_o194_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e180_o195_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 195,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e180_o195_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 195,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e180_o195_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 195,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e180_o195_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 195,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e180_o194_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e180_o194_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e180_o194_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e180_o194_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 180,
+    "opp_idx": 194,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e216_o230_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e216_o230_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e216_o230_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e216_o230_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e216_o231_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e216_o231_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e216_o231_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e216_o231_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 231,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e216_o230_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e216_o230_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e216_o230_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e216_o230_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 216,
+    "opp_idx": 230,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e252_o266_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e252_o266_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e252_o266_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e252_o266_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e252_o267_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e252_o267_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e252_o267_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e252_o267_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 267,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e252_o266_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e252_o266_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e252_o266_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e252_o266_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 252,
+    "opp_idx": 266,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e288_o303_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e288_o303_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e288_o303_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e288_o303_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e288_o303_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e288_o303_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e288_o303_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e288_o303_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 303,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e288_o301_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 301,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e288_o301_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 301,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e288_o301_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 301,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e288_o301_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 288,
+    "opp_idx": 301,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e323_o338_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e323_o338_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e323_o338_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e323_o338_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e323_o338_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e323_o338_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e323_o338_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e323_o338_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 338,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e323_o336_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 336,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e323_o336_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 336,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e323_o336_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 336,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e323_o336_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 323,
+    "opp_idx": 336,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e359_o375_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 375,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e359_o375_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 375,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e359_o375_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 375,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e359_o375_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 375,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e359_o374_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 374,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e359_o374_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 374,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e359_o374_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 374,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e359_o374_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 374,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e359_o372_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e359_o372_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e359_o372_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e359_o372_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 359,
+    "opp_idx": 372,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e395_o411_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 411,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e395_o411_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 411,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e395_o411_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 411,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e395_o411_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 411,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e395_o410_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 410,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e395_o410_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 410,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e395_o410_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 410,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e395_o410_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 410,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e395_o408_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 408,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e395_o408_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 408,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e395_o408_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 408,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e395_o408_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 395,
+    "opp_idx": 408,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e431_o447_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 447,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e431_o447_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 447,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e431_o447_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 447,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e431_o447_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 447,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e431_o446_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 446,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e431_o446_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 446,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e431_o446_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 446,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e431_o446_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 446,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e431_o444_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 444,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e431_o444_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 444,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e431_o444_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 444,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e431_o444_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 431,
+    "opp_idx": 444,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e467_o483_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 483,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e467_o483_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 483,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e467_o483_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 483,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e467_o483_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 483,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e467_o482_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e467_o482_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e467_o482_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e467_o482_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 482,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e467_o480_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e467_o480_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e467_o480_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e467_o480_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 467,
+    "opp_idx": 480,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e503_o510_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 510,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e503_o510_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 510,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e503_o510_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 510,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e503_o510_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 510,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e503_o518_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e503_o518_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e503_o518_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e503_o518_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 518,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e503_o523_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 523,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e503_o523_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 523,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e503_o523_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 523,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e503_o523_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 503,
+    "opp_idx": 523,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e539_o543_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 543,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e539_o543_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 543,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e539_o543_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 543,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e539_o543_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 543,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e539_o554_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 554,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e539_o554_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 554,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e539_o554_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 554,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e539_o554_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 554,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e539_o561_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 561,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e539_o561_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 561,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e539_o561_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 561,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e539_o561_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 539,
+    "opp_idx": 561,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e575_o579_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 579,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e575_o579_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 579,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e575_o579_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 579,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e575_o579_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 579,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e575_o590_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 590,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e575_o590_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 590,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e575_o590_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 590,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e575_o590_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 590,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e575_o597_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 597,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e575_o597_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 597,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e575_o597_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 597,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e575_o597_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 575,
+    "opp_idx": 597,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e611_o616_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 616,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e611_o616_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 616,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e611_o616_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 616,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e611_o616_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 616,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e611_o626_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e611_o626_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e611_o626_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e611_o626_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 626,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e611_o633_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 633,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e611_o633_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 633,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e611_o633_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 633,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e611_o633_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 611,
+    "opp_idx": 633,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e647_o652_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 652,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e647_o652_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 652,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e647_o652_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 652,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e647_o652_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 652,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e647_o662_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 662,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e647_o662_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 662,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e647_o662_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 662,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e647_o662_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 662,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e647_o669_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 669,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e647_o669_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 669,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e647_o669_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 669,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e647_o669_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 647,
+    "opp_idx": 669,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e683_o686_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e683_o686_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e683_o686_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e683_o686_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 686,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e683_o698_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 698,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e683_o698_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 698,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e683_o698_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 698,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e683_o698_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 698,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e683_o707_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 707,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e683_o707_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 707,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e683_o707_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 707,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e683_o707_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 683,
+    "opp_idx": 707,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e719_o721_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e719_o721_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e719_o721_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e719_o721_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e719_o734_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e719_o734_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e719_o734_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e719_o734_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 734,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e719_o743_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 743,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e719_o743_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 743,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e719_o743_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 743,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e719_o743_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 719,
+    "opp_idx": 743,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e755_o757_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e755_o757_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e755_o757_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e755_o757_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e755_o770_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e755_o770_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e755_o770_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e755_o770_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 770,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e755_o779_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 779,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e755_o779_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 779,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e755_o779_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 779,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e755_o779_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 755,
+    "opp_idx": 779,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e791_o798_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e791_o798_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e791_o798_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e791_o798_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 798,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e791_o806_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 806,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e791_o806_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 806,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e791_o806_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 806,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e791_o806_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 806,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e791_o810_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 810,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e791_o810_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 810,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e791_o810_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 810,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e791_o810_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 791,
+    "opp_idx": 810,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e827_o836_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 836,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e827_o836_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 836,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e827_o836_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 836,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e827_o836_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 836,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e827_o842_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 842,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e827_o842_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 842,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e827_o842_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 842,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e827_o842_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 842,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e827_o844_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 844,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e827_o844_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 844,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e827_o844_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 844,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e827_o844_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 827,
+    "opp_idx": 844,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e863_o869_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 869,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e863_o869_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 869,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e863_o869_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 869,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e863_o869_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 869,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e863_o878_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 878,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e863_o878_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 878,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e863_o878_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 878,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e863_o878_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 878,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e863_o884_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 884,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e863_o884_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 884,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e863_o884_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 884,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e863_o884_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 863,
+    "opp_idx": 884,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e899_o904_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e899_o904_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e899_o904_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e899_o904_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 904,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e899_o914_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 914,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e899_o914_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 914,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e899_o914_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 914,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e899_o914_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 914,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e899_o921_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 921,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e899_o921_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 921,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e899_o921_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 921,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e899_o921_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 899,
+    "opp_idx": 921,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e934_o939_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 939,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e934_o939_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 939,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e934_o939_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 939,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e934_o939_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 939,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e934_o949_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 949,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e934_o949_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 949,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e934_o949_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 949,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e934_o949_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 949,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e934_o956_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 956,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e934_o956_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 956,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e934_o956_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 956,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e934_o956_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 934,
+    "opp_idx": 956,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e970_o975_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 975,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e970_o975_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 975,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e970_o975_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 975,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e970_o975_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 975,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e970_o985_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e970_o985_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e970_o985_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e970_o985_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 985,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e970_o992_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e970_o992_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e970_o992_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e970_o992_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 970,
+    "opp_idx": 992,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1006_o1011_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1011,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1006_o1011_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1011,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1006_o1011_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1011,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1006_o1011_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1011,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1006_o1021_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1006_o1021_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1006_o1021_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1006_o1021_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1021,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1006_o1028_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1028,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1006_o1028_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1028,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1006_o1028_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1028,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1006_o1028_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1006,
+    "opp_idx": 1028,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1042_o1043_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1043,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1042_o1043_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1043,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1042_o1043_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1043,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1042_o1043_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1043,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1042_o1057_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1042_o1057_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1042_o1057_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1042_o1057_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1057,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1042_o1067_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1067,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1042_o1067_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1067,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1042_o1067_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1067,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1042_o1067_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1042,
+    "opp_idx": 1067,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1078_o1078_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1078_o1078_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1078_o1078_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1078_o1078_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1078,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1078_o1093_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1093,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1078_o1093_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1093,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1078_o1093_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1093,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1078_o1093_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1093,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1078_o1104_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1104,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1078_o1104_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1104,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1078_o1104_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1104,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1078_o1104_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1078,
+    "opp_idx": 1104,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1114_o1114_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1114,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1114_o1114_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1114,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1114_o1114_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1114,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1114_o1114_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1114,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1114_o1129_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1114_o1129_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1114_o1129_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1114_o1129_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1129,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1114_o1140_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1140,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1114_o1140_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1140,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1114_o1140_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1140,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1114_o1140_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1114,
+    "opp_idx": 1140,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1150_o1152_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1152,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1150_o1152_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1152,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1150_o1152_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1152,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1150_o1152_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1152,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1150_o1165_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1150_o1165_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1150_o1165_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1150_o1165_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1165,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1150_o1175_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1175,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1150_o1175_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1175,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1150_o1175_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1175,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1150_o1175_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1150,
+    "opp_idx": 1175,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1186_o1194_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1186_o1194_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1186_o1194_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1186_o1194_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1194,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1186_o1201_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1201,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1186_o1201_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1201,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1186_o1201_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1201,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1186_o1201_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1201,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1186_o1204_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1204,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1186_o1204_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1204,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1186_o1204_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1204,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1186_o1204_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1186,
+    "opp_idx": 1204,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1222_o1231_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1222_o1231_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1222_o1231_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1222_o1231_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1231,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1222_o1237_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1237,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1222_o1237_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1237,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1222_o1237_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1237,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1222_o1237_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1237,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1222_o1239_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1239,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1222_o1239_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1239,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1222_o1239_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1239,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1222_o1239_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1222,
+    "opp_idx": 1239,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1258_o1267_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1267,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1258_o1267_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1267,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1258_o1267_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1267,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1258_o1267_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1267,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1258_o1273_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1258_o1273_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1258_o1273_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1258_o1273_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1273,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1258_o1275_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1275,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1258_o1275_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1275,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1258_o1275_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1275,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1258_o1275_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1258,
+    "opp_idx": 1275,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1294_o1301_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1301,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1294_o1301_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1301,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1294_o1301_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1301,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1294_o1301_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1301,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1294_o1309_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1309,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1294_o1309_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1309,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1294_o1309_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1309,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1294_o1309_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1309,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1294_o1313_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1313,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1294_o1313_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1313,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1294_o1313_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1313,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1294_o1313_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1294,
+    "opp_idx": 1313,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1330_o1335_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1335,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1330_o1335_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1335,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1330_o1335_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1335,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1330_o1335_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1335,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1330_o1345_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1345,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1330_o1345_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1345,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1330_o1345_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1345,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1330_o1345_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1345,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1330_o1352_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1352,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1330_o1352_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1352,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1330_o1352_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1352,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1330_o1352_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1330,
+    "opp_idx": 1352,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1366_o1367_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1366_o1367_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1366_o1367_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1366_o1367_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1367,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1366_o1381_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1381,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1366_o1381_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1381,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1366_o1381_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1381,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1366_o1381_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1381,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1366_o1392_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1392,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1366_o1392_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1392,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1366_o1392_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1392,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1366_o1392_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1366,
+    "opp_idx": 1392,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1402_o1402_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1402,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1402_o1402_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1402,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1402_o1402_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1402,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1402_o1402_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1402,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1402_o1417_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1417,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1402_o1417_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1417,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1402_o1417_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1417,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1402_o1417_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1417,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1402_o1429_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1429,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1402_o1429_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1429,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1402_o1429_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1429,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1402_o1429_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1402,
+    "opp_idx": 1429,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1438_o1438_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1438,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1438_o1438_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1438,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1438_o1438_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1438,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1438_o1438_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1438,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1438_o1453_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1453,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1438_o1453_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1453,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1438_o1453_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1453,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1438_o1453_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1453,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1438_o1465_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1465,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1438_o1465_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1465,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1438_o1465_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1465,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1438_o1465_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1438,
+    "opp_idx": 1465,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1474_o1474_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1474,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1474_o1474_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1474,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1474_o1474_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1474,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1474_o1474_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1474,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1474_o1489_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1489,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1474_o1489_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1489,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1474_o1489_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1489,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1474_o1489_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1489,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1474_o1501_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1501,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1474_o1501_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1501,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1474_o1501_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1501,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1474_o1501_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1474,
+    "opp_idx": 1501,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1509_o1509_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1509,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1509_o1509_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1509,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1509_o1509_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1509,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1509_o1509_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1509,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1509_o1524_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1509_o1524_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1509_o1524_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1509_o1524_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1524,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1509_o1536_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1536,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1509_o1536_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1536,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1509_o1536_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1536,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1509_o1536_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1509,
+    "opp_idx": 1536,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1545_o1545_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1545_o1545_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1545_o1545_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1545_o1545_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1545,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1545_o1560_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1545_o1560_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1545_o1560_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1545_o1560_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1560,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1545_o1572_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1572,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1545_o1572_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1572,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1545_o1572_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1572,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1545_o1572_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1545,
+    "opp_idx": 1572,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1581_o1578_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1578,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1581_o1578_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1578,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1581_o1578_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1578,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1581_o1578_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1578,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1581_o1596_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1596,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1581_o1596_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1596,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1581_o1596_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1596,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1581_o1596_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1596,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1581_o1611_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1581_o1611_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1581_o1611_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1581_o1611_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1581,
+    "opp_idx": 1611,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1617_o1614_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1614,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1617_o1614_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1614,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1617_o1614_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1614,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1617_o1614_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1614,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1617_o1632_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1632,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1617_o1632_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1632,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1617_o1632_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1632,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1617_o1632_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1632,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1617_o1647_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1647,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1617_o1647_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1647,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1617_o1647_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1647,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1617_o1647_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1617,
+    "opp_idx": 1647,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1653_o1649_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1649,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1653_o1649_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1649,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1653_o1649_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1649,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1653_o1649_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1649,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1653_o1668_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1668,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1653_o1668_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1668,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1653_o1668_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1668,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1653_o1668_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1668,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1653_o1683_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1683,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1653_o1683_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1683,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1653_o1683_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1683,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1653_o1683_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1653,
+    "opp_idx": 1683,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1689_o1685_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1685,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1689_o1685_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1685,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1689_o1685_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1685,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1689_o1685_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1685,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1689_o1704_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1704,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1689_o1704_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1704,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1689_o1704_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1704,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1689_o1704_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1704,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1689_o1719_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1719,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1689_o1719_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1719,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1689_o1719_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1719,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1689_o1719_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1689,
+    "opp_idx": 1719,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1725_o1721_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1725_o1721_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1725_o1721_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1725_o1721_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1721,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1725_o1740_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1740,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1725_o1740_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1740,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1725_o1740_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1740,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1725_o1740_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1740,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1725_o1755_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1725_o1755_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1725_o1755_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1725_o1755_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1725,
+    "opp_idx": 1755,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1761_o1757_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1761_o1757_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1761_o1757_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol0_e1761_o1757_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1757,
+    "opp_raceline": "raceline0",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1761_o1776_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1761_o1776_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1761_o1776_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol1_e1761_o1776_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1776,
+    "opp_raceline": "raceline1",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1761_o1791_s0.5",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1791,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.5,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1761_o1791_s0.6",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1791,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.6,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1761_o1791_s0.7",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1791,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.7,
+    "interval_idx": 15
+  },
+  {
+    "scenario_id": "standard600-Hockenheim-ol2_e1761_o1791_s0.8",
+    "map_name": "Hockenheim",
+    "ego_idx": 1761,
+    "opp_idx": 1791,
+    "opp_raceline": "raceline2",
+    "opp_speedscale": 0.8,
+    "interval_idx": 15
+  }
+]

@@ -1251,6 +1251,7 @@ eval_manifest.json:
   actor_path/actor_sha256, map/panel身份, scenario/result/trace count
   deterministic_actor, device, noise=0.0, sim_duration_s, collision_scope
   unique_episode_keys, trace_result_key_sets_equal, opp_idx校验结果
+  command, git_commit, worktree_status（2026-08-08起由fresh runner直接记录）
 
 episodes.partial.jsonl:
   每个完成episode一行完整metrics，按episode_key恢复；final成功后删除
@@ -2148,3 +2149,902 @@ role mean return差。break-even只在`Δcollision>0`且`Δordinary<0`时计算
 `mean_ordinary_episode_return`，不得把不同update拼成重复样本。当前K1/K10/K20/K30 fresh结果
 及U27--U30/U42--U45历史结果已固化到`ANALYSIS.md` §25；它们否定了稳定break-even，未授权
 修改50/50 role合同。该复核只是episode-return描述，不替代transition advantage或GAE审计。
+
+## 10. `average_actor_checkpoints.py`：固定四点actor等权平均
+
+### 10.1 用途与调用关系
+
+该脚本只构造兼容actor checkpoint的**固定四源等权平均**，不训练、不选择checkpoint、不读取
+评估结果。Round Z0调用链为：
+
+```text
+average_actor_checkpoints.py
+-> torch.load四个actor state dict
+-> average_state_dicts
+-> 原子torch.save
+-> End2Race(hidden_scale=4).load_state_dict(strict=True)
+-> model_manifest.json
+```
+
+CLI：`--source-paths`必须且恰好4个；`--output-path`必需；`--hidden-scale=4`；
+`--evaluation-alias=CTv2_U42_U45_EQUAL_AVG`。输出目录必须尚不存在，脚本创建
+`actor.pth`、同目录的`<evaluation-alias>.pth`硬链接和`model_manifest.json`；alias用于避免不同
+actor同stem导致trace串臂，不能当作第二个模型。
+
+### 10.2 核心算法与不变量
+
+1. 四个source path必须唯一、存在，且每份state dict恰好12 keys；key名称和顺序完全相同；
+2. 每个value必须是tensor；shape与dtype逐源一致；所有浮点source tensor必须finite；
+3. 浮点tensor严格按CLI source顺序转float64累加、除以4，再cast回reference dtype；
+4. 非浮点tensor不平均，四源必须`torch.equal`后clone，否则fail closed；
+5. 输出使用同目录临时文件加`os.replace`原子落盘；随后建立hardlink alias；
+6. 从落盘文件重新读取，检查12 keys、finite，并在fresh `End2Race(hidden_scale)`上strict-load；
+7. manifest原子写入source相对路径/SHA/0.25权重、算法、输出与alias SHA、hardlink inode判断、
+   各source相对L2距离、git commit和worktree status；
+8. 任一异常删除本次output/alias/manifest，并只在目录为空时删除新目录；绝不覆盖或修改source。
+
+`relative_l2_distance(left, right)`只累计浮点tensor，计算
+`sqrt(sum((left-right)^2) / sum(right^2))`，reference零范数时失败。`sha256_file`按1 MiB分块。
+
+### 10.3 测试与当前验证
+
+`scripts/test_average_actor_checkpoints.py`包含3个unittest：
+
+- `test_float_tensors_use_equal_average_and_preserve_dtype`：四个float32向量得到精确等权均值且
+  dtype不变；
+- `test_non_floating_tensor_must_match`：任一int64值不同必须raise；
+- `test_key_order_shape_and_source_count_fail_closed`：source数不是4、key/order不同、shape不同
+  分别fail closed。
+
+2026-08-08实测：两个文件通过`py_compile`，3/3 unittest通过；真实U42--U45源构造后通过
+12-key/finite/fresh strict-load，alias与canonical输出同inode且SHA一致。相对四源L2为
+`1.0771e-4 / 6.1200e-5 / 6.1609e-5 / 1.1707e-4`。评估结论不属于本文件，见
+`ANALYSIS.md` §33。
+
+### 10.4 删除后果
+
+删除脚本不会使已生成actor失效，但会失去按相同float64顺序、非浮点一致性、原子写盘和
+strict-load合同重新构造其他固定四点平均的现成入口。功能重建必须保留§10.1--§10.3全部CLI、
+运算顺序、失败条件、manifest字段和三项测试；不能用直接float32相加或`torch.optim.swa_utils`
+近似替代后声称字节等价。
+
+## 11. `analyze_bc_anchor_gate_a.py`：Gate A全量质量门与cohort冻结
+
+### 11.1 用途与输入输出
+
+该脚本不运行actor、不训练；默认只消费预先冻结的development panel/split manifest与
+BC、U42--U45五个fresh eval package，验证Gate A证据后一次性写出机器报告和28条
+共识cohort panel。Round Z3最小扩展允许对事先冻结且尚未打开的validation split运行
+同一质量门，但只输出stable collision cohort。CLI为：
+
+```text
+--panel
+--split-manifest
+--evaluation-root
+--report
+--cohort-panel
+--workers=12
+--split-name={development,validation}        默认 development
+--collision-only-validation                 默认 false；必须与validation同用
+```
+
+两个输出任一已存在即fail closed，不能根据第一次结果覆盖或改cohort。cohort panel保持原
+development panel顺序；机器报告保存五个actor的路径/身份/aggregate、质量门、单点与共识
+计数、全部scenario key、分层、六条准入判决和下一动作。
+
+### 11.2 验证与筛选合同
+
+1. development panel key唯一，完整key与起点集合必须逐项等于冻结split manifest；
+2. development/validation起点零交集，但不打开validation actor结果；
+3. 五个manifest必须分别绑定canonical BC、固定U42--U45、同一development panel，且明确
+   fresh deterministic CUDA、ego scope、8秒、hidden scale 4、保存trace、0 error；
+4. 每臂result、trace和panel key集合精确相等，episode七字段identity逐项等于panel；
+5. 每个NPZ用`allow_pickle=False`打开，所有数组首维相等、全部有限，LiDAR/action/pose/
+   collision shape符合schema，`len(trace)=steps+1`且`time_s`严格递增；
+6. `collisions[:,0/1]`与三个typed marker逐行一致，typed ego marker与result outcome一致；
+7. `terminal_post_step`仅末行true，`action_applied`仅末行false；
+8. 先从BC筛`overtake + raceline0/2`，再定义U44单点回归；主cohort固定要求U44回归且
+   U42--U45至少3/4回归，不得看结果后退回单点集合；
+9. 按raceline、全部speed及U44 collision/lost-overtake分层，逐条计算§4.2六个Gate门；
+10. 只有全部质量合同通过才原子写盘；科学Gate失败仍如实写fail报告，但不得启动Gate B。
+
+collision-only validation模式保留相同`BC-safe overtake`和U42--U45至少3/4回归定义，
+但cohort只保留U44 ego collision。样本门固定为至少4条、3个ego startpoint且
+raceline0/2均非空；不满足时写inconclusive，不允许退回U44单点cohort。
+
+### 11.3 当前端到端验证
+
+2026-08-08脚本通过`py_compile`并在真实Gate A包上完成3,590条trace全量检查：五臂各718条，
+0 error、无partial、所有key/identity/finite/marker/terminal合同通过。BC-safe候选308条，U44
+单点46条，共识28条；21个起点、raceline0/2=`20/8`、collision/lost=`19/9`，六条Gate A门
+全通过。当前未另建合成unit test；真实五臂端到端检查和输出拒绝覆盖是本节点验证。实验判决
+与证据边界见`ANALYSIS.md` §34，当前接续状态见`HANDOFF.md` §9.15。
+
+Round Z3模式后续在真实validation包上检查750条trace，得到7条、6起点的stable
+collision cohort，raceline0/2=`6/1`，所有质量与样本门通过。该扩展未改变默认
+development输出；用既有3,590条trace作回归检查时，默认cohort、分层和六条criteria
+逐项与旧report相等。
+
+## 12. `run_bc_anchor_gate_b.py`：持久化双actor反事实branch runner
+
+### 12.1 用途、CLI与调用关系
+
+该脚本实现预注册Gate B，不能用于训练。默认仍只允许development双分层；
+Round Z3增加一个显式collision-only validation模式。CLI全部显式给出：
+
+```text
+--cohort-panel
+--development-panel
+--gate-a-report
+--gate-a-evaluation-root
+--bc-model-path
+--u44-model-path
+--output-dir
+--workers=12
+--hidden-scale=4
+--sim-duration=8.0
+--prepare-only
+--collision-only-validation                 默认 false
+```
+
+调用链：
+
+```text
+build_plan
+  -> intervention_window（首次collision或首次最小OBB clearance）
+  -> select_controls（同raceline/speed、circular index距离、SHA tie-break、无放回）
+worker_initializer
+  -> 每个forkserver CUDA worker一次加载BC与U44
+run_stage(branch0)
+  -> validate_branch0硬门
+  -> run_stage(full_bc / bc_steering / bc_speed；collision-only只full_bc)
+  -> validate_branch_traces
+  -> analyze_gate_b
+```
+
+`--prepare-only`必须先运行：它在任何branch结果产生前原子写`gate_b_plan.json`，冻结输入身份、
+28条cohort窗口、28条controls及匹配关系；后续命令只加载并核对该plan，不重算。正式输出为每
+branch的`results.json`、`traces/<episode_key>.npz`，以及`branch0_contract.json`和
+`gate_b_report.json`。已有最终report时拒绝覆盖。
+若同raceline/speed、无放回control池根本不存在完整匹配，`build_plan`在写plan前fail
+closed，因此不会留下伪冻结plan或运行branch0。
+
+### 12.2 窗口、hidden与动作合同
+
+1. U44和BC各维护自己的GRU hidden；每一步都先在同一实际branch observation与previous
+   measured speed上分别forward，再选执行动作；因此接管前二者读取同一U44 prefix，接管后都
+   沿反事实branch递归，窗口后U44可从正确hidden恢复；
+2. collision窗口为`[first_ego_collision_step-150, first_ego_collision_step)`；L/control先用
+   `get_vertices(length=0.58,width=0.31)`和`rectangle_clearance`逐帧重算OBB距离，取第一次全局
+   minimum，窗口为`[argmin-100,argmin+50)`；两端按episode动作行截断，terminal不执行；
+3. 窗口少于50动作步的cohort明确列为excluded；任一C/L低于8直接停止。当前28条均eligible；
+4. controls只从development中BC/U44 outcome均为overtake的262条候选选取；同raceline/speed，
+   circular ego waypoint-index距离升序，`SHA256(scenario_key)`破平，无放回；
+5. 每步先产生`u44_raw_action`和`bc_raw_action`。branch0执行U44；full执行BC二维；steering-only
+   执行`BC steer + U44 speed`；speed-only相反。`action_source_code=-1/0/1/2/3`分别表示terminal、
+   U44、BC-steering、BC-speed、full-BC；
+6. 标准16字段外，trace增加两份raw action、`intervention_active`和`action_source_code`，足以
+   审计hidden路径上的teacher/student mean与实际动作；
+7. ego scope下只因ego collision终止，opponent-wall仍单列marker；环境、planner、progress与
+   首帧speed合同逐项复制当前evaluator。
+
+### 12.3 恢复、效率与失败关闭
+
+四个stage均用`episodes.partial.jsonl`逐episode flush并按key恢复；result与trace key未齐时不写
+最终文件。orphan trace只会被同一冻结task的确定性重跑替换。一个Pool跨四个stage复用：12个
+worker各只加载一次两份actor，不像通用panel evaluator那样每个scenario重新加载；这只改变
+执行拓扑，不改变224次episode语义、分支数或验收门。
+
+branch0必须先完成全部56条并逐字段验证：ego raw/executed严格0误差；opponent action、pose、
+speed、LiDAR为`rtol=0,atol=1e-6`；boolean marker、outcome、首次collision、长度与terminal严格
+相同。失败则抛错且不调度干预。三组干预结束后，`validate_branch_traces`再验证全部224条的
+key、finite、数组对齐、marker、terminal、冻结窗口、source code、selected raw和clip后executed
+action；任何异常都不写Gate report。
+
+### 12.4 当前端到端验证与删除后果
+
+2026-08-08先用C/L/control各1条烟测，所有比较字段最大误差均为0；正式branch0随后56/56同样
+全部为0。四branch共224条result/NPZ通过完整质量门；full/steering/speed中分别6/5/7条因干预
+后较早collision而窗口未执行满，均保留为真实outcome。脚本通过`py_compile`；没有另建合成
+unit test，三类烟测、56条精确replay和224条真实端到端合同是当前验证。
+
+删除脚本不会改变已记录Gate B科学失败，但会失去已验证的双hidden branch engine、确定性
+control匹配、断点恢复和逐动作审计入口。若未来独立预注册动作库或first-action preference，
+可复用该engine；不能删除验证逻辑后从保存U44 trace直接伪造反事实branch。结果见
+`ANALYSIS.md` §35，当前停止边界见`HANDOFF.md` §9.16。
+
+Round Z3使用`--collision-only-validation --prepare-only`消费上节生成的7条cohort，在任何branch前
+发现`r0/s0.60` source/control=`2/0`、`r0/s0.85=3/2`，因分层control support不足抛错。
+没有生成plan、branch0、full-BC或report；这是预注册inconclusive分支，不是runner失败或
+teacher outcome。详见`ANALYSIS.md` §37与`HANDOFF.md` §9.18。
+
+## 13. `run_counterfactual_action_gate.py`：固定局部动作库branch与hidden排序Gate
+
+### 13.1 用途、CLI与调用关系
+
+该脚本只做Austin训练侧零更新机制筛选，不训练或修改actor。CLI为：
+
+```text
+--development-panel
+--bc-results
+--u44-results
+--u44-trace-root
+--u44-model-path
+--output-dir
+--workers=20
+--hidden-scale=4
+--sim-duration=8.0
+--prepare-only
+```
+
+调用链：
+
+```text
+build_plan -> source_event -> action_gate_plan.json
+worker_initializer（每个persistent CUDA worker一次加载U44）
+run_tasks(noop) -> 全456条compare_replay硬门 + hidden snapshot
+run_tasks(early/late * 12 residual actions)
+validate_results -> existence_metrics
+ActionScorer五折startpoint外推（仅existence通过的prefix）
+-> action_gate_report.json
+```
+
+`--prepare-only`在任何branch前冻结输入hash、456条cohort、5-fold、两个prefix、12个动作和全部
+准入线。正式执行若发现已有最终report则拒绝覆盖；partial JSONL逐条flush，重启按`result_key`
+恢复，orphan trace由同一确定性任务覆盖。
+
+### 13.2 Cohort、动作与trace合同
+
+cohort从既有Gate A development的718条BC/U44配对结果按outcome定义，事件前不足150步剔除；
+固定109 inherited collision、46 created collision、13 lost-overtake、63 inherited-follow诊断、
+225 safe controls。collision事件取首次typed ego marker，其余取逐帧OBB clearance第一次全局
+minimum；early/late分别执行`[event-150,event-100)`、`[event-100,event-50)`，碰撞可提前终止。
+
+动作始终是当前反事实trajectory上U44 mean的residual：steering `+/-0.02,+/-0.04 rad`、speed
+`+/-0.5,+/-1.0 m/s`及四个`+/-0.02`与`+/-0.5`组合；窗口外恢复U44，steering仍clip至
+`[-0.52,0.52]`。每条no-op在两个prefix起点保存更新当前observation后的1680D hidden。
+
+为降低10,944条candidate branch的I/O，候选NPZ只保存逐步time、U44/selected/executed action、
+collision与typed marker、action/terminal/intervention标记；outcome、progress、speed和proximity
+保存在result。no-op运行时在内存保留完整LiDAR/action/pose/speed/marker数组，与既有U44 source
+逐字段比较后只写compact trace和hidden。这样不重复保存456份完整LiDAR，但精确重放证据不减少。
+
+### 13.3 验证、排序与删除后果
+
+no-op要求raw/executed action严格0误差，opponent action、pose/speed和双360D LiDAR为
+`rtol=0,atol=1e-6`，boolean、outcome和terminal严格相同；任一失败不调度候选。候选验证
+result/plan/trace key、finite、数组对齐、terminal、冻结窗口、residual raw action及clip后执行
+动作。
+
+oracle label只接受最终无ego collision的overtake；多解按归一化动作范数、final relative
+progress和名字确定。`ActionScorer`读取hidden，经`Linear(1680,128)+ReLU`后与二维归一化动作
+拼接，再用`Linear(130,64)+ReLU+Linear(64,1)`对13个动作打分；fold按ego startpoint SHA分组，
+fold-local标准化，固定Adam、100 epochs，无模型选择。每折固定动作baseline只从train folds按
+`target success - 5*control harm`选取。数值准入和prefix分流以预注册§23为唯一权威。
+
+删除脚本会失去宽cohort动作库重放、compact branch审计、hidden snapshot和action-conditioned
+五折排序能力；Gate B的BC结论不受影响，但不能只靠其56条BC branch替代本Gate。
+
+### 13.4 当前端到端验证
+
+2026-08-08先用1条no-op和1条candidate烟测，no-op最大误差0、candidate准确执行50步；正式
+456条no-op的全部比较字段最大误差仍为0。10,944条candidate与456条no-op合计11,400条compact
+NPZ、8,185,913行全部通过key、finite、对齐、terminal、窗口、residual和executed-action合同，
+无partial文件。首次12-worker运行在完成部分任务后按result key恢复，并仅抑制重复RK4 warning；
+随后按机器20个CPU核心改为20个persistent worker继续，已完成结果不重算，科学合同不变。
+
+两个prefix的action existence均通过，但五折ActionScorer均未通过全部预注册门；最终报告原子
+写入并在同一固定seed/硬件上重跑head，聚合与首次结果逐项相同。科学判决见`ANALYSIS.md` §36，
+当前停止边界见`HANDOFF.md` §9.17。
+
+## 14. `run_action_response_representation_gate.py`：50步actor-visible历史动作响应Gate
+
+### 14.1 用途、CLI与依赖
+
+该脚本是Round Z4-A的零actor-update离线probe。现有`run_counterfactual_action_gate.py`只能
+读取单点frozen hidden并学习top-1 preference，不能表达“同一真实动作分支标签下增加可训练
+历史编码器、与容量匹配hidden control比较”，因此本轮新建这一窄脚本；它不运行环境、branch
+或PPO，也不保存可部署模型。
+
+CLI全部显式：
+
+```text
+--plan                         Round Z2 action_gate_plan.json
+--branch0-results              456条noop结果
+--candidate-results            early/late各12动作，共10,944条结果
+--hidden-root                  456个含early/late 1680D hidden的NPZ目录
+--u44-trace-root               Round Z2 source U44完整trace目录
+--u44-model-path               冻结U44 actor；路径和SHA必须与plan一致
+--output-report                唯一输出JSON；必须事先不存在
+--device=cuda                  固定；非CUDA或CUDA不可用直接失败
+--nested-operating-point       默认false；运行Round Z5 5x4 nested calibration
+--nested-outer-z4-seeds        默认false；仅与上一flag同用，outer model恢复Z4 seeds
+```
+
+调用/数据流：
+
+```text
+validate_inputs
+  -> 456 task/branch0、10,944 candidate、13动作、5 folds、五层分母和U44身份硬校验
+load_actor_features
+  -> source trace最近50步ego LiDAR + previous measured speed
+  -> frozen U44 sigmoid LiDAR transform + frozen speed_mlp
+  -> history[456,50,420] + saved late hidden[456,1680]
+build_labels
+  -> noop与late 12-action真实终局 -> labels[456,13]
+5-fold grouped OOF
+  -> FrozenHiddenOutcomeModel
+  -> HistoryOutcomeModel
+  -> fold-train-only fixed action baseline
+summarize -> criteria -> atomic output report
+
+--nested-operating-point时：
+outer 5-fold
+  -> outer-train内部按独立hash生成4个inner folds
+  -> inner-OOF概率穷举lambda与noop margin
+  -> 在5/225双control率预算内冻结操作点
+  -> outer-train重训，outer-test只应用一次
+  -> nested summary + 诊断性outer-OOF Pareto
+```
+
+脚本只导入`model.End2Race`和`utils.atomic_write_json`，没有其他脚本依赖；也没有符号被别的
+脚本导入。输出父目录可新建，但已有最终report严格拒绝覆盖。没有partial/resume：单次计算约
+数秒，异常时不写最终JSON；成功时只原子写一个report，不写checkpoint或日志副本。
+
+### 14.2 输入、feature和泄漏合同
+
+1. plan必须恰有456个唯一task，分层固定为inherited collision 109、created collision 46、
+   lost-overtake 13、inherited-follow 63、safe-control 225；
+2. branch0 keys必须精确等于456个task且summary=`456/0 errors`；candidate keys必须精确等于
+   `456 x early/late x 12`且summary=`10944/0 errors`，不能只给late子集；
+3. fold逐task重算`SHA256("counterfactual-action-fold-v1|ego_idx") mod 5`，并检查任意两折
+   ego startpoint集合不交；late start index必须至少50；
+4. 每条history indices为`late_start-49 ... late_start`共50步；previous speed读取
+   `ego_measured_speed_mps[indices-1]`。source trace只读取`ego_lidar_360`和该speed字段；
+5. 加载plan登记的U44 12-key actor并核对SHA。LiDAR逐维按actor当前`k`计算
+   `(-1/(1+exp(-k*x))+1)*2`，speed走冻结`speed_mlp(1->60+ReLU)`，拼成420D；
+6. hidden从Round Z2 branch0保存NPZ的`late`键读取。feature必须`50x420`、hidden必须1680D，
+   所有输入finite；
+7. 标签把`ego-opp/ego-wall`合并为collision class 0，follow为1，overtake为2。它只进入loss，
+   不进入history feature。noop动作编码`[0,0]`，其余按plan动作顺序编码
+   `[steering_delta/0.02, speed_delta/0.5]`。
+
+这套构造不读pose、opponent LiDAR/speed、stratum、距event时间或branch outcome作为feature。
+报告`quality_validation`必须写出tensor shape、finite、fold startpoint数、字段白名单、空的
+forbidden-fields列表、分层和三类标签数。
+
+### 14.3 模型、训练和动作选择算法
+
+每折train/test由plan fold直接决定。hidden逐维均值/标准差只在train scenarios计算；420D
+feature统计量在train scenarios的所有50步上计算；std `<1e-6`置1。test只使用train统计量。
+
+- `FrozenHiddenOutcomeModel`：hidden `1680->192+ReLU`，扩到13动作后拼2D action，再经
+  `194->64+ReLU->3`；
+- `HistoryOutcomeModel`：hidden `1680->128+ReLU`；history逐步`420->64+ReLU`后GRU64取末
+  hidden；两路拼192D，再与2D action走完全相同`194->64+ReLU->3` head。
+
+两者固定Adam、learning rate `1e-3`、weight decay `1e-4`、100 epochs、scenario batch 64。
+fold初始化seed=`5200+fold`，shuffle CPU generator seed=`5300+fold`；CUDA deterministic打开、
+benchmark关闭。每个scenario的13动作同时构成batch，三分类cross entropy权重只由训练折
+全部scenario-action标签计算`N/(3*N_class)`；空类fail closed。无early stopping、validation
+选择或超参入口。
+
+测试动作分数固定`P(overtake)-5*P(collision)`，`argmax`天然按plan动作顺序破精确平局。
+grouped fixed baseline也只用train fold：每个单一动作统计所有非safe-control场景的overtake
+次数，减去5倍safe-control非overtake次数；同分按动作顺序。它不看test outcome。
+
+行为summary逐task回查真实branch result，记录四个非control层success、三主层total、safe
+control新collision/overtake loss、动作与终局映射、相对noop的removed/created、lost/gained及
+双侧exact binomial p。报告同时保存全13动作三分类OOF accuracy、每折分母/类别权重/final
+train loss/fixed action和执行命令/HEAD/worktree snapshot。
+
+准入七个boolean固定为：inherited/created/lost至少`11/7/4`，safe-control新collision/loss至多
+`4/11`，target total分别至少超过grouped fixed与frozen-hidden control 9。全部为true才写
+`pass_to_independent_validation`，否则写`fail_close_tested_representation_instance`。
+
+### 14.4 当前验证、结果与删除后果
+
+脚本通过`py_compile`、CLI smoke和`git diff --check`。真实运行验证456条/70 startpoints、
+5,928标签、22,800个history rows全部finite且折间无startpoint泄漏；每折三类均非空，OOF
+预测完整。独立只读重算逐episode选择映射、真实branch outcome、四层success、control harm和
+全部criteria一致。
+
+当前treatment为`68/32/2`、target 102、controls `13/21`；frozen-hidden control为
+`68/33/3`、104、`13/20`；fixed为`45/33/1`、79、`5/5`。因此只通过collision层和fixed margin，
+失败lost、两个control门和frozen-hidden margin。科学判决与边界见`ANALYSIS.md` §38和
+`HANDOFF.md` §9.19。
+
+删除脚本不会改变已形成的失败判决，但会失去从Round Z2 source trace重建actor-visible
+50步feature、容量匹配history/control五折训练和逐episode动作选择复核入口。由于没有保存模型，
+删除后不能只凭report恢复各fold参数；不过已完成的数值、机制边界和停止规则已固化，不需要为
+复现历史判决而重跑。它不是通用representation框架，不能扩展参数后继续扫描。
+
+### 14.5 Round Z5 nested operating-point扩展
+
+该模式复用14.1--14.3全部输入与模型，不调用环境。inner fold固定为
+`SHA256("action-response-inner-v1|ego_idx) mod 4`，每个outer-train内部startpoint互斥。
+`lambda=(0,0.25,0.5,1,2,3,5,8,12,20,32)`；每个lambda的tau候选为inner-OOF上
+`best_nonnoop score - noop score`全部唯一值及infinity。分数为
+`P(overtake)-lambda*P(collision)`，margin达到tau才干预。
+
+inner可行性用整数交叉乘法要求两项safe-control harm率均不高于`5/225`；可行点依次按target
+高、collision harm低、overtake loss低、干预数低、lambda高、tau高选择。inner model seed为
+`6200+10*outer+inner`、shuffle为`6300+10*outer+inner`。默认outer seed为`6400+outer`与
+`6500+outer`；显式`--nested-outer-z4-seeds`改为原Z4的`5200+outer / 5300+outer`，其他内容
+不变。后一flag未配前一flag时立即抛错。
+
+输出在原Z4字段之外增加：每个inner/outer分母、类别数、loss、inner选择的lambda/tau/metrics、
+outer-test metrics、nested逐episode summary、基于outer-OOF概率的非判决Pareto、matched `5/5`
+事后最优诊断、frozen-vs-fixed及history-vs-frozen配对exact统计。infinity阈值写字符串，正式
+JSON不存在非有限常量。已有output仍拒绝覆盖，没有checkpoint或partial文件。
+
+2026-08-08默认独立outer seeds得到frozen target 69、controls `1/3`，history 63、`6/8`；
+exact-Z4-seed复核得到frozen 66、`3/4`，history 55、`7/7`；fixed两次严格复现79、`5/5`。
+两份report均通过标准JSON解析和逐episode raw branch outcome独立重算。默认Z4非nested路径另用
+新临时输出回归，frozen/history/fixed的success、harm与动作计数逐项等于既有104/102/79报告。
+
+诊断outer-OOF全局选点在独立seed能读到`84 @ 3/5`，但nested只有69；exact Z4 seeds的诊断
+matched-harm最高为`72 @ 4/5`。正式判决只使用nested，见`ANALYSIS.md` §39与`HANDOFF.md`
+§9.20。删除脚本还会失去nested calibration、经验Pareto和exact-seed复核能力；不得从诊断
+frontier反推一个新阈值用于训练。
+
+## 15. Prefix-reset snapshot no-op工程门
+
+### 15.1 `scripts/run_prefix_reset_snapshot_gate.py`
+
+职责：检验当前F110、LatticePlanner opponent、PPO wrapper/reward与U44 actor/critic recurrent
+state能否在冻结交互prefix处完整序列化和逐位恢复。它是prefix-reset的机械必要条件工具，不是
+训练入口，不修改`ppo/`生产模块，也不实现current-network burn-in、rollout buffer或GAE。
+
+CLI：
+
+```text
+--gate-b-plan PATH   默认Gate B冻结plan；只取role=cohort的28条任务
+--actor-path PATH    默认U44 12-key actor
+--critic-path PATH   默认同一U44 privilege-GRU critic
+--output-dir PATH    默认prefix-reset snapshot Gate评测根
+--workers INT        默认4；spawn进程，每worker只加载一次actor/critic
+--hidden-scale INT   默认4
+--prepare-only       只冻结plan，不创建snapshot/trace/report
+```
+
+没有别的脚本导入其符号。直接依赖`model.End2Race`、`ppo.env.make_environment`、
+`ppo.policy.PrivilegeGRUCritic`、`ppo.scenarios.EpisodeResetSpec`以及`utils`的原子JSON/NPZ和起点
+构造函数。输出目录已有不同plan、完整report或任一partial snapshot/trace目录时fail closed；
+没有resume，也不覆盖结果。
+
+### 15.2 Plan与固定控制
+
+`snapshot_gate_plan.json`在任何后缀执行前原子写入。输入必须恰为Gate A由U42--U45至少3/4
+共识得到、Gate B冻结的28条development cohort：collision 19、lost-overtake 9、21个ego
+startpoint、opponent raceline0/2=`20/8`。Task按episode key稳定排序；plan记录输入模型身份、
+任务/窗口、snapshot字段与零误差准入合同。已有plan只有逐JSON相等才复用。
+
+固定环境为Austin、seed42、`privileged=True`、`corridor_temporal` gate；网络为U44 actor和
+同update critic，CUDA float32、eval mode、初始actor/critic hidden全零、deterministic mean
+action。每条在`window.start_index`、当前observation尚未被网络消费前保存。只有这一套固定
+合同，没有CPU fallback、模型/seed/window选择或阈值参数。
+
+### 15.3 Snapshot schema与恢复顺序
+
+顶层pickle为`schema_version/environment/observation/actor_hidden/critic_hidden`。Environment
+部分按以下顺序显式捕获和恢复：
+
+1. 两台RaceCar：7D state、opponent poses、accel、steer-angle velocity、steering buffer、
+   in-collision和各自scan RNG bit-generator state；
+2. Simulator：agent poses、collisions、collision indices；F110Env：pose/collision镜像、
+   near-start/toggle、lap/time、start pose/rotation、render/current observation和Gym
+   `OrderEnforcing._has_reset`；
+3. LatticePlannerOpponentController：trajectory、tracker count、speed scale；planner动态字段
+   `best_traj/best_traj_ref_v/best_traj_idx/prev_traj_local/prev_opp_pose/goal_grid/state_i/state_t/
+   step_all_cost/all_costs/last_s/step`，selection只允许`None`或`np.argmin`；PurePursuit保存
+   `prev_error`与可选`nearest_dist`，rendered waypoints非空会fail closed；
+4. PPOTransitionReward的previous ego/opponent progress、relative position、两种collision
+   latch、scenario ID、previous risk potential和current clearances；
+5. End2RaceGymnasiumEnv的raw observation、previous speed、elapsed/current spec/reset RNG、
+   全部episode reward/return/clearance/risk累计量和corridor current gate；
+6. 当前observation与消费前actor/critic hidden。
+
+Austin scan map、raceline projector、planner配置/静态waypoints和网络参数在同worker内保持只读，
+不复制。每份dict用`pickle.HIGHEST_PROTOCOL`往返后才恢复；snapshot bytes在成功任务结束时写入。
+
+### 15.4 后缀执行与trace合同
+
+原后缀先从snapshot点继续到真实terminal/truncation；之后在同一environment加载snapshot与
+hidden，再跑恢复后缀。Actor和PrivilegeGRUCritic每步分别消费381D observation中的
+`360 LiDAR + previous speed`和20D privileged尾部；steering按`[-0.52,0.52]`执行。Runner只为
+审计临时包装opponent controller action，记录真实executed action，调用后立即删除实例包装。
+
+每侧稳定写一个压缩NPZ，字段为：pre/post 381D observation、双360D LiDAR、两车7D state、
+两车steering buffer、actor/critic前后hidden、actor raw/executed action、opponent action、critic
+value、reward及四分量、collision、terminated/truncated、action-applied与terminal-post-step。
+全部数组首维对齐且finite；最后恰有一条`terminal_post_step=true/action_applied=false`，此前
+全部action applied。Episode summary另含后缀action数、absolute terminal step、首次ego collision
+step、outcome、terminated/truncated与episode return。
+
+比较要求两侧shape一致；bool用`np.array_equal`，所有数值转float64计算最大绝对误差，任何字段
+非零即该task失败。28条全部完成且全部task/pass、全部trace字段零误差、全部episode summary相同、
+28份snapshot与两侧各28份trace齐全，才写`pass_snapshot_mechanical_gate`；否则写
+`fail_stop_prefix_reset_snapshot`。异常发生在最终report前时不产生伪完成JSON。
+
+### 15.5 当前运行验证与删除后果
+
+脚本通过`py_compile`、CLI smoke与`git diff --check`。真实4-worker CUDA运行完成28/28，独立
+读取全部28份pickle与56份NPZ后再次逐字段`np.array_equal`；所有连续字段最大误差0、所有bool
+逐元素相同，episode summary完全相等。Prefix 0--701步，26/28大于0、中位345.5；完整轨迹
+16,385步中可跳过prefix 9,589步（58.5%）；后缀99--800步、中位154.5。该比例不是wall-clock
+benchmark。
+
+`collision/lost=19/9`是Gate A来源标签；本轮当前环境原后缀为14次ego collision、6次overtake、
+8次follow，只用于恢复覆盖审计。Runner固定deterministic mean action，不采样训练期exploration；
+因此snapshot schema尚未覆盖或裁决structured exploration RNG/residual block，必须由Z6-B另行固定
+“恢复还是重采样”的语义并验证log-probability重建。
+
+删除脚本会失去对当前第三方F110对象布局、LatticePlanner动态字段和wrapper/reward状态的可执行
+精确恢复实现，也失去自动生成/比较快照证据的能力；Markdown足以保留判决，但不能逐行重建
+pickle/trace。脚本通过只准入下一道current-network burn-in与GAE语义Gate，不代表prefix-reset
+PPO有效。若第三方F110、planner字段或wrapper状态改变，现有schema应fail closed并重新审计，
+不能静默忽略新可变字段。
+
+## 16. Prefix-reset current-network与PPO语义Gate
+
+### 16.1 `scripts/run_prefix_reset_semantics_gate.py`
+
+该脚本实现Z6-B与后续Z6-BR，不训练模型。它读取Z6-A冻结plan/snapshot/original suffix，重新
+收集prefix observation，使用真实相邻U45 actor/critic检查参数改变后的burn-in，并直接调用当前
+policy/buffer代码验证snapshot boundary、GAE和likelihood。它不导入Z6-A脚本符号，也不修改环境
+snapshot schema。
+
+CLI：
+
+```text
+--snapshot-dir PATH                 默认Z6-A结果根
+--source-actor-path PATH            默认U44 actor
+--source-critic-path PATH           默认U44 privilege-GRU critic
+--current-actor-path PATH           默认同轨迹U45 actor
+--current-critic-path PATH          默认同轨迹U45 critic
+--output-dir PATH                   默认Z6-B结果根
+--workers INT                       默认4
+--hidden-scale INT                  默认4
+--prepare-only                      只冻结plan
+--residual-adjudication-only        不跑simulator，只执行Z6-BR并写独立裁决
+```
+
+普通入口先验证Z6-A verdict、28 task/21 startpoint、prefix总数9,589、每条snapshot与source trace、
+四个checkpoint身份；`semantics_gate_plan.json`必须在任何prefix重放前原子写入。已有不同plan、
+完整report或partial `prefixes/`都fail closed，不resume、不覆盖。CUDA是硬要求。
+
+### 16.2 Prefix收集与burn-in
+
+4个spawn worker各加载U44/U45 actor与critic一次。每条按Z6-A相同Austin seed42、scenario与
+window，从reset开始以U44 deterministic mean action运行；每个动作前保存381D observation，数组
+长度必须严格等于prefix step。Window observation与U44逐步actor/critic hidden逐位比较Z6-A
+snapshot。
+
+`reference_burn_in`从零hidden逐step、batch-size-one消费prefix；`sequence_burn_in`把同一
+`[P,381]`一次交给GRU。两路GRU实际只用前361D；P20只用于critic最后一个value late-fusion。
+每条prefix NPZ固定保存：prefix/window observation、source/current两路hidden、current fast
+hidden、current reference/fast action和value。全部float32、finite；`P=0`返回严格零hidden。
+
+事前fast容差`5e-5`同时检查actor hidden、critic hidden、window mean action和value。U44 source
+fast失败只能拒绝该快速路径；逐步reference精确时不关闭语义。U45是固定真实current-network
+checkpoint，不做内存扰动或optimizer step。
+
+### 16.3 `End2RaceRolloutBuffer.recurrent_resets`
+
+`ppo/rollout.py`增加一个默认等价、opt-in的reset side channel：
+
+```text
+stage_recurrent_resets(bool[n_envs])
+```
+
+`reset()`分配`[buffer_size,n_envs]` bool数组和一次性stage槽；`add()`若没有stage就复制传入的
+`episode_start`，因此普通production路径不变。若stage存在则保存独立mask并立即清空，shape不等
+`(n_envs,)`时报错。`get()`仍用原`episode_starts`调用`create_sequencers`，但返回给actor/critic
+replay的`RecurrentRolloutBufferSamples.episode_starts`改为pad后的`recurrent_resets`。GAE始终读取
+原boundary mask。
+
+合成buffer固定6行：boundary `[T,F,F,T,F,T]`、recurrent reset全false，三段初始actor hidden
+`1/2/3`、critic `11/12/13`。Reward/value同时覆盖terminated、已加入`gamma*V_terminal`的timeout
+和rollout-cut bootstrap；独立float32反向递推用`gamma=.999, lambda=.995`比较advantage/return。
+第二个默认buffer完全不stage reset，要求两个mask逐元素相同。
+
+### 16.4 Baseline/corridor likelihood
+
+脚本直接构造当前`End2RaceGRUPolicy`并加载U45 critic。Baseline使用28条window首transition；
+corridor使用28条各51步suffix observation，首步exploration start=true、之后false，所有actor/
+critic recurrent reset始终false。Corridor首步强制正gate、以后false，用来覆盖50步hold与第51步
+release，不把该合成gate解释为真实场景曝光率。
+
+每步保存实际sampled action、old log-prob、speed log-std、active、block id和反算residual；按
+sequence-major重排后调用当前`evaluate_actor_actions(..., collection_equivalent=True)`。准入要求
+`max |log_ratio|`及`max |ratio-1| <= 5e-5`；普通batched replay也报告但不替代exact fallback。
+探索start与recurrent reset分开传入，并将首步actor hidden与直接actor forward比较为0误差。
+
+### 16.5 Z6-BR测量裁决与产物
+
+首次Z6-B的strict `semantics_gate_report.json`不会被覆盖。它唯一失败量是
+`standard_residual=(action_speed-mean_speed)/std`在相同block内不逐位相同；该字段只参与
+`_exploration_statistics` telemetry，不参与distribution replay。
+
+`--residual-adjudication-only`绕过plan重建，重新读取冻结plan和strict report，核对U45身份后只
+重跑51步policy。扩展后的log-prob Gate同时记录内部`_temporal_speed_noise`；独立
+`residual_measurement_adjudication.json`要求：strict report除该残差条件外全部通过、内部noise
+前50步误差0、反算误差不高于原`5e-5`、likelihood不高于原`5e-5`、第51步release且revisit产生
+新residual。它不运行environment。
+
+正式运行结果：28/28 source exact，9,589 prefix rows；U45 fast最大误差`5.84e-6`，GAE/return
+`1.49e-8/0`，baseline/corridor exact log-ratio均0。Strict report因反算residual`3.18885e-6 > 0`
+给出fail；Z6-BR内部noise误差0，全部裁决条件通过。删除脚本会失去current-network prefix重建、
+buffer mask/GAE fixture、两种exploration likelihood与telemetry measurement audit的可执行入口；
+Markdown不能恢复逐task prefix数组或重新检验未来checkpoint。
+
+## 17. Prefix-reset训练密度Gate、持久化panel与正式训练接入
+
+### 17.1 `post-trained/panels/prefix_reset_consensus_v1`
+
+这是训练输入而非可清理分析产物。Manifest固定schema 1、panel id、28个唯一episode key、来源
+snapshot与prefix文件SHA。每个任务复制Z6-A已经验证的snapshot，并只保存finite float32
+`prefix_observations[P,381]`与`window_observation[381]`；28项合计9,589行。Loader逐项校验hash、
+shape、key集合、window与snapshot observation逐位相同，任一漂移立即拒绝。
+
+### 17.2 `ppo/env.py`的opt-in prefix reset
+
+`load_prefix_reset_panel()`执行上述持久化校验。`End2RaceGymnasiumEnv.restore_prefix_snapshot()`
+恢复F110、scan、LatticePlanner/PurePursuit、reward/wrapper与scenario身份，并再次检查恢复后的
+381D observation。Worker命令`reset_prefix`只在显式启用时存在。
+
+`CentralScheduleSubprocVecEnv`新增默认关闭的`prefix_reset_inputs`与`prefix_reset_interval`。
+启用后只计collision-role reset，每第N次从独立`SeedSequence([seed,0x50524658])`队列取一个
+prefix；完整遍历28项后才重排。Prefix不消费479 collision queue；非prefix collision与ordinary
+调度完全沿用production。Scheduler state同时保存prefix RNG、queue、位置和collision reset计数。
+默认未启用时调用链与旧production相同。
+
+### 17.3 `ppo/rollout.py`的current-network burn-in与硬门
+
+Prefix boundary开始前，collector以当前内存actor/critic从零hidden逐步、batch-size-one消费
+保存的actor-visible prefix；不保存旧U44 hidden，也不把prefix行写入rollout buffer。第一条后缀
+transition使用`episode_starts=true`切GAE/sequence、`recurrent_resets=false`保留burn-in state，
+exploration则按新episode重采样。
+
+普通训练仍用SB3 collector；只有env显式启用prefix时使用自定义collector。Timeout bootstrap、
+rollout-cut final value、真实terminal与GAE保持production语义。Buffer replay返回float32
+`recurrent_resets`；actor warmup按真实episode boundary切序列，但GRU reset使用独立mask。
+每个formal update记录prefix reset/key/transition/window/burn-in统计，并强制审计完整buffer：
+collection-equivalent最大ratio误差须`<=5e-5`，普通batched最大`|ratio-1|`须`<0.02`，否则在
+optimizer前fail closed。
+
+### 17.4 `train_ppo.py` CLI
+
+新增两个成对参数，默认值保持关闭：
+
+```text
+--prefix_reset_panel PATH
+--prefix_reset_interval INT
+```
+
+必须同时给出非空panel与正interval；只给一个即拒绝。Run config保存两者。正式Z6-F固定interval
+3，其他训练参数不因该入口改变。
+
+### 17.5 `scripts/run_prefix_reset_density_gate.py`
+
+脚本先从Z6-A/B输入构建持久化panel，再用隔离子进程收集baseline/treatment各102,400行，无
+optimizer step。它完整核对role、pool membership、reset history、prefix覆盖/密度、GAE、exact与
+batched likelihood、参数摘要和墙钟。Z6-CR adjudication模式重新收集full treatment，报告完整
+batched误差分布，并对相同8个minibatch分别执行普通/exact dry actor backward，比较累计梯度；
+两路都不step参数。
+
+正式结果为：Z6-C原12项通过11项，唯一batched最大ratio偏差`0.010755 > 0.01`，保留machine
+fail；Z6-CR的clip fraction 0、mean KL `9.05e-10`、gradient cosine `0.9999838`、相对L2差
+`0.005706`，通过独立因果裁决。实现前两次preflight分别在构造器签名与真实replay bool dtype处
+失败，均发生在科学运行前；后者另以1,680行真实buffer回归确认返回float32且GAE误差`<=1e-6`。
+
+删除本节脚本会失去完整no-update集成与干梯度裁决入口；删除持久化panel会失去正式训练输入，
+不能从Markdown无损重建snapshot bytes。删除env/rollout/train接入则普通production仍可运行，
+但Z6-F无法按已验证语义执行。
+
+### 17.6 Z6-F正式训练与评测运行验证
+
+`run.sh`只含一条显式Z6-F训练命令。训练根保存原始`checkpoints/actor_uNNNN.pth`和
+`critic_uNNNN.pt`；完成审计后为U1--U30建立规范`update<N>/actor.pth,critic.pt` hardlink，inode
+相同，不复制权重。`trajectory_manifest.json`记录固定训练变量、完整性、评测数量与最终层级判决。
+
+训练实测31行metrics、30对checkpoint、5,166条episode记录全部finite；每个actor严格12-key，
+每update完成16/16 actor step。Pre-update batched ratio最大`0.019095 < 0.02`，exact全0；
+prefix/window fraction最低`8.43%/4.26%`。训练后KL允许按production `target_kl=None`自然记录，
+出现U14 mean `0.43747`等尖峰，未事后增加early stop。
+
+U27--U30使用`evaluate_scenario_panel.py`在四图固定600 panel上串行运行，每个调用8 workers、CUDA、
+deterministic、ego scope、8秒、保存traces。16个调用共9,600 result/trace，全部actor/panel身份匹配、
+0 error、key集合相等；所有NPZ数组对齐finite、时间严格递增、末行唯一terminal且无action，ego-opp/
+ego-wall marker与result outcome严格一致。Runner现有每task加载actor实现未改写；checkpoint级调用
+串行，避免多评测进程争用GPU。
+
+正式U30为四图`103/1522`，逐图BC线通过但`collision<40`失败；U27--U30只有U28/U30通过且不
+连续。本工具链验证的是可执行的prefix采样与标准PPO训练，不包含部署时snapshot、prefix panel或
+critic；部署actor仍为原12-key结构。删除run/panel会分别失去训练复现记录/训练输入，不能仅凭
+Markdown无损恢复；评测产物清理前核心数字与证据边界已固化到`ANALYSIS.md` §43。
+
+## 18. Collision-only BC overlap-supported独立panel与Gate
+
+### 18.1 `scripts/build_collision_only_anchor_overlap_panel.py`
+
+该脚本只构造Z7持久化ScenarioSpec输入，不读取任何actor outcome。CLI只有必需的
+`--output-dir PATH`和固定默认`--startpoint-count 40`；后者不是可扫参数，非40立即拒绝。它读取
+heldout candidate与标准Austin600，取二者ego startpoint并集作为exact exclusion set；在Austin
+raceline1的2,096个唯一waypoint上按
+`SHA256("collision-only-anchor-overlap-v2|Austin|" + offset)`排序搜索offset，取第一个能产生40个
+唯一、零交集循环等progress起点的集合。
+
+每个起点生成`raceline0/2 × interval 8/10/12/15 × speed 0.45:0.05:0.85`，`opp_idx`必须由
+`get_opponent_startpoint`生成。输出固定为`full_scenarios.json`和`panel_manifest.json`；任一已存在
+则拒绝覆盖。Manifest保存输入panel SHA、算法、offset、40起点、维度、计数和零交集检查。
+正式Z7得到offset 1629、2,880个唯一key。删除脚本会失去从历史输入确定性重建panel的入口；
+持久化panel本身仍是后续重放的直接输入。
+
+### 18.2 `scripts/analyze_collision_only_anchor_overlap_gate.py`
+
+CLI固定包含：
+
+```text
+--stage {candidates,final}
+--panel PATH
+--panel-manifest PATH
+--full-evaluation-root PATH
+--candidate-panel PATH
+--candidate-manifest PATH
+--candidate-evaluation-root PATH
+--cohort-panel PATH
+--report PATH
+--workers INT                         默认12
+```
+
+`candidates`阶段要求BC/U44都用panel id `collision_only_anchor_overlap_v2_full`完成2,880条CUDA、
+ego-scope、8秒、trace评估；逐result核对identity/finite/aggregate，逐NPZ核对array、shape、time、
+terminal/action-applied与typed collision。候选唯一规则为`BC=overtake`且
+`U44 in {ego-opp,ego-wall}`，在U42/U43/U45 outcome前原子冻结panel和manifest，已有输出拒绝覆盖。
+
+`final`阶段用manifest SHA确认BC/U44未漂移，并要求U42/U43/U45在候选panel id
+`collision_only_anchor_overlap_v2_candidate`上完成同一质量合同。稳定source为U42--U45至少3/4
+非overtake；source/control窗口直接复用`run_bc_anchor_gate_b.intervention_window`的U44 first
+collision前150步与minimum-OBB `[-100,+50)`，少于50步排除。
+
+每个`(raceline,speed)`中source按
+`SHA256("collision-only-anchor-overlap-v2|source|" + scenario_key)`排序，取前
+`min(eligible source,eligible safe control)`条；control按循环ego index距离、key SHA破平，无放回。
+V0要求source至少12、起点至少8、两条raceline各至少2、exact controls等数和所有质量检查。输出
+固定cohort panel与V0 report，包含完整support table、source→control映射及下游所需的
+`cohort_definition.consensus/collision_scenario_keys`；样本门失败写inconclusive且不得运行branch。
+
+### 18.3 `scripts/run_bc_anchor_gate_b.py`的Z7最小扩展
+
+原`--collision-only-validation`模式保持不变，但V0 experiment id白名单新增
+`bc_collision_only_anchor_overlap_v2`，plan/report沿用输入experiment id。若V0带
+`control_support.expected_source_to_control`，runner用原same-raceline/speed nearest无放回算法
+重建后必须逐映射相等，否则在branch0前停止。旧Z3 report没有该字段，行为不变。
+
+正式调用仍只有`branch0`与`full_bc`。branch0的raw/executed action要求严格0误差，其余连续字段
+`<=1e-6`、boolean/outcome/steps/first collision/terminal完全相同；不通过不运行teacher。
+full-BC在窗口同时替换steering/speed，后续恢复U44。判据固定rescue `>=ceil(.5N)`、rescued
+overtake `>=ceil(.8R)`、至少2起点与每个有至少2 source的raceline救1条、controls新collision和
+overtake loss各`<=floor(.05N)`。
+
+Z7实测BC/U44全面板、三个59条候选actor及两个82条branch共6,101次fresh episode。V0为41
+source/41 control通过；branch0最大误差全0；full-BC rescue 18/41、control collision/loss各4/41，
+V1失败。删除本节工具会失去outcome-unseen panel构造、分阶段等价筛选、support-overlap匹配和
+branch逐步合同的可执行入口；核心科学判决已固化到`ANALYSIS.md` §44。
+
+## 19. `run_gru_action_response_aux_gate.py`：直接改变student GRU的2b Gate
+
+### 19.1 用途、CLI与数据流
+
+该脚本零新仿真、无PPO，首次让action-response auxiliary loss反传进原actor GRU。它导入既有
+Z4/Z5脚本的input validator、真实branch record选择、分层summary和paired exact函数，避免重写
+456 task/13 action/五层分母语义。CLI为：
+
+```text
+--plan PATH
+--branch0-results PATH
+--candidate-results PATH
+--hidden-root PATH
+--u44-trace-root PATH
+--u44-model-path PATH
+--output-report PATH
+--device cuda                         默认cuda且固定
+--epochs 10                           默认10且非10拒绝
+```
+
+已有report拒绝覆盖；没有partial/resume或checkpoint。成功只原子写一个report，模型全部驻内存
+并删除。固定seed bases为7100/8100。
+
+### 19.2 Exact recurrent输入
+
+每条task读取late start、U44完整source trace和保存hidden。先用场景初速`0.9×`初始化previous
+speed，之后用前一trace row measured speed；从零hidden按episode、按step、batch-size-one运行U44
+到`late_start-50`，保存detached initial hidden。最后50行LiDAR经冻结`k`变换、speed经冻结
+`speed_mlp`形成`50×420`，再逐步送原GRU。重建late hidden和source raw action都要求最大误差
+`<=1e-5`，否则训练前停止。
+
+首次preflight用batched burn-in，误差`0.021586/0.009939`被该门拦截且未写report。正式修复改为
+严格batch-size-one，456条两项最大误差均0。不得恢复批量近似作为fallback。
+
+### 19.3 Target、模型与优化
+
+动作顺序固定noop加plan的12 residual。每个state-action标签为：最终ego collision二值，以及
+`final_relative_position_m(candidate)-final_relative_position_m(noop)`。Control模型只用保存
+frozen hidden；treatment复制U44 GRU并设train mode。两者共享同构head：
+`1680->192 ReLU`，拼2D归一化动作，`194->64 ReLU->2`。
+
+Loss为`0.5×class-balanced BCE + 0.5×SmoothL1`；progress只用train split mean/std。GRU/head
+LR=`3e-6/3e-4`，Adam weight decay `1e-4`，batch64，10 epochs，gradient norm clip1.0。`k`、
+speed MLP和actor output layer不在optimizer。每fold报告GRU参数相对L2、test hidden相对L2及冻结
+output head下steering/speed functional drift；执行门要求前两者分别`>=1e-7/>=1e-5`。
+
+### 19.4 Rotating无泄漏操作点
+
+对test fold f，calibration为`(f+1)%5`，其余三fold训练。每个startpoint一次test、一次calibration、
+三次train；test labels不进入模型或操作点。Score为预测progress delta减`lambda*P(collision)`；
+lambda网格`0,.25,.5,1,2,4,8,16`，tau为calibration全部best-nonnoop/noop margin加infinity。
+Calibration两类safe-control harm各不得超过`floor(.05*N)`；tie-break依次target高、harm低、干预
+少、lambda/tau大。冻结lambda/tau后只对test应用一次，不用test把harm顶到预算。
+
+每seed最终要求GRU真正改变、controls两类harm各`<=5/225`、target `>=88`、相对frozen `>=+9`，
+且I/C/L分别`>=11/7/4`；两个seed都过才准入独立validation。
+
+### 19.5 正式结果与删除边界
+
+两seed均真实改变GRU。Seed7100 frozen/treatment为`58 @ 12/13`与`50 @ 14/15`；target paired
+`2/10,p=.0386`。Seed8100为`61 @ 19/20`与`58 @ 12/13`；target `11/14,p=.690`，control两类
+harm均`1/8,p=.0391`，但绝对预算仍失败。Lost恢复为0/1。结果关闭当前具体2b，不保存模型或
+运行PPO；不外推全部representation-only类。
+
+删除脚本会失去exact recurrent input构造、原GRU direct auxiliary update、rotating
+train/calibration/test和两seed功能漂移审计入口；核心结果与适用边界已写入`ANALYSIS.md` §45。
+
+## 20. Z9 collision-cost Constrained PPO
+
+### 20.1 单一入口与目标去重
+
+`scripts/run_constrained_ppo.py`包含prepare、preflight和formal三种固定阶段。prepare只写机器冻结
+合同；preflight收集一个canonical BC完整rollout并在任何actor update前做机械与OOF Gate；只有
+report全部通过，formal才允许创建一次新的30-update目录。
+
+`ConstrainedEnd2RacePPO.collect_rollouts()`复用生产scheduler、环境、actor和reward critic。
+每步从`info`并行保存`ego_collision`、`reward_collision`、done、ego waypoint与scenario identity；
+rollout完成后强制验证`reward_collision == -2 * cost`，再以
+`training_reward = environment_reward - reward_collision`重算reward GAE。这样first collision只由
+constraint计价，不在reward和cost中重复出现。
+
+### 20.2 Cost buffer、critic与dual
+
+`ConstrainedRolloutBuffer`在原buffer之外保存cost、cost value、cost advantage和cost return，并在
+原recurrent minibatch相同的padding/排列上暴露cost侧张量。Cost critic只读381D observation尾部
+20个P20特权量，结构为20-120-30-1；warm-up与正式训练均使用MSE、LR3e-4、grad clip0.5。
+
+Formal actor不新增第二套action或head：先计算`A_reward - lambda*A_cost`，然后由原PPO代码执行
+一次标准化、ratio/clip和当前GRU/output-head optimizer。每个rollout之后以已完成episode的
+collision率执行`lambda <- clip(lambda + .5*(rate-.10),0,20)`；每个update另存训练期cost critic，
+actor checkpoint仍由原12-key验证器保存。
+
+### 20.3 OOF可学习性与机械梯度门
+
+Preflight只取rollout内完整episode。真实cost target是collision episode中
+`0.999^(terminal_step-current_step)`，安全episode为0；尾部未完成episode不参加OOF。所有相同
+`ego_idx`严格进入同fold，五折各重新初始化同构critic，10 epochs，无test调参。报告常数均值
+baseline MSE、skill、episode-start AUROC和距terminal至少100步的early AUROC。
+
+机械梯度门在actor参数不变时，对同一完整buffer分别累计reward-only与
+`reward-lambda*cost` clipped PPO梯度，记录norm、差分相对L2和cosine。它只证明cost信号真正能进入
+当前actor调用链，不证明更新方向会改善四图行为。Formal准入、四图验收与停止边界见统一预注册
+§35；运行结果完成后必须在`ANALYSIS.md`新增独立章节。
+
+### 20.4 执行结果与保留价值
+
+最终有效preflight为102,400行、153个完整episode、57 collision、85个起点。Reward/cost唯一化、
+cost GAE、cost warm-up、dual方向与actor梯度全部通过；起点五折OOF的MSE skill、episode-start
+AUROC、early AUROC为`0.04038/0.42855/0.60703`，低于`0.05/0.65/0.65`，formal按合同未运行。
+
+前两个目录分别记录tensor/numpy bootstrap类型错误和尾部未完成episode fold查表错误；都没有
+actor更新或科学report，不得合并为三次seed。当前脚本已修复两处机械问题。保留该脚本可以重建
+reward/cost唯一化、cost-side buffer、P20 critic、dual与OOF/梯度审计；但当前配置已关闭，禁止
+直接改budget、dual或critic重跑。

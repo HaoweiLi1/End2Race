@@ -32,6 +32,8 @@ import json
 import multiprocessing as mp
 import os
 from pathlib import Path
+import shlex
+import subprocess
 import sys
 import tempfile
 
@@ -364,6 +366,9 @@ def main() -> None:
         "collision_scope": args.collision_scope,
         "device": args.device,
         "hidden_scale": args.hidden_scale,
+        "command": " ".join(shlex.quote(value) for value in [sys.executable, *sys.argv]),
+        "git_commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, check=True, capture_output=True, text=True).stdout.strip(),
+        "worktree_status": subprocess.run(["git", "status", "--short"], cwd=PROJECT_ROOT, check=True, capture_output=True, text=True).stdout.splitlines(),
         "save_traces": bool(args.save_traces),
         "trace_count": trace_count,
         "trace_result_key_sets_equal": (not args.save_traces)

@@ -1,0 +1,93 @@
+{
+  "ego_startpoints": [
+    1629,
+    1681,
+    1734,
+    1786,
+    1839,
+    1891,
+    1943,
+    1996,
+    2048,
+    5,
+    57,
+    109,
+    162,
+    214,
+    267,
+    319,
+    371,
+    424,
+    476,
+    529,
+    581,
+    633,
+    686,
+    738,
+    791,
+    843,
+    895,
+    948,
+    1000,
+    1053,
+    1105,
+    1157,
+    1210,
+    1262,
+    1315,
+    1367,
+    1419,
+    1472,
+    1524,
+    1577
+  ],
+  "exact_ego_startpoint_overlap_with_excluded_panels": 0,
+  "excluded_ego_startpoint_count": 250,
+  "excluded_panel_inputs": [
+    {
+      "path": "post-trained/panels/heldout_hard_v1/candidate_scenarios.json",
+      "scenario_count": 21600,
+      "sha256": "48b3b3cd1c2b2f22143254de37c6eee535ba7b7f4d7eba9862cd0115e58c9c2b",
+      "unique_ego_startpoint_count": 200
+    },
+    {
+      "path": "post-trained/panels/standard_multiagent_600_v1/Austin_600_scenarios.json",
+      "scenario_count": 600,
+      "sha256": "eb35c016b59e95742aa0fe8e9b065db0de2663d6e11044ab9f2ab765a4728853",
+      "unique_ego_startpoint_count": 50
+    }
+  ],
+  "interval_indices": [
+    8,
+    10,
+    12,
+    15
+  ],
+  "map_name": "Austin",
+  "opponent_racelines": [
+    "raceline0",
+    "raceline2"
+  ],
+  "opponent_speed_scales": [
+    0.45,
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85
+  ],
+  "panel_id": "collision_only_anchor_overlap_v2",
+  "panel_path": "post-trained/panels/collision_only_anchor_overlap_v2/full_scenarios.json",
+  "panel_sha256": "4dd93f37cdb03a6e2e7ecd3fda06df1a6de5702fa5eddf8b54843737bb60322d",
+  "raceline1_unique_waypoint_count": 2096,
+  "scenario_count": 2880,
+  "schema_version": 1,
+  "selected_offset": 1629,
+  "startpoint_algorithm": "SHA256-ranked offset search over 40 circular progress starts; first exact-disjoint set",
+  "status": "frozen_before_any_actor_outcome",
+  "unique_ego_startpoint_count": 40,
+  "unique_episode_key_count": 2880
+}
