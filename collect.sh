@@ -2,7 +2,7 @@
 
 # Parameters (converted from argparse defaults)
 WORKERS=12
-RENDER=true
+RENDER=false
 MAP_NAME="Austin"
 EGO_RACELINE="raceline1"
 OPP_RACELINES=("raceline0" "raceline1" "raceline2")

@@ -1,38 +1,21 @@
-# Evaluation panel inputs
+# Fixed training inputs
 
-此目录只保存可复用的固定评估/训练输入，不保存某次actor的评估输出、日志或分析报告。
+此目录只保存当前仍被训练合同直接读取、且不能由正式入口即时生成的固定输入。模型评测输出、日志和临时分析不得写入这里。
 
-## `heldout_hard_v1/`
+## 正式四图600评测不保存重复panel
 
-使用冻结B/U30在Austin的21,600个候选场景上预先分类得到。候选来自200个新起点，
-按20个物理区块预先分成100个train和100个held-out起点；选择过程没有查看后续
-treatment actor。
+正式模型评测统一由根目录`evaluate.sh`生成场景：每张地图50个circular start、3条opponent raceline、4个speed scale，共600个episode。Austin、Hockenheim、MoscowRaceway和Nuerburgring分别通过`MAP_NAME`运行；当前默认`COLLISION_SCOPE=ego`。
 
-| 文件 | 条数 | 用途 |
-|---|---:|---|
-| `candidate_scenarios.json` | 21,600 | 完整候选网格 |
-| `candidate_labels.jsonl` | 21,600 | 冻结U30逐候选结果 |
-| `train_collision_scenarios.json` | 468 | train碰撞场景 |
-| `train_near_miss_scenarios.json` | 400 | train近失场景 |
-| `train_difficult_scenarios.json` | 868 | 上述两者并集 |
-| `heldout_eval_collision_scenarios.json` | 334 | held-out hard334 |
-| `heldout_eval_near_miss_scenarios.json` | 400 | held-out near400 |
-| `heldout_eval_difficult_scenarios.json` | 734 | hard334与near400并集 |
-| `heldout_eval_interval15_collision_scenarios.json` | 73 | hard73诊断面板 |
-| `train_interval15_difficult_pool.json` | 229 | 合规fixed collision-role训练池 |
-| `design_manifest.json` | — | 候选和起点设计 |
-| `classification_summary.json` | — | 分类计数和选择完整性摘要 |
+原`standard_multiagent_600_v1/`四份JSON与`evaluate.sh`按当前raceline和`get_circular_startpoints()`生成的场景逐条完全一致，且没有当前代码消费者，已作为重复资产删除。若racetrack数据或场景生成函数改变，应把它视为评测合同变化并重新建立对照，而不是静默恢复一份旧JSON副本。
 
-`train_interval15_difficult_pool.json`由103个ego-collision和126个near-miss场景组成，
-全部为interval 15。near-miss阈值为最小OBB clearance不高于0.1m。
+## `first_action_preference_v1/`
 
-配对身份使用：
+Simulator-return-filtered first-action preference训练所用的固定同状态反事实数据集。`manifest.json`登记65个episode，其中46个target、19个matched control；目录同时保留snapshot、noop branch、candidate branch、状态前缀和构建Gate结果，以便复核第一动作标签及训练输入。
 
-```text
-(map, opponent_raceline, ego_idx, opp_idx, opponent_speed_scale)
-```
+该目录是成功训练臂的输入，不是模型eval panel。`ppo/rollout.py`中的`FirstActionPreferenceDataset`和已完成运行的`run_config.json`都使用`first_action_preference_v1`作为dataset ID，因此不得仅为缩短名称而改名。
 
-跨raceline时不得用`(opp_idx - ego_idx) mod waypoint_count`反推interval。
+## 命名与输出边界
 
-评估输出继续写入`eval_results/<EXPERIMENT_ID>/<PANEL_ID>/<UPDATE>/`；不要向本目录写
-actor结果或临时分析文件。
+- 这里只保留manifest中的canonical训练数据ID；不维护`PJTE`、`heldout_hard`或`failed_*`别名。
+- actor评测输出写入`eval_results/<experiment_id>/...`，不得写入本目录。
+- 失败方法的科学结论保留在`.agents/HANDOFF.md`与`.agents/ANALYSIS.md`；已删除二进制不作为结论的唯一载体。

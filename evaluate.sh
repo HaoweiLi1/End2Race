@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # Parameters (converted from argparse defaults)
-MODEL_PATH="${MODEL_PATH:-pretrained/end2race.pth}"
+MODEL_PATH="${MODEL_PATH:-pretrained/end2race_new.pth}"
 PYTHON="${PYTHON:-python}"
 HIDDEN_SCALE=4
 NOISE="${NOISE:-0.0}"
 NUM_WORKERS=12
 MAP_NAME="${MAP_NAME:-Austin}"
-COLLISION_SCOPE="${COLLISION_SCOPE:-legacy}"
+COLLISION_SCOPE="${COLLISION_SCOPE:-ego}"
 RENDER=false
-SAVE_TRACE="${SAVE_TRACE:-true}"
+SAVE_TRACE="${SAVE_TRACE:-false}"
 SIM_DURATION=8.0
 EGO_RACELINE="raceline1"
 OPP_RACELINES=("raceline0" "raceline1" "raceline2")

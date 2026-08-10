@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from scipy.ndimage import map_coordinates
 
+from latticeplanner.utils import load_config
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MAX_PROGRESS_DELTA_M = 1.0
-PROGRESS_WEIGHT = 0.01
-RELATIVE_WEIGHT = 0.02
-COLLISION_PENALTY = -2.0
+CONFIG = load_config("ppo/ppo_config.yaml")
 
 
 @dataclass(frozen=True)
@@ -220,7 +217,7 @@ def checked_progress_delta(
     *,
     scenario_id: str,
     vehicle: str,
-    max_abs_delta_m: float = MAX_PROGRESS_DELTA_M,
+    max_abs_delta_m: float = CONFIG.max_progress_delta_m,
 ) -> float:
     """Compute a progress delta and fail loudly on invalid transitions."""
 
@@ -315,10 +312,6 @@ class RewardResult:
     risk_active: bool
     scenario_id: str
 
-    def to_info(self) -> dict[str, Any]:
-        return asdict(self)
-
-
 class PPOTransitionReward:
     """Stateful progress/relative/collision reward with potential-based risk shaping."""
 
@@ -337,7 +330,7 @@ class PPOTransitionReward:
         risk_wall_clearance_m: float,
         risk_potential_maximum: float,
     ) -> None:
-        self.progress_reference_path = PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
+        self.progress_reference_path = Path(__file__).resolve().parents[1] / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
         self.projector = projector or ProgressProjector.from_csv(self.progress_reference_path)
         self._previous_ego_progress: float | None = None
         self._previous_opponent_progress: float | None = None
@@ -378,14 +371,6 @@ class PPOTransitionReward:
             raise ValueError("Invalid PPO risk-potential parameters")
         self._previous_risk_potential: float | None = None
         self.current_clearances: CurrentStateClearances | None = None
-
-    @property
-    def current_obb_clearance_m(self) -> float | None:
-        return None if self.current_clearances is None else self.current_clearances.obb_clearance_m
-
-    @property
-    def current_wall_clearance_m(self) -> float | None:
-        return None if self.current_clearances is None else self.current_clearances.wall_clearance_m
 
     @staticmethod
     def _position(raw_observation: dict[str, Any], index: int) -> np.ndarray:
@@ -520,10 +505,10 @@ class PPOTransitionReward:
 
         if opponent_collision:
             self._opponent_collision_latched = True
-        reward_progress = PROGRESS_WEIGHT * ego_delta
-        reward_relative = 0.0 if self._opponent_collision_latched else RELATIVE_WEIGHT * (ego_delta - opponent_delta)
+        reward_progress = CONFIG.progress_weight * ego_delta
+        reward_relative = 0.0 if self._opponent_collision_latched else CONFIG.relative_weight * (ego_delta - opponent_delta)
         if ego_collision and not self._ego_collision_penalty_applied:
-            reward_collision = COLLISION_PENALTY
+            reward_collision = CONFIG.collision_penalty
             self._ego_collision_penalty_applied = True
         else:
             reward_collision = 0.0

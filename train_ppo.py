@@ -1,51 +1,17 @@
 #!/usr/bin/env python3
-"""Train the fixed End2Race PPO pipeline."""
-
-from __future__ import annotations
-
 import argparse
-import math
 from pathlib import Path
 import random
-
 import numpy as np
 import torch
-import yaml
-
-from ppo.env import CentralScheduleSubprocVecEnv, FrontCorridorGateConfig, load_prefix_reset_panel
-from ppo.policy import (
-    BASELINE_EXPLORATION_MODE,
-    CRITIC_VARIANTS,
-    P20_CRITIC_VARIANTS,
-    PRIVILEGED_FEATURE_HIGHS,
-    PRIVILEGED_FEATURE_LOWS,
-    PRIVILEGED_FEATURE_NAMES,
-    PRIVILEGED_FEATURE_SIZE,
-    PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE,
-    SPEED_PHYSICAL_STD,
-    SPEED_EXPLORATION_MODES,
-    STEERING_LATENT_STD,
-    End2RaceGRUPolicy,
-    exploration_metadata,
-)
-from ppo.rollout import (
-    MAX_GRAD_NORM,
-    VALUE_LOSS_COEFFICIENT,
-    WARMUP_MAX_EPOCHS,
-    WARMUP_PATIENCE,
-    WARMUP_TRAIN_FRACTION,
-    End2RaceRecurrentPPO,
-)
+from latticeplanner.utils import load_config
+from ppo.env import CentralScheduleSubprocVecEnv, FrontCorridorGateConfig
+from ppo.policy import *
+from ppo.rollout import *
 from ppo.scenarios import expanded_scenarios, ordinary_scenarios, resolve_collision_scenarios
 from utils import TrainingRecorder
 
-
-PROJECT_ROOT = Path(__file__).resolve().parent
-POST_TRAINED_ROOT = PROJECT_ROOT / "post-trained"
-PPO_CONFIG_PATH = PROJECT_ROOT / "ppo" / "ppo_config.yaml"
-with PPO_CONFIG_PATH.open("r", encoding="utf-8") as file:
-    PPO_CONFIG = yaml.safe_load(file)
-START_METHOD = str(PPO_CONFIG["start_method"])
+CONFIG = load_config("ppo/ppo_config.yaml")
 
 
 def parse_arguments():
@@ -65,10 +31,9 @@ def parse_arguments():
     parser.add_argument("--n_envs", type=int, default=16)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/pretrained_end2race_austin_collision_pool_479")
-    parser.add_argument("--prefix_reset_panel", type=str, default="")
-    parser.add_argument("--prefix_reset_interval", type=int, default=0)
-    parser.add_argument("--collision_bc_anchor_dataset", type=str, default="")
-    parser.add_argument("--collision_bc_anchor_beta", type=float, default=0.0)
+    parser.add_argument("--first_action_preference_dataset", type=str, default="")
+    parser.add_argument("--first_action_preference_step_fraction", type=float, default=0.0)
+    parser.add_argument("--online_same_state_branch_ppo", action="store_true")
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -83,7 +48,7 @@ def parse_arguments():
     parser.add_argument("--critic_learning_rate", type=float, default=3.0e-4)
     parser.add_argument("--steering_latent_std", type=float, default=0.03)
     parser.add_argument("--speed_physical_std", type=float, default=0.15)
-    parser.add_argument("--speed_exploration_mode", choices=SPEED_EXPLORATION_MODES, default=BASELINE_EXPLORATION_MODE)
+    parser.add_argument("--speed_exploration_mode", choices=speed_exploration_modes(), default="baseline")
 
     # PPO configuration
     parser.add_argument("--gamma", type=float, default=0.999)
@@ -92,96 +57,23 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def configure_training_numerics() -> None:
+def configure_training_numerics():
     torch.backends.cudnn.allow_tf32 = False
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.set_float32_matmul_precision("highest")
     torch.backends.cudnn.benchmark = False
 
 
-def validate_arguments(args) -> None:
-    pretrained_path = Path(args.pretrained_model_path).expanduser().resolve()
-    if not pretrained_path.is_file():
-        raise FileNotFoundError(f"Pretrained model does not exist: {pretrained_path}")
-    if not args.output_dir.strip():
-        raise ValueError("output_dir must not be empty")
-    if not args.map_name.strip():
-        raise ValueError("map_name must not be empty")
-    if not args.collision_cache_dir.strip():
-        raise ValueError("collision_cache_dir must not be empty")
-    output_dir = Path(args.output_dir).expanduser().resolve()
-    collision_cache_dir = Path(args.collision_cache_dir).expanduser().resolve()
-    if output_dir == POST_TRAINED_ROOT or POST_TRAINED_ROOT not in output_dir.parents:
-        raise ValueError(f"output_dir must be inside the project post-trained directory: {POST_TRAINED_ROOT}")
-    if output_dir == collision_cache_dir:
-        raise ValueError("output_dir and collision_cache_dir must be different directories")
-    if output_dir.exists():
-        if not output_dir.is_dir():
-            raise ValueError(f"PPO output path is not a directory: {output_dir}")
-        if any(output_dir.iterdir()):
-            raise ValueError(f"PPO output directory must be empty: {output_dir}")
-    if args.n_envs <= 0 or args.n_envs % 2 != 0:
-        raise ValueError("n_envs must be positive and even")
-    if bool(args.prefix_reset_panel.strip()) != (args.prefix_reset_interval > 0):
-        raise ValueError("prefix_reset_panel and a positive prefix_reset_interval must be enabled together")
-    if not math.isfinite(args.collision_bc_anchor_beta) or args.collision_bc_anchor_beta < 0.0:
-        raise ValueError("collision_bc_anchor_beta must be finite and nonnegative")
-    if args.collision_bc_anchor_beta > 0.0 and not args.collision_bc_anchor_dataset.strip():
-        raise ValueError("positive collision_bc_anchor_beta requires collision_bc_anchor_dataset")
-    for name in ("hidden_scale", "n_steps", "batch_size", "num_updates", "actor_epochs", "critic_epochs"):
-        if getattr(args, name) <= 0:
-            raise ValueError(f"{name} must be positive")
-    if args.n_envs * args.n_steps % args.batch_size != 0:
-        raise ValueError("n_envs * n_steps must be divisible by batch_size")
-    if args.batch_size % (2 * args.n_steps) != 0:
-        raise ValueError("batch_size must be divisible by 2 * n_steps so each env-major recurrent minibatch has equal collision and ordinary transitions")
-    for name in (
-        "gru_learning_rate",
-        "head_learning_rate",
-        "critic_learning_rate",
-        "steering_latent_std",
-        "speed_physical_std",
-        "gamma",
-        "gae_lambda",
-        "clip_range",
-    ):
-        if getattr(args, name) <= 0:
-            raise ValueError(f"{name} must be positive")
-    if args.gamma > 1.0 or args.gae_lambda > 1.0:
-        raise ValueError("gamma and gae_lambda must be at most 1")
-    if args.speed_exploration_mode != BASELINE_EXPLORATION_MODE:
-        if abs(float(args.speed_physical_std) - 0.15) > 1e-12:
-            raise ValueError(
-                "Structured speed exploration requires speed_physical_std=0.15"
-            )
-    if args.speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
-        if not args.prefix_reset_panel.strip() or args.prefix_reset_interval <= 0:
-            raise ValueError("prefix_joint_temporal requires prefix reset inputs")
-        if abs(float(args.steering_latent_std) - 0.03) > 1e-12:
-            raise ValueError("prefix_joint_temporal requires steering_latent_std=0.03")
-    if args.collision_bc_anchor_beta > 0.0:
-        canonical_path = (PROJECT_ROOT / "pretrained" / "end2race.pth").resolve()
-        if pretrained_path != canonical_path or args.map_name != "Austin" or args.critic != "privilege_gru" or args.speed_exploration_mode != "corridor_temporal":
-            raise ValueError("collision BC anchor formal requires canonical BC, Austin, privilege_gru, and corridor_temporal")
-        expected = (args.n_envs, args.n_steps, args.batch_size, args.num_updates, args.actor_epochs, args.critic_epochs)
-        if expected != (16, 6400, 12800, 45, 2, 5):
-            raise ValueError("collision BC anchor formal rollout/update contract changed")
-    FrontCorridorGateConfig(
-        maximum_front_gap_m=float(
-            PPO_CONFIG["front_corridor_gate_maximum_gap_m"]
-        )
-    ).validate()
-
-
-def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2RaceRecurrentPPO:
+def build_model(vector_env, args, device, recorder):
     return End2RaceRecurrentPPO(
         End2RaceGRUPolicy,
         vector_env,
         actor_epochs=args.actor_epochs,
         critic_epochs=args.critic_epochs,
         recorder=recorder,
-        collision_bc_anchor_dataset=args.collision_bc_anchor_dataset,
-        collision_bc_anchor_beta=args.collision_bc_anchor_beta,
+        first_action_preference_dataset=args.first_action_preference_dataset,
+        first_action_preference_step_fraction=args.first_action_preference_step_fraction,
+        online_same_state_branch_ppo=args.online_same_state_branch_ppo,
         learning_rate=1.0,
         n_steps=args.n_steps,
         batch_size=args.batch_size,
@@ -191,8 +83,8 @@ def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2Rac
         clip_range_vf=None,
         normalize_advantage=True,
         ent_coef=0.0,
-        vf_coef=VALUE_LOSS_COEFFICIENT,
-        max_grad_norm=MAX_GRAD_NORM,
+        vf_coef=CONFIG.value_loss_coefficient,
+        max_grad_norm=CONFIG.max_grad_norm,
         seed=args.seed,
         device=device,
         policy_kwargs={
@@ -210,9 +102,8 @@ def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2Rac
     )
 
 
-def main() -> None:
+def main():
     args = parse_arguments()
-    validate_arguments(args)
     configure_training_numerics()
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -223,37 +114,29 @@ def main() -> None:
         f"batch_size={args.batch_size}, num_updates={args.num_updates}, "
         f"speed_physical_std={args.speed_physical_std}, "
         f"speed_exploration_mode={args.speed_exploration_mode}, "
-        f"front_corridor_gate_maximum_gap_m={PPO_CONFIG['front_corridor_gate_maximum_gap_m']}, "
-        f"ordinary_offline_fast_fraction={PPO_CONFIG['ordinary_offline_fast_fraction']}, "
-        f"prefix_reset_panel={args.prefix_reset_panel or 'disabled'}, prefix_reset_interval={args.prefix_reset_interval}, "
-        f"collision_bc_anchor_dataset={args.collision_bc_anchor_dataset or 'disabled'}, collision_bc_anchor_beta={args.collision_bc_anchor_beta}, "
+        f"front_corridor_gate_maximum_gap_m={CONFIG.front_corridor_gate_maximum_gap_m}, "
+        f"ordinary_offline_fast_fraction={CONFIG.ordinary_offline_fast_fraction}, "
+        f"first_action_preference_dataset={args.first_action_preference_dataset or 'disabled'}, first_action_preference_step_fraction={args.first_action_preference_step_fraction}, "
+        f"online_same_state_branch_ppo={args.online_same_state_branch_ppo}, "
         f"seed={args.seed}",
         flush=True,
     )
     print("[1/5] Building collision candidates", flush=True)
     candidates = expanded_scenarios(args.map_name)
-    print("[2/5] Loading or classifying collision pool", flush=True)
-    collision_scenarios, cache_hit, reclassified = resolve_collision_scenarios(
+    print("[2/5] Loading collision pool", flush=True)
+    collision_scenarios = resolve_collision_scenarios(
         args,
         candidates,
-        START_METHOD,
     )
     collision_cache_info = {
-        "mode": "baseline",
+        "mode": "fixed",
         "cache_dir": str(Path(args.collision_cache_dir).expanduser().resolve()),
-        "base_cache_dir": str(
-            Path(args.collision_cache_dir).expanduser().resolve()
-        ),
-        "base_cache_hit": cache_hit,
-        "base_reclassified": reclassified,
-        "base_candidate_count": len(candidates),
-        "base_collision_count": len(collision_scenarios),
+        "candidate_count": len(candidates),
         "collision_count": len(collision_scenarios),
     }
     print("[3/5] Building ordinary scenarios", flush=True)
     ordinary_scenario_set = ordinary_scenarios(args.map_name)
-    prefix_reset_inputs = load_prefix_reset_panel(args.prefix_reset_panel) if args.prefix_reset_panel.strip() else ()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda")
     print(f"Using device: {device}", flush=True)
     recorder = TrainingRecorder(args.output_dir, args.hidden_scale)
     recorder.write_scenario_pools(
@@ -264,7 +147,7 @@ def main() -> None:
     print("[4/5] Creating vector environments", flush=True)
     vector_env = CentralScheduleSubprocVecEnv(
         args.n_envs,
-        START_METHOD,
+        CONFIG.start_method,
         args.seed,
         args.map_name,
         collision_scenarios,
@@ -272,8 +155,6 @@ def main() -> None:
         privileged=args.critic in P20_CRITIC_VARIANTS,
         reward_gamma=args.gamma,
         speed_exploration_mode=args.speed_exploration_mode,
-        prefix_reset_inputs=prefix_reset_inputs,
-        prefix_reset_interval=args.prefix_reset_interval,
     )
     try:
         privileged_normalization = (
@@ -283,20 +164,13 @@ def main() -> None:
         )
         recorder.write_run_config(
             args,
-            dict(PPO_CONFIG),
+            vars(CONFIG),
             {
-                "WARMUP_MAX_EPOCHS": WARMUP_MAX_EPOCHS,
-                "WARMUP_PATIENCE": WARMUP_PATIENCE,
-                "WARMUP_TRAIN_FRACTION": WARMUP_TRAIN_FRACTION,
-                "VALUE_LOSS_COEFFICIENT": VALUE_LOSS_COEFFICIENT,
-                "MAX_GRAD_NORM": MAX_GRAD_NORM,
-                "STEERING_LATENT_STD": args.steering_latent_std,
-                "SPEED_PHYSICAL_STD": args.speed_physical_std,
                 "SPEED_EXPLORATION": exploration_metadata(
                     args.speed_exploration_mode,
                     corridor_gate_config=FrontCorridorGateConfig(
                         maximum_front_gap_m=float(
-                            PPO_CONFIG["front_corridor_gate_maximum_gap_m"]
+                            CONFIG.front_corridor_gate_maximum_gap_m
                         )
                     ),
                 ),
@@ -305,11 +179,26 @@ def main() -> None:
                 "PRIVILEGED_FEATURE_LOWS": list(PRIVILEGED_FEATURE_LOWS),
                 "PRIVILEGED_FEATURE_HIGHS": list(PRIVILEGED_FEATURE_HIGHS),
                 "PRIVILEGED_NORMALIZATION": privileged_normalization,
-                "COLLISION_BC_ANCHOR": {
-                    "enabled": bool(args.collision_bc_anchor_beta > 0.0),
-                    "dataset": args.collision_bc_anchor_dataset,
-                    "beta": args.collision_bc_anchor_beta,
-                    "loss": "episode mean of 150-step same-variance Gaussian mean-KL",
+                "FIRST_ACTION_PREFERENCE": {
+                    "enabled": bool(args.first_action_preference_step_fraction > 0.0),
+                    "dataset": args.first_action_preference_dataset,
+                    "target_step_fraction": args.first_action_preference_step_fraction,
+                    "loss": "balanced target/control episode mean of simulator-return-filtered first-action softplus log-prob pairs",
+                    "beta": "calibrated once before the first actor optimizer step",
+                    "training_hindsight": True,
+                    "deployment_future_information": False,
+                },
+                "ONLINE_SAME_STATE_BRANCH_PPO": {
+                    "enabled": args.online_same_state_branch_ppo,
+                    "states_per_rollout": CONFIG.online_branch_states_per_rollout,
+                    "actions_per_state": CONFIG.online_branch_actions_per_state,
+                    "horizon_steps": CONFIG.online_branch_horizon_steps,
+                    "loss_coefficient": CONFIG.online_branch_loss_coefficient,
+                    "state_source": "current student on-policy Austin rollout only",
+                    "action_source": "current frozen pi_old only",
+                    "continuation_source": "same current frozen pi_old",
+                    "previous_actor_or_trace_input": False,
+                    "actor_objective": "standard clipped PPO surrogate over leave-one-out branch-return advantages",
                 },
             },
         )

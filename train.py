@@ -17,8 +17,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Train End2Race speed-conditioned model')
     
     # Data and model paths
-    parser.add_argument("--data_path", type=str, default="Dataset_Austin/success")
-    parser.add_argument("--model_path", type=str, default="end2race.pth")
+    parser.add_argument("--data_path", type=str, default="Dataset_Austin_0810/success")
+    parser.add_argument("--model_path", type=str, default="end2race_new.pth")
     
     # Model configuration
     parser.add_argument("--hidden_scale", type=int, default=4)
@@ -27,7 +27,7 @@ def parse_arguments():
     # Training configuration
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--learning_rate", type=float, default=0.001)
-    parser.add_argument("--num_epochs", type=int, default=100)
+    parser.add_argument("--num_epochs", type=int, default=300)
 
     return parser.parse_args()
 

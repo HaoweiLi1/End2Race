@@ -2,10 +2,14 @@ __pycache__/
 build/
 install/
 .vscode/
+.agents/
 .claude/
 .codex/
-AGENTS.md
 .remember/
 Dataset_*/
-post-trained/ppo*
+post-trained/
 eval_results*/
+scripts/
+!scripts/
+scripts/*
+!scripts/test_online_same_state_branch_ppo.py

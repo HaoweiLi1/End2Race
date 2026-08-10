@@ -3,7 +3,13 @@
 本文件只规定长期有效的实验方法、运行边界和产物组织方式。
 当前最佳模型、reward/pool 配置、正在运行的任务与核心判决记录在
 `.agents/HANDOFF.md`；完整实验设计、数据、分析和边界记录在
-`.agents/ANALYSIS.md`；代码风格约定记录在 `.agents/STYLE.md`。不要复制到这里。
+`.agents/ANALYSIS.md`；历史工具、训练接入和回归合同记录在
+`.agents/EXPERIMENTS.md`；代码风格约定记录在 `.agents/STYLE.md`。不要复制到这里。
+
+专题预注册和阶段性合并报告在实验结束后必须归并到上述职责文档并删除，不得继续与
+`HANDOFF.md`并列承担当前权威。归并时，结果与证据边界进入`ANALYSIS.md`，会改变下一步行动的
+判决进入`HANDOFF.md`，仍需重建的实现细节进入`EXPERIMENTS.md`；未执行设想只能保留为历史设计，
+不得在归并中升级成已验证事实。
 
 ## 1. 目标与边界
 
@@ -32,6 +38,31 @@
 - 先做成本低、机制明确的验证，再决定是否训练；不要进行没有明确假说的参数 sweep。
 - 训练开始前写清主指标、守门指标、预期机制、通过条件和停止条件。
 - 不因已经投入大量实验而继续无效方向；结果不支持假说时应明确停止。
+
+### 2.0 方法族与描述性命名
+
+文档、代码注释、实验目录和结果汇报必须直接写出机制，不得再用字母或数字临时序号充当
+方法名。`Round Z6`、`Gate B`一类标识只用于定位历史
+实验轮次或执行阶段，首次出现时仍须同时写出完整机制名称，不能脱离描述性名称单独使用。
+`A/B`只允许表示明确的control/treatment受控比较，不得表示两个固定方法。
+
+所有PPO实验固定归入以下一个主方法族；同时触及多个组件时，按**主要因果变量**归类，并在
+记录中列出次要组件和归因边界：
+
+| 方法族 | 纳入内容 | 典型描述性名称 |
+|---|---|---|
+| Reward与优化目标 | reward项、potential shaping、constraint/cost目标 | `signed interaction-phase potential`、`collision-cost Constrained PPO` |
+| 训练pool与采样 | collision/ordinary场景池、role配比、分层重加权 | `boundary-aware collision pool`、`ordinary off-line fast reweighting` |
+| 探索与curriculum | 动作噪声、时间相关探索、prefix reset | `front-corridor temporal speed exploration`、`prefix-local joint temporal exploration` |
+| BC/参考策略正则 | teacher、BC anchor、reference-policy retention | `collision-only BC functional regularization` |
+| 反事实动作学习 | simulator branch、动作排序、preference、在线分支PPO | `simulator-return-filtered first-action preference`、`online same-state branched PPO` |
+| 表征与辅助监督 | 改变GRU/hidden的辅助目标或探针 | `GRU-changing paired action-response auxiliary` |
+| Checkpoint组合 | 权重平均、EMA、SWA等零训练后处理 | `equal-weight checkpoint averaging` |
+| 诊断与工程Gate | 只验证可达性、数据质量、恢复或likelihood | `prefix-reset snapshot no-op gate` |
+
+`HANDOFF.md`按这些方法族给出当前判决入口，`ANALYSIS.md`按这些方法族给出完整证据导航，
+`EXPERIMENTS.md`按这些方法族给出实现与重建入口。详细章节可以保留历史轮次顺序和稳定编号，
+但同类内容必须能从唯一的方法族导航连续找到，不能再靠临时序号猜测。
 
 ### 2.1 训练前的离线筛选
 
@@ -162,9 +193,10 @@ opp-wall单列，并报告配对身份变化；更严格的改进目标和checkp
 ### 4.2 评估要求
 
 - 正式评测固定使用 CUDA/GPU；不要为同一模型重复运行 CPU 对照，也不能将 CPU 与 CUDA
-  结果配对。若 CUDA 不可用则停止并修复运行环境，不静默退回 CPU。正式manifest必须显式
-  记录`device=cuda`和collision scope；缺失device的历史包只能作为待确认历史证据。
-- 对照组和实验组使用完全相同的 panel。
+  结果配对。`eval_multiagent.py`在CUDA不可用时硬停止，不静默退回CPU；正式入口统一使用
+  `evaluate.sh`，其当前默认`COLLISION_SCOPE=ego`，不得改用直接脚本的legacy默认。标准四图600
+  不再为记录这些常量额外生成独立manifest。
+- 对照组和实验组必须使用同一版`evaluate.sh`、racetrack CSV和场景生成函数。
 - 保存每个 episode 的数值 trace。
 - 结论以固定场景的配对身份变化为主，同时报告总量。
 - **每个比较必须给出消除数、新造数和配对显著性检验**，不得只报净变化。
@@ -176,9 +208,9 @@ opp-wall单列，并报告配对身份变化；更严格的改进目标和checkp
 - 使用尾部/甩尾等派生标签时必须写明采用哪个定义；不同 artifact 的口径可能不同，
   不得把两种口径合并成一个未命名的计数。
 - 训练 metrics 只用于解释学习过程，不能代替确定性 evaluation。
-- 正式 panel 必须检查预期 episode 数、唯一场景数、error 数、结果与 trace key
+- 正式四图运行必须检查预期 episode 数、唯一场景数、error 数、结果与 trace key
   一致性、数值有限性、collision marker 和 terminal row 合同。
-- 如果manifest通过外部`panel_file`定义场景身份，该panel输入必须与结果包一起长期保留；
+- 只有未来明确授权不规则外部`panel_file`时，该panel输入才必须与结果包一起长期保留；
   不得留下指向已删除panel的manifest。确需清理时，应先把完整场景身份与生成协议迁入仍存的
   规范panel，而不是只保留摘要计数。
 
@@ -221,8 +253,9 @@ post-trained/collision-cache/<ACTOR_ID>_<map>_<pool_type>_<scenario_count>/
 ## 6. 产物路径
 
 新实验采用以下目标结构。已确认属于production或同一训练轨迹的 checkpoint 按本节
-归档；其余历史actor/eval结果不为追求目录整齐而批量改名。清理历史分析输出前，
-仅将跨实验复用的固定panel输入集中到下述`post-trained/panels/`：
+归档；其余历史actor/eval结果不为追求目录整齐而批量改名。普通四图600直接由`evaluate.sh`
+按当前racetrack生成，不物化一份重复ScenarioSpec；只有不能由正式入口生成、且被训练合同直接
+读取的固定输入才放入`post-trained/panels/`：
 
 ```text
 post-trained/<EXPERIMENT_ID>/
@@ -248,19 +281,12 @@ post-trained/<EXPERIMENT_ID>/
 eval_results/<EXPERIMENT_ID>/update30/<MAP_NAME>/
 ├── multiagents/
 │   ├── results_multi.json
-│   ├── eval_manifest.json
 │   └── traces/
-├── singleagent/
-│   ├── results_single.json
-│   └── traces/
-├── noise10/
-├── noise20/
-└── noise30/
 
 post-trained/panels/<PANEL_SET_ID>/
 ├── README.md
-├── *_scenarios.json
-└── selection metadata
+├── manifest.json
+└── fixed training inputs
 ```
 
 例如 production PPO 的稳定路径为：
@@ -291,11 +317,9 @@ checkpoint名。原始训练器内部使用的 `actor_u0030.pth` 等文件名可
 最小评估产物的职责：
 
 - `results_multi.json`：保存总体结果以及每个 episode 的 outcome/metrics。
-- `eval_manifest.json`：保存模型/checkpoint标识、panel定义、实际命令、代码来源，
-  以及 episode/trace 完整性验证结果。
 - `traces/`：保存与 episode key 一一对应的数值 NPZ。
-- `post-trained/panels/`：只保存跨实验复用的固定ScenarioSpec、fixed pool和必要的
-  selection provenance；不得写actor评估结果、日志或临时分析。
+- `post-trained/panels/`：只保存不能由`evaluate.sh`即时生成、并被训练直接消费的fixed data及必要
+  selection provenance；不得复制标准四图600，也不得写actor评估结果、日志或临时分析。
 
 不默认生成：
 

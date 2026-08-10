@@ -2,50 +2,24 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict, dataclass
 from fractions import Fraction
 import json
 from math import gcd
-import multiprocessing as mp
 from pathlib import Path
-import time
 from typing import Any, Sequence
 import numpy as np
-import yaml
 
+from latticeplanner.utils import load_config
 from utils import (
     find_corresponding_waypoint,
     load_positions_and_speeds_from_params,
     load_raceline_waypoints,
 )
 
-with Path(__file__).with_name("ppo_config.yaml").open("r", encoding="utf-8") as file:
-    PPO_CONFIG = yaml.safe_load(file)
+CONFIG = load_config("ppo/ppo_config.yaml")
 
-EGO_RACELINE = str(PPO_CONFIG["ego_raceline"])
-OPPONENT_RACELINES = tuple(PPO_CONFIG["opponent_racelines"])
-EVALUATION_STARTPOINT_COUNT = 50
-ORDINARY_SPEED_SCALES = tuple(float(value) for value in PPO_CONFIG["ordinary_speed_scales"])
-ORDINARY_INTERVAL_INDEX = int(PPO_CONFIG["ordinary_interval_index"])
-ORDINARY_STARTPOINT_COUNT = int(PPO_CONFIG["ordinary_startpoint_count"])
-ORDINARY_STARTPOINT_MIN_DISTANCE = float(PPO_CONFIG["ordinary_startpoint_min_distance"])
-_ORDINARY_OFFLINE_FAST_FRACTION = PPO_CONFIG["ordinary_offline_fast_fraction"]
-ORDINARY_OFFLINE_FAST_FRACTION = (
-    None
-    if _ORDINARY_OFFLINE_FAST_FRACTION is None
-    else float(_ORDINARY_OFFLINE_FAST_FRACTION)
-)
-COLLISION_INTERVAL_INDICES = tuple(int(value) for value in PPO_CONFIG["collision_interval_indices"])
-COLLISION_SPEED_SCALES = tuple(float(value) for value in PPO_CONFIG["collision_speed_scales"])
-COLLISION_STARTPOINT_COUNT = int(PPO_CONFIG["collision_startpoint_count"])
-COLLISION_STARTPOINT_MIN_DISTANCE = float(PPO_CONFIG["collision_startpoint_min_distance"])
-SIM_DURATION = float(PPO_CONFIG["episode_horizon"])
-TIMESTEP = float(PPO_CONFIG["simulator_timestep"])
 COLLISION_CLASSIFICATION_SCHEMA = 1
-_COLLISION_ENV = None
-_COLLISION_ACTOR = None
 
 
 @dataclass
@@ -66,9 +40,9 @@ class ScenarioSpec:
     opp_speedscale: float
     interval_idx: int
     map_name: str
-    ego_raceline: str = EGO_RACELINE
-    sim_duration: float = SIM_DURATION
-    timestep: float = TIMESTEP
+    ego_raceline: str = CONFIG.ego_raceline
+    sim_duration: float = CONFIG.episode_horizon
+    timestep: float = CONFIG.simulator_timestep
     integrator: str = "RK4"
 
     def to_reset_spec(self, env_role: str) -> EpisodeResetSpec:
@@ -81,16 +55,16 @@ class ScenarioSpec:
 
 
 def _raceline_data(map_name: str) -> np.ndarray:
-    path = Path("f1tenth_racetracks") / map_name / f"{EGO_RACELINE}.csv"
+    path = Path("f1tenth_racetracks") / map_name / f"{CONFIG.ego_raceline}.csv"
     data = np.loadtxt(path, delimiter=";", comments="#", dtype=np.float64)
     if np.linalg.norm(data[-1, 1:3] - data[0, 1:3]) > 1e-9:
-        raise ValueError(f"{EGO_RACELINE}.csv must contain the duplicated closing endpoint")
+        raise ValueError(f"{CONFIG.ego_raceline}.csv must contain the duplicated closing endpoint")
     return data
 
 
 def evaluation_startpoints(map_name: str) -> tuple[int, ...]:
     data = _raceline_data(map_name)
-    indices = np.arange(EVALUATION_STARTPOINT_COUNT) * (len(data) - 1) // (EVALUATION_STARTPOINT_COUNT - 1)
+    indices = np.arange(CONFIG.evaluation_startpoint_count) * (len(data) - 1) // (CONFIG.evaluation_startpoint_count - 1)
     return tuple(int(index) for index in indices)
 
 
@@ -119,47 +93,47 @@ def ordinary_startpoints(map_name: str) -> tuple[int, ...]:
 
     return generate_separated_startpoints(
         map_name,
-        ORDINARY_STARTPOINT_COUNT,
-        ORDINARY_STARTPOINT_MIN_DISTANCE,
+        CONFIG.ordinary_startpoint_count,
+        CONFIG.ordinary_startpoint_min_distance,
     )
 
 
 def collision_candidate_startpoints(map_name: str) -> tuple[int, ...]:
-    return generate_separated_startpoints(map_name, COLLISION_STARTPOINT_COUNT, COLLISION_STARTPOINT_MIN_DISTANCE)
+    return generate_separated_startpoints(map_name, CONFIG.collision_startpoint_count, CONFIG.collision_startpoint_min_distance)
 
 
 def ordinary_scenarios(map_name: str) -> tuple[ScenarioSpec, ...]:
-    ego_waypoints = load_raceline_waypoints(map_name, f"{EGO_RACELINE}.csv")
-    opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
+    ego_waypoints = load_raceline_waypoints(map_name, f"{CONFIG.ego_raceline}.csv")
+    opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in CONFIG.opponent_racelines}
     scenarios = []
     for ordinal, ego_idx in enumerate(ordinary_startpoints(map_name)):
         ego_waypoint = ego_waypoints[ego_idx]
-        for opp_raceline in OPPONENT_RACELINES:
-            mapped_index = ego_idx if opp_raceline == EGO_RACELINE else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
-            opp_idx = (mapped_index + ORDINARY_INTERVAL_INDEX) % len(opponent_waypoints[opp_raceline])
-            for speed_scale in ORDINARY_SPEED_SCALES:
+        for opp_raceline in CONFIG.opponent_racelines:
+            mapped_index = ego_idx if opp_raceline == CONFIG.ego_raceline else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
+            opp_idx = (mapped_index + CONFIG.ordinary_interval_index) % len(opponent_waypoints[opp_raceline])
+            for speed_scale in CONFIG.ordinary_speed_scales:
                 scenario_id = f"ordinary-sp{ordinal:02d}-ego{ego_idx:04d}-{opp_raceline}-v{int(100 * speed_scale):03d}"
-                scenarios.append(ScenarioSpec(scenario_id, "ordinary", ordinal, ego_idx, opp_idx, opp_raceline, speed_scale, ORDINARY_INTERVAL_INDEX, map_name))
-    expected_count = ORDINARY_STARTPOINT_COUNT * len(OPPONENT_RACELINES) * len(ORDINARY_SPEED_SCALES)
+                scenarios.append(ScenarioSpec(scenario_id, "ordinary", ordinal, ego_idx, opp_idx, opp_raceline, speed_scale, CONFIG.ordinary_interval_index, map_name))
+    expected_count = CONFIG.ordinary_startpoint_count * len(CONFIG.opponent_racelines) * len(CONFIG.ordinary_speed_scales)
     if len(scenarios) != expected_count or len({scenario.scenario_id for scenario in scenarios}) != expected_count:
         raise RuntimeError(f"Ordinary scenario panel must contain {expected_count:,} unique scenarios")
     return tuple(scenarios)
 
 
 def expanded_scenarios(map_name: str) -> tuple[ScenarioSpec, ...]:
-    ego_waypoints = load_raceline_waypoints(map_name, f"{EGO_RACELINE}.csv")
-    opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in OPPONENT_RACELINES}
+    ego_waypoints = load_raceline_waypoints(map_name, f"{CONFIG.ego_raceline}.csv")
+    opponent_waypoints = {raceline: load_raceline_waypoints(map_name, f"{raceline}.csv") for raceline in CONFIG.opponent_racelines}
     scenarios = []
     for ordinal, ego_idx in enumerate(collision_candidate_startpoints(map_name)):
         ego_waypoint = ego_waypoints[ego_idx]
-        for opp_raceline in OPPONENT_RACELINES:
-            mapped_index = ego_idx if opp_raceline == EGO_RACELINE else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
-            for interval_idx in COLLISION_INTERVAL_INDICES:
+        for opp_raceline in CONFIG.opponent_racelines:
+            mapped_index = ego_idx if opp_raceline == CONFIG.ego_raceline else int(find_corresponding_waypoint(ego_waypoint, opponent_waypoints[opp_raceline]))
+            for interval_idx in CONFIG.collision_interval_indices:
                 opp_idx = (mapped_index + interval_idx) % (len(opponent_waypoints[opp_raceline]) - 1)
-                for speed_scale in COLLISION_SPEED_SCALES:
+                for speed_scale in CONFIG.collision_speed_scales:
                     scenario_id = f"collision-sp{ordinal:03d}-ego{ego_idx:04d}-{opp_raceline}-i{interval_idx:02d}-v{round(100 * speed_scale):03d}"
                     scenarios.append(ScenarioSpec(scenario_id, "collision", ordinal, ego_idx, opp_idx, opp_raceline, speed_scale, interval_idx, map_name))
-    expected_count = COLLISION_STARTPOINT_COUNT * len(OPPONENT_RACELINES) * len(COLLISION_INTERVAL_INDICES) * len(COLLISION_SPEED_SCALES)
+    expected_count = CONFIG.collision_startpoint_count * len(CONFIG.opponent_racelines) * len(CONFIG.collision_interval_indices) * len(CONFIG.collision_speed_scales)
     if len(scenarios) != expected_count:
         raise RuntimeError(f"Collision scenario panel must contain {expected_count:,} scenarios")
     if len({scenario.scenario_id for scenario in scenarios}) != expected_count:
@@ -189,23 +163,6 @@ class RoleScenarioQueue:
         self.cursor += 1
         return scenario
 
-    def state_dict(self) -> dict[str, Any]:
-        return {"order": self.order.copy(), "cursor": self.cursor, "cycle": self.cycle, "rng_state": deepcopy(self.rng.bit_generator.state)}
-
-    def load_state_dict(self, state: dict[str, Any]) -> None:
-        order = np.asarray(state["order"], dtype=np.int64)
-        if sorted(order.tolist()) != list(range(len(self.scenarios))):
-            raise ValueError("Scenario queue order is invalid")
-        cursor = int(state["cursor"])
-        cycle = int(state["cycle"])
-        if not 0 <= cursor <= len(order) or cycle <= 0:
-            raise ValueError("Scenario queue cursor or cycle is invalid")
-        self.order = order.copy()
-        self.cursor = cursor
-        self.cycle = cycle
-        self.rng.bit_generator.state = deepcopy(state["rng_state"])
-
-
 class ScenarioScheduler:
 
     def __init__(
@@ -219,27 +176,17 @@ class ScenarioScheduler:
             ordinary_scenarios,
             ordinary_seed,
             seed,
-            ORDINARY_OFFLINE_FAST_FRACTION,
+            CONFIG.ordinary_offline_fast_fraction,
         )
         self.collision = RoleScenarioQueue(collision_scenarios, collision_seed)
 
     @staticmethod
     def is_same_line(scenario: ScenarioSpec) -> bool:
-        return scenario.opp_raceline == EGO_RACELINE
+        return scenario.opp_raceline == CONFIG.ego_raceline
 
     @staticmethod
     def is_offline_fast(scenario: ScenarioSpec) -> bool:
-        """Opponent on a different raceline and moving fast.
-
-        This is the regime that carries the front-corridor temporal arm's whole
-        regression: on the three held-out maps it costs 20-28 collisions against
-        the production baseline's 14, and the off-line
-        commanded-speed reduction it pays (-0.16 m/s) buys no surface margin
-        there (paired delta +0.005 m on commonly-safe episodes).  Membership is a
-        pure function of the scenario grid, so the split is reproducible and
-        depends on no model's outcomes.
-        """
-        return scenario.opp_raceline != EGO_RACELINE and scenario.opp_speedscale >= 0.7
+        return scenario.opp_raceline != CONFIG.ego_raceline and scenario.opp_speedscale >= CONFIG.ordinary_offline_fast_min_speed_scale
 
     def _init_ordinary(
         self,
@@ -248,22 +195,6 @@ class ScenarioScheduler:
         seed: int,
         fraction: float | None,
     ) -> None:
-        """Three-way ordinary split that holds same-line weight at its natural share.
-
-        An earlier two-way version (off-line-fast versus everything else) was
-        rejected after 10 updates: giving the off-line-fast queue 2/3 halved the
-        same-line share from 33.3% to 16.7%, and since the corridor gate only
-        fires on same-line following that removed most of the arm's gate
-        exposure.  Its collision-role return (-0.713) fell back to B's (-0.759)
-        instead of tracking the front-corridor temporal arm's (-0.401), even though the collision role's
-        pool and sampling were untouched -- the same-line mechanism simply never
-        formed.  gap=1.0 had already shown the mechanism is destroyed by
-        reducing same-line exposure, so any reweighting must preserve it.
-
-        Here ``fraction`` is the off-line-fast share; same-line keeps exactly the
-        share it has in the uniform panel, and off-line-slow absorbs the
-        remainder.  Every scenario stays reachable, so only weight changes.
-        """
         self.ordinary_offline_fast_fraction = None
         self.ordinary_offline_fast_numerator = 0
         self.ordinary_offline_fast_denominator = 1
@@ -365,114 +296,30 @@ class ScenarioScheduler:
             return self._next_collision_scenario().to_reset_spec("collision")
         return self._next_ordinary_scenario().to_reset_spec("ordinary")
 
-    def _ordinary_state_dict(self) -> dict[str, Any]:
-        if self.ordinary_offline_fast_fraction is None:
-            return {"ordinary": self.ordinary.state_dict()}
-        return {
-            "ordinary_sampling_mode": "stratified_offline_fast_v2",
-            "ordinary_queues": {
-                name: queue.state_dict()
-                for name, queue in self.ordinary_queues.items()
-            },
-            "ordinary_position_queue": list(self.ordinary_position_queue),
-            "ordinary_source_cursor": self.ordinary_source_cursor,
-            "ordinary_offline_fast_numerator": self.ordinary_offline_fast_numerator,
-            "ordinary_offline_fast_denominator": self.ordinary_offline_fast_denominator,
-        }
-
-    def _load_ordinary_state_dict(self, state: dict[str, Any]) -> None:
-        if self.ordinary_offline_fast_fraction is None:
-            self.ordinary.load_state_dict(state["ordinary"])
-            return
-        if state.get("ordinary_sampling_mode") != "stratified_offline_fast_v2":
-            raise ValueError("Scenario scheduler ordinary sampling mode does not match")
-        if (
-            int(state["ordinary_offline_fast_numerator"])
-            != self.ordinary_offline_fast_numerator
-            or int(state["ordinary_offline_fast_denominator"])
-            != self.ordinary_offline_fast_denominator
-        ):
-            raise ValueError("Scenario scheduler ordinary off-line-fast fraction does not match")
-        if tuple(state["ordinary_position_queue"]) != self.ordinary_position_queue:
-            raise ValueError("Scenario scheduler ordinary cycle assignment does not match")
-        cursor = int(state["ordinary_source_cursor"])
-        if cursor < 0:
-            raise ValueError("Scenario scheduler ordinary source cursor is invalid")
-        for name, queue in self.ordinary_queues.items():
-            queue.load_state_dict(state["ordinary_queues"][name])
-        self.ordinary_source_cursor = cursor
-
-    def state_dict(self) -> dict[str, Any]:
-        return {
-            "collision": self.collision.state_dict(),
-            **self._ordinary_state_dict(),
-        }
-
-    def load_state_dict(self, state: dict[str, Any]) -> None:
-        self.collision.load_state_dict(state["collision"])
-        self._load_ordinary_state_dict(state)
-
-
 def collision_classification_config(args, candidate_count: int) -> dict:
     return {
         "classification_schema": COLLISION_CLASSIFICATION_SCHEMA,
         "pretrained_model_path": str(Path(args.pretrained_model_path).expanduser().resolve()),
         "hidden_scale": int(args.hidden_scale),
         "map_name": str(args.map_name),
-        "ego_raceline": EGO_RACELINE,
-        "opponent_racelines": list(OPPONENT_RACELINES),
-        "collision_startpoint_count": COLLISION_STARTPOINT_COUNT,
-        "collision_interval_indices": list(COLLISION_INTERVAL_INDICES),
-        "collision_speed_scales": list(COLLISION_SPEED_SCALES),
-        "collision_startpoint_min_distance": COLLISION_STARTPOINT_MIN_DISTANCE,
-        "simulator_timestep": TIMESTEP,
-        "episode_horizon": SIM_DURATION,
+        "ego_raceline": CONFIG.ego_raceline,
+        "opponent_racelines": list(CONFIG.opponent_racelines),
+        "collision_startpoint_count": CONFIG.collision_startpoint_count,
+        "collision_interval_indices": list(CONFIG.collision_interval_indices),
+        "collision_speed_scales": list(CONFIG.collision_speed_scales),
+        "collision_startpoint_min_distance": CONFIG.collision_startpoint_min_distance,
+        "simulator_timestep": CONFIG.simulator_timestep,
+        "episode_horizon": CONFIG.episode_horizon,
         "candidate_count": candidate_count,
     }
-
-
-def _write_json(path: Path, payload) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        json.dump(payload, file, indent=2)
-        file.write("\n")
 
 
 def validate_collision_cache_identity(cached_config: dict, current_config: dict, *, candidate_count: int) -> None:
     if json.dumps(cached_config, sort_keys=True) != json.dumps(current_config, sort_keys=True):
         raise RuntimeError(
             f"Collision cache configuration does not match the current {candidate_count} candidates; "
-            "specify a new empty --collision_cache_dir"
+            "build a matching cache before training"
         )
-
-
-def collision_cache_exists(cache_dir: Path) -> bool:
-    required_paths = (
-        cache_dir / "classification_config.json",
-        cache_dir / "candidate_outcomes.jsonl",
-        cache_dir / "collision_scenarios.json",
-        cache_dir / "classification_summary.json",
-    )
-    existing_count = sum(path.exists() for path in required_paths)
-    if existing_count not in (0, len(required_paths)):
-        raise RuntimeError("Collision classification cache is incomplete; specify a new empty --collision_cache_dir")
-    return existing_count == len(required_paths)
-
-
-def write_collision_cache(
-    cache_dir: Path,
-    config: dict,
-    outcomes: list[dict],
-    collision_scenarios: tuple[ScenarioSpec, ...],
-    summary: dict,
-) -> None:
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(cache_dir / "classification_config.json", config)
-    with (cache_dir / "candidate_outcomes.jsonl").open("w", encoding="utf-8") as file:
-        for outcome in outcomes:
-            file.write(json.dumps(outcome) + "\n")
-    _write_json(cache_dir / "collision_scenarios.json", [asdict(scenario) for scenario in collision_scenarios])
-    _write_json(cache_dir / "classification_summary.json", summary)
 
 
 def _load_candidate_outcomes(path: Path, candidates: tuple[ScenarioSpec, ...]) -> list[dict]:
@@ -527,186 +374,29 @@ def _load_collision_scenarios(
     return tuple(collision_scenarios)
 
 
-def _validate_classification_summary(path: Path, outcomes: list[dict], candidate_count: int) -> dict:
-    with path.open("r", encoding="utf-8") as file:
-        summary = json.load(file)
-    collision_count = sum(outcome["outcome"] == "ego_collision" for outcome in outcomes)
-    invalid_count = sum(outcome["outcome"] == "invalid" for outcome in outcomes)
-    expected_counts = {
-        "candidate_count": candidate_count,
-        "collision_count": collision_count,
-        "other_count": candidate_count - collision_count - invalid_count,
-        "invalid_count": invalid_count,
-    }
-    expected_keys = set(expected_counts) | {"env_workers", "wall_seconds", "scenarios_per_second"}
-    if (
-        not isinstance(summary, dict)
-        or set(summary) != expected_keys
-        or any(type(summary[name]) is not int or summary[name] != value for name, value in expected_counts.items())
-    ):
-        raise RuntimeError(f"Collision cache summary does not match {candidate_count} candidate outcomes")
-    if type(summary["env_workers"]) is not int or summary["env_workers"] <= 0:
-        raise RuntimeError("Collision cache summary has invalid env_workers")
-    for name in ("wall_seconds", "scenarios_per_second"):
-        value = summary[name]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or value < 0:
-            raise RuntimeError(f"Collision cache summary has invalid {name}")
-    return summary
-
-
-def load_collision_cache_artifacts(
-    cache_dir: Path,
-    current_config: dict,
-    candidates: tuple[ScenarioSpec, ...],
-) -> tuple[tuple[ScenarioSpec, ...], list[dict], dict]:
-    with (cache_dir / "classification_config.json").open("r", encoding="utf-8") as file:
-        cached_config = json.load(file)
-    candidate_count = len(candidates)
-    validate_collision_cache_identity(cached_config, current_config, candidate_count=candidate_count)
-    outcomes = _load_candidate_outcomes(cache_dir / "candidate_outcomes.jsonl", candidates)
-    collision_scenarios = _load_collision_scenarios(cache_dir / "collision_scenarios.json", candidates, outcomes)
-    summary = _validate_classification_summary(cache_dir / "classification_summary.json", outcomes, candidate_count)
-    return collision_scenarios, outcomes, summary
-
-
 def load_collision_cache(
     cache_dir: Path,
     current_config: dict,
     candidates: tuple[ScenarioSpec, ...],
 ) -> tuple[ScenarioSpec, ...]:
-    collision_scenarios, _outcomes, _summary = load_collision_cache_artifacts(cache_dir, current_config, candidates)
-    return collision_scenarios
-
-
-def _collision_worker_init(pretrained_model_path: str, hidden_scale: int, map_name: str) -> None:
-    import torch
-    from model import End2Race
-    from ppo.env import limit_worker_threads, make_environment
-
-    global _COLLISION_ENV, _COLLISION_ACTOR
-    limit_worker_threads()
-    _COLLISION_ENV = make_environment(0, map_name)()
-    _COLLISION_ACTOR = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
-    _COLLISION_ACTOR.load_state_dict(torch.load(pretrained_model_path, map_location="cpu", weights_only=True), strict=True)
-    _COLLISION_ACTOR.eval()
-
-
-def _classify_collision_candidate(task: tuple[int, ScenarioSpec]) -> tuple[int, str]:
-    import torch
-    from ppo.env import EXTERNAL_RESET_OPTION
-    from ppo.policy import END2RACE_LIDAR_SIZE, STEERING_BOUND
-
-    index, scenario = task
-    if _COLLISION_ENV is None or _COLLISION_ACTOR is None:
-        raise RuntimeError("Collision classification worker is not initialized")
-    try:
-        observation, _info = _COLLISION_ENV.reset(options={EXTERNAL_RESET_OPTION: scenario.to_reset_spec("collision")})
-        raw = _COLLISION_ENV._raw_observation
-        finite = np.isfinite(observation).all() and all(
-            np.isfinite(np.asarray(value)).all()
-            for value in raw.values()
-            if isinstance(value, (list, tuple, np.ndarray))
-        )
-        if not finite or np.asarray(raw["collisions"], dtype=bool).any():
-            return index, "invalid"
-        hidden = None
-        while True:
-            actor_observation = torch.as_tensor(observation, dtype=torch.float32)
-            with torch.no_grad():
-                actions, hidden = _COLLISION_ACTOR(
-                    actor_observation[:END2RACE_LIDAR_SIZE].reshape(1, 1, -1),
-                    actor_observation[END2RACE_LIDAR_SIZE:].reshape(1, 1, 1),
-                    hidden,
-                )
-            action = actions[0, -1].numpy().copy()
-            action[0] = np.clip(action[0], -STEERING_BOUND, STEERING_BOUND)
-            if not np.isfinite(action).all():
-                raise RuntimeError("actor produced a non-finite action")
-            observation, _reward, terminated, truncated, info = _COLLISION_ENV.step(action)
-            if terminated or truncated:
-                return index, "ego_collision" if info["ego_collision"] else "other"
-    except Exception as error:
-        raise RuntimeError(f"Collision classification failed for {scenario.scenario_id}") from error
-
-
-def classify_collision_scenarios(
-    pretrained_model_path: str | Path,
-    hidden_scale: int,
-    map_name: str,
-    n_envs: int,
-    candidates: tuple[ScenarioSpec, ...],
-    start_method: str,
-) -> tuple[tuple[ScenarioSpec, ...], list[dict], dict]:
+    with (cache_dir / "classification_config.json").open("r", encoding="utf-8") as file:
+        cached_config = json.load(file)
     candidate_count = len(candidates)
-    context = mp.get_context(start_method)
-    collisions = []
-    outcomes = []
-    collision_count = 0
-    invalid_count = 0
-    started_at = time.perf_counter()
-    with ProcessPoolExecutor(
-        max_workers=n_envs,
-        mp_context=context,
-        initializer=_collision_worker_init,
-        initargs=(str(Path(pretrained_model_path).expanduser().resolve()), hidden_scale, map_name),
-    ) as executor:
-        for completed, (index, outcome) in enumerate(
-            executor.map(_classify_collision_candidate, enumerate(candidates), chunksize=4),
-            start=1,
-        ):
-            if index != completed - 1 or outcome not in {"ego_collision", "other", "invalid"}:
-                raise RuntimeError(f"Invalid classification result at candidate {completed - 1}/{candidate_count}")
-            outcomes.append({"candidate_index": index, "scenario_id": candidates[index].scenario_id, "outcome": outcome})
-            if outcome == "ego_collision":
-                collisions.append(candidates[index])
-                collision_count += 1
-            elif outcome == "invalid":
-                invalid_count += 1
-            if completed % 100 == 0 or completed == candidate_count:
-                print(
-                    f"Collision classification: {completed}/{candidate_count}, collision={collision_count}, invalid={invalid_count}",
-                    flush=True,
-                )
-    if not collisions:
-        raise RuntimeError(f"The pretrained model produced no ego-collision scenarios from {candidate_count} candidates")
-    wall_seconds = time.perf_counter() - started_at
-    summary = {
-        "candidate_count": candidate_count,
-        "collision_count": collision_count,
-        "other_count": candidate_count - collision_count - invalid_count,
-        "invalid_count": invalid_count,
-        "env_workers": n_envs,
-        "wall_seconds": wall_seconds,
-        "scenarios_per_second": candidate_count / wall_seconds,
-    }
-    return tuple(collisions), outcomes, summary
+    validate_collision_cache_identity(cached_config, current_config, candidate_count=candidate_count)
+    outcomes = _load_candidate_outcomes(cache_dir / "candidate_outcomes.jsonl", candidates)
+    return _load_collision_scenarios(cache_dir / "collision_scenarios.json", candidates, outcomes)
 
 
 def resolve_collision_scenarios(
     args,
     candidates: tuple[ScenarioSpec, ...],
-    start_method: str,
-) -> tuple[tuple[ScenarioSpec, ...], bool, bool]:
+) -> tuple[ScenarioSpec, ...]:
     candidate_count = len(candidates)
-    if candidate_count == 0:
-        raise RuntimeError("Collision candidate set is empty")
     cache_dir = Path(args.collision_cache_dir).expanduser().resolve()
     current_config = collision_classification_config(args, candidate_count)
-    if collision_cache_exists(cache_dir):
-        collision_scenarios = load_collision_cache(cache_dir, current_config, candidates)
-        print(
-            f"Collision cache hit: loaded {len(collision_scenarios)} collision scenarios from {candidate_count} candidates",
-            flush=True,
-        )
-        return collision_scenarios, True, False
-    print(f"Collision cache miss: classifying {candidate_count} candidates", flush=True)
-    collision_scenarios, outcomes, summary = classify_collision_scenarios(
-        args.pretrained_model_path,
-        args.hidden_scale,
-        args.map_name,
-        args.n_envs,
-        candidates,
-        start_method,
+    collision_scenarios = load_collision_cache(cache_dir, current_config, candidates)
+    print(
+        f"Loaded {len(collision_scenarios)} collision scenarios from {candidate_count} cached candidates",
+        flush=True,
     )
-    write_collision_cache(cache_dir, current_config, outcomes, collision_scenarios, summary)
-    return collision_scenarios, False, False
+    return collision_scenarios

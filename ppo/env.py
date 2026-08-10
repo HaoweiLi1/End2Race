@@ -5,15 +5,16 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 import copy as copy_module
 from dataclasses import dataclass
-import hashlib
-import json
 import multiprocessing as mp
 import os
 from pathlib import Path
-import pickle
 import traceback
 from typing import Any
 import warnings
+
+from gym_notices import notices as gym_notices
+
+gym_notices.notices.clear()
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -23,95 +24,84 @@ from stable_baselines3.common.vec_env.base_vec_env import CloudpickleWrapper, Ve
 from stable_baselines3.common.vec_env.patch_gym import _patch_env
 from threadpoolctl import threadpool_limits
 import torch
-import yaml
 
+from latticeplanner.utils import load_config
 from ppo.policy import (
-    BASELINE_EXPLORATION_MODE,
-    CORRIDOR_TEMPORAL_EXPLORATION_MODE,
     END2RACE_LIDAR_SIZE,
     END2RACE_OBSERVATION_SIZE,
-    EXPLORATION_GATE_INFO_KEY,
     NOOP_SPEED_BOUND,
     PRIVILEGED_FEATURE_SIZE,
-    STEERING_BOUND,
     PrivilegedStateExtractor,
     end2race_observation,
-    exploration_uses_gate,
 )
 from ppo.reward import OccupancyMapClearance, PPOTransitionReward
 from ppo.scenarios import EpisodeResetSpec, ScenarioScheduler, ScenarioSpec
 
+CONFIG = load_config("ppo/ppo_config.yaml")
 
-with Path(__file__).with_name("ppo_config.yaml").open("r", encoding="utf-8") as file:
-    PPO_CONFIG = yaml.safe_load(file)
-
-SIMULATOR_TIMESTEP = float(PPO_CONFIG["simulator_timestep"])
-EPISODE_HORIZON = float(PPO_CONFIG["episode_horizon"])
-EGO_RACELINE = str(PPO_CONFIG["ego_raceline"])
 EGO_INDEX = 0
 OPPONENT_INDEX = 1
 NUM_AGENTS = 2
 EXTERNAL_RESET_OPTION = "end2race_episode_reset_spec"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _PLANNER_TEMPLATE_CACHE: dict[tuple[str, str], Any] = {}
-PREFIX_RESET_SEED_TAG = 0x50524658
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def load_prefix_reset_panel(path: str | Path) -> tuple[dict[str, Any], ...]:
-    root = Path(path).expanduser().resolve()
-    manifest_path = root / "prefix_reset_manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("schema_version") != 1 or manifest.get("panel_id") != "prefix_reset_consensus_v1":
-        raise RuntimeError("Prefix-reset panel manifest is unsupported")
-    tasks = manifest.get("tasks")
-    if not isinstance(tasks, list) or len(tasks) != 28 or len({task["episode_key"] for task in tasks}) != 28:
-        raise RuntimeError("Prefix-reset panel must contain 28 unique tasks")
-    loaded = []
-    total_prefix_rows = 0
-    strata = {"collision": 0, "lost_overtake": 0}
-    for task in tasks:
-        stratum = str(task.get("stratum", ""))
-        if stratum not in strata:
-            raise RuntimeError(f"Prefix-reset task has an invalid stratum: {task['episode_key']}")
-        strata[stratum] += 1
-        snapshot_path = root / task["snapshot_file"]
-        prefix_path = root / task["prefix_file"]
-        if _sha256_file(snapshot_path) != task["snapshot_sha256"] or _sha256_file(prefix_path) != task["prefix_sha256"]:
-            raise RuntimeError(f"Prefix-reset panel content changed: {task['episode_key']}")
-        with snapshot_path.open("rb") as stream:
-            snapshot = pickle.load(stream)
-        with np.load(prefix_path, allow_pickle=False) as arrays:
-            if set(arrays.files) != {"prefix_observations", "window_observation"}:
-                raise RuntimeError(f"Prefix-reset array schema changed: {task['episode_key']}")
-            prefix = np.asarray(arrays["prefix_observations"], dtype=np.float32)
-            window_observation = np.asarray(arrays["window_observation"], dtype=np.float32)
-        expected_length = int(task["prefix_length"])
-        if prefix.shape != (expected_length, 381) or window_observation.shape != (381,) or not np.isfinite(prefix).all() or not np.isfinite(window_observation).all():
-            raise RuntimeError(f"Prefix-reset observation contract failed: {task['episode_key']}")
-        if not np.array_equal(window_observation, np.asarray(snapshot["observation"], dtype=np.float32)):
-            raise RuntimeError(f"Prefix-reset window observation changed: {task['episode_key']}")
-        total_prefix_rows += expected_length
-        loaded.append({"episode_key": str(task["episode_key"]), "stratum": stratum, "snapshot": snapshot, "prefix_observations": prefix, "prefix_length": expected_length})
-    if total_prefix_rows != 9589:
-        raise RuntimeError(f"Prefix-reset panel must contain 9,589 prefix rows, got {total_prefix_rows}")
-    if strata != {"collision": 19, "lost_overtake": 9}:
-        raise RuntimeError(f"Prefix-reset panel stratum counts changed: {strata}")
-    return tuple(loaded)
+RUNTIME_SNAPSHOT_REWARD_FIELDS = (
+    "_previous_ego_progress",
+    "_previous_opponent_progress",
+    "_relative_position_m",
+    "_opponent_collision_latched",
+    "_ego_collision_penalty_applied",
+    "_scenario_id",
+    "_previous_risk_potential",
+    "current_clearances",
+)
+RUNTIME_SNAPSHOT_WRAPPER_FIELDS = (
+    "_elapsed_time",
+    "_previous_ego_speed",
+    "_raw_observation",
+    "_current_spec",
+    "_episode_return",
+    "_episode_steps",
+)
+RUNTIME_SNAPSHOT_CORE_FIELDS = (
+    "poses_x",
+    "poses_y",
+    "poses_theta",
+    "collisions",
+    "near_start",
+    "num_toggles",
+    "lap_times",
+    "lap_counts",
+    "current_time",
+    "near_starts",
+    "toggle_list",
+    "start_xs",
+    "start_ys",
+    "start_thetas",
+    "start_rot",
+    "render_obs",
+)
+RUNTIME_SNAPSHOT_PLANNER_FIELDS = (
+    "best_traj",
+    "best_traj_ref_v",
+    "best_traj_idx",
+    "prev_traj_local",
+    "prev_opp_pose",
+    "goal_grid",
+    "state_i",
+    "state_t",
+    "step_all_cost",
+    "all_costs",
+    "last_s",
+    "step",
+)
 
 
 @dataclass(frozen=True)
 class FrontCorridorGateConfig:
-    maximum_front_gap_m: float = 2.0
-    maximum_abs_opponent_lateral_d_m: float = 0.25
-    require_positive_lateral_overlap: bool = True
+    maximum_front_gap_m: float = CONFIG.front_corridor_gate_maximum_gap_m
+    maximum_abs_opponent_lateral_d_m: float = CONFIG.front_corridor_gate_maximum_abs_opponent_lateral_d_m
+    require_positive_lateral_overlap: bool = CONFIG.front_corridor_gate_require_positive_lateral_overlap
 
     def validate(self) -> None:
         values = np.asarray(
@@ -349,7 +339,7 @@ class LatticePlannerOpponentController:
         )
         self.tracker_count = (self.tracker_count + 1) % int(self.planner.conf.tracker_steps)
         return np.asarray(
-            (np.clip(steering, -STEERING_BOUND, STEERING_BOUND), desired_speed * self.speed_scale),
+            (np.clip(steering, -CONFIG.steering_bound, CONFIG.steering_bound), desired_speed * self.speed_scale),
             dtype=np.float32,
         )
 
@@ -366,13 +356,13 @@ class End2RaceGymnasiumEnv(gym.Env):
         ego_raceline: str,
         privileged: bool = False,
         reward_gamma: float = 0.999,
-        speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
+        speed_exploration_mode: str = "baseline",
     ) -> None:
         super().__init__()
         self.f110_env = f110_env
         self.reset_provider = reset_provider
         self.opponent_controller = LatticePlannerOpponentController()
-        core = getattr(f110_env, "unwrapped", f110_env)
+        core = f110_env.unwrapped
         core_params = core.params
         vehicle_length = float(core_params["length"])
         vehicle_width = float(core_params["width"])
@@ -389,15 +379,15 @@ class End2RaceGymnasiumEnv(gym.Env):
             vehicle_length=vehicle_length,
             vehicle_width=vehicle_width,
             map_clearance=map_clearance,
-            risk_longitudinal_clearance_m=float(PPO_CONFIG["risk_longitudinal_clearance_m"]),
-            risk_lateral_clearance_m=float(PPO_CONFIG["risk_lateral_clearance_m"]),
-            risk_wall_clearance_m=float(PPO_CONFIG["risk_wall_clearance_m"]),
-            risk_potential_maximum=float(PPO_CONFIG["risk_potential_maximum"]),
+            risk_longitudinal_clearance_m=CONFIG.risk_longitudinal_clearance_m,
+            risk_lateral_clearance_m=CONFIG.risk_lateral_clearance_m,
+            risk_wall_clearance_m=CONFIG.risk_wall_clearance_m,
+            risk_potential_maximum=CONFIG.risk_potential_maximum,
         )
-        if speed_exploration_mode == CORRIDOR_TEMPORAL_EXPLORATION_MODE:
+        if speed_exploration_mode == "corridor_temporal":
             corridor_config = FrontCorridorGateConfig(
                 maximum_front_gap_m=float(
-                    PPO_CONFIG["front_corridor_gate_maximum_gap_m"]
+                    CONFIG.front_corridor_gate_maximum_gap_m
                 )
             )
             self.corridor_gate_config = corridor_config
@@ -429,8 +419,8 @@ class End2RaceGymnasiumEnv(gym.Env):
             dtype=np.float32,
         )
         self.action_space = spaces.Box(
-            low=np.asarray((-STEERING_BOUND, -NOOP_SPEED_BOUND), dtype=np.float32),
-            high=np.asarray((STEERING_BOUND, NOOP_SPEED_BOUND), dtype=np.float32),
+            low=np.asarray((-CONFIG.steering_bound, -NOOP_SPEED_BOUND), dtype=np.float32),
+            high=np.asarray((CONFIG.steering_bound, NOOP_SPEED_BOUND), dtype=np.float32),
             dtype=np.float32,
         )
         self._reset_rng = np.random.default_rng()
@@ -440,14 +430,6 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._current_spec = None
         self._episode_return = 0.0
         self._episode_steps = 0
-        self._episode_reward_progress = 0.0
-        self._episode_reward_relative = 0.0
-        self._episode_reward_collision = 0.0
-        self._episode_reward_risk = 0.0
-        self._episode_abs_reward_risk = 0.0
-        self._episode_min_obb_clearance_m = float("inf")
-        self._episode_min_wall_clearance_m = float("inf")
-        self._episode_risk_active_steps = 0
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][EGO_INDEX]).reshape(-1)
@@ -459,9 +441,8 @@ class End2RaceGymnasiumEnv(gym.Env):
         return float(np.asarray(raw_observation["linear_vels_x"])[EGO_INDEX])
 
     def _privileged_physical_state(self) -> tuple[float, float, float]:
-        core = getattr(self.f110_env, "unwrapped", self.f110_env)
-        agents = getattr(getattr(core, "sim", None), "agents", None)
-        if agents is None or len(agents) != NUM_AGENTS:
+        agents = self.f110_env.unwrapped.sim.agents
+        if len(agents) != NUM_AGENTS:
             raise RuntimeError("Privileged critic requires simulator agent states")
         ego_state = np.asarray(agents[EGO_INDEX].state, dtype=np.float64).reshape(-1)
         opponent_state = np.asarray(agents[OPPONENT_INDEX].state, dtype=np.float64).reshape(-1)
@@ -509,18 +490,12 @@ class End2RaceGymnasiumEnv(gym.Env):
             raise TypeError(f"{EXTERNAL_RESET_OPTION} must contain an EpisodeResetSpec")
         if spec is None:
             spec = self.reset_provider(self._reset_rng)
-        raw_observation, _, _, base_info = self.f110_env.reset(poses=spec.poses.copy())
-        if int(getattr(getattr(self.f110_env, "unwrapped", self.f110_env), "num_agents")) != NUM_AGENTS:
+        raw_observation, _, _, _ = self.f110_env.reset(poses=spec.poses.copy())
+        if int(self.f110_env.unwrapped.num_agents) != NUM_AGENTS:
             raise RuntimeError("PPO environment requires exactly two agents")
         self._elapsed_time = 0.0
         self._episode_return = 0.0
         self._episode_steps = 0
-        self._episode_reward_progress = 0.0
-        self._episode_reward_relative = 0.0
-        self._episode_reward_collision = 0.0
-        self._episode_reward_risk = 0.0
-        self._episode_abs_reward_risk = 0.0
-        self._episode_risk_active_steps = 0
         self._raw_observation = raw_observation
         self._previous_ego_speed = float(spec.initial_speed_feature)
         self._current_spec = spec
@@ -533,24 +508,76 @@ class End2RaceGymnasiumEnv(gym.Env):
                 ego_index=EGO_INDEX,
                 opponent_index=OPPONENT_INDEX,
             )
-        self._episode_min_obb_clearance_m = float(self.transition_reward.current_obb_clearance_m)
-        self._episode_min_wall_clearance_m = float(self.transition_reward.current_wall_clearance_m)
         self.opponent_controller.reset(spec)
-        info = self._info(False, False, False, False, None, None, base_info, {})
+        info = self._info(False, False, False, False, None, None)
         return self._observation(raw_observation), info
 
-    def restore_prefix_snapshot(self, snapshot: dict[str, Any], episode_key: str, seed: int | None = None) -> tuple[np.ndarray, dict[str, Any]]:
-        if snapshot.get("schema_version") != 1 or set(snapshot) != {"schema_version", "environment", "observation", "actor_hidden", "critic_hidden"}:
-            raise RuntimeError("Prefix-reset snapshot schema is incomplete or unsupported")
-        state = snapshot["environment"]
+    @staticmethod
+    def _copied_fields(obj: Any, names: Sequence[str]) -> dict[str, Any]:
+        return {name: copy_module.deepcopy(getattr(obj, name)) for name in names}
+
+    def _capture_opponent_controller_state(self) -> dict[str, Any]:
+        controller = self.opponent_controller
+        planner = controller.planner
+        tracker = planner.tracker
+        if planner.selection_func not in (None, np.argmin):
+            raise RuntimeError("Unsupported LatticePlanner selection function in runtime snapshot")
+        if tracker.drawn_waypoints:
+            raise RuntimeError("Runtime snapshot does not support rendered PurePursuit state")
+        return {
+            "trajectory": copy_module.deepcopy(controller.trajectory),
+            "tracker_count": int(controller.tracker_count),
+            "speed_scale": float(controller.speed_scale),
+            "planner": self._copied_fields(planner, RUNTIME_SNAPSHOT_PLANNER_FIELDS),
+            "selection_func": "none" if planner.selection_func is None else "numpy_argmin",
+            "tracker_prev_error": float(tracker.prev_error),
+            "tracker_has_nearest_dist": hasattr(tracker, "nearest_dist"),
+            "tracker_nearest_dist": None if not hasattr(tracker, "nearest_dist") else float(tracker.nearest_dist),
+        }
+
+    def capture_runtime_snapshot(self) -> dict[str, Any]:
+        core = self.f110_env.unwrapped
+        agents = []
+        for agent in core.sim.agents:
+            agents.append({
+                "state": np.asarray(agent.state).copy(),
+                "opp_poses": copy_module.deepcopy(agent.opp_poses),
+                "accel": float(agent.accel),
+                "steer_angle_vel": float(agent.steer_angle_vel),
+                "steer_buffer": np.asarray(agent.steer_buffer).copy(),
+                "in_collision": bool(agent.in_collision),
+                "scan_rng_state": copy_module.deepcopy(agent.scan_rng.bit_generator.state),
+            })
+        state = {
+            "schema_version": 1,
+            "order_enforcing_has_reset": bool(self.f110_env._has_reset),
+            "racecars": agents,
+            "simulator": {
+                "agent_poses": np.asarray(core.sim.agent_poses).copy(),
+                "collisions": np.asarray(core.sim.collisions).copy(),
+                "collision_idx": np.asarray(core.sim.collision_idx).copy(),
+            },
+            "f110_core": self._copied_fields(core, RUNTIME_SNAPSHOT_CORE_FIELDS),
+            "f110_current_obs": copy_module.deepcopy(type(core).current_obs),
+            "opponent_controller": self._capture_opponent_controller_state(),
+            "reward": self._copied_fields(self.transition_reward, RUNTIME_SNAPSHOT_REWARD_FIELDS),
+            "wrapper": self._copied_fields(self, RUNTIME_SNAPSHOT_WRAPPER_FIELDS),
+            "reset_rng_state": copy_module.deepcopy(self._reset_rng.bit_generator.state),
+            "corridor_gate_current": None if self.following_danger_gate is None else bool(self.following_danger_gate.current_gate),
+        }
+        return {
+            "schema_version": 1,
+            "environment": state,
+            "observation": np.asarray(self._observation(self._raw_observation), dtype=np.float32).copy(),
+        }
+
+    def _restore_environment_state(self, state: dict[str, Any]) -> None:
         required = {"schema_version", "order_enforcing_has_reset", "racecars", "simulator", "f110_core", "f110_current_obs", "opponent_controller", "reward", "wrapper", "reset_rng_state", "corridor_gate_current"}
         if state.get("schema_version") != 1 or set(state) != required:
-            raise RuntimeError("Prefix-reset environment state is incomplete or unsupported")
-        spec = copy_module.deepcopy(state["wrapper"]["_current_spec"])
-        self.reset(seed=seed, options={EXTERNAL_RESET_OPTION: spec})
+            raise RuntimeError("Environment snapshot state is incomplete or unsupported")
         core = self.f110_env.unwrapped
         if len(state["racecars"]) != len(core.sim.agents):
-            raise RuntimeError("Prefix-reset RaceCar count changed")
+            raise RuntimeError("Environment snapshot RaceCar count changed")
         for agent, saved in zip(core.sim.agents, state["racecars"]):
             agent.state = np.asarray(saved["state"]).copy()
             agent.opp_poses = copy_module.deepcopy(saved["opp_poses"])
@@ -565,8 +592,7 @@ class End2RaceGymnasiumEnv(gym.Env):
         for name, value in state["f110_core"].items():
             setattr(core, name, copy_module.deepcopy(value))
         type(core).current_obs = copy_module.deepcopy(state["f110_current_obs"])
-        if hasattr(self.f110_env, "_has_reset"):
-            self.f110_env._has_reset = bool(state["order_enforcing_has_reset"])
+        self.f110_env._has_reset = bool(state["order_enforcing_has_reset"])
         controller = self.opponent_controller
         controller_state = state["opponent_controller"]
         controller.trajectory = copy_module.deepcopy(controller_state["trajectory"])
@@ -590,20 +616,17 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._reset_rng.bit_generator.state = copy_module.deepcopy(state["reset_rng_state"])
         if self.following_danger_gate is not None:
             if state["corridor_gate_current"] is None:
-                raise RuntimeError("Prefix-reset corridor gate state is missing")
+                raise RuntimeError("Environment snapshot corridor gate state is missing")
             self.following_danger_gate.current_gate = bool(state["corridor_gate_current"])
-        scenario = dict(self._current_spec.scenario)
-        scenario["pool"] = "prefix_reset_consensus_v1"
-        scenario["sampler_branch"] = "prefix_reset"
-        scenario["env_role"] = "collision"
-        self._current_spec.scenario = scenario
+
+    def restore_runtime_snapshot(self, snapshot: dict[str, Any]) -> np.ndarray:
+        if snapshot.get("schema_version") != 1 or set(snapshot) != {"schema_version", "environment", "observation"}:
+            raise RuntimeError("Runtime snapshot schema is incomplete or unsupported")
+        self._restore_environment_state(snapshot["environment"])
         observation = self._observation(self._raw_observation)
         if not np.array_equal(observation, np.asarray(snapshot["observation"], dtype=np.float32)):
-            raise RuntimeError(f"Prefix-reset restored observation changed: {episode_key}")
-        info = self._info(False, False, False, False, None, None, {}, {})
-        info["prefix_reset"] = True
-        info["prefix_reset_key"] = str(episode_key)
-        return observation, info
+            raise RuntimeError("Runtime snapshot restored observation changed")
+        return observation
 
     def _info(
         self,
@@ -613,8 +636,6 @@ class End2RaceGymnasiumEnv(gym.Env):
         timeout: bool,
         reason: str | None,
         outcome: str | None,
-        base_info: dict[str, Any],
-        reward_info: dict[str, Any],
     ) -> dict[str, Any]:
         scenario = dict(self._current_spec.scenario)
         return {
@@ -632,25 +653,11 @@ class End2RaceGymnasiumEnv(gym.Env):
             "episode_outcome": outcome,
             "episode_return": self._episode_return,
             "episode_steps": self._episode_steps,
-            "episode_reward_progress": self._episode_reward_progress,
-            "episode_reward_relative": self._episode_reward_relative,
-            "episode_reward_collision": self._episode_reward_collision,
-            "episode_reward_risk": self._episode_reward_risk,
-            "episode_abs_reward_risk": self._episode_abs_reward_risk,
-            "episode_min_obb_clearance_m": self._episode_min_obb_clearance_m,
-            "episode_min_wall_clearance_m": self._episode_min_wall_clearance_m,
-            "episode_risk_active_fraction": (
-                self._episode_risk_active_steps / self._episode_steps
-                if self._episode_steps > 0
-                else 0.0
-            ),
-            EXPLORATION_GATE_INFO_KEY: bool(
+            CONFIG.exploration_gate_info_key: bool(
                 self.following_danger_gate.current_gate
                 if self.following_danger_gate is not None
                 else False
             ),
-            "base_info": base_info,
-            **reward_info,
         }
 
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
@@ -659,12 +666,12 @@ class End2RaceGymnasiumEnv(gym.Env):
         joint_action = np.stack(
             (np.asarray(action, dtype=np.float32).reshape(2), self.opponent_controller.action(previous_raw_observation))
         )
-        raw_observation, simulator_reward, base_terminated, base_info = self.f110_env.step(joint_action)
+        raw_observation, simulator_reward, base_terminated, _ = self.f110_env.step(joint_action)
         self._elapsed_time += float(simulator_reward)
         collisions = np.asarray(raw_observation["collisions"], dtype=bool).reshape(-1)
         ego_collision = bool(collisions[EGO_INDEX])
         opponent_collision = bool(collisions[OPPONENT_INDEX])
-        timeout = self._elapsed_time + 1e-12 >= EPISODE_HORIZON
+        timeout = self._elapsed_time + 1e-12 >= CONFIG.episode_horizon
         if ego_collision or (base_terminated and not opponent_collision):
             terminated, truncated = True, False
             reason = "ego_collision" if ego_collision else "base_terminated"
@@ -682,26 +689,14 @@ class End2RaceGymnasiumEnv(gym.Env):
             scenario_id=scenario_id,
             ego_index=EGO_INDEX,
         )
-        reward_info = reward_result.to_info()
-        reward = float(reward_info["reward_total"])
+        reward = reward_result.reward_total
         self._episode_return += reward
         self._episode_steps += 1
-        self._episode_reward_progress += float(reward_info["reward_progress"])
-        self._episode_reward_relative += float(reward_info["reward_relative"])
-        self._episode_reward_collision += float(reward_info["reward_collision"])
-        self._episode_reward_risk += float(reward_info["reward_risk"])
-        self._episode_abs_reward_risk += abs(float(reward_info["reward_risk"]))
-        obb_clearance_m = float(reward_info["obb_clearance_m"])
-        self._episode_min_obb_clearance_m = min(self._episode_min_obb_clearance_m, obb_clearance_m)
-        wall_clearance_m = float(reward_info["wall_clearance_m"])
-        self._episode_min_wall_clearance_m = min(self._episode_min_wall_clearance_m, wall_clearance_m)
-        if bool(reward_info["risk_active"]):
-            self._episode_risk_active_steps += 1
         outcome = None
         if terminated or truncated:
             if ego_collision:
                 outcome = "ego_collision"
-            elif float(reward_info["relative_position_m"]) > 0.0:
+            elif reward_result.relative_position_m > 0.0:
                 outcome = "overtake"
             else:
                 outcome = "follow"
@@ -721,8 +716,6 @@ class End2RaceGymnasiumEnv(gym.Env):
             timeout,
             reason,
             outcome,
-            base_info,
-            {"simulator_reward": float(simulator_reward), **reward_info},
         )
         info["executed_ego_action"] = np.asarray(action, dtype=np.float32).reshape(2).copy()
         return self._observation(raw_observation), reward, terminated, truncated, info
@@ -743,19 +736,20 @@ def make_environment(
     map_name: str,
     privileged: bool = False,
     reward_gamma: float = 0.999,
-    speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
+    speed_exploration_mode: str = "baseline",
 ) -> Callable[[], End2RaceGymnasiumEnv]:
 
     def factory() -> End2RaceGymnasiumEnv:
         import gym
         from f110_gym.envs.base_classes import Integrator
 
+        warnings.filterwarnings("ignore", message="Chosen integrator is RK4.*", category=UserWarning, module="f110_gym.envs.base_classes")
         core = gym.make(
             "f110-v0",
             map=str(PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{map_name}_map"),
             map_ext=".png",
             num_agents=NUM_AGENTS,
-            timestep=SIMULATOR_TIMESTEP,
+            timestep=CONFIG.simulator_timestep,
             integrator=Integrator.RK4,
             seed=seed,
         )
@@ -763,7 +757,7 @@ def make_environment(
             core,
             _external_reset_required,
             map_name,
-            EGO_RACELINE,
+            CONFIG.ego_raceline,
             privileged=privileged,
             reward_gamma=reward_gamma,
             speed_exploration_mode=speed_exploration_mode,
@@ -799,10 +793,6 @@ def _worker(remote: Any, parent_remote: Any, env_fn_wrapper: CloudpickleWrapper,
                     seed=seed,
                     options={EXTERNAL_RESET_OPTION: spec},
                 )
-                remote.send(("ok", (rank, observation, reset_info)))
-            elif command == "reset_prefix":
-                seed, snapshot, episode_key = data
-                observation, reset_info = env.restore_prefix_snapshot(snapshot, episode_key, seed=seed)
                 remote.send(("ok", (rank, observation, reset_info)))
             elif command == "render":
                 remote.send(("ok", env.render()))
@@ -859,9 +849,7 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         ordinary_scenarios: Sequence[ScenarioSpec],
         privileged: bool = False,
         reward_gamma: float = 0.999,
-        speed_exploration_mode: str = BASELINE_EXPLORATION_MODE,
-        prefix_reset_inputs: Sequence[dict[str, Any]] = (),
-        prefix_reset_interval: int = 0,
+        speed_exploration_mode: str = "baseline",
     ) -> None:
         if n_envs <= 0 or n_envs % 2 != 0:
             raise ValueError("n_envs must be positive and even")
@@ -871,19 +859,6 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         self.closed = False
         self.actions = None
         self.scheduler = ScenarioScheduler(seed, collision_scenarios, ordinary_scenarios)
-        self.prefix_reset_inputs = tuple(prefix_reset_inputs)
-        self.prefix_reset_interval = int(prefix_reset_interval)
-        if bool(self.prefix_reset_inputs) != (self.prefix_reset_interval > 0):
-            raise ValueError("Prefix-reset inputs and interval must be enabled together")
-        if self.prefix_reset_inputs and (len(self.prefix_reset_inputs) != 28 or len({item["episode_key"] for item in self.prefix_reset_inputs}) != 28):
-            raise ValueError("Prefix-reset integration requires 28 unique inputs")
-        self.prefix_reset_enabled = bool(self.prefix_reset_inputs)
-        self.prefix_reset_rng = np.random.default_rng(np.random.SeedSequence([seed, PREFIX_RESET_SEED_TAG]))
-        self.prefix_reset_order = np.asarray(self.prefix_reset_rng.permutation(len(self.prefix_reset_inputs)), dtype=np.int64) if self.prefix_reset_inputs else np.empty(0, dtype=np.int64)
-        self.prefix_reset_cursor = 0
-        self.prefix_reset_cycle = 1 if self.prefix_reset_inputs else 0
-        self.collision_reset_count = 0
-        self.reset_history: list[dict[str, Any]] = []
         logical_seeds = [
             int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
             for rank in range(n_envs)
@@ -928,9 +903,7 @@ class CentralScheduleSubprocVecEnv(VecEnv):
                 else:
                     os.environ[name] = value
 
-    def seed(self, seed: int | None = None) -> list[int | None]:
-        if seed is None:
-            seed = 0
+    def seed(self, seed: int) -> list[int]:
         self._seeds = [
             int(np.random.SeedSequence([seed, 1, rank % 2, rank // 2]).generate_state(1)[0])
             for rank in range(self.num_envs)
@@ -949,59 +922,25 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         return payload
 
     def _terminate_workers(self) -> None:
-        for process in getattr(self, "processes", []):
+        for process in self.processes:
             if process.is_alive():
                 process.terminate()
-        for process in getattr(self, "processes", []):
+        for process in self.processes:
             process.join(timeout=2.0)
             if process.is_alive():
                 process.kill()
                 process.join(timeout=2.0)
         self.closed = True
 
-    def _next_prefix_reset(self) -> dict[str, Any]:
-        if self.prefix_reset_cursor == len(self.prefix_reset_order):
-            self.prefix_reset_order = np.asarray(self.prefix_reset_rng.permutation(len(self.prefix_reset_inputs)), dtype=np.int64)
-            self.prefix_reset_cursor = 0
-            self.prefix_reset_cycle += 1
-        item = self.prefix_reset_inputs[int(self.prefix_reset_order[self.prefix_reset_cursor])]
-        self.prefix_reset_cursor += 1
-        return item
-
     def _reset_round(self, indices: list[int], seeds: list[int | None]) -> list[VecEnvObs]:
-        requests = {}
         for rank, seed in zip(indices, seeds):
-            use_prefix = False
-            if rank % 2 == 0:
-                self.collision_reset_count += 1
-                use_prefix = self.prefix_reset_enabled and self.collision_reset_count % self.prefix_reset_interval == 0
-            if use_prefix:
-                item = self._next_prefix_reset()
-                requests[rank] = ("prefix_reset", item)
-                self.remotes[rank].send(("reset_prefix", (seed, item["snapshot"], item["episode_key"])))
-            else:
-                requests[rank] = ("standard", None)
-                self.remotes[rank].send(("reset", (seed, self.scheduler.next(rank))))
+            self.remotes[rank].send(("reset", (seed, self.scheduler.next(rank))))
         observations = []
         for rank in indices:
             returned_rank, observation, reset_info = self._recv_checked(rank)
             if returned_rank != rank:
                 raise RuntimeError(f"Environment worker rank mismatch: expected {rank}, got {returned_rank}")
-            source, item = requests[rank]
-            if source == "prefix_reset":
-                reset_info["prefix_reset"] = True
-                reset_info["prefix_reset_key"] = item["episode_key"]
-                reset_info["prefix_reset_stratum"] = item["stratum"]
-                reset_info["prefix_observations"] = item["prefix_observations"]
-                reset_info["prefix_length"] = int(item["prefix_length"])
-            else:
-                reset_info["prefix_reset"] = False
-                reset_info["prefix_reset_key"] = None
-                reset_info["prefix_reset_stratum"] = None
-                reset_info["prefix_observations"] = np.empty((0, self.observation_space.shape[0]), dtype=np.float32)
-                reset_info["prefix_length"] = 0
             self.reset_infos[rank] = reset_info
-            self.reset_history.append({"rank": int(rank), "env_role": str(reset_info["env_role"]), "source": source, "prefix_reset_key": reset_info["prefix_reset_key"], "prefix_reset_stratum": reset_info["prefix_reset_stratum"], "prefix_length": int(reset_info["prefix_length"]), "scenario_id": str(reset_info["scenario_id"])})
             observations.append(observation)
         return observations
 
@@ -1102,31 +1041,3 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         for rank in ranks:
             self.remotes[rank].send(("is_wrapped", wrapper_class))
         return [self._recv_checked(rank) for rank in ranks]
-
-    def state_dict(self) -> dict[str, Any]:
-        return {
-            "scheduler": self.scheduler.state_dict(),
-            "prefix_reset": {
-                "enabled": self.prefix_reset_enabled,
-                "interval": self.prefix_reset_interval,
-                "order": self.prefix_reset_order.copy(),
-                "cursor": self.prefix_reset_cursor,
-                "cycle": self.prefix_reset_cycle,
-                "collision_reset_count": self.collision_reset_count,
-                "rng_state": copy_module.deepcopy(self.prefix_reset_rng.bit_generator.state),
-            },
-        }
-
-    def load_state_dict(self, state: dict[str, Any]) -> None:
-        self.scheduler.load_state_dict(state["scheduler"])
-        prefix = state["prefix_reset"]
-        if bool(prefix["enabled"]) != self.prefix_reset_enabled or int(prefix["interval"]) != self.prefix_reset_interval:
-            raise ValueError("Prefix-reset scheduler configuration does not match")
-        order = np.asarray(prefix["order"], dtype=np.int64)
-        if sorted(order.tolist()) != list(range(len(self.prefix_reset_inputs))):
-            raise ValueError("Prefix-reset scheduler order is invalid")
-        self.prefix_reset_order = order.copy()
-        self.prefix_reset_cursor = int(prefix["cursor"])
-        self.prefix_reset_cycle = int(prefix["cycle"])
-        self.collision_reset_count = int(prefix["collision_reset_count"])
-        self.prefix_reset_rng.bit_generator.state = copy_module.deepcopy(prefix["rng_state"])
