@@ -76,7 +76,12 @@ def load_prefix_reset_panel(path: str | Path) -> tuple[dict[str, Any], ...]:
         raise RuntimeError("Prefix-reset panel must contain 28 unique tasks")
     loaded = []
     total_prefix_rows = 0
+    strata = {"collision": 0, "lost_overtake": 0}
     for task in tasks:
+        stratum = str(task.get("stratum", ""))
+        if stratum not in strata:
+            raise RuntimeError(f"Prefix-reset task has an invalid stratum: {task['episode_key']}")
+        strata[stratum] += 1
         snapshot_path = root / task["snapshot_file"]
         prefix_path = root / task["prefix_file"]
         if _sha256_file(snapshot_path) != task["snapshot_sha256"] or _sha256_file(prefix_path) != task["prefix_sha256"]:
@@ -94,9 +99,11 @@ def load_prefix_reset_panel(path: str | Path) -> tuple[dict[str, Any], ...]:
         if not np.array_equal(window_observation, np.asarray(snapshot["observation"], dtype=np.float32)):
             raise RuntimeError(f"Prefix-reset window observation changed: {task['episode_key']}")
         total_prefix_rows += expected_length
-        loaded.append({"episode_key": str(task["episode_key"]), "snapshot": snapshot, "prefix_observations": prefix, "prefix_length": expected_length})
+        loaded.append({"episode_key": str(task["episode_key"]), "stratum": stratum, "snapshot": snapshot, "prefix_observations": prefix, "prefix_length": expected_length})
     if total_prefix_rows != 9589:
         raise RuntimeError(f"Prefix-reset panel must contain 9,589 prefix rows, got {total_prefix_rows}")
+    if strata != {"collision": 19, "lost_overtake": 9}:
+        raise RuntimeError(f"Prefix-reset panel stratum counts changed: {strata}")
     return tuple(loaded)
 
 
@@ -717,6 +724,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             base_info,
             {"simulator_reward": float(simulator_reward), **reward_info},
         )
+        info["executed_ego_action"] = np.asarray(action, dtype=np.float32).reshape(2).copy()
         return self._observation(raw_observation), reward, terminated, truncated, info
 
     def render(self) -> Any:
@@ -983,15 +991,17 @@ class CentralScheduleSubprocVecEnv(VecEnv):
             if source == "prefix_reset":
                 reset_info["prefix_reset"] = True
                 reset_info["prefix_reset_key"] = item["episode_key"]
+                reset_info["prefix_reset_stratum"] = item["stratum"]
                 reset_info["prefix_observations"] = item["prefix_observations"]
                 reset_info["prefix_length"] = int(item["prefix_length"])
             else:
                 reset_info["prefix_reset"] = False
                 reset_info["prefix_reset_key"] = None
+                reset_info["prefix_reset_stratum"] = None
                 reset_info["prefix_observations"] = np.empty((0, self.observation_space.shape[0]), dtype=np.float32)
                 reset_info["prefix_length"] = 0
             self.reset_infos[rank] = reset_info
-            self.reset_history.append({"rank": int(rank), "env_role": str(reset_info["env_role"]), "source": source, "prefix_reset_key": reset_info["prefix_reset_key"], "prefix_length": int(reset_info["prefix_length"]), "scenario_id": str(reset_info["scenario_id"])})
+            self.reset_history.append({"rank": int(rank), "env_role": str(reset_info["env_role"]), "source": source, "prefix_reset_key": reset_info["prefix_reset_key"], "prefix_reset_stratum": reset_info["prefix_reset_stratum"], "prefix_length": int(reset_info["prefix_length"]), "scenario_id": str(reset_info["scenario_id"])})
             observations.append(observation)
         return observations
 

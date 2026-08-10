@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy as copy_module
 from dataclasses import asdict, dataclass
+import math
 from pathlib import Path
 from typing import Any, Callable
 
@@ -23,13 +24,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BASELINE_EXPLORATION_MODE = "baseline"
 TEMPORAL_GLOBAL_EXPLORATION_MODE = "temporal_global"
 CORRIDOR_TEMPORAL_EXPLORATION_MODE = "corridor_temporal"
+PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE = "prefix_joint_temporal"
 SPEED_EXPLORATION_MODES = (
     BASELINE_EXPLORATION_MODE,
     TEMPORAL_GLOBAL_EXPLORATION_MODE,
     CORRIDOR_TEMPORAL_EXPLORATION_MODE,
+    PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE,
 )
 BASELINE_SPEED_STD = 0.15
 TEMPORAL_RESAMPLE_STEPS = 50
+JOINT_TEMPORAL_RHO = 0.90
+JOINT_TEMPORAL_BLOCK_STEPS = 50
+JOINT_TEMPORAL_PREFIX_STEPS = 150
 EXPLORATION_GATE_INFO_KEY = "exploration_danger_gate"
 
 
@@ -47,6 +53,15 @@ def exploration_metadata(mode: str, corridor_gate_config=None) -> dict[str, Any]
             raise ValueError("Front-corridor exploration metadata requires its gate configuration")
         gate_type = f"front_corridor_overlap_gap{corridor_gate_config.maximum_front_gap_m:g}"
         gate = asdict(corridor_gate_config)
+    elif mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
+        gate_type = "historical_prefix_source_stratum_collision"
+        gate = {
+            "prefix_source": "collision",
+            "eligible_steps": JOINT_TEMPORAL_PREFIX_STEPS,
+            "block_steps": JOINT_TEMPORAL_BLOCK_STEPS,
+            "rho": JOINT_TEMPORAL_RHO,
+            "steering_speed_cross_covariance": 0.0,
+        }
     else:
         gate_type = "none"
         gate = None
@@ -387,6 +402,68 @@ STEERING_LATENT_STD = 0.03
 SPEED_PHYSICAL_STD = 0.15
 
 
+def _inverse_tanh(value: torch.Tensor) -> torch.Tensor:
+    return 0.5 * (torch.log1p(value) - torch.log1p(-value))
+
+
+def joint_temporal_standardized_residuals(mean_actions: torch.Tensor, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    if mean_actions.shape != actions.shape or mean_actions.shape[-1] != END2RACE_ACTION_SIZE:
+        raise ValueError("Joint-temporal means and actions must have the same [..., 2] shape")
+    if mean_actions.dtype != actions.dtype or mean_actions.device != actions.device:
+        raise ValueError("Joint-temporal means and actions must share dtype and device")
+    epsilon = torch.finfo(actions.dtype).eps
+    normalized_action = (actions[..., 0] / STEERING_BOUND).clamp(-1.0 + epsilon, 1.0 - epsilon)
+    normalized_mean = (mean_actions[..., 0] / STEERING_BOUND).clamp(-1.0 + epsilon, 1.0 - epsilon)
+    latent_action = _inverse_tanh(normalized_action)
+    latent_mean = _inverse_tanh(normalized_mean)
+    steering_residual = (latent_action - latent_mean) / STEERING_LATENT_STD
+    speed_residual = (actions[..., 1] - mean_actions[..., 1]) / SPEED_PHYSICAL_STD
+    residuals = torch.stack((steering_residual, speed_residual), dim=-1)
+    log_abs_steering_jacobian = math.log(STEERING_BOUND) + torch.log1p(-normalized_action.square())
+    return residuals, log_abs_steering_jacobian
+
+
+def joint_temporal_conditional_parameters(residual_sum: torch.Tensor, position: int, rho: float = JOINT_TEMPORAL_RHO) -> tuple[torch.Tensor, float]:
+    if position < 0 or position >= JOINT_TEMPORAL_BLOCK_STEPS:
+        raise ValueError(f"Joint-temporal block position must be in [0, {JOINT_TEMPORAL_BLOCK_STEPS}), got {position}")
+    if not 0.0 <= rho < 1.0:
+        raise ValueError("Joint-temporal rho must be in [0, 1)")
+    if position == 0:
+        return torch.zeros_like(residual_sum), 1.0
+    denominator = 1.0 + (position - 1) * rho
+    coefficient = rho / denominator
+    variance = 1.0 - rho * rho * position / denominator
+    if variance <= 0.0 or not math.isfinite(variance):
+        raise RuntimeError("Joint-temporal conditional variance is invalid")
+    return coefficient * residual_sum, variance
+
+
+def joint_temporal_conditional_log_prob(mean_actions: torch.Tensor, actions: torch.Tensor, residual_sum: torch.Tensor, position: int, rho: float = JOINT_TEMPORAL_RHO) -> tuple[torch.Tensor, torch.Tensor]:
+    residuals, steering_jacobian = joint_temporal_standardized_residuals(mean_actions, actions)
+    if residual_sum.shape != residuals.shape:
+        raise ValueError("Joint-temporal residual sum must match the residual shape")
+    conditional_mean, conditional_variance = joint_temporal_conditional_parameters(residual_sum, position, rho)
+    centered = residuals - conditional_mean
+    standardized_log_prob = -0.5 * (centered.square() / conditional_variance + math.log(2.0 * math.pi * conditional_variance))
+    scale_log_prob = -math.log(STEERING_LATENT_STD) - math.log(SPEED_PHYSICAL_STD)
+    log_prob = standardized_log_prob.sum(dim=-1) + scale_log_prob - steering_jacobian
+    return log_prob, residuals
+
+
+def joint_temporal_sequence_log_prob(mean_actions: torch.Tensor, actions: torch.Tensor, rho: float = JOINT_TEMPORAL_RHO) -> tuple[torch.Tensor, torch.Tensor]:
+    if mean_actions.ndim != 2 or mean_actions.shape[0] > JOINT_TEMPORAL_BLOCK_STEPS:
+        raise ValueError("Joint-temporal reference sequence must contain at most one 50-step block")
+    residual_sum = torch.zeros(END2RACE_ACTION_SIZE, dtype=mean_actions.dtype, device=mean_actions.device)
+    log_probs = []
+    residuals = []
+    for position in range(mean_actions.shape[0]):
+        log_prob, residual = joint_temporal_conditional_log_prob(mean_actions[position], actions[position], residual_sum, position, rho)
+        log_probs.append(log_prob)
+        residuals.append(residual)
+        residual_sum = residual_sum + residual
+    return torch.stack(log_probs), torch.stack(residuals)
+
+
 class EvaluatorCompatibleJointDistribution(Distribution):
     """Squashed latent steering Gaussian plus physical speed Gaussian."""
 
@@ -664,6 +741,8 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             raise ValueError(
                 "Structured speed exploration requires the frozen 0.15 baseline std"
             )
+        if speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE and abs(float(steering_latent_std) - STEERING_LATENT_STD) > 1e-12:
+            raise ValueError("Prefix joint-temporal exploration requires steering_latent_std=0.03")
         expected_observation_size = END2RACE_OBSERVATION_SIZE + (PRIVILEGED_FEATURE_SIZE if critic_variant in P20_CRITIC_VARIANTS else 0)
         if tuple(observation_space.shape) != (expected_observation_size,):
             raise ValueError(
@@ -678,6 +757,15 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self._temporal_speed_noise: torch.Tensor | None = None
         self._temporal_steps_remaining: torch.Tensor | None = None
         self._temporal_block_ids: torch.Tensor | None = None
+        self._rollout_prefix_active: torch.Tensor | None = None
+        self._rollout_prefix_steps: torch.Tensor | None = None
+        self._rollout_prefix_collision_source: torch.Tensor | None = None
+        self._joint_temporal_generators: list[torch.Generator] | None = None
+        self._joint_temporal_common: torch.Tensor | None = None
+        self._joint_temporal_residual_sums: torch.Tensor | None = None
+        self._joint_temporal_block_uids: torch.Tensor | None = None
+        self._joint_temporal_expected_positions: torch.Tensor | None = None
+        self._joint_temporal_block_counts: torch.Tensor | None = None
         self.end2race_actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
         checkpoint = Path(checkpoint_path).expanduser().resolve()
         self.end2race_actor.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True), strict=True)
@@ -913,6 +1001,9 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self,
         danger_gates: np.ndarray,
         episode_starts: np.ndarray,
+        prefix_active: np.ndarray | None = None,
+        prefix_steps: np.ndarray | None = None,
+        prefix_collision_source: np.ndarray | None = None,
     ) -> None:
         """Stage causal gate/reset state for exactly one vector action."""
 
@@ -930,6 +1021,84 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             dtype=torch.bool,
             device=self.device,
         )
+        if prefix_active is None and prefix_steps is None and prefix_collision_source is None:
+            active = np.zeros_like(starts)
+            steps = np.zeros(starts.shape, dtype=np.int64)
+            collision_source = np.zeros_like(starts)
+        else:
+            active = np.asarray(prefix_active, dtype=bool).reshape(-1)
+            steps = np.asarray(prefix_steps, dtype=np.int64).reshape(-1)
+            collision_source = np.asarray(prefix_collision_source, dtype=bool).reshape(-1)
+            if active.shape != starts.shape or steps.shape != starts.shape or collision_source.shape != starts.shape:
+                raise ValueError("Prefix exploration fields must align with logical env slots")
+            if np.any(steps < 0):
+                raise ValueError("Prefix exploration steps must be nonnegative")
+        self._rollout_prefix_active = torch.as_tensor(active, dtype=torch.bool, device=self.device)
+        self._rollout_prefix_steps = torch.as_tensor(steps, dtype=torch.int64, device=self.device)
+        self._rollout_prefix_collision_source = torch.as_tensor(collision_source, dtype=torch.bool, device=self.device)
+
+    def configure_joint_temporal_generators(self, seed: int, batch_size: int) -> None:
+        if batch_size <= 0:
+            raise ValueError("Joint-temporal batch size must be positive")
+        self._joint_temporal_generators = []
+        for rank in range(batch_size):
+            generator = torch.Generator(device=self.device)
+            generator_seed = int(np.random.SeedSequence([seed, 6, rank]).generate_state(1, dtype=np.uint64)[0] % np.iinfo(np.int64).max)
+            generator.manual_seed(generator_seed)
+            self._joint_temporal_generators.append(generator)
+        self._joint_temporal_common = torch.zeros((batch_size, END2RACE_ACTION_SIZE), dtype=torch.float32, device=self.device)
+        self._joint_temporal_residual_sums = torch.zeros_like(self._joint_temporal_common)
+        self._joint_temporal_block_uids = torch.zeros(batch_size, dtype=torch.int64, device=self.device)
+        self._joint_temporal_expected_positions = torch.zeros(batch_size, dtype=torch.int64, device=self.device)
+        self._joint_temporal_block_counts = torch.zeros(batch_size, dtype=torch.int64, device=self.device)
+
+    def _prefix_joint_temporal_actions(self, mean_actions: torch.Tensor, distribution: EvaluatorCompatibleJointDistribution, baseline_actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        fields = (self._rollout_prefix_active, self._rollout_prefix_steps, self._rollout_prefix_collision_source)
+        states = (self._joint_temporal_common, self._joint_temporal_residual_sums, self._joint_temporal_block_uids, self._joint_temporal_expected_positions, self._joint_temporal_block_counts)
+        if any(field is None for field in fields) or self._joint_temporal_generators is None or any(state is None for state in states):
+            raise RuntimeError("Prefix joint-temporal exploration was not prepared")
+        prefix_active, prefix_steps, collision_source = fields
+        common, residual_sums, block_uids, expected_positions, block_counts = states
+        assert prefix_active is not None and prefix_steps is not None and collision_source is not None
+        assert common is not None and residual_sums is not None and block_uids is not None and expected_positions is not None and block_counts is not None
+        batch_size = mean_actions.shape[0]
+        if any(field.numel() != batch_size for field in fields) or len(self._joint_temporal_generators) != batch_size:
+            raise RuntimeError("Prefix joint-temporal state does not match the actor batch")
+        active = prefix_active & collision_source & (prefix_steps < JOINT_TEMPORAL_PREFIX_STEPS)
+        positions = torch.where(active, prefix_steps.remainder(JOINT_TEMPORAL_BLOCK_STEPS), torch.full_like(prefix_steps, -1))
+        actions = baseline_actions.clone()
+        log_prob = distribution.log_prob(baseline_actions).clone()
+        residuals, _jacobian = joint_temporal_standardized_residuals(mean_actions, baseline_actions)
+        output_uids = torch.zeros_like(block_uids)
+        normalized_mean = (mean_actions[:, 0] / STEERING_BOUND).clamp(-1.0 + torch.finfo(mean_actions.dtype).eps, 1.0 - torch.finfo(mean_actions.dtype).eps)
+        latent_steering_mean = _inverse_tanh(normalized_mean)
+        for rank in range(batch_size):
+            if not bool(active[rank].item()):
+                common[rank].zero_()
+                residual_sums[rank].zero_()
+                block_uids[rank] = 0
+                expected_positions[rank] = 0
+                continue
+            position = int(positions[rank].item())
+            if position == 0:
+                common[rank] = torch.randn(END2RACE_ACTION_SIZE, dtype=mean_actions.dtype, device=mean_actions.device, generator=self._joint_temporal_generators[rank])
+                residual_sums[rank].zero_()
+                block_counts[rank] += 1
+                block_uids[rank] = block_counts[rank] * batch_size + rank + 1
+                expected_positions[rank] = 0
+            if int(expected_positions[rank].item()) != position or int(block_uids[rank].item()) <= 0:
+                raise RuntimeError(f"Joint-temporal block continuity failed for rank {rank}: expected={int(expected_positions[rank].item())}, observed={position}")
+            innovation = torch.randn(END2RACE_ACTION_SIZE, dtype=mean_actions.dtype, device=mean_actions.device, generator=self._joint_temporal_generators[rank])
+            residual = math.sqrt(JOINT_TEMPORAL_RHO) * common[rank] + math.sqrt(1.0 - JOINT_TEMPORAL_RHO) * innovation
+            actions[rank, 0] = STEERING_BOUND * torch.tanh(latent_steering_mean[rank] + STEERING_LATENT_STD * residual[0])
+            actions[rank, 1] = mean_actions[rank, 1] + SPEED_PHYSICAL_STD * residual[1]
+            row_log_prob, reconstructed = joint_temporal_conditional_log_prob(mean_actions[rank], actions[rank], residual_sums[rank], position)
+            log_prob[rank] = row_log_prob
+            residuals[rank] = reconstructed
+            residual_sums[rank] = residual_sums[rank] + reconstructed
+            expected_positions[rank] = position + 1
+            output_uids[rank] = block_uids[rank]
+        return actions, log_prob, active, output_uids, positions, residuals
 
     def _ensure_temporal_state(self, batch_size: int) -> None:
         if (
@@ -1040,6 +1209,10 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         gates: torch.Tensor,
         temporal_active: torch.Tensor,
         block_ids: torch.Tensor,
+        joint_active: torch.Tensor,
+        joint_block_uids: torch.Tensor,
+        joint_block_positions: torch.Tensor,
+        joint_residuals: torch.Tensor,
     ) -> None:
         rollout_buffer = getattr(self, "_end2race_rollout_buffer", None)
         if rollout_buffer is None:
@@ -1047,12 +1220,20 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         standard_residual = (
             actions[:, 1] - mean_actions[:, 1]
         ) / speed_log_std.exp()
+        prefix_steps = self._rollout_prefix_steps if self._rollout_prefix_steps is not None else torch.zeros_like(block_ids)
+        prefix_collision_source = self._rollout_prefix_collision_source if self._rollout_prefix_collision_source is not None else torch.zeros_like(joint_active)
         rollout_buffer.stage_exploration(
             speed_log_std=speed_log_std.detach().cpu().numpy(),
             danger_gate=gates.detach().cpu().numpy(),
             temporal_active=temporal_active.detach().cpu().numpy(),
             block_id=block_ids.detach().cpu().numpy(),
             standard_residual=standard_residual.detach().cpu().numpy(),
+            joint_active=joint_active.detach().cpu().numpy(),
+            joint_block_uid=joint_block_uids.detach().cpu().numpy(),
+            joint_block_position=joint_block_positions.detach().cpu().numpy(),
+            joint_prefix_step=prefix_steps.detach().cpu().numpy(),
+            joint_collision_source=prefix_collision_source.detach().cpu().numpy(),
+            joint_standard_residual=joint_residuals.detach().cpu().numpy(),
         )
 
     def _critic_observation(self, obs: torch.Tensor | dict[str, torch.Tensor]) -> torch.Tensor:
@@ -1122,6 +1303,9 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, RNNStates]:
         mean_actions, actor_states = self._actor_forward(obs, lstm_states.pi, episode_starts)
         batch_size = mean_actions.shape[0]
+        zero_bool = torch.zeros(batch_size, dtype=torch.bool, device=mean_actions.device)
+        zero_int = torch.zeros(batch_size, dtype=torch.int64, device=mean_actions.device)
+        inactive_position = torch.full((batch_size,), -1, dtype=torch.int64, device=mean_actions.device)
         if (
             deterministic
             or self.speed_exploration_mode == BASELINE_EXPLORATION_MODE
@@ -1129,13 +1313,22 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             distribution = self._distribution(mean_actions)
             actions = distribution.get_actions(deterministic=deterministic)
             speed_log_std = self.log_std[1].expand(batch_size)
-            gates = torch.zeros(
-                batch_size, dtype=torch.bool, device=mean_actions.device
-            )
-            temporal_active = torch.zeros_like(gates)
-            block_ids = torch.zeros(
-                batch_size, dtype=torch.int64, device=mean_actions.device
-            )
+            gates = zero_bool
+            temporal_active = zero_bool
+            block_ids = zero_int
+            joint_active = zero_bool
+            joint_block_uids = zero_int
+            joint_block_positions = inactive_position
+            joint_residuals, _joint_jacobian = joint_temporal_standardized_residuals(mean_actions, actions)
+            log_prob = distribution.log_prob(actions)
+        elif self.speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
+            distribution = self._distribution(mean_actions)
+            baseline_actions = distribution.sample()
+            actions, log_prob, joint_active, joint_block_uids, joint_block_positions, joint_residuals = self._prefix_joint_temporal_actions(mean_actions, distribution, baseline_actions)
+            speed_log_std = self.log_std[1].expand(batch_size)
+            gates = zero_bool
+            temporal_active = joint_active
+            block_ids = joint_block_uids
         else:
             (
                 speed_log_std,
@@ -1156,7 +1349,11 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                     speed_standard_noise
                 )
             )
-        log_prob = distribution.log_prob(actions)
+            log_prob = distribution.log_prob(actions)
+            joint_active = zero_bool
+            joint_block_uids = zero_int
+            joint_block_positions = inactive_position
+            joint_residuals, _joint_jacobian = joint_temporal_standardized_residuals(mean_actions, actions)
         self._stage_exploration_transition(
             mean_actions=mean_actions,
             actions=actions,
@@ -1164,6 +1361,10 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             gates=gates,
             temporal_active=temporal_active,
             block_ids=block_ids,
+            joint_active=joint_active,
+            joint_block_uids=joint_block_uids,
+            joint_block_positions=joint_block_positions,
+            joint_residuals=joint_residuals,
         )
         if self.critic_is_independent_gru:
             values, vf_states = self._independent_gru_forward_collection(obs, lstm_states.vf, episode_starts)
@@ -1195,6 +1396,84 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         del lstm_states, episode_starts
         return self.value_net(self._critic_observation(obs))
 
+    def _joint_temporal_replay_log_prob(self, mean_actions: torch.Tensor, actions: torch.Tensor, collection_equivalent: bool) -> torch.Tensor:
+        rollout_buffer = getattr(self, "_end2race_rollout_buffer", None)
+        if rollout_buffer is None:
+            raise RuntimeError("Joint-temporal replay requires the End2Race rollout buffer")
+        active = rollout_buffer.current_joint_temporal_active
+        block_uids = rollout_buffer.current_joint_temporal_block_uids
+        positions = rollout_buffer.current_joint_temporal_block_positions
+        prefix_steps = rollout_buffer.current_joint_temporal_prefix_steps
+        collision_sources = rollout_buffer.current_joint_temporal_collision_sources
+        contexts = rollout_buffer.current_joint_temporal_contexts
+        valid_by_timestep = rollout_buffer.current_valid_by_timestep
+        if any(value is None for value in (active, block_uids, positions, prefix_steps, collision_sources, contexts, valid_by_timestep)):
+            raise RuntimeError("Joint-temporal replay metadata is incomplete")
+        assert active is not None and block_uids is not None and positions is not None and prefix_steps is not None and collision_sources is not None and contexts is not None and valid_by_timestep is not None
+        distribution = self._distribution(mean_actions, speed_log_std=rollout_buffer.current_speed_log_stds)
+        log_prob = distribution.log_prob(actions).clone()
+        n_seq = len(contexts)
+        if n_seq <= 0 or mean_actions.shape[0] % n_seq != 0:
+            raise RuntimeError("Joint-temporal replay sequence layout is invalid")
+        max_length = mean_actions.shape[0] // n_seq
+        if len(valid_by_timestep) != max_length:
+            raise RuntimeError("Joint-temporal replay valid mask length changed")
+        mean_by_sequence = mean_actions.reshape(n_seq, max_length, END2RACE_ACTION_SIZE)
+        action_by_sequence = actions.reshape(n_seq, max_length, END2RACE_ACTION_SIZE)
+        active_by_sequence = active.reshape(n_seq, max_length)
+        uid_by_sequence = block_uids.reshape(n_seq, max_length)
+        position_by_sequence = positions.reshape(n_seq, max_length)
+        prefix_by_sequence = prefix_steps.reshape(n_seq, max_length)
+        source_by_sequence = collision_sources.reshape(n_seq, max_length)
+        log_prob_by_sequence = log_prob.reshape(n_seq, max_length)
+        replay = self._actor_replay_collection_equivalent if collection_equivalent else self._actor_replay_batched
+        for sequence_index, context in enumerate(contexts):
+            residual_sum = torch.zeros(END2RACE_ACTION_SIZE, dtype=mean_actions.dtype, device=mean_actions.device)
+            current_uid = 0
+            if context is not None:
+                fixed_count = int(context["fixed_count"])
+                fixed_residual_sum = context["fixed_residual_sum"]
+                context_observations = context["observations"]
+                context_actions = context["actions"]
+                context_positions = context["positions"]
+                context_hidden = context["hidden_start"]
+                if fixed_residual_sum.shape != residual_sum.shape or fixed_count < 0 or fixed_count >= JOINT_TEMPORAL_BLOCK_STEPS:
+                    raise RuntimeError("Joint-temporal fixed likelihood context is invalid")
+                residual_sum = fixed_residual_sum.to(dtype=mean_actions.dtype, device=mean_actions.device)
+                if context_observations.shape[0]:
+                    context_starts = torch.zeros(context_observations.shape[0], dtype=torch.float32, device=mean_actions.device)
+                    context_means, _context_states = replay(context_observations, (context_hidden, torch.zeros_like(context_hidden)), context_starts, None)
+                    if context_means.shape != context_actions.shape or context_positions.numel() != context_actions.shape[0]:
+                        raise RuntimeError("Joint-temporal likelihood context shape changed")
+                    for context_index in range(context_actions.shape[0]):
+                        expected_position = fixed_count + context_index
+                        if int(context_positions[context_index].item()) != expected_position:
+                            raise RuntimeError("Joint-temporal likelihood context is not block-aligned")
+                        residual, _jacobian = joint_temporal_standardized_residuals(context_means[context_index], context_actions[context_index])
+                        residual_sum = residual_sum + residual
+                current_uid = int(context["block_uid"])
+            for timestep in range(max_length):
+                if not bool(valid_by_timestep[timestep][sequence_index]):
+                    continue
+                if not bool(active_by_sequence[sequence_index, timestep].item()):
+                    current_uid = 0
+                    residual_sum = torch.zeros_like(residual_sum)
+                    continue
+                position = int(position_by_sequence[sequence_index, timestep].item())
+                uid = int(uid_by_sequence[sequence_index, timestep].item())
+                prefix_step = int(prefix_by_sequence[sequence_index, timestep].item())
+                if not bool(source_by_sequence[sequence_index, timestep].item()) or prefix_step < 0 or prefix_step >= JOINT_TEMPORAL_PREFIX_STEPS or position != prefix_step % JOINT_TEMPORAL_BLOCK_STEPS:
+                    raise RuntimeError("Joint-temporal treatment leaked outside its frozen source/window")
+                if position == 0:
+                    residual_sum = torch.zeros_like(residual_sum)
+                    current_uid = uid
+                elif current_uid != uid:
+                    raise RuntimeError("Joint-temporal replay started without the required block context")
+                row_log_prob, residual = joint_temporal_conditional_log_prob(mean_by_sequence[sequence_index, timestep], action_by_sequence[sequence_index, timestep], residual_sum, position)
+                log_prob_by_sequence[sequence_index, timestep] = row_log_prob
+                residual_sum = residual_sum + residual
+        return log_prob_by_sequence.reshape(-1)
+
     def evaluate_actor_actions(
         self,
         obs: torch.Tensor | dict[str, torch.Tensor],
@@ -1225,6 +1504,8 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             mean_actions,
             speed_log_std=speed_log_std,
         )
+        if self.speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
+            return self._joint_temporal_replay_log_prob(mean_actions, actions, collection_equivalent), distribution.entropy()
         return distribution.log_prob(actions), distribution.entropy()
 
     def evaluate_values(self, critic_inputs: torch.Tensor) -> torch.Tensor:

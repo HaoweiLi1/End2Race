@@ -24,7 +24,7 @@ hard-neighbor 805/比例采样、collision-cache actor-path mismatch逃生开关
 文中出现旧模块名或flag只表示“历史/重建接口”，不表示当前源码或CLI仍支持它们。
 
 记录时间：2026-07-30（清理前保真审计修订）。对应83个文件：18个回归侧Python文件
-（16个`test_*.py` + 2个历史工具），46个实验工具Python文件 + 19个shell runner，
+（16个`test_*.py` + 2个历史工具），47个实验工具Python文件 + 19个shell runner，
 合计约26,700行Python。
 
 ---
@@ -1165,7 +1165,7 @@ LR `3e-6/3e-5/3e-4`、`steering_latent_std=0.03`、`speed_physical_std=0.15`、
 
 ---
 
-## 3. 实验工具重建规范（B 级，46 个 Python）
+## 3. 实验工具重建规范（B 级，47 个 Python）
 
 统一样板（所有脚本共有，重建时先写这层）：
 
@@ -3048,3 +3048,442 @@ AUROC、early AUROC为`0.04038/0.42855/0.60703`，低于`0.05/0.65/0.65`，forma
 actor更新或科学report，不得合并为三次seed。当前脚本已修复两处机械问题。保留该脚本可以重建
 reward/cost唯一化、cost-side buffer、P20 critic、dual与OOF/梯度审计；但当前配置已关闭，禁止
 直接改budget、dual或critic重跑。
+
+## 21. Prefix-local joint temporal exploration
+
+### 21.1 正式入口与固定CLI
+
+正式训练仍使用`train_ppo.py`，只新增已有`--speed_exploration_mode`的取值
+`prefix_joint_temporal`；没有独立trainer、第二种actor loss或resume入口。该mode要求同时启用
+`--prefix_reset_panel`和正`--prefix_reset_interval`，并硬校验steering latent std `.03`、speed
+physical std `.15`。正式命令固定canonical BC、Austin、seed42、privilege-GRU、16 env、6,400
+steps、batch12,800、30 updates、actor/critic epoch `2/5`、GRU/head/critic LR
+`3e-6/3e-5/3e-4`、gamma/GAE `.999/.995`和clip`.20`。
+
+项目根`run.sh`只有这一条显式命令。输出目录必须在启动前不存在；训练器按既有逻辑写
+`run_config.json`、warm-up与formal `metrics.jsonl`、`episodes.jsonl`、每update 12-key actor和
+critic。不得从Gate E2 actor、Z6-F或任一PPO checkpoint初始化；Gate actor只用于回归测试。
+
+### 21.2 Environment side channel与处理范围
+
+`ppo.env.load_prefix_reset_panel(panel_dir)`除既有snapshot/prefix外强制读取每项`stratum`，仅允许
+`collision/lost_overtake`且总数必须为`19/9`。`CentralScheduleSubprocVecEnv`把
+`prefix_reset_stratum`写入reset info和reset history；scheduler、28项顺序、每3次collision-role
+reset中1次prefix均未改。
+
+`End2RaceGymnasiumEnv.step(action)`在info增加`executed_ego_action`，内容是环境实际收到的2D ego
+动作。joint mode采集逐行硬校验raw PPO action、pre-env clipped action和该字段逐位相同；任何
+clipping或wrapper/simulator差异立即抛错。该字段是训练期审计，不进入actor observation、reward、
+critic或部署checkpoint。
+
+### 21.3 满秩采样器与精确条件likelihood
+
+`ppo.policy`新增公开常量：
+
+```text
+PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE = "prefix_joint_temporal"
+JOINT_TEMPORAL_RHO = .90
+JOINT_TEMPORAL_BLOCK_STEPS = 50
+JOINT_TEMPORAL_PREFIX_STEPS = 150
+```
+
+`End2RaceGRUPolicy.prepare_rollout_exploration(...)`接收与16个逻辑slot对齐的`prefix_active`、
+`prefix_steps`和`prefix_collision_source`。`configure_joint_temporal_generators(seed,batch_size)`为每个
+逻辑env创建独立torch generator，seed由`SeedSequence([seed,6,rank])`派生；common/innovation流
+不使用全局baseline RNG。inactive路径仍先按原baseline固定形状采样，joint stream不创建或推进，
+因此关闭处理时action/log-prob/RNG/telemetry逐位保留。
+
+`_prefix_joint_temporal_actions(mean,distribution,baseline_actions)`只覆盖
+`prefix_active & collision_source & prefix_step<150`的slot。每个50步block和动作维独立采样
+`r_t=sqrt(.9)*epsilon_block+sqrt(.1)*eta_t`；steering在latent mean上加`.03*r_t`后执行
+`.52*tanh`，speed在physical mean上加`.15*r_t`。每env的`block_count*batch_size+rank+1`形成正的
+int64 UID；position必须严格按`prefix_step%50`连续。block、episode或inactive会清空common、残差
+和UID状态；跨rollout但未跨block时状态继续。
+
+下列函数是E0与replay共同使用的公开数学组件：
+
+- `joint_temporal_standardized_residuals(mean_actions,actions) -> (residuals,jacobian)`；
+- `joint_temporal_conditional_parameters(residual_sum,position,rho=.90) -> (mean,variance)`；
+- `joint_temporal_conditional_log_prob(...) -> (log_prob,residual)`；
+- `joint_temporal_sequence_log_prob(mean_actions,actions,rho=.90) -> (per_step_log_prob,residuals)`。
+
+position `n>0`使用`c=rho/(1+(n-1)rho)`、条件mean `c*sum(previous residuals)`、variance
+`1-rho^2*n/(1+(n-1)rho)`；position0为标准Normal。steering density包含`.03` scale及
+`.52*(1-(a/.52)^2)` Jacobian，speed包含`.15` scale。candidate replay对**当前PPO rollout内部**的
+历史必须从candidate actor mean重新计算residual并保留梯度；但上一rollout已经在旧policy下实现的
+residual sum是本rollout的固定incoming探索状态，不能在actor update后用新mean重新解释。两者的
+边界由buffer rollover决定，不等于条件于保存common latent的另一种surrogate。
+
+### 21.4 Buffer、minibatch cut与跨rollout context
+
+`End2RaceRolloutBuffer.stage_exploration(...)`新增并逐step存储：active bool、int64 block UID、
+int64 position、prefix step、collision-source bool和2D standard residual。UID/position在
+`swap_and_flatten`后仍显式保持int64；标量尾部singleton必须reshape为一维，避免NumPy广播。
+
+buffer保留两代context：`joint_context_carry`是本轮开头replay消费的incoming，
+`joint_context_next_carry`是本轮结束后为下一rollout生成的outgoing。`reset()`只在新buffer开始时把
+上轮outgoing提升为本轮incoming并清空next；`finalize_joint_context_carry()`只写next，绝不能在
+本轮optimizer/replay前覆盖incoming。第一次formal U2正因单字段实现被outgoing覆盖incoming而在
+任何U2 optimizer step前停止，故这条生命周期是硬回归合同。
+
+`finalize_joint_context_carry()`在rollout结束时为每env保存未完成block从position0到末行的
+positions与standard residuals；不保存供新actor重演的旧observation/action/hidden。
+`_joint_context_for_sequence()`在随机circular split或minibatch sequence从block中间开始时把上一
+rollout所需行压成固定`fixed_residual_sum`，并只返回当前rollout内从边界或本轮block起点到sequence
+start的observation/action/positions及该起点实际保存的actor hidden。context必须UID相同、position
+严格连续；缺行、跨多于一个rollout、residual非finite或source/window不符立即失败。
+
+`_joint_temporal_replay_log_prob()`先用原distribution计算全部inactive行，再按recurrent sequence逐行
+覆盖active行。每条sequence以固定incoming residual sum初始化；当前rollout context从实际保存的
+current-rollout hidden经candidate actor重放，其mean不detach并参与后续条件likelihood梯度，但
+context行没有advantage/mask，不进入PPO loss、KL、clip fraction或valid count。block position0清空
+残差；active非零position没有匹配UID/context时fail closed。第二个formal attempt曾因错误重放上一
+rollout而在U2 exact得到`.342732/.290172`并停止，这个真实failure是该边界的回归来源。
+
+### 21.5 Formal fail-closed与新增metrics
+
+`End2RaceRecurrentPPO._assert_full_buffer_ratio_identity()`对joint mode每个formal update都测普通
+batched和collection-equivalent exact全buffer ratio；exact的log-ratio或`|ratio-1|`任一超过
+`5e-5`直接在actor optimizer前停止。batched两项均小于`.02`正常继续；达到`.02`且exact通过时，
+`_adjudicate_batched_replay()`在正式actor step前以相同first-epoch 8 minibatch累计batched/exact
+dry gradient，要求cosine`>=.999`、相对L2`<=.02`、两路clip fraction0、mean KL`<=1e-4`、valid
+count和minibatch identity相同、参数不step；未通过立即停止。裁决RNG结束后恢复，正式actor仍使用
+原预定minibatch序列。
+
+每个formal metrics row除既有PPO/value/episode/prefix统计外新增：joint active count/fraction、
+unique block count、treatment leak count、两维residual mean/std、聚合cross-correlation、steering
+接近`.95/.99` bound比例、active speed min/max、action identity行数；以及batched/exact ratio是否
+实测、各自最大误差和可选的完整batched裁决结构。`actor_optimizer_steps_planned/completed`必须仍为
+16/16。聚合residual correlation的有效独立单位近似block而非transition，不承担E0总体协方差判决。
+
+### 21.6 E0工具
+
+`scripts/run_prefix_joint_temporal_e0.py`只有`--output`一个CLI，默认写Gate根下E0 JSON；固定seed
+`20260809`，失败exit1，JSON用temporary+replace原子写。它执行：100,000-block均值/方差/50×50
+相关与跨维相关；长度1--50的float64 conditional对直接MVN及autograd；FP32 reference；全部49个
+cut；实际buffer context和人工跨rollout carry，包括20行fixed incoming、rollout-start零行current
+context、step5五行current context及双代UID生命周期；rho0退化；inactive policy action/log-prob/global
+RNG/telemetry bitwise；真实sampler150步position/UID/source泄漏；strict 12-key deterministic actor。
+报告含每项阈值、逐cut误差、runtime版本及参与源文件身份。删除脚本会失去相关likelihood的独立
+数值oracle和任意cut回归入口。
+
+### 21.7 E1工具
+
+`scripts/run_prefix_joint_temporal_e1.py`支持`--arm orchestrate|baseline|treatment`，其余CLI固定
+output/panel/cache/actor、16 env、6,400 steps、batch12,800、seed42、interval3、hidden-scale4。
+orchestrate先验证passed E0并冻结plan，再用独立子进程按baseline→treatment顺序采集；两臂都启用
+同一28-prefix scheduler，唯一变化是exploration mode。每臂零optimizer step，保存arm report、
+episodes和空formal metrics；汇总要求102,400、51,200/51,200、28/28 prefix、treatment 19/19
+collision source、active`>=2%`、零分类泄漏、连续block、GAE误差`<=1e-6`、exact`<=5e-5`、
+batched`<.02`或通过冻结裁决、102,400 action identity、16/16 dry actor minibatch、参数不变和wall
+ratio`<=1.35`。删除脚本会失去完整source/window泄漏分类和no-update集成复现入口。
+
+### 21.8 E2工具
+
+`scripts/run_prefix_joint_temporal_e2.py`CLI同E1固定输入但没有arm。它验证E1 source身份与pass报告，
+按相同seed/scheduler重建一个disabled baseline buffer并确认reset history逐项复现；随后冻结这一个
+buffer、actor/critic及Adam状态。A路设mode baseline，B路设mode prefix_joint_temporal但active全
+false；两路用同一actor/critic RNG，各真实执行1 actor epoch和1 critic epoch。报告逐项比较step、
+valid counts、loss、KL/clip、gradient norm、actor/critic tensor、两套optimizer state、12-key strict
+reload和deterministic action/hidden。两个checkpoint只用于回归，不得评测或部署。删除脚本会失去
+disabled新replay对真实optimizer step的bitwise语义证明入口。
+
+### 21.9 跨actor-update生命周期实现门
+
+E0--E2均不让joint-active buffer跨过真实actor update，因此无法覆盖第二个formal attempt暴露的
+概率状态漂移。修复后用现有`train_ppo.py`直接执行一次实现门，不新增wrapper：正式CLI完全相同，
+只把`num_updates`从30限制为2并写入独立新目录。它仍先完成同一12-epoch critic warm-up，再完整执行
+U1和U2；用途只是在U1更新真实GRU/output head后，让U2 full-buffer exact Gate消费跨rollout block。
+
+U2实测collection-equivalent `max|log ratio|=0`、`max|ratio-1|=0`，普通batched最大`.000997`；
+102,400 action identity、3,685 active、75 blocks、零泄漏、16/16 actor steps并成功写出strict 12-key
+U2。该run不是方法性能臂，U1/U2 checkpoint不得正式评测、选点或部署；它只证明修复后的实现已经
+覆盖并通过原失败调用链。删除该目录会丢失真实跨update回归实物，但上述CLI与判据足以重建。
+
+### 21.10 固定600正式评测分析器
+
+`scripts/analyze_prefix_joint_temporal_formal_eval.py`只分析已完成的固定正式包，不启动仿真或选择
+checkpoint。CLI为`--run-dir`、`--evaluation-root`、`--panel-root`、`--alias-prefix`、`--report`与
+`--workers`；非路径默认分别对应post-failure exploratory run、`eval_results`、标准四图600 panel、
+`PJTE_u`、run内`formal_eval_report.json`和8 workers。已有report拒绝覆盖，JSON经temporary replace
+原子写。
+
+分析器先要求训练恰好1行warm-up+30行formal、update连续1--30、全部finite、exact`<=5e-5`、
+actor 16/16、泄漏0、action identity 102,400；再严格加载U27--U30的12-key actor。每个checkpoint
+只接受Austin/Hockenheim/MoscowRaceway/Nuerburgring各600的`standard_multiagent_600_v1` manifest，
+CUDA、ego scope、deterministic、8秒、600 result与600 trace、0 error且actor/panel SHA匹配。
+
+9,600个NPZ逐个检查数值dtype/finite、所有数组首维对齐、LiDAR/action/pose/collision shape、时间严格
+递增、末行唯一`terminal_post_step=true`和`action_applied=false`、typed collision与二维collision及
+result outcome一致。随后在同一2,400场景身份上相对canonical BC、U44和对应update的Z6-F计算
+collision removed/created、overtake lost/gained和双侧exact McNemar；逐图重算BC线，独立判定每个
+U27--U30的`collision<40`、`overtake>1500`与四图BC gate，并按冻结定义计算U30 L2-M/L2-P。
+报告固定记录`evidence_status=post_failure_exploratory_not_original_confirmatory`，避免把后验修复run
+误写成原confirmatory通过。删除脚本会失去9,600 trace质量合同与所有配对/L2/L3的一次性可复算入口。
+
+### 21.11 Exact-actor replay修订与第二条生命周期门
+
+第一条post-failure run在U14任何optimizer step前触发§21.5 batched裁决并失败；U1--U13完整，
+U14未写checkpoint。由于exception先于metrics落盘，裁决细项没有持久化，只能确认batched至少一项
+达到`.02`、exact仍`<=5e-5`且dry-gradient verdict为fail。该目录不得resume或评测。
+
+后续固定实现不放宽裁决线，而是在`End2RaceRecurrentPPO.train()`中令
+`prefix_joint_temporal`的正式actor minibatch直接调用
+`evaluate_actor_actions(..., collection_equivalent=True)`；其他探索模式仍传false。每个formal row
+新增`actor_replay_mode`，新正式run必须30/30均为`collection_equivalent`。普通batched full-buffer
+ratio仍作为诊断记录；若它达到`.02`而exact通过，记录
+`not_applicable_exact_actor_replay`，不再让未被optimizer使用的近似路径阻断exact更新。exact任一项
+超过`5e-5`仍在actor step前硬停止。
+
+修订后E0全部通过。独立全规模lifecycle仍使用canonical BC、seed42、16×6,400和完整warm-up，只把
+formal updates固定为2；U1/U2均exact 0、16/16 steps、leak 0、identity 102,400，实际replay mode
+均为collection-equivalent，batched诊断最大`.007528`，两个actor均strict 12-key并正常结束。该目录
+只承担实现准入，不选点、不评测。
+
+§21.10分析器的当前默认run为
+`post-trained/ppo_prefix_reset_joint_temporal_rho0p90_postfailure_exact_actor_exploratory`，并额外要求
+30行formal的`actor_replay_mode`全部为collection-equivalent；evidence status固定为
+`post_failure_exact_actor_exploratory_not_original_confirmatory`。评测规模仍为U27--U30四图各600，
+不生成near400。
+
+### 21.12 Exact-actor正式执行、600评测与分析器实测
+
+最终训练入口`run.sh`只含一条显式命令，输出到全新目录
+`post-trained/ppo_prefix_reset_joint_temporal_rho0p90_postfailure_exact_actor_exploratory`。它从
+canonical BC启动，Austin、seed42、16×6,400、30 formal updates；与§21.11 lifecycle相同，实际
+actor update固定走collection-equivalent replay。训练成功结束，metrics为31行，actor/critic各30个。
+
+训练后按update 27→30、地图Austin→Hockenheim→MoscowRaceway→Nuerburgring串行执行
+`scripts/evaluate_scenario_panel.py`；每次传入对应`checkpoints/actor_u00NN.pth`、
+`standard_multiagent_600_v1/<map>_600_scenarios.json`、唯一`eval_results/PJTE_uNN/<map>/multiagents`
+目录、8 workers、CUDA、ego scope与`--save-traces`。共16个包、9,600 episode；没有near400。
+
+`scripts/analyze_prefix_joint_temporal_formal_eval.py`首次真实运行修复了两个入口假设，均发生在报告
+生成前：脚本目录启动时需把project root加入`sys.path`才能导入根`utils.py`；actor路径必须使用
+recorder真实布局`checkpoints/actor_u{update:04d}.pth`，不能假设`updateN/actor.pth`。修复没有改变
+指标、panel或判据。当前分析器完整要求30行formal全为collection-equivalent actual replay，并对
+16个manifest、9,600个NPZ及三套baseline作全量验证与配对。
+
+机器报告写入run内`formal_eval_report.json`，evidence status为
+`post_failure_exact_actor_exploratory_not_original_confirmatory`。质量合同全部true；训练exact最大0、
+batched诊断最大`.032192`、active`2.8418%--3.8096%`。四点aggregate为
+`132/1494、132/1508、121/1510、117/1513`，`formal_600_task_achieved_updates=[]`且总判决false。
+U30三组配对与完整逐图值固化在HANDOFF §9.29和ANALYSIS §48.10；分析器JSON可用于复算，但文档
+本身已包含行动所需数字与停止规则。
+
+## 22. Collision-only BC functional regularization
+
+### 22.1 Anchor dataset builder
+
+`scripts/build_collision_bc_anchor_dataset.py`是窄用途冻结器，不启动仿真或训练。CLI只有
+`--gate-dir`（默认Z7有效V1目录）和`--output-dir`（默认
+`post-trained/panels/collision_bc_anchor_v1`）。输出目录存在且非空时拒绝覆盖；输入必须同时包含
+Z7的V1 report、plan、branch0 results和full-BC results，且实验ID、Gate名和18条
+`rescued_overtake_scenario_keys`必须精确匹配。
+
+对每条source，builder要求role/stratum为`cohort/collision`、branch0为ego collision、full-BC最终
+overtake、计划和实际窗口均为150 applied steps、intervention mask只覆盖冻结窗口且action source
+code为3。它读取full-BC真实反事实trace，而不是把teacher动作贴到原U44失败后续；用场景初速
+`0.9×`和之后前一行measured speed重建361D actor observation，再调用现有
+`EvaluatorCompatibleJointDistribution`把teacher steering physical mean转换为latent mean。
+
+每条`sequences/<episode_key>.npz`只含四个numeric数组：
+
+```text
+observations                    float32 [T,361]
+teacher_latent_steering_mean    float32 [T]
+teacher_physical_speed_mean     float32 [T]
+anchor_mask                     bool    [T]
+```
+
+`manifest.json`固定`dataset_id=collision_bc_anchor_v1`、18 episode、每条150 anchor step、source
+outcome、窗口、sequence相对文件名和SHA。所有数组finite；sequence文件与manifest都属于训练输入，
+删除后不能在不重新读取Z7 full-BC trace的情况下复现实验。
+
+### 22.2 Runtime loss与训练入口
+
+`ppo/collision_anchor.py`公开`CollisionBCAnchor(path, policy, device)`，以及`loss()`和
+`maximum_action_error()`。构造时重新核验manifest、18个唯一key、每个NPZ哈希、shape、mask和
+finite。`loss()`按episode从零hidden逐步运行当前student actor；prefix只改变hidden，mask外不计
+loss。每条episode分别计算：
+
+```text
+steering = .5 * mean(((student_latent - teacher_latent) / .03)^2)
+speed    = .5 * mean(((student_speed  - teacher_speed)  / .15)^2)
+episode  = steering + speed
+```
+
+最终先对150步取均值，再对18条episode等权均值，返回
+`(total_loss, steering_loss, speed_loss)`。`maximum_action_error()`用相同recurrent路径做无梯度机械
+对齐检查。
+
+`train_ppo.py`新增两个CLI：`--collision_bc_anchor_dataset`默认空字符串、
+`--collision_bc_anchor_beta`默认0。Beta必须finite且非负；正beta必须同时提供dataset。关闭路径不
+实例化anchor，保持原PPO调用。启用时`End2RaceRecurrentPPO`在每个actor minibatch对同一18条输入
+计算anchor loss，执行：
+
+```text
+combined_loss = PPO policy loss + beta * anchor total loss
+```
+
+同一个actor optimizer更新GRU和output head；critic optimizer、rollout、reward和部署actor不读取
+anchor。每个formal row除原PPO指标外记录beta、episode数、总/steering/speed loss、pre/post loss、
+functional drift、PPO/anchor/combined gradient norm、学习率加权step-space norm和clip后norm。
+Run config另写`COLLISION_BC_ANCHOR` enabled/dataset/beta/loss合同。
+
+### 22.3 固定实现检查与正式执行
+
+`scripts/run_collision_bc_anchor_training_gate.py`只承担dataset/梯度机械检查，CLI为
+`--actor-path`、`--collision-cache-dir`、`--anchor-dataset`、`--gate-dir`、`--seed`、`--n-envs`、
+`--n-steps`和`--batch-size`；它没有生成候选actor的权限。有效attempt固定beta为
+`.006405998602049812`，证明canonical对齐、anchor gradient非零、strict 12-key和一条实际
+optimizer路径可执行。正式训练仍直接调用`train_ppo.py`，固定canonical BC、Austin、seed42、
+16×6,400、batch12,800、45 updates、actor/critic epoch`2/5`、GRU/head/critic LR
+`3e-6/3e-5/3e-4`、corridor-temporal speed std`.15`/hold50/gap2和beta上述值。
+
+Recorder真实布局同时有`checkpoints/actor_uNNNN.pth`与后来为正式评测建立的
+`update<N>/actor.pth`硬链接；两者SHA必须相同，不能当作两个模型。正式评测用根`evaluate.sh`
+逐次运行一个`MODEL_PATH × MAP_NAME`；它不是全流程orchestrator。为本轮增加的最小兼容项是环境
+变量`PYTHON`与`COLLISION_SCOPE`，并在aggregate `error_count != 0`时保留worker临时目录、非零
+退出；不得恢复“有worker error仍删临时目录并返回成功”的旧行为。
+
+删除builder会失去从Z7 branch冻结18条反事实sequence的能力；删除`ppo/collision_anchor.py`或
+两个train CLI会失去该actor loss。正式效果与停止规则在`ANALYSIS.md` §49；这些实现记录不授权
+改变beta、teacher、窗口或重跑。
+
+## 23. Calibrated collision-cost Constrained PPO direct formal
+
+### 23.1 新模式与固定合同
+
+`scripts/run_constrained_ppo.py`保留旧`prepare/preflight/formal`，新增
+`--mode direct_formal`。它不读取旧Z9 preflight verdict，也不运行新的研究Gate；唯一用途是执行
+用户授权的独立`d=.19`正式实例。常量`DIRECT_COST_BUDGET=.19`来自记录的同协议U44训练分布
+`ceil(100*26/141)/100`，不提供`--cost-budget`覆盖。
+
+`run_direct_formal(args)`在创建环境前强制：actor必须是canonical BC真实路径；seed42、16 env、
+6,400 steps、batch12,800和30 updates必须精确；输出目录若已存在且非空则拒绝覆盖。它随后配置
+固定训练数值、479条canonical Austin collision pool和600条ordinary pool，调用同一个
+`ConstrainedEnd2RacePPO.learn()`完成1个warm-up rollout加30个formal rollout。结束时要求U30 actor
+与cost critic都存在，actor必须finite strict 12-key；`training_summary.json`固定写30 updates、
+budget来源和评测band`[27,28,29,30]`。
+
+### 23.2 Reward/cost、critic与dual调用链
+
+`ConstrainedEnd2RacePPO.collect_rollouts()`通过每步info保存first-ego-collision cost、原
+`reward_collision`、done、ego index和scenario ID，shape必须为`[6400,16]`。机械恒等式为
+`reward_collision == -2 * cost`；随后以`adjusted_reward = original_reward - reward_collision`
+从reward GAE精确移除collision尖峰，first collision只作为cost计价。Reward critic仍为
+`privilege_gru`；独立训练期cost critic为P20 MLP `20→120 ReLU→30 ReLU→1`，LR`3e-4`、5 epochs、
+grad clip`.5`。
+
+Cost GAE固定`gamma=.999/lambda=.995`。Formal actor先构造
+`A_reward - lambda_cost*A_cost`，再由原PPO对合成advantage做标准化与clipped surrogate；没有第二
+actor/head。Dual从1开始，每个rollout按所有已完成episode的pooled ego collision rate更新：
+
+```text
+lambda <- clip(lambda + .5 * (pooled_rate - .19), 0, 20)
+```
+
+每个formal row记录reward去重误差、cost event、完成collision/episode数与pooled rate、budget、
+lambda used/after、三类advantage均值/标准差、cost critic五轮loss/gradient、pre/post cost value
+loss/EV/预测与return尺度，并由父类另存PPO actor/reward critic指标和actor/critic checkpoint。当前
+实现的dual权威口径是pooled完成episode率；scenario IDs和done在rollout内用于机械审计，但metrics
+没有另存collision/ordinary role分层率和尾部未完成episode数。因此最终解释不得声称episode层
+严格50/50，也不得伪造role统计；该telemetry缺口不改变实际dual输入，但属于结果边界。
+
+### 23.3 正式执行与后续唯一动作
+
+执行期间根`run.sh`只包含一次`direct_formal`调用；第一次输出实验为
+`ppo_constrained_collision_cost_calibrated_v1`，修复后fresh重跑只把输出改为
+`ppo_constrained_collision_cost_calibrated_v1_rerun`，其余仍为canonical BC、固定479 collision
+cache和上述全部参数。该命令只完成训练，不自动eval；任务结束后已从`run.sh`移除。训练正常完成
+后，只加载U27--U30 actor，按checkpoint串行
+运行Austin、Hockenheim、MoscowRaceway、Nuerburgring各600，CUDA deterministic、ego scope、
+numeric trace；cost critic和dual不进入评测。
+
+不得因中途collision rate、lambda或value fit修改budget/dual/critic/reward/updates，也不得把旧
+`d=.10` Z9 preflight否决改写为通过。删除`direct_formal`会失去固定可达budget的无Gate正式入口；
+旧三阶段入口和其`d=.10`历史语义仍独立存在。
+
+### 23.4 第一次formal暴露的buffer继承漂移
+
+第一次`direct_formal`完成双critic warm-up和第一个formal rollout后，在任何formal optimizer step
+前触发`IndexError`。原因是`ConstrainedRolloutBuffer.get()`复制父类旧字段清单，未展平后来新增的
+`joint_temporal_active/block_uid/block_position/prefix_step/collision_source/standard_residuals`；
+父类telemetry用102,400展平索引访问仍为6,400行的数组。
+
+修复后的override不再复制父清单：只先对四个cost数组调用`swap_and_flatten`，再
+`yield from super().get(batch_size, rng=rng)`。这样父类拥有基础字段、joint字段、hidden swap、
+rotation和`generator_ready`的唯一权威，cost子类只追加cost side tensor。最小回归构造4-step×2-env
+buffer，要求3个minibatch消费8/8有效transition，base observation、joint active和cost advantage都
+展平为8行，`current_cost_advantages/returns`与最后一个sequence mask对齐。
+
+失败目录只含两行warm-up metrics、153+159 episode和两个warm-up critic，无actor checkpoint，
+禁止resume/eval。修复后正式执行必须使用全新`_rerun`目录；相同CLI除output-dir外不得改变。这个
+机械重启不构成第二个科学seed，也不能把失败目录warm-up与新目录formal拼成一条run。
+
+### 23.5 本次自动评测编排的边界
+
+本轮没有把训练、eval、最终统计和文档更新塞进新的长期orchestrator。执行时使用一个一次性shell
+watcher完成以下固定顺序：等待`training_summary.json`；验证62行metrics、30组checkpoint、每轮
+16/16 actor step、reward/cost唯一化与U27--U30 finite strict 12-key；随后按
+`U27→U28→U29→U30`，每点按`Austin→Hockenheim→MoscowRaceway→Nuerburgring`串行调用
+`scripts/evaluate_scenario_panel.py`。每次固定workers12、hidden scale4、8秒、CUDA、ego collision
+scope、保存numeric trace，任一命令非零即停止。
+
+因此本次从用户视角是启动后无需人工续命，但从代码合同看仍是“训练入口 + 一次性评测watcher +
+独立最终审计”三段，不存在一个可复用的单命令全流程脚本。最终16包均完成；性能与停止规则只在
+`ANALYSIS.md` §50和`HANDOFF.md`对应判决中维护，本节不重复作为结果权威。
+`training_summary.json`中的`training_complete_evaluation_pending`只是训练完成后触发watcher的
+单向sentinel，watcher不会回写该文件；不得因这个字段保留原值而把已经完成的eval误判为仍在运行。
+
+## 24. `analyze_signed_interaction_phase_gate.py`：二值front potential与clearing/closing离线诊断
+
+`scripts/analyze_signed_interaction_phase_gate.py`是只读诊断，不启动仿真step、模型推理、训练或
+评测。CLI为：
+
+- `--bc-root`：默认`eval_results/pretrained_end2race`；
+- `--u44-root`：默认历史走廊时间相关U44四图根；
+- `--output`：默认写V2 schema的`gate_report.json`；旧V1产品保留原machine fail但不是当前科学
+  verdict。
+
+输入固定读取Austin、Hockenheim、MoscowRaceway、Nuerburgring四张正式地图各600的
+`results_multi.json`与numeric trace。每包必须600 episode、0 error；BC/U44 key集合必须相等，
+pose finite，数组长度、`action_applied`和唯一末行`terminal_post_step`合同必须成立。脚本只创建
+每张地图的F110环境以读取与训练一致的map distance field和resolution，随后立即关闭；不调用
+`reset/step`，所以`new_simulation=false`。
+
+核心算法固定为：
+
+1. source取`BC无ego collision、U44为ego-opp collision`，必须精确23条；
+2. control从U44安全overtake中按同地图、opponent raceline、speed分层，选初始ego XY最近者，
+   无放回一对一匹配；
+3. source事件取首次ego-opp marker，control事件取真实OBB全局最小surface clearance；
+4. front定义为对手中心在ego车体纵向轴前方且两车OBB在ego横向轴投影严格重叠；车长/宽固定
+   `.58/.31m`；
+5. current potential为`-.05*max(vehicle_shortfall²,wall_shortfall²)`，signed候选只把vehicle项乘
+   `front`；尺度固定纵`.6m`、横`.2m`、wall`.2m`、gamma`.999`；
+6. 按真实collision terminal refund重放事件前150个transition，负shaping mass为
+   `sum(max(-F,0))`，released为current减signed；
+7. V1旧程序要求source front计数精确复现`4/3/3/1`，且control aggregate released严格大于source、
+   matched `control-source`中位数为正；V2仍重算并保存这两项，但固定标记
+   `legacy_absolute_release_criteria_scientifically_valid=false`，因为绝对量受基线risk mass混淆；
+8. V2逐episode计算released/current-negative比例；分母为0时写`null`而不是0，只在pair两侧均定义
+   时计算归一化paired差；
+9. 方向窗口固定过去10步=`.1s`。未截断方向为
+   `(normalized_OBB_distance[t-10]-distance[t])/.1s`，正值closing；active-risk方向为
+   `(q_vehicle[t]-q_vehicle[t-10])/.1s`，用于区分“存在几何方向”与“当前potential实际有support”；
+10. event/提前`.5/1.0/1.5s`分别报告连续速率和closing二值的source-outcome AUROC；AUROC用全
+    source/control pairwise排名，95%区间按“地图+source ego startpoint”的21个cluster做10,000次
+    bootstrap，matched control随source绑定；seed从`20260810`按metric和offset确定性派生。它固定为诊断，不是
+    训练准入或方法类否决门；
+11. 另在全部2,400条U44 trace统计front翻转，只在翻转相邻两帧调用真实OBB/wall potential，记录
+    非零跳变、额外shaping及分位数；front翻转和`.02`不参加判决。
+
+V2输出JSON固定`schema_version=2`、`verdict=diagnostic_complete_scientific_effect_inconclusive`，
+另存`legacy_procedural_verdict`、`training_decision`、`scientific_falsification=false`、绝对尺度
+混淆、source/control cohort、paired selectivity、归一化比例、两套方向AUROC/区间、匹配距离及
+`<=10/20m`敏感性、全局flip诊断和已知风险。路径可清理，行动所需数字已经写入ANALYSIS §53和
+HANDOFF对应判决。删除脚本会失去按相同OBB、wall、terminal和pair-bootstrap合同重算的便利；
+重建时不得把control改为有放回、把事件改成pass crossing、把四个offset当独立样本，或用任一
+AUROC关闭整个interaction-phase方法类。

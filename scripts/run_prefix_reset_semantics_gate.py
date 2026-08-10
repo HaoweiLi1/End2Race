@@ -50,13 +50,19 @@ class ExplorationCapture:
         self.current_valid_by_timestep = None
         self.current_speed_log_stds = None
 
-    def stage_exploration(self, speed_log_std, danger_gate, temporal_active, block_id, standard_residual):
+    def stage_exploration(self, speed_log_std, danger_gate, temporal_active, block_id, standard_residual, joint_active, joint_block_uid, joint_block_position, joint_prefix_step, joint_collision_source, joint_standard_residual):
         self.last = {
             "speed_log_std": np.asarray(speed_log_std, dtype=np.float32).copy(),
             "danger_gate": np.asarray(danger_gate, dtype=bool).copy(),
             "temporal_active": np.asarray(temporal_active, dtype=bool).copy(),
             "block_id": np.asarray(block_id, dtype=np.int64).copy(),
             "standard_residual": np.asarray(standard_residual, dtype=np.float32).copy(),
+            "joint_active": np.asarray(joint_active, dtype=bool).copy(),
+            "joint_block_uid": np.asarray(joint_block_uid, dtype=np.int64).copy(),
+            "joint_block_position": np.asarray(joint_block_position, dtype=np.int64).copy(),
+            "joint_prefix_step": np.asarray(joint_prefix_step, dtype=np.int64).copy(),
+            "joint_collision_source": np.asarray(joint_collision_source, dtype=bool).copy(),
+            "joint_standard_residual": np.asarray(joint_standard_residual, dtype=np.float32).copy(),
         }
 
 
@@ -464,7 +470,7 @@ def fill_semantic_buffer(buffer, rewards, values, episode_starts, recurrent_rese
     for step in range(len(rewards)):
         hidden = torch.full((1, 1, hidden_size), float(hidden_values[step]), dtype=torch.float32)
         states = RNNStates((hidden, torch.zeros_like(hidden)), (hidden + 10.0, torch.zeros_like(hidden)))
-        buffer.stage_exploration(speed_log_std=np.asarray([np.log(0.15)], dtype=np.float32), danger_gate=np.asarray([False]), temporal_active=np.asarray([False]), block_id=np.asarray([0]), standard_residual=np.asarray([0.0], dtype=np.float32))
+        buffer.stage_exploration(speed_log_std=np.asarray([np.log(0.15)], dtype=np.float32), danger_gate=np.asarray([False]), temporal_active=np.asarray([False]), block_id=np.asarray([0]), standard_residual=np.asarray([0.0], dtype=np.float32), joint_active=np.asarray([False]), joint_block_uid=np.asarray([0], dtype=np.int64), joint_block_position=np.asarray([-1], dtype=np.int64), joint_prefix_step=np.asarray([0], dtype=np.int64), joint_collision_source=np.asarray([False]), joint_standard_residual=np.zeros((1, 2), dtype=np.float32))
         if recurrent_resets is not None:
             buffer.stage_recurrent_resets(np.asarray([recurrent_resets[step]], dtype=bool))
         buffer.add(np.zeros((1, 381), dtype=np.float32), np.zeros((1, 2), dtype=np.float32), np.asarray([rewards[step]], dtype=np.float32), np.asarray([episode_starts[step]], dtype=bool), torch.as_tensor([values[step]], dtype=torch.float32), torch.zeros(1, dtype=torch.float32), lstm_states=states)

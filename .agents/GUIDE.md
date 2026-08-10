@@ -130,13 +130,8 @@ actor 热启动只加载 actor 权重，critic、optimizer、update计数、RNG�
 只有单条 `<Map>_raceline.csv`，不能直接运行三 raceline 协议。因此"任选 1--3 张未使用地图
 再评一次"不能按现状直接执行。
 
-由此得到三条边界：
-
-1. 如果四图就是实际部署范围，额外的未见地图确认不是 production 切换的必要条件；
-2. 如果要对外声称 unseen-map 泛化，必须先用 `f1tenth_racetracks/generate_raceline.py`
-   生成并验证至少一张新地图的三 raceline、三 lane 和评测合同，**封存后只评一次**
-   BC/候选模型，评完不得再调参；
-3. 新 startpoint/interval panel 只能作为场景鲁棒性确认，**不得冒充新地图泛化**。
+当前项目把这四张地图固定为唯一模型评测范围。除非用户以后重新授权，不生成新地图评测，
+也不新增startpoint、interval、noise、single-agent或失败子集panel来评价新actor。
 
 ### 4.1 Panel 的角色
 
@@ -155,13 +150,14 @@ actor 热启动只加载 actor 权重，critic、optimizer、update计数、RNG�
 
 守门 panel 显著变差时，即使主验收 panel 改善也不判通过；两者必须同时报告。
 
-**当前项目覆盖（2026-08-06用户最新决定）**：后续正式验收默认必须运行四张赛道：
+**当前项目覆盖（2026-08-09用户最新决定）**：后续任何新actor的性能评测只运行四张赛道：
 `Austin`、`Hockenheim`、`MoscowRaceway`和`Nuerburgring`各600 episode。`Austin600`与
 三张跨地图合计`crossmap1800`都具有正式验收权，同时必须报告三张跨地图各自结果；具体实验的
 最低验收线固定为canonical BC：每张地图的ego collision不得高于BC、overtake不得低于BC，
-opp-wall单列，并报告配对身份变化；更严格的改进目标和checkpoint band必须在运行前预注册。near400和hard子集只保留
-机制/特化诊断意义，没有独立验收权。三张跨地图已经参与过走廊探索设计，因此可以作为当前
-开发验收集，但不得再称为从未参与设计的最终泛化留出。
+opp-wall单列，并报告配对身份变化；更严格的改进目标和checkpoint band必须在运行前预注册。
+**不再新运行near400、hard73、其他hard/near子集或任何附加模型eval。** 这些名称和旧数字只作为
+历史实验记录保留，不参与新模型选择、验收或机制翻案。训练侧离线Gate、反事实branch和rollout
+审计不是部署actor性能eval，必须明确标为机制证据，且不能替代上述固定四图600结果。
 
 ### 4.2 评估要求
 

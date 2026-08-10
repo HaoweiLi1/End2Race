@@ -2,10 +2,12 @@
 
 # Parameters (converted from argparse defaults)
 MODEL_PATH="${MODEL_PATH:-pretrained/end2race.pth}"
+PYTHON="${PYTHON:-python}"
 HIDDEN_SCALE=4
 NOISE="${NOISE:-0.0}"
 NUM_WORKERS=12
 MAP_NAME="${MAP_NAME:-Austin}"
+COLLISION_SCOPE="${COLLISION_SCOPE:-legacy}"
 RENDER=false
 SAVE_TRACE="${SAVE_TRACE:-true}"
 SIM_DURATION=8.0
@@ -17,7 +19,7 @@ NUM_STARTPOINTS=50
 
 # Load the shared circular startpoint panel.
 mapfile -t ego_idx_range < <(
-    python -c '
+    "$PYTHON" -c '
 import sys
 from utils import get_circular_startpoints
 print(*get_circular_startpoints(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])), sep="\n")
@@ -55,7 +57,7 @@ show_progress
 for ego_idx in "${ego_idx_range[@]}"; do
     for opp_raceline in "${OPP_RACELINES[@]}"; do
         for speed_scale in "${OPP_SPEED_SCALES[@]}"; do
-            cmd="python eval_multiagent.py --model_path $MODEL_PATH --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE"
+            cmd="\"$PYTHON\" eval_multiagent.py --model_path $MODEL_PATH --map_name $MAP_NAME --ego_idx $ego_idx --interval_idx $INTERVAL_IDX --ego_raceline $EGO_RACELINE --opp_raceline $opp_raceline --opp_speedscale $speed_scale --sim_duration $SIM_DURATION --hidden_scale $HIDDEN_SCALE --noise $NOISE --collision_scope $COLLISION_SCOPE"
             metrics_result_path="$temp_dir/$job_id.metrics.json"
             cmd="$cmd --metrics_out \"$metrics_result_path\""
             
@@ -86,7 +88,7 @@ wait
 show_progress
 echo
 
-if ! result_counts=$(python -c '
+if ! result_counts=$("$PYTHON" -c '
 import sys
 from utils import aggregate_multiagent_batch, multiagent_paths
 paths = multiagent_paths(sys.argv[1], sys.argv[2], float(sys.argv[3]))
@@ -109,6 +111,12 @@ fi
 read -r following_count overtaking_count success_count collision_count \
     ego_opp_collision_count ego_wall_collision_count opp_wall_collision_count \
     error_count <<< "$result_counts"
+
+if [ "$error_count" -ne 0 ]; then
+    echo "ERROR: $error_count evaluation worker(s) failed" >&2
+    echo "Worker artifacts preserved at: $temp_dir" >&2
+    exit 1
+fi
 
 rm -rf "$temp_dir"
 

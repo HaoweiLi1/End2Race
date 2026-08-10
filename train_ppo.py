@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 import random
 
@@ -20,6 +21,7 @@ from ppo.policy import (
     PRIVILEGED_FEATURE_LOWS,
     PRIVILEGED_FEATURE_NAMES,
     PRIVILEGED_FEATURE_SIZE,
+    PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE,
     SPEED_PHYSICAL_STD,
     SPEED_EXPLORATION_MODES,
     STEERING_LATENT_STD,
@@ -65,6 +67,8 @@ def parse_arguments():
     parser.add_argument("--collision_cache_dir", type=str, default="post-trained/collision-cache/pretrained_end2race_austin_collision_pool_479")
     parser.add_argument("--prefix_reset_panel", type=str, default="")
     parser.add_argument("--prefix_reset_interval", type=int, default=0)
+    parser.add_argument("--collision_bc_anchor_dataset", type=str, default="")
+    parser.add_argument("--collision_bc_anchor_beta", type=float, default=0.0)
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -120,6 +124,10 @@ def validate_arguments(args) -> None:
         raise ValueError("n_envs must be positive and even")
     if bool(args.prefix_reset_panel.strip()) != (args.prefix_reset_interval > 0):
         raise ValueError("prefix_reset_panel and a positive prefix_reset_interval must be enabled together")
+    if not math.isfinite(args.collision_bc_anchor_beta) or args.collision_bc_anchor_beta < 0.0:
+        raise ValueError("collision_bc_anchor_beta must be finite and nonnegative")
+    if args.collision_bc_anchor_beta > 0.0 and not args.collision_bc_anchor_dataset.strip():
+        raise ValueError("positive collision_bc_anchor_beta requires collision_bc_anchor_dataset")
     for name in ("hidden_scale", "n_steps", "batch_size", "num_updates", "actor_epochs", "critic_epochs"):
         if getattr(args, name) <= 0:
             raise ValueError(f"{name} must be positive")
@@ -146,6 +154,18 @@ def validate_arguments(args) -> None:
             raise ValueError(
                 "Structured speed exploration requires speed_physical_std=0.15"
             )
+    if args.speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
+        if not args.prefix_reset_panel.strip() or args.prefix_reset_interval <= 0:
+            raise ValueError("prefix_joint_temporal requires prefix reset inputs")
+        if abs(float(args.steering_latent_std) - 0.03) > 1e-12:
+            raise ValueError("prefix_joint_temporal requires steering_latent_std=0.03")
+    if args.collision_bc_anchor_beta > 0.0:
+        canonical_path = (PROJECT_ROOT / "pretrained" / "end2race.pth").resolve()
+        if pretrained_path != canonical_path or args.map_name != "Austin" or args.critic != "privilege_gru" or args.speed_exploration_mode != "corridor_temporal":
+            raise ValueError("collision BC anchor formal requires canonical BC, Austin, privilege_gru, and corridor_temporal")
+        expected = (args.n_envs, args.n_steps, args.batch_size, args.num_updates, args.actor_epochs, args.critic_epochs)
+        if expected != (16, 6400, 12800, 45, 2, 5):
+            raise ValueError("collision BC anchor formal rollout/update contract changed")
     FrontCorridorGateConfig(
         maximum_front_gap_m=float(
             PPO_CONFIG["front_corridor_gate_maximum_gap_m"]
@@ -160,6 +180,8 @@ def build_model(vector_env, args, device, recorder: TrainingRecorder) -> End2Rac
         actor_epochs=args.actor_epochs,
         critic_epochs=args.critic_epochs,
         recorder=recorder,
+        collision_bc_anchor_dataset=args.collision_bc_anchor_dataset,
+        collision_bc_anchor_beta=args.collision_bc_anchor_beta,
         learning_rate=1.0,
         n_steps=args.n_steps,
         batch_size=args.batch_size,
@@ -204,6 +226,7 @@ def main() -> None:
         f"front_corridor_gate_maximum_gap_m={PPO_CONFIG['front_corridor_gate_maximum_gap_m']}, "
         f"ordinary_offline_fast_fraction={PPO_CONFIG['ordinary_offline_fast_fraction']}, "
         f"prefix_reset_panel={args.prefix_reset_panel or 'disabled'}, prefix_reset_interval={args.prefix_reset_interval}, "
+        f"collision_bc_anchor_dataset={args.collision_bc_anchor_dataset or 'disabled'}, collision_bc_anchor_beta={args.collision_bc_anchor_beta}, "
         f"seed={args.seed}",
         flush=True,
     )
@@ -282,6 +305,12 @@ def main() -> None:
                 "PRIVILEGED_FEATURE_LOWS": list(PRIVILEGED_FEATURE_LOWS),
                 "PRIVILEGED_FEATURE_HIGHS": list(PRIVILEGED_FEATURE_HIGHS),
                 "PRIVILEGED_NORMALIZATION": privileged_normalization,
+                "COLLISION_BC_ANCHOR": {
+                    "enabled": bool(args.collision_bc_anchor_beta > 0.0),
+                    "dataset": args.collision_bc_anchor_dataset,
+                    "beta": args.collision_bc_anchor_beta,
+                    "loss": "episode mean of 150-step same-variance Gaussian mean-KL",
+                },
             },
         )
         print("[5/5] Building PPO model", flush=True)

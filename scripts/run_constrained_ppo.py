@@ -28,6 +28,7 @@ from utils import TrainingRecorder, atomic_write_json, require_finite_number, re
 COST_GAMMA = 0.999
 COST_GAE_LAMBDA = 0.995
 COST_BUDGET = 0.10
+DIRECT_COST_BUDGET = 0.19
 INITIAL_DUAL = 1.0
 DUAL_LEARNING_RATE = 0.5
 MAXIMUM_DUAL = 20.0
@@ -40,11 +41,9 @@ OOF_MINIMUM_MSE_SKILL = 0.05
 OOF_MINIMUM_EPISODE_START_AUROC = 0.65
 OOF_MINIMUM_EARLY_AUROC = 0.65
 OOF_EARLY_REMAINING_STEPS = 100
-
-
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("prepare", "preflight", "formal"), default="prepare")
+    parser.add_argument("--mode", choices=("prepare", "preflight", "formal", "direct_formal"), default="prepare")
     parser.add_argument("--gate-dir", type=str, default="eval_results/constrained_ppo_collision_cost_gate_v1")
     parser.add_argument("--output-dir", type=str, default="post-trained/constrained_ppo_collision_cost_v1")
     parser.add_argument("--actor-path", type=str, default="pretrained/end2race.pth")
@@ -187,27 +186,9 @@ class ConstrainedRolloutBuffer(End2RaceRolloutBuffer):
         if not self.full:
             raise RuntimeError("Rollout buffer must be full before training")
         if not self.generator_ready:
-            self.hidden_states_pi = self.hidden_states_pi.swapaxes(1, 2)
-            names = [
-                "observations", "actions", "values", "log_probs", "advantages", "returns", "hidden_states_pi", "episode_starts", "recurrent_resets",
-                "exploration_speed_log_stds", "exploration_danger_gates", "exploration_temporal_active", "exploration_block_ids", "exploration_standard_residuals",
-                "costs", "cost_values", "cost_advantages", "cost_returns",
-            ]
-            if self.store_independent_gru_hidden:
-                self.hidden_states_vf = self.hidden_states_vf.swapaxes(1, 2)
-                names.append("hidden_states_vf")
-            for name in names:
+            for name in ("costs", "cost_values", "cost_advantages", "cost_returns"):
                 self.__dict__[name] = self.swap_and_flatten(self.__dict__[name])
-            self.generator_ready = True
-        total = self.buffer_size * self.n_envs
-        batch_size = total if batch_size is None else batch_size
-        split_index = int(rng.integers(total))
-        indices = np.concatenate((np.arange(total)[split_index:], np.arange(total)[:split_index]))
-        env_change = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        env_change[0, :] = 1.0
-        env_change = self.swap_and_flatten(env_change)
-        for start in range(0, total, batch_size):
-            yield self._get_samples(indices[start : start + batch_size], env_change)
+        yield from super().get(batch_size, rng=rng)
 
     def _get_samples(self, batch_inds, env_change, env=None):
         sample = super()._get_samples(batch_inds, env_change, env)
@@ -219,6 +200,9 @@ class ConstrainedRolloutBuffer(End2RaceRolloutBuffer):
 class ConstrainedEnd2RacePPO(End2RaceRecurrentPPO):
 
     def __init__(self, *args, **kwargs):
+        self.cost_budget = float(kwargs.pop("cost_budget", COST_BUDGET))
+        if not 0.0 <= self.cost_budget <= 1.0:
+            raise ValueError("cost_budget must be within [0, 1]")
         super().__init__(*args, **kwargs)
         seed = int(np.random.SeedSequence([self.seed, 0x434F5354]).generate_state(1)[0])
         devices = [self.device.index if self.device.index is not None else torch.cuda.current_device()] if self.device.type == "cuda" else []
@@ -415,7 +399,7 @@ class ConstrainedEnd2RacePPO(End2RaceRecurrentPPO):
         torch.save(TrainingRecorder._cpu_state_dict(best_state), path)
         rate = self.last_constraint_rollout["completed_episode_collision_rate"]
         lambda_before = self.lambda_cost
-        self.lambda_cost = float(np.clip(self.lambda_cost + DUAL_LEARNING_RATE * (rate - COST_BUDGET), 0.0, MAXIMUM_DUAL))
+        self.lambda_cost = float(np.clip(self.lambda_cost + DUAL_LEARNING_RATE * (rate - self.cost_budget), 0.0, MAXIMUM_DUAL))
         metrics = {
             "phase": "constrained_warmup",
             "epochs": epoch + 1,
@@ -428,7 +412,7 @@ class ConstrainedEnd2RacePPO(End2RaceRecurrentPPO):
             "cost_event_count": self.last_constraint_rollout["cost_event_count"],
             "completed_episode_count": self.last_constraint_rollout["completed_episode_count"],
             "completed_episode_collision_rate": rate,
-            "cost_budget": COST_BUDGET,
+            "cost_budget": self.cost_budget,
             "lambda_before": lambda_before,
             "lambda_after": self.lambda_cost,
             "cost_critic_checkpoint": str(path),
@@ -492,7 +476,7 @@ class ConstrainedEnd2RacePPO(End2RaceRecurrentPPO):
         statistics_pre, statistics_post, grad_norms, epoch_losses = self._formal_cost_critic()
         update = self._n_updates
         rate = self.last_constraint_rollout["completed_episode_collision_rate"]
-        self.lambda_cost = float(np.clip(self.lambda_cost + DUAL_LEARNING_RATE * (rate - COST_BUDGET), 0.0, MAXIMUM_DUAL))
+        self.lambda_cost = float(np.clip(self.lambda_cost + DUAL_LEARNING_RATE * (rate - self.cost_budget), 0.0, MAXIMUM_DUAL))
         cost_path = self.recorder.checkpoints_dir / f"cost_critic_u{update:04d}.pt"
         torch.save(TrainingRecorder._cpu_state_dict(self.cost_value_net.state_dict()), cost_path)
         metrics = {
@@ -504,7 +488,7 @@ class ConstrainedEnd2RacePPO(End2RaceRecurrentPPO):
             "completed_collision_episode_count": self.last_constraint_rollout["completed_collision_episode_count"],
             "completed_episode_count": self.last_constraint_rollout["completed_episode_count"],
             "completed_episode_collision_rate": rate,
-            "cost_budget": COST_BUDGET,
+            "cost_budget": self.cost_budget,
             "lambda_used": lambda_used,
             "lambda_after": self.lambda_cost,
             "reward_advantage_mean": float(reward_advantages.mean()),
@@ -531,6 +515,7 @@ def build_model(vector_env, recorder, args):
         actor_epochs=2,
         critic_epochs=5,
         recorder=recorder,
+        cost_budget=DIRECT_COST_BUDGET if args.mode == "direct_formal" else COST_BUDGET,
         learning_rate=1.0,
         n_steps=args.n_steps,
         batch_size=args.batch_size,
@@ -577,7 +562,7 @@ def build_environment_and_model(args, recorder):
         "algorithm": "Lagrangian Constrained PPO",
         "cost_gamma": COST_GAMMA,
         "cost_gae_lambda": COST_GAE_LAMBDA,
-        "cost_budget": COST_BUDGET,
+        "cost_budget": DIRECT_COST_BUDGET if args.mode == "direct_formal" else COST_BUDGET,
         "initial_dual": INITIAL_DUAL,
         "dual_learning_rate": DUAL_LEARNING_RATE,
         "maximum_dual": MAXIMUM_DUAL,
@@ -876,12 +861,56 @@ def run_formal(args, plan):
     print(json.dumps(summary, indent=2))
 
 
+def run_direct_formal(args):
+    canonical_actor = (PROJECT_ROOT / "pretrained" / "end2race.pth").resolve()
+    actor_path = Path(args.actor_path).expanduser().resolve()
+    output_directory = Path(args.output_dir).expanduser().resolve()
+    if actor_path != canonical_actor or not actor_path.is_file():
+        raise RuntimeError("Direct calibrated Constrained PPO must fresh-start from canonical BC")
+    if args.seed != 42 or args.n_envs != 16 or args.n_steps != 6400 or args.batch_size != 12800 or args.num_updates != 30:
+        raise RuntimeError("Direct calibrated Constrained PPO fixed training contract changed")
+    if output_directory.exists() and any(output_directory.iterdir()):
+        raise RuntimeError(f"Refusing to overwrite direct calibrated Constrained PPO output: {output_directory}")
+    recorder = TrainingRecorder(output_directory, 4)
+    configure_training_numerics()
+    vector_env, model = build_environment_and_model(args, recorder)
+    try:
+        model.learn(total_timesteps=args.n_envs * args.n_steps * (args.num_updates + 1), log_interval=1, progress_bar=False)
+    finally:
+        vector_env.close()
+    final_actor = output_directory / "checkpoints" / f"actor_u{args.num_updates:04d}.pth"
+    final_cost = output_directory / "checkpoints" / f"cost_critic_u{args.num_updates:04d}.pt"
+    if not final_actor.is_file() or not final_cost.is_file():
+        raise RuntimeError("Direct calibrated Constrained PPO finished without final checkpoints")
+    actor_state = torch.load(final_actor, map_location="cpu", weights_only=True)
+    if len(actor_state) != 12 or not all(torch.isfinite(value).all() for value in actor_state.values()):
+        raise RuntimeError("Direct calibrated Constrained PPO final actor is not strict finite 12-key")
+    summary = {
+        "schema_version": 1,
+        "experiment_id": "ppo_constrained_collision_cost_d0p19_v1",
+        "status": "training_complete_evaluation_pending",
+        "formal_updates": args.num_updates,
+        "cost_budget": DIRECT_COST_BUDGET,
+        "cost_budget_source": "ceil(100 * 26/141) / 100 from the recorded U44 Austin training-distribution rollout",
+        "final_actor": str(final_actor),
+        "final_actor_sha256": sha256_file(final_actor),
+        "final_cost_critic": str(final_cost),
+        "final_cost_critic_sha256": sha256_file(final_cost),
+        "evaluation_band": [27, 28, 29, 30],
+    }
+    atomic_write_json(output_directory / "training_summary.json", summary)
+    print(json.dumps(summary, indent=2))
+
+
 if __name__ == "__main__":
     args = parse_arguments()
-    plan = write_gate_plan(args)
+    if args.mode == "direct_formal":
+        run_direct_formal(args)
+    else:
+        plan = write_gate_plan(args)
     if args.mode == "prepare":
         print(json.dumps(plan, indent=2))
     elif args.mode == "preflight":
         run_preflight(args, plan)
-    else:
+    elif args.mode == "formal":
         run_formal(args, plan)

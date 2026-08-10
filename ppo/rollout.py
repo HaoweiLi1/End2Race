@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 import copy as copy_module
+import math
 from typing import Optional
 
 import numpy as np
@@ -18,10 +19,12 @@ from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.utils import FloatSchedule, explained_variance, safe_mean
 from stable_baselines3.common.vec_env import VecNormalize
 
+from ppo.collision_anchor import CollisionBCAnchor
 from ppo.policy import (
     BASELINE_EXPLORATION_MODE,
     END2RACE_OBSERVATION_SIZE,
     EXPLORATION_GATE_INFO_KEY,
+    PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE,
     P20_CRITIC_VARIANTS,
     PRIVILEGED_FEATURE_HIGHS,
     PRIVILEGED_FEATURE_LOWS,
@@ -41,9 +44,13 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
 
     def __init__(self, *args, store_independent_gru_hidden: bool = False, **kwargs):
         self.store_independent_gru_hidden = bool(store_independent_gru_hidden)
+        self.joint_context_carry: dict[int, dict] = {}
+        self.joint_context_next_carry: dict[int, dict] = {}
         super().__init__(*args, **kwargs)
 
     def reset(self) -> None:
+        self.joint_context_carry = self.joint_context_next_carry
+        self.joint_context_next_carry = {}
         RolloutBuffer.reset(self)
         self.hidden_states_pi = np.zeros(self.hidden_state_shape, dtype=np.float32)
         self.recurrent_resets = np.zeros(
@@ -64,6 +71,12 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         self.exploration_standard_residuals = np.zeros(
             (self.buffer_size, self.n_envs), dtype=np.float32
         )
+        self.joint_temporal_active = np.zeros((self.buffer_size, self.n_envs), dtype=bool)
+        self.joint_temporal_block_uids = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
+        self.joint_temporal_block_positions = np.full((self.buffer_size, self.n_envs), -1, dtype=np.int64)
+        self.joint_temporal_prefix_steps = np.zeros((self.buffer_size, self.n_envs), dtype=np.int64)
+        self.joint_temporal_collision_sources = np.zeros((self.buffer_size, self.n_envs), dtype=bool)
+        self.joint_temporal_standard_residuals = np.zeros((self.buffer_size, self.n_envs, 2), dtype=np.float32)
         if self.store_independent_gru_hidden:
             self.hidden_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
         self._staged_exploration: tuple[np.ndarray, ...] | None = None
@@ -75,6 +88,13 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         self.current_temporal_active: torch.Tensor | None = None
         self.current_block_ids: torch.Tensor | None = None
         self.current_standard_residuals: torch.Tensor | None = None
+        self.current_joint_temporal_active: torch.Tensor | None = None
+        self.current_joint_temporal_block_uids: torch.Tensor | None = None
+        self.current_joint_temporal_block_positions: torch.Tensor | None = None
+        self.current_joint_temporal_prefix_steps: torch.Tensor | None = None
+        self.current_joint_temporal_collision_sources: torch.Tensor | None = None
+        self.current_joint_temporal_standard_residuals: torch.Tensor | None = None
+        self.current_joint_temporal_contexts: list[dict | None] | None = None
 
     def stage_exploration(
         self,
@@ -84,6 +104,12 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         temporal_active: np.ndarray,
         block_id: np.ndarray,
         standard_residual: np.ndarray,
+        joint_active: np.ndarray,
+        joint_block_uid: np.ndarray,
+        joint_block_position: np.ndarray,
+        joint_prefix_step: np.ndarray,
+        joint_collision_source: np.ndarray,
+        joint_standard_residual: np.ndarray,
     ) -> None:
         arrays = (
             np.asarray(speed_log_std, dtype=np.float32).reshape(-1),
@@ -91,17 +117,22 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             np.asarray(temporal_active, dtype=bool).reshape(-1),
             np.asarray(block_id, dtype=np.int64).reshape(-1),
             np.asarray(standard_residual, dtype=np.float32).reshape(-1),
+            np.asarray(joint_active, dtype=bool).reshape(-1),
+            np.asarray(joint_block_uid, dtype=np.int64).reshape(-1),
+            np.asarray(joint_block_position, dtype=np.int64).reshape(-1),
+            np.asarray(joint_prefix_step, dtype=np.int64).reshape(-1),
+            np.asarray(joint_collision_source, dtype=bool).reshape(-1),
         )
         if any(array.shape != (self.n_envs,) for array in arrays):
             raise RuntimeError(
                 f"Exploration transition fields must have shape {(self.n_envs,)}"
             )
-        if (
-            not np.isfinite(arrays[0]).all()
-            or not np.isfinite(arrays[4]).all()
-        ):
+        residuals = np.asarray(joint_standard_residual, dtype=np.float32)
+        if residuals.shape != (self.n_envs, 2):
+            raise RuntimeError(f"Joint-temporal residuals must have shape {(self.n_envs, 2)}")
+        if not np.isfinite(arrays[0]).all() or not np.isfinite(arrays[4]).all() or not np.isfinite(residuals).all():
             raise ValueError("Exploration transition fields must be finite")
-        self._staged_exploration = arrays
+        self._staged_exploration = (*arrays, residuals)
 
     def stage_recurrent_resets(self, recurrent_resets: np.ndarray) -> None:
         resets = np.asarray(recurrent_resets, dtype=bool).reshape(-1)
@@ -122,6 +153,12 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             self.exploration_temporal_active[self.pos],
             self.exploration_block_ids[self.pos],
             self.exploration_standard_residuals[self.pos],
+            self.joint_temporal_active[self.pos],
+            self.joint_temporal_block_uids[self.pos],
+            self.joint_temporal_block_positions[self.pos],
+            self.joint_temporal_prefix_steps[self.pos],
+            self.joint_temporal_collision_sources[self.pos],
+            self.joint_temporal_standard_residuals[self.pos],
         ) = self._staged_exploration
         self._staged_exploration = None
         recurrent_resets = (
@@ -160,6 +197,12 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
                 "exploration_temporal_active",
                 "exploration_block_ids",
                 "exploration_standard_residuals",
+                "joint_temporal_active",
+                "joint_temporal_block_uids",
+                "joint_temporal_block_positions",
+                "joint_temporal_prefix_steps",
+                "joint_temporal_collision_sources",
+                "joint_temporal_standard_residuals",
             ]
             if self.store_independent_gru_hidden:
                 self.hidden_states_vf = self.hidden_states_vf.swapaxes(1, 2)
@@ -176,6 +219,83 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         env_change = self.swap_and_flatten(env_change)
         for start in range(0, total, batch_size):
             yield self._get_samples(indices[start : start + batch_size], env_change)
+
+    def finalize_joint_context_carry(self) -> None:
+        if self.generator_ready:
+            raise RuntimeError("Joint-temporal carry must be finalized before buffer flattening")
+        carry = {}
+        last = self.buffer_size - 1
+        for env_index in range(self.n_envs):
+            if not bool(self.joint_temporal_active[last, env_index]):
+                continue
+            position = int(self.joint_temporal_block_positions[last, env_index])
+            uid = int(self.joint_temporal_block_uids[last, env_index])
+            if position < 0 or position >= 49 or uid <= 0:
+                continue
+            start = last - position
+            if start < 0:
+                raise RuntimeError("A joint-temporal block crossed more than one rollout boundary")
+            positions = np.asarray(self.joint_temporal_block_positions[start : last + 1, env_index], dtype=np.int64).reshape(-1)
+            uids = np.asarray(self.joint_temporal_block_uids[start : last + 1, env_index], dtype=np.int64).reshape(-1)
+            if not np.array_equal(positions, np.arange(position + 1, dtype=np.int64)) or not np.all(uids == uid):
+                raise RuntimeError("Joint-temporal rollout carry is not one complete block prefix")
+            carry[env_index] = {
+                "block_uid": uid,
+                "positions": positions.copy(),
+                "standard_residuals": self.joint_temporal_standard_residuals[start : last + 1, env_index].copy(),
+            }
+        self.joint_context_next_carry = carry
+
+    def _joint_context_for_sequence(self, flat_index: int) -> dict | None:
+        active_rows = np.asarray(self.joint_temporal_active).reshape(-1)
+        position_rows = np.asarray(self.joint_temporal_block_positions, dtype=np.int64).reshape(-1)
+        uid_rows = np.asarray(self.joint_temporal_block_uids, dtype=np.int64).reshape(-1)
+        if not bool(active_rows[flat_index]):
+            return None
+        position = int(position_rows[flat_index])
+        uid = int(uid_rows[flat_index])
+        if position == 0:
+            return None
+        if position < 0 or position >= 50 or uid <= 0:
+            raise RuntimeError("Joint-temporal sequence start has invalid block metadata")
+        env_index = flat_index // self.buffer_size
+        time_index = flat_index % self.buffer_size
+        current_count = min(position, time_index)
+        current_start = flat_index - current_count
+        fixed_residual_sum = np.zeros(2, dtype=np.float32)
+        fixed_count = 0
+        if position > current_count:
+            required = position - current_count
+            previous = self.joint_context_carry.get(env_index)
+            if previous is None or int(previous["block_uid"]) != uid or len(previous["positions"]) < required:
+                raise RuntimeError("Joint-temporal cross-rollout context is missing")
+            fixed_positions = np.asarray(previous["positions"][-required:], dtype=np.int64)
+            if not np.array_equal(fixed_positions, np.arange(required, dtype=np.int64)):
+                raise RuntimeError("Joint-temporal cross-rollout positions are incomplete")
+            fixed_residuals = np.asarray(previous["standard_residuals"][-required:], dtype=np.float32)
+            if fixed_residuals.shape != (required, 2) or not np.isfinite(fixed_residuals).all():
+                raise RuntimeError("Joint-temporal cross-rollout residual state is invalid")
+            fixed_residual_sum = fixed_residuals.sum(axis=0, dtype=np.float32)
+            fixed_count = required
+        hidden_start = np.asarray(self.hidden_states_pi[current_start], dtype=np.float32)
+        observations = np.asarray(self.observations[current_start:flat_index])
+        actions = np.asarray(self.actions[current_start:flat_index])
+        context_positions = position_rows[current_start:flat_index]
+        if current_count:
+            indices = np.arange(current_start, flat_index, dtype=np.int64)
+            if not np.all(uid_rows[indices] == uid):
+                raise RuntimeError("Joint-temporal within-rollout context changed block UID")
+        if len(context_positions) != current_count or not np.array_equal(context_positions, np.arange(fixed_count, position, dtype=np.int64)):
+            raise RuntimeError("Joint-temporal context positions are incomplete")
+        return {
+            "block_uid": uid,
+            "fixed_count": fixed_count,
+            "fixed_residual_sum": self.to_torch(fixed_residual_sum),
+            "positions": self.to_torch(context_positions),
+            "observations": self.to_torch(observations),
+            "actions": self.to_torch(actions),
+            "hidden_start": self.to_torch(hidden_start[:, None, :]).contiguous(),
+        }
 
     def _get_samples(self, batch_inds: np.ndarray, env_change: np.ndarray, env: Optional[VecNormalize] = None) -> RecurrentRolloutBufferSamples:
         del env
@@ -212,6 +332,13 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
                 self.exploration_standard_residuals[batch_inds]
             )
         )
+        self.current_joint_temporal_active = self.to_torch(self.pad_and_flatten(self.joint_temporal_active[batch_inds].astype(np.float32))) > 0.5
+        self.current_joint_temporal_block_uids = torch.as_tensor(self.pad_and_flatten(self.joint_temporal_block_uids[batch_inds]), dtype=torch.int64, device=self.device)
+        self.current_joint_temporal_block_positions = torch.as_tensor(self.pad_and_flatten(self.joint_temporal_block_positions[batch_inds]), dtype=torch.int64, device=self.device)
+        self.current_joint_temporal_prefix_steps = torch.as_tensor(self.pad_and_flatten(self.joint_temporal_prefix_steps[batch_inds]), dtype=torch.int64, device=self.device)
+        self.current_joint_temporal_collision_sources = self.to_torch(self.pad_and_flatten(self.joint_temporal_collision_sources[batch_inds].astype(np.float32))) > 0.5
+        self.current_joint_temporal_standard_residuals = self.to_torch(self.pad(self.joint_temporal_standard_residuals[batch_inds]).reshape((padded_batch_size, 2)))
+        self.current_joint_temporal_contexts = [self._joint_context_for_sequence(int(batch_inds[index])) for index in self.seq_start_indices]
         actor_hidden = self.to_torch(self.hidden_states_pi[batch_inds][self.seq_start_indices].swapaxes(0, 1)).contiguous()
         actor_cell = torch.zeros_like(actor_hidden)
         if self.store_independent_gru_hidden:
@@ -241,6 +368,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         actor_epochs: int,
         critic_epochs: int,
         recorder: TrainingRecorder,
+        collision_bc_anchor_dataset: str = "",
+        collision_bc_anchor_beta: float = 0.0,
         **kwargs,
     ):
         self.actor_epochs = actor_epochs
@@ -258,14 +387,48 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self._last_prefix_active: np.ndarray | None = None
         self._last_prefix_steps: np.ndarray | None = None
         self._last_prefix_keys: list[str | None] | None = None
+        self._last_prefix_strata: list[str | None] | None = None
         self.last_prefix_transition_mask: np.ndarray | None = None
         self.last_prefix_window_mask: np.ndarray | None = None
         self.last_prefix_step_indices: np.ndarray | None = None
         self.last_prefix_key_rows: list[list[str | None]] | None = None
         self.last_rollout_final_values: np.ndarray | None = None
         self.last_rollout_dones: np.ndarray | None = None
+        self.last_joint_action_identity_checked_count = 0
+        self.collision_bc_anchor_beta = float(collision_bc_anchor_beta)
+        self.collision_bc_anchor_dataset = str(collision_bc_anchor_dataset)
+        self.collision_bc_anchor = None
         kwargs["n_epochs"] = actor_epochs
         super().__init__(*args, **kwargs)
+        if not math.isfinite(self.collision_bc_anchor_beta) or self.collision_bc_anchor_beta < 0.0:
+            raise ValueError("Collision BC anchor beta must be finite and nonnegative")
+        if self.collision_bc_anchor_beta > 0.0:
+            if not self.collision_bc_anchor_dataset:
+                raise ValueError("Positive collision BC anchor beta requires a dataset")
+            self.collision_bc_anchor = CollisionBCAnchor(self.collision_bc_anchor_dataset, self.policy, self.device)
+
+    @staticmethod
+    def _gradient_norm(gradients) -> float:
+        squared = sum(float(torch.sum(gradient.detach().double().square()).cpu().item()) for gradient in gradients)
+        return math.sqrt(squared)
+
+    def _actor_step_space_norm(self, gradients) -> float:
+        gru_count = len(tuple(self.policy.end2race_actor.gru.parameters()))
+        gru_lr = float(self.policy.actor_optimizer.param_groups[0]["lr"])
+        head_lr = float(self.policy.actor_optimizer.param_groups[1]["lr"])
+        squared = 0.0
+        for index, gradient in enumerate(gradients):
+            learning_rate = gru_lr if index < gru_count else head_lr
+            squared += learning_rate * learning_rate * float(torch.sum(gradient.detach().double().square()).cpu().item())
+        return math.sqrt(squared)
+
+    def _actor_parameter_gradient_norm(self) -> float:
+        gradients = []
+        for parameter in self.policy.actor_parameters:
+            if parameter.grad is None:
+                raise RuntimeError("Actor parameter has no gradient")
+            gradients.append(parameter.grad)
+        return self._gradient_norm(gradients)
 
     def _setup_model(self) -> None:
         self._setup_lr_schedule()
@@ -304,6 +467,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             store_independent_gru_hidden=self.policy.critic_is_independent_gru,
         )
         self.policy._end2race_rollout_buffer = self.rollout_buffer
+        if self.policy.speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
+            self.policy.configure_joint_temporal_generators(self.seed, self.n_envs)
         self.clip_range = FloatSchedule(self.clip_range)
         if self.clip_range_vf is not None:
             self.clip_range_vf = FloatSchedule(self.clip_range_vf)
@@ -313,11 +478,12 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         if self.device.type == "cuda":
             torch.cuda.manual_seed_all(action_seed)
 
-    def _prefix_reset_state(self, env, episode_starts: np.ndarray, states: RNNStates) -> tuple[RNNStates, np.ndarray, np.ndarray, np.ndarray, list[str | None]]:
+    def _prefix_reset_state(self, env, episode_starts: np.ndarray, states: RNNStates) -> tuple[RNNStates, np.ndarray, np.ndarray, np.ndarray, list[str | None], list[str | None]]:
         recurrent_resets = np.asarray(episode_starts, dtype=bool).copy()
         active = np.zeros(self.n_envs, dtype=bool)
         steps = np.zeros(self.n_envs, dtype=np.int64)
         keys: list[str | None] = [None] * self.n_envs
+        strata: list[str | None] = [None] * self.n_envs
         actor_hidden = states.pi[0].clone()
         actor_cell = states.pi[1].clone()
         critic_hidden = states.vf[0].clone()
@@ -347,7 +513,11 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             recurrent_resets[index] = False
             active[index] = True
             keys[index] = str(info["prefix_reset_key"])
-        return RNNStates((actor_hidden, actor_cell), (critic_hidden, critic_cell)), recurrent_resets, active, steps, keys
+            stratum = str(info.get("prefix_reset_stratum", ""))
+            if stratum not in ("collision", "lost_overtake"):
+                raise RuntimeError("Prefix-reset source stratum is missing or invalid")
+            strata[index] = stratum
+        return RNNStates((actor_hidden, actor_cell), (critic_hidden, critic_cell)), recurrent_resets, active, steps, keys, strata
 
     def collect_rollouts(self, env, callback, rollout_buffer, n_rollout_steps: int) -> bool:
         self.rollout_index += 1
@@ -388,20 +558,22 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         callback.on_rollout_start()
         lstm_states = copy_module.deepcopy(self._last_lstm_states)
         if self._last_recurrent_resets is None:
-            lstm_states, recurrent_resets, prefix_active, prefix_steps, prefix_keys = self._prefix_reset_state(env, self._last_episode_starts, lstm_states)
+            lstm_states, recurrent_resets, prefix_active, prefix_steps, prefix_keys, prefix_strata = self._prefix_reset_state(env, self._last_episode_starts, lstm_states)
         else:
             recurrent_resets = self._last_recurrent_resets.copy()
             prefix_active = self._last_prefix_active.copy()
             prefix_steps = self._last_prefix_steps.copy()
             prefix_keys = list(self._last_prefix_keys)
+            prefix_strata = list(self._last_prefix_strata)
         current_gates = np.asarray([bool(info.get(EXPLORATION_GATE_INFO_KEY, False)) for info in env.reset_infos], dtype=bool)
         prefix_transition_rows = []
         prefix_window_rows = []
         prefix_step_rows = []
         prefix_key_rows = []
+        self.last_joint_action_identity_checked_count = 0
 
         while n_steps < n_rollout_steps:
-            self.policy.prepare_rollout_exploration(current_gates, self._last_episode_starts)
+            self.policy.prepare_rollout_exploration(current_gates, self._last_episode_starts, prefix_active, prefix_steps, np.asarray([stratum == "collision" for stratum in prefix_strata], dtype=bool))
             rollout_buffer.stage_recurrent_resets(recurrent_resets)
             prefix_transition_rows.append(prefix_active.copy())
             prefix_window_rows.append(prefix_active & (prefix_steps < 150))
@@ -414,6 +586,13 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             actions = actions.cpu().numpy()
             clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high) if isinstance(self.action_space, spaces.Box) else actions
             new_obs, rewards, dones, infos = env.step(clipped_actions)
+            if self.policy.speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
+                if not np.array_equal(actions, clipped_actions):
+                    raise RuntimeError("Prefix joint-temporal action was clipped before the environment")
+                executed_actions = np.asarray([info.get("executed_ego_action") for info in infos], dtype=np.float32)
+                if executed_actions.shape != clipped_actions.shape or not np.array_equal(executed_actions, clipped_actions):
+                    raise RuntimeError("Stored PPO action, wrapper action, and simulator ego action diverged")
+                self.last_joint_action_identity_checked_count += self.n_envs
             self.num_timesteps += env.num_envs
             callback.update_locals(locals())
             if not callback.on_step():
@@ -431,12 +610,13 @@ class End2RaceRecurrentPPO(RecurrentPPO):
 
             rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs, lstm_states=lstm_states)
             prefix_steps[prefix_active] += 1
-            next_states, next_recurrent_resets, new_prefix_active, new_prefix_steps, new_prefix_keys = self._prefix_reset_state(env, dones, next_lstm_states)
+            next_states, next_recurrent_resets, new_prefix_active, new_prefix_steps, new_prefix_keys, new_prefix_strata = self._prefix_reset_state(env, dones, next_lstm_states)
             continuing = ~dones
             new_prefix_active[continuing] = prefix_active[continuing]
             new_prefix_steps[continuing] = prefix_steps[continuing]
             for index in np.flatnonzero(continuing):
                 new_prefix_keys[int(index)] = prefix_keys[int(index)]
+                new_prefix_strata[int(index)] = prefix_strata[int(index)]
             self._last_obs = new_obs
             self._last_episode_starts = dones
             lstm_states = next_states
@@ -444,16 +624,19 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             prefix_active = new_prefix_active
             prefix_steps = new_prefix_steps
             prefix_keys = new_prefix_keys
+            prefix_strata = new_prefix_strata
             current_gates = np.asarray([bool((env.reset_infos[index] if done else infos[index]).get(EXPLORATION_GATE_INFO_KEY, False)) for index, done in enumerate(dones)], dtype=bool)
 
         with torch.no_grad():
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device), lstm_states.vf, torch.as_tensor(recurrent_resets, dtype=torch.float32, device=self.device))
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
+        rollout_buffer.finalize_joint_context_carry()
         self._last_lstm_states = lstm_states
         self._last_recurrent_resets = recurrent_resets.copy()
         self._last_prefix_active = prefix_active.copy()
         self._last_prefix_steps = prefix_steps.copy()
         self._last_prefix_keys = list(prefix_keys)
+        self._last_prefix_strata = list(prefix_strata)
         self.last_prefix_transition_mask = np.asarray(prefix_transition_rows, dtype=bool)
         self.last_prefix_window_mask = np.asarray(prefix_window_rows, dtype=bool)
         self.last_prefix_step_indices = np.asarray(prefix_step_rows, dtype=np.int64)
@@ -966,15 +1149,23 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         residuals = np.asarray(
             self.rollout_buffer.exploration_standard_residuals
         )
+        joint_active = np.asarray(self.rollout_buffer.joint_temporal_active)
+        joint_uids = np.asarray(self.rollout_buffer.joint_temporal_block_uids)
+        joint_positions = np.asarray(self.rollout_buffer.joint_temporal_block_positions)
+        joint_prefix_steps = np.asarray(self.rollout_buffer.joint_temporal_prefix_steps)
+        joint_collision_sources = np.asarray(self.rollout_buffer.joint_temporal_collision_sources)
+        joint_residuals = np.asarray(self.rollout_buffer.joint_temporal_standard_residuals)
         expected_shape = (
             self.rollout_buffer.buffer_size,
             self.rollout_buffer.n_envs,
         )
         if any(
             array.shape != expected_shape
-            for array in (speed_log_std, danger, temporal, block_ids, residuals)
+            for array in (speed_log_std, danger, temporal, block_ids, residuals, joint_active, joint_uids, joint_positions, joint_prefix_steps, joint_collision_sources)
         ):
             raise RuntimeError("Exploration telemetry lost its step/env layout")
+        if joint_residuals.shape != (*expected_shape, 2):
+            raise RuntimeError("Joint-temporal residual telemetry lost its step/env layout")
         same_block = (
             temporal[1:]
             & temporal[:-1]
@@ -982,7 +1173,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             & (block_ids[1:] > 0)
         )
         residual_difference = np.abs(residuals[1:] - residuals[:-1])
-        return {
+        metrics = {
             "speed_exploration_mode": self.policy.speed_exploration_mode,
             "exploration_danger_gate_fraction": float(danger.mean()),
             "exploration_temporal_active_fraction": float(temporal.mean()),
@@ -998,6 +1189,28 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 else 0.0
             ),
         }
+        joint_count = int(joint_active.sum())
+        joint_values = joint_residuals[joint_active]
+        joint_blocks = np.unique(joint_uids[joint_active]) if joint_count else np.empty(0, dtype=np.int64)
+        joint_leak = joint_active & (~joint_collision_sources | (joint_prefix_steps < 0) | (joint_prefix_steps >= 150) | (joint_positions != joint_prefix_steps % 50))
+        metrics.update({
+            "joint_temporal_active_count": joint_count,
+            "joint_temporal_active_fraction": float(joint_count / np.prod(expected_shape)),
+            "joint_temporal_block_count": int(len(joint_blocks)),
+            "joint_temporal_unique_block_uid_count": int(len(joint_blocks)),
+            "joint_temporal_treatment_leak_count": int(joint_leak.sum()),
+            "joint_temporal_steering_residual_mean": float(joint_values[:, 0].mean()) if joint_count else 0.0,
+            "joint_temporal_steering_residual_std": float(joint_values[:, 0].std()) if joint_count else 0.0,
+            "joint_temporal_speed_residual_mean": float(joint_values[:, 1].mean()) if joint_count else 0.0,
+            "joint_temporal_speed_residual_std": float(joint_values[:, 1].std()) if joint_count else 0.0,
+            "joint_temporal_cross_correlation": float(np.corrcoef(joint_values.T)[0, 1]) if joint_count > 1 and np.all(joint_values.std(axis=0) > 0.0) else 0.0,
+            "joint_temporal_steering_abs_ge_0p95_bound_fraction": float((np.abs(self.rollout_buffer.actions[..., 0][joint_active] / 0.52) >= 0.95).mean()) if joint_count else 0.0,
+            "joint_temporal_steering_abs_ge_0p99_bound_fraction": float((np.abs(self.rollout_buffer.actions[..., 0][joint_active] / 0.52) >= 0.99).mean()) if joint_count else 0.0,
+            "joint_temporal_speed_min": float(self.rollout_buffer.actions[..., 1][joint_active].min()) if joint_count else 0.0,
+            "joint_temporal_speed_max": float(self.rollout_buffer.actions[..., 1][joint_active].max()) if joint_count else 0.0,
+            "joint_temporal_action_identity_checked_count": int(self.last_joint_action_identity_checked_count),
+        })
+        return metrics
 
     def _prefix_reset_statistics(self) -> dict[str, float | int]:
         if self.last_prefix_transition_mask is None or self.last_prefix_window_mask is None:
@@ -1077,11 +1290,16 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         # path rather than weakening the training/replay contract.
         exact_log_ratio_error = 0.0
         exact_ratio_error = 0.0
+        exact_measurement_required = bool(
+            self.policy.speed_exploration_mode == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE
+            or maximum_log_ratio_error > 1e-2
+            or maximum_ratio_error > 1e-2
+        )
         exact_fallback_used = bool(
             maximum_log_ratio_error > 1e-2
             or maximum_ratio_error > 1e-2
         )
-        if exact_fallback_used:
+        if exact_measurement_required:
             self.ratio_identity_rng.bit_generator.state = rng_state
             exact_log_ratio_error, exact_ratio_error = measure(True)
             if exact_log_ratio_error > 5e-5 or exact_ratio_error > 5e-5:
@@ -1093,9 +1311,120 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         return {
             "preupdate_max_abs_log_ratio": maximum_log_ratio_error,
             "preupdate_max_abs_ratio_minus_one": maximum_ratio_error,
+            "preupdate_exact_ratio_measured": exact_measurement_required,
             "preupdate_exact_ratio_fallback_used": exact_fallback_used,
             "preupdate_exact_max_abs_log_ratio": exact_log_ratio_error,
             "preupdate_exact_max_abs_ratio_minus_one": exact_ratio_error,
+        }
+
+    def _dry_actor_gradient(self, collection_equivalent, rng_state):
+        gradients = [torch.zeros_like(parameter, device="cpu") for parameter in self.policy.actor_parameters]
+        losses = []
+        valid_counts = []
+        old_log_prob_sums = []
+        approximate_kl_sum = 0.0
+        clip_count = 0
+        valid_total = 0
+        self.actor_minibatch_rng.bit_generator.state = copy_module.deepcopy(rng_state)
+        for rollout_data in self.rollout_buffer.get(self.batch_size, rng=self.actor_minibatch_rng):
+            mask = rollout_data.mask > 1e-8
+            advantages = rollout_data.advantages
+            if self.normalize_advantage:
+                valid_advantages = advantages[mask]
+                advantages = (advantages - valid_advantages.mean()) / (valid_advantages.std() + 1e-8)
+            log_prob, _entropy = self.policy.evaluate_actor_actions(rollout_data.observations, rollout_data.actions, rollout_data.lstm_states, rollout_data.episode_starts, collection_equivalent=collection_equivalent)
+            log_ratio = log_prob - rollout_data.old_log_prob
+            ratio = torch.exp(log_ratio)
+            loss = -torch.min(advantages * ratio, advantages * torch.clamp(ratio, 1 - self.clip_range(self._current_progress_remaining), 1 + self.clip_range(self._current_progress_remaining)))[mask].mean()
+            require_finite_tensor("Dry actor policy loss", loss)
+            self.policy.actor_optimizer.zero_grad()
+            loss.backward()
+            for index, parameter in enumerate(self.policy.actor_parameters):
+                if parameter.grad is None or not bool(torch.isfinite(parameter.grad).all().item()):
+                    raise RuntimeError("Dry actor gradient is missing or non-finite")
+                gradients[index] += parameter.grad.detach().cpu()
+            valid_count = int(mask.sum().item())
+            valid_log_ratio = log_ratio[mask].detach()
+            approximate_kl_sum += float(((torch.exp(valid_log_ratio) - 1.0) - valid_log_ratio).sum().cpu().item())
+            clip_count += int((torch.abs(torch.exp(valid_log_ratio) - 1.0) > self.clip_range(self._current_progress_remaining)).sum().cpu().item())
+            valid_total += valid_count
+            valid_counts.append(valid_count)
+            old_log_prob_sums.append(float(rollout_data.old_log_prob[mask].double().sum().cpu().item()))
+            losses.append(float(loss.detach().cpu().item()))
+        self.policy.actor_optimizer.zero_grad()
+        return {
+            "gradients": gradients,
+            "losses": losses,
+            "valid_counts": valid_counts,
+            "old_log_prob_sums": old_log_prob_sums,
+            "minibatches": len(losses),
+            "valid_total": valid_total,
+            "clip_fraction": float(clip_count / valid_total),
+            "mean_approximate_kl": float(approximate_kl_sum / valid_total),
+        }
+
+    @staticmethod
+    def _compare_dry_gradients(batched, exact):
+        dot = 0.0
+        batched_squared = 0.0
+        exact_squared = 0.0
+        difference_squared = 0.0
+        for left, right in zip(batched, exact):
+            left_double = left.double()
+            right_double = right.double()
+            dot += float(torch.sum(left_double * right_double).item())
+            batched_squared += float(torch.sum(left_double * left_double).item())
+            exact_squared += float(torch.sum(right_double * right_double).item())
+            difference_squared += float(torch.sum((left_double - right_double) ** 2).item())
+        batched_norm = math.sqrt(batched_squared)
+        exact_norm = math.sqrt(exact_squared)
+        if batched_norm <= 0.0 or exact_norm <= 0.0:
+            raise RuntimeError("Dry actor gradient norm must be positive")
+        return {
+            "cosine": dot / (batched_norm * exact_norm),
+            "batched_l2_norm": batched_norm,
+            "exact_l2_norm": exact_norm,
+            "difference_l2_norm": math.sqrt(difference_squared),
+            "relative_l2_difference_over_exact": math.sqrt(difference_squared) / exact_norm,
+        }
+
+    def _adjudicate_batched_replay(self):
+        actor_state_before = [parameter.detach().cpu().clone() for parameter in self.policy.actor_parameters]
+        rng_state = copy_module.deepcopy(self.actor_minibatch_rng.bit_generator.state)
+        batched = self._dry_actor_gradient(False, rng_state)
+        exact = self._dry_actor_gradient(True, rng_state)
+        self.actor_minibatch_rng.bit_generator.state = rng_state
+        parameters_unchanged = all(torch.equal(before, parameter.detach().cpu()) for before, parameter in zip(actor_state_before, self.policy.actor_parameters))
+        comparison = self._compare_dry_gradients(batched["gradients"], exact["gradients"])
+        expected_minibatches = self.rollout_buffer.buffer_size * self.rollout_buffer.n_envs // self.batch_size
+        maximum_loss_difference = float(np.max(np.abs(np.asarray(batched["losses"], dtype=np.float64) - np.asarray(exact["losses"], dtype=np.float64))))
+        criteria = {
+            "gradient_cosine": comparison["cosine"] >= 0.999,
+            "gradient_relative_l2": comparison["relative_l2_difference_over_exact"] <= 0.02,
+            "clip_fraction_batched_zero": batched["clip_fraction"] == 0.0,
+            "clip_fraction_exact_zero": exact["clip_fraction"] == 0.0,
+            "mean_approximate_kl_batched": batched["mean_approximate_kl"] <= 1.0e-4,
+            "mean_approximate_kl_exact": exact["mean_approximate_kl"] <= 1.0e-4,
+            "minibatches_complete": batched["minibatches"] == exact["minibatches"] == expected_minibatches == 8,
+            "valid_transition_counts_identical": batched["valid_counts"] == exact["valid_counts"] and batched["valid_total"] == exact["valid_total"] == self.rollout_buffer.buffer_size * self.rollout_buffer.n_envs,
+            "minibatch_identity_identical": batched["old_log_prob_sums"] == exact["old_log_prob_sums"],
+            "parameters_unchanged": parameters_unchanged,
+        }
+        return {
+            "verdict": "pass" if all(criteria.values()) else "fail",
+            "criteria": criteria,
+            "gradient_comparison": comparison,
+            "maximum_abs_policy_loss_difference": maximum_loss_difference,
+            "batched_policy_losses": batched["losses"],
+            "exact_policy_losses": exact["losses"],
+            "batched_minibatches": batched["minibatches"],
+            "exact_minibatches": exact["minibatches"],
+            "batched_valid_counts": batched["valid_counts"],
+            "exact_valid_counts": exact["valid_counts"],
+            "batched_clip_fraction": batched["clip_fraction"],
+            "exact_clip_fraction": exact["clip_fraction"],
+            "batched_mean_approximate_kl": batched["mean_approximate_kl"],
+            "exact_mean_approximate_kl": exact["mean_approximate_kl"],
         }
 
     def train(self) -> None:
@@ -1110,6 +1439,15 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         approximate_kls = []
         actor_grad_norms = []
         critic_grad_norms = []
+        anchor_losses = []
+        anchor_steering_losses = []
+        anchor_speed_losses = []
+        ppo_gradient_norms = []
+        anchor_gradient_norms = []
+        ppo_step_space_norms = []
+        anchor_step_space_norms = []
+        combined_gradient_norms = []
+        clipped_gradient_norms = []
         update = self._n_updates + 1
         actor_optimizer_steps_planned = (
             self.actor_epochs
@@ -1123,8 +1461,24 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         telemetry_rng_state = copy_module.deepcopy(self.telemetry_rng.bit_generator.state)
         value_statistics_pre_update = self._full_buffer_value_statistics()
         ratio_identity_stats = self._assert_full_buffer_ratio_identity()
+        batched_replay_adjudication = None
+        exact_actor_replay = bool(
+            self.policy.speed_exploration_mode
+            == PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE
+        )
+        anchor_loss_pre_update = None
+        if self.collision_bc_anchor is not None:
+            with torch.no_grad():
+                anchor_loss_pre_update = float(self.collision_bc_anchor.loss()[0].detach().cpu().item())
         if bool(getattr(self.env, "prefix_reset_enabled", False)) and max(ratio_identity_stats["preupdate_max_abs_log_ratio"], ratio_identity_stats["preupdate_max_abs_ratio_minus_one"]) >= 0.02:
-            raise RuntimeError("Prefix-reset batched replay exceeded the adjudicated 0.02 causal guardrail")
+            if self.policy.speed_exploration_mode != PREFIX_JOINT_TEMPORAL_EXPLORATION_MODE:
+                raise RuntimeError("Prefix-reset batched replay exceeded the adjudicated 0.02 causal guardrail")
+            if not bool(ratio_identity_stats["preupdate_exact_ratio_measured"]) or max(ratio_identity_stats["preupdate_exact_max_abs_log_ratio"], ratio_identity_stats["preupdate_exact_max_abs_ratio_minus_one"]) > 5e-5:
+                raise RuntimeError("Prefix joint-temporal exact replay failed before batched adjudication")
+            batched_replay_adjudication = {
+                "verdict": "not_applicable_exact_actor_replay",
+                "reason": "Formal prefix joint-temporal actor updates use the collection-equivalent replay path directly",
+            }
 
         print(f"Formal update {update}: actor phase start", flush=True)
         for parameter in self.policy.critic_parameters:
@@ -1139,7 +1493,13 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 if self.normalize_advantage:
                     valid_advantages = advantages[mask]
                     advantages = (advantages - valid_advantages.mean()) / (valid_advantages.std() + 1e-8)
-                log_prob, _entropy = self.policy.evaluate_actor_actions(rollout_data.observations, rollout_data.actions, rollout_data.lstm_states, rollout_data.episode_starts)
+                log_prob, _entropy = self.policy.evaluate_actor_actions(
+                    rollout_data.observations,
+                    rollout_data.actions,
+                    rollout_data.lstm_states,
+                    rollout_data.episode_starts,
+                    collection_equivalent=exact_actor_replay,
+                )
                 ratio = torch.exp(log_prob - rollout_data.old_log_prob)
                 with torch.no_grad():
                     log_ratio = log_prob - rollout_data.old_log_prob
@@ -1152,10 +1512,29 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 policy_loss = -torch.min(advantages * ratio, advantages * torch.clamp(ratio, 1 - clip_range, 1 + clip_range))[mask].mean()
                 require_finite_tensor("Policy loss", policy_loss)
                 self.policy.actor_optimizer.zero_grad()
-                policy_loss.backward()
+                if self.collision_bc_anchor is None:
+                    policy_loss.backward()
+                else:
+                    anchor_loss, anchor_steering_loss, anchor_speed_loss = self.collision_bc_anchor.loss()
+                    require_finite_tensor("Collision BC anchor loss", anchor_loss)
+                    ppo_gradients = torch.autograd.grad(policy_loss, self.policy.actor_parameters, retain_graph=True)
+                    anchor_gradients = torch.autograd.grad(anchor_loss, self.policy.actor_parameters, retain_graph=True)
+                    ppo_gradient_norms.append(self._gradient_norm(ppo_gradients))
+                    anchor_gradient_norms.append(self._gradient_norm(anchor_gradients))
+                    ppo_step_space_norms.append(self._actor_step_space_norm(ppo_gradients))
+                    anchor_step_space_norms.append(self._actor_step_space_norm(anchor_gradients))
+                    combined_loss = policy_loss + self.collision_bc_anchor_beta * anchor_loss
+                    require_finite_tensor("Combined PPO and collision BC anchor loss", combined_loss)
+                    combined_loss.backward()
+                    anchor_losses.append(float(anchor_loss.detach().cpu().item()))
+                    anchor_steering_losses.append(float(anchor_steering_loss.detach().cpu().item()))
+                    anchor_speed_losses.append(float(anchor_speed_loss.detach().cpu().item()))
+                    combined_gradient_norms.append(self._actor_parameter_gradient_norm())
                 grad_norm = torch.nn.utils.clip_grad_norm_(self.policy.actor_parameters, MAX_GRAD_NORM)
                 require_finite_tensor("Actor gradient norm", grad_norm)
                 actor_grad_norms.append(float(grad_norm.detach().cpu().item()))
+                if self.collision_bc_anchor is not None:
+                    clipped_gradient_norms.append(self._actor_parameter_gradient_norm())
                 self.policy.actor_optimizer.step()
                 actor_optimizer_steps_completed += 1
                 policy_losses.append(float(policy_loss.item()))
@@ -1186,6 +1565,10 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             parameter.requires_grad_(True)
         self.telemetry_rng.bit_generator.state = telemetry_rng_state
         value_statistics_post_update = self._full_buffer_value_statistics()
+        anchor_loss_post_update = None
+        if self.collision_bc_anchor is not None:
+            with torch.no_grad():
+                anchor_loss_post_update = float(self.collision_bc_anchor.loss()[0].detach().cpu().item())
         print(f"Formal update {update}: critic phase complete", flush=True)
 
         self._n_updates += 1
@@ -1233,6 +1616,12 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             **exploration_stats,
             **self._prefix_reset_statistics(),
             **ratio_identity_stats,
+            "preupdate_batched_replay_adjudication": batched_replay_adjudication,
+            "actor_replay_mode": (
+                "collection_equivalent"
+                if exact_actor_replay
+                else "batched"
+            ),
             "approx_kl_mean": approximate_kl_mean,
             "approx_kl_max": approximate_kl_max,
             "clip_fraction_mean": clip_fraction_mean,
@@ -1249,6 +1638,23 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "mean_ego_collision_time": float(np.mean(collision_times)) if collision_times else None,
             **episode_metrics,
         }
+        if self.collision_bc_anchor is not None:
+            metrics.update({
+                "collision_bc_anchor_beta": self.collision_bc_anchor_beta,
+                "collision_bc_anchor_episode_count": len(self.collision_bc_anchor.episodes),
+                "collision_bc_anchor_loss_mean": float(np.mean(anchor_losses)),
+                "collision_bc_anchor_steering_loss_mean": float(np.mean(anchor_steering_losses)),
+                "collision_bc_anchor_speed_loss_mean": float(np.mean(anchor_speed_losses)),
+                "collision_bc_anchor_loss_pre_update": anchor_loss_pre_update,
+                "collision_bc_anchor_loss_post_update": anchor_loss_post_update,
+                "collision_bc_anchor_functional_drift": anchor_loss_post_update - anchor_loss_pre_update,
+                "collision_bc_anchor_ppo_gradient_norm_mean": float(np.mean(ppo_gradient_norms)),
+                "collision_bc_anchor_gradient_norm_mean": float(np.mean(anchor_gradient_norms)),
+                "collision_bc_anchor_ppo_step_space_norm_mean": float(np.mean(ppo_step_space_norms)),
+                "collision_bc_anchor_step_space_norm_mean": float(np.mean(anchor_step_space_norms)),
+                "collision_bc_anchor_combined_gradient_norm_mean": float(np.mean(combined_gradient_norms)),
+                "collision_bc_anchor_clipped_gradient_norm_mean": float(np.mean(clipped_gradient_norms)),
+            })
         actor_path, critic_path = self.recorder.save_formal_checkpoints(update, self.policy.actor_checkpoint_state_dict(), self.policy.value_net.state_dict())
         metrics["actor_checkpoint"] = str(actor_path)
         metrics["critic_checkpoint"] = str(critic_path)
