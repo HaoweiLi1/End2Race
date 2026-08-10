@@ -7,9 +7,8 @@ install/
 .codex/
 .remember/
 Dataset_*/
-post-trained/
+post-trained/ppo*
+post-trained/panels
 eval_results*/
 scripts/
-!scripts/
-scripts/*
-!scripts/test_online_same_state_branch_ppo.py
+run.sh

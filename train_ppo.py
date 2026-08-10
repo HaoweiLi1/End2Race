@@ -24,7 +24,6 @@ def parse_arguments():
 
     # Model configuration
     parser.add_argument("--hidden_scale", type=int, default=4)
-    parser.add_argument("--critic", choices=CRITIC_VARIANTS, default="privilege_gru")
 
     # Environment configuration
     parser.add_argument("--map_name", type=str, default="Austin")
@@ -34,6 +33,7 @@ def parse_arguments():
     parser.add_argument("--first_action_preference_dataset", type=str, default="")
     parser.add_argument("--first_action_preference_step_fraction", type=float, default=0.0)
     parser.add_argument("--online_same_state_branch_ppo", action="store_true")
+    parser.add_argument("--collision_prefix_branch_ppo", action="store_true")
 
     # Rollout configuration
     parser.add_argument("--n_steps", type=int, default=6400)
@@ -48,7 +48,9 @@ def parse_arguments():
     parser.add_argument("--critic_learning_rate", type=float, default=3.0e-4)
     parser.add_argument("--steering_latent_std", type=float, default=0.03)
     parser.add_argument("--speed_physical_std", type=float, default=0.15)
-    parser.add_argument("--speed_exploration_mode", choices=speed_exploration_modes(), default="baseline")
+    parser.add_argument("--speed_noise_hold_steps", type=int, default=1)
+    parser.add_argument("--front_corridor_speed_noise_hold_steps", type=int, default=0)
+    parser.add_argument("--ppo_loss_sample_stride", type=int, default=1)
 
     # PPO configuration
     parser.add_argument("--gamma", type=float, default=0.999)
@@ -74,6 +76,8 @@ def build_model(vector_env, args, device, recorder):
         first_action_preference_dataset=args.first_action_preference_dataset,
         first_action_preference_step_fraction=args.first_action_preference_step_fraction,
         online_same_state_branch_ppo=args.online_same_state_branch_ppo,
+        collision_prefix_branch_ppo=args.collision_prefix_branch_ppo,
+        ppo_loss_sample_stride=args.ppo_loss_sample_stride,
         learning_rate=1.0,
         n_steps=args.n_steps,
         batch_size=args.batch_size,
@@ -90,13 +94,14 @@ def build_model(vector_env, args, device, recorder):
         policy_kwargs={
             "checkpoint_path": args.pretrained_model_path,
             "hidden_scale": args.hidden_scale,
-            "critic_variant": args.critic,
+            "critic_variant": "privilege_gru",
             "gru_learning_rate": args.gru_learning_rate,
             "head_learning_rate": args.head_learning_rate,
             "critic_learning_rate": args.critic_learning_rate,
             "steering_latent_std": args.steering_latent_std,
             "speed_physical_std": args.speed_physical_std,
-            "speed_exploration_mode": args.speed_exploration_mode,
+            "speed_noise_hold_steps": args.speed_noise_hold_steps,
+            "front_corridor_speed_noise_hold_steps": args.front_corridor_speed_noise_hold_steps,
         },
         verbose=1,
     )
@@ -110,14 +115,16 @@ def main():
 
     print(
         f"PPO training configuration: output_dir={Path(args.output_dir).expanduser().resolve()}, pretrained_model_path={Path(args.pretrained_model_path).expanduser().resolve()}, "
-        f"map={args.map_name}, critic={args.critic}, n_envs={args.n_envs}, n_steps={args.n_steps}, "
+        f"map={args.map_name}, critic=privilege_gru, n_envs={args.n_envs}, n_steps={args.n_steps}, "
         f"batch_size={args.batch_size}, num_updates={args.num_updates}, "
         f"speed_physical_std={args.speed_physical_std}, "
-        f"speed_exploration_mode={args.speed_exploration_mode}, "
+        f"speed_noise_hold_steps={args.speed_noise_hold_steps}, front_corridor_speed_noise_hold_steps={args.front_corridor_speed_noise_hold_steps}, "
+        f"ppo_loss_sample_stride={args.ppo_loss_sample_stride}, "
         f"front_corridor_gate_maximum_gap_m={CONFIG.front_corridor_gate_maximum_gap_m}, "
         f"ordinary_offline_fast_fraction={CONFIG.ordinary_offline_fast_fraction}, "
         f"first_action_preference_dataset={args.first_action_preference_dataset or 'disabled'}, first_action_preference_step_fraction={args.first_action_preference_step_fraction}, "
         f"online_same_state_branch_ppo={args.online_same_state_branch_ppo}, "
+        f"collision_prefix_branch_ppo={args.collision_prefix_branch_ppo}, "
         f"seed={args.seed}",
         flush=True,
     )
@@ -152,22 +159,20 @@ def main():
         args.map_name,
         collision_scenarios,
         ordinary_scenario_set,
-        privileged=args.critic in P20_CRITIC_VARIANTS,
+        privileged=True,
         reward_gamma=args.gamma,
-        speed_exploration_mode=args.speed_exploration_mode,
+        front_corridor_speed_noise_hold_steps=args.front_corridor_speed_noise_hold_steps,
+        collision_prefix_branch_ppo=args.collision_prefix_branch_ppo,
     )
     try:
-        privileged_normalization = (
-            vector_env.env_method("privileged_normalization_metadata", indices=[0])[0]
-            if args.critic in P20_CRITIC_VARIANTS
-            else {}
-        )
+        privileged_normalization = vector_env.env_method("privileged_normalization_metadata", indices=[0])[0]
         recorder.write_run_config(
             args,
             vars(CONFIG),
             {
                 "SPEED_EXPLORATION": exploration_metadata(
-                    args.speed_exploration_mode,
+                    args.speed_noise_hold_steps,
+                    args.front_corridor_speed_noise_hold_steps,
                     corridor_gate_config=FrontCorridorGateConfig(
                         maximum_front_gap_m=float(
                             CONFIG.front_corridor_gate_maximum_gap_m
@@ -199,6 +204,23 @@ def main():
                     "continuation_source": "same current frozen pi_old",
                     "previous_actor_or_trace_input": False,
                     "actor_objective": "standard clipped PPO surrogate over leave-one-out branch-return advantages",
+                },
+                "COLLISION_PREFIX_BRANCH_PPO": {
+                    "enabled": args.collision_prefix_branch_ppo,
+                    "lookback_steps": CONFIG.collision_prefix_branch_lookback_steps,
+                    "actions_per_state": CONFIG.collision_prefix_branch_actions_per_state,
+                    "horizon_steps": CONFIG.collision_prefix_branch_horizon_steps,
+                    "loss_coefficient": CONFIG.collision_prefix_branch_loss_coefficient,
+                    "state_source": "current student collisions reconstructed one second before contact",
+                    "previous_actor_or_trace_input": False,
+                    "actor_objective": "standard clipped PPO surrogate over leave-one-out branch-return advantages",
+                },
+                "PPO_LOSS_SAMPLING": {
+                    "collection_hz": 100,
+                    "recurrent_replay_hz": 100,
+                    "gae_hz": 100,
+                    "loss_sample_stride": args.ppo_loss_sample_stride,
+                    "direct_loss_hz": 100.0 / args.ppo_loss_sample_stride,
                 },
             },
         )

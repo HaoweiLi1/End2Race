@@ -75,12 +75,13 @@ joint-temporal实现：当前CLI、VecEnv、policy、rollout buffer和训练器�
 joint-temporal专用状态。下文保留的是历史重建合同，不是待运行入口。同步删除的纯记录路径包括
 episode reward分项/risk/最小净空累计、full-buffer value/critic/exploration/prefix统计、重复
 update/timestep/config字段、preference逐minibatch梯度分解和全量校准样本键；reward、GAE、P20
-输入、动作likelihood、optimizer、checkpoint与正式outcome记录未改变。当前活动训练侧只剩production
-PPO、两种有机制证据的时序速度探索、first-action preference和默认关闭的online same-state
-branched PPO。
+输入、动作likelihood、optimizer、checkpoint与正式outcome记录未改变。当前活动训练侧保留production
+PPO、数值hold步数的时序速度探索、100 Hz序列loss抽样、first-action preference和两种默认关闭的
+same-state branched PPO。
 
-同日进一步把PPO运行参数从`env.py`、`policy.py`、`reward.py`、`rollout.py`、`scenarios.py`和
-`train_ppo.py`集中到`ppo_config.yaml`；`ppo/config.py`只读取一次并暴露`CONFIG`。模块内仅保留
+同日进一步把PPO内部参数从`env.py`、`policy.py`、`reward.py`、`rollout.py`和`scenarios.py`
+集中到`ppo_config.yaml`；各模块沿用`latticeplanner.utils.load_config()`直接加载，不另建
+`ppo/config.py`。CLI训练参数继续只在`train_ppo.py`。模块内仅保留
 结构/schema常量。旧`FIRST_ACTION_PREFERENCE_DATASET_ID`及其名字相等校验已删除，因为schema、
 gate verdict、manifest/gate SHA与sequence SHA已经完整约束数据合同。`run_config.json`继续在
 `ppo_config`字段记录全部实际配置，不再重复写一套大写常量别名。
@@ -3692,14 +3693,15 @@ train_ppo.py --online_same_state_branch_ppo
 ```
 
 CLI只新增`--online_same_state_branch_ppo`布尔开关，默认关闭，不增加dataset/model/teacher路径。Formal
-validation锁定canonical BC、Austin、`privilege_gru`、baseline independent Gaussian exploration、
+validation锁定canonical BC、Austin、`privilege_gru`、`speed_noise_hold_steps=1`且
+`front_corridor_speed_noise_hold_steps=0`的逐步独立Gaussian exploration、
 seed42、16 env、6,400 steps、12,800 batch、45 updates和actor/critic epoch `2/5`；它与prefix-reset、
 fixed first-action preference互斥。disabled path不构造runtime snapshot或branch
 buffer，也不改变原collector和actor loss。
 
 ### 26.2 固定在线分支算法
 
-固定常量位于`ppo/rollout.py`：
+固定常量位于`ppo/ppo_config.yaml`，由`ppo/rollout.py`消费：
 
 ```text
 ONLINE_BRANCH_STATES_PER_ROLLOUT = 16
@@ -3721,7 +3723,9 @@ geometry或正式eval身份。第`i`个触发点只取rank `i`，所以固定覆
    自己演化的actor/critic hidden；四个候选复用同一组continuation torch standard-noise流和snapshot
    中相同的scan RNG起点，以common random numbers降低第一动作比较方差，同时每条分支的边际动作
    分布仍是当前`pi_old`；continuation的physical action clipping与主collector一致；
-4. terminal使用真实原reward return；timeout或100步horizon使用当前reward critic bootstrap。分支不调用
+4. terminal使用真实原reward return；timeout或100步horizon使用当前reward critic bootstrap。Horizon
+   bootstrap直接复用最后一个continuation forward在末状态产生的value，不把同一末observation再次
+   输入recurrent critic。分支不调用
    parent scheduler reset，不改变scenario queue；
 5. K=4候选在同一状态内用leave-one-out baseline：
    `A_i = G_i - mean(G_j, j != i)`。因此每组advantage和为0，且对第i个采样动作的baseline不含其自身
@@ -3766,9 +3770,9 @@ preference固定训练输入、canonical Austin collision cache和ordinary scena
 6. 另走完整16-step生命周期：主rollout、在线分支、一次actor/critic update、checkpoint和metrics全部
    完成；actor确实改变、`_n_updates=1`、metrics记录64条branch action。
 
-2026-08-10实测机械摘要：snapshot exact=true；CUDA 64条均走满100步，branch return mean/std
-`.0357753/.406614`、raw leave-one-out advantage std `.0368627`、pre-update max abs log-ratio `0`；独立
-gradient norm `11.3455`且finite；生命周期U1的main approximate KL `.021997`、clip fraction`.207031`，
+2026-08-10修正horizon末状态重复critic forward后重跑机械摘要：snapshot exact=true；CUDA 64条均走满
+100步，branch return mean/std `.0349048/.3974554`、raw leave-one-out advantage std `.0424168`、
+pre-update max abs log-ratio `0`；独立gradient norm `13.0399`且finite；
 actor/critic update和临时checkpoint成功。短生命周期的critic explained variance为`-.805422`，因主
 rollout只有16步，不是性能或critic准入证据。模块合并后真实preference smoke仍为46/19 episode、
 8/8 batch，总/target/control loss为`2.995607/5.957267/.033947`且finite。
@@ -3785,3 +3789,125 @@ rollout只有16步，不是性能或critic准入证据。模块合并后真实pr
 判定性能；训练branch不能替代模型eval。2026-08-10 `OnlineBranchRollout`与固定常量已经并入
 `ppo/rollout.py`；删除其中的在线分支实现、四个接入点和对应测试会失去该在线训练臂及其
 snapshot/ratio/lifecycle回归能力，但不会影响开关默认关闭时的production路径。
+
+## 27. 数值接口的时间相关速度探索
+
+### 27.1 CLI与默认等价路径
+
+`train_ppo.py`不再暴露文字型探索模式，改为两个直接表达物理语义的整数接口：
+
+```text
+--speed_noise_hold_steps 1
+--front_corridor_speed_noise_hold_steps 0
+```
+
+默认`1/0`表示每个`.01s` simulator step都重新采样speed standard Gaussian residual，且不构造
+前向走廊gate；它继续走原逐步独立collector，不增加gate几何、temporal state或额外RNG draw。
+`--speed_noise_hold_steps 10`实现全局K10：actor对当前361D observation和GRU hidden的mean仍以
+100 Hz重算，只把同一个standard residual `z`连续用于10个mean，实际speed action始终为
+`mean_t + .15*z`。
+
+双频探索通过：
+
+```text
+--speed_noise_hold_steps 10 --front_corridor_speed_noise_hold_steps 50
+```
+
+走廊外每10步重采样；当前causal 2m front-corridor gate由false切true时立即采一个新residual并持有
+50步，gate由true切false时立即采新residual并重新进入K10节奏。Episode start同样强制新块。Gate只读
+当前状态，不读future collision/outcome；steering仍逐步独立，speed marginal std固定`.15`。
+
+调用链为：
+
+```text
+train_ppo.py --speed_noise_hold_steps K [--front_corridor_speed_noise_hold_steps C]
+-> CentralScheduleSubprocVecEnv(front corridor enabled iff C>0)
+-> End2RaceGRUPolicy.prepare_rollout_exploration()
+-> End2RaceGRUPolicy._structured_rollout_parameters()
+-> End2RaceRolloutBuffer.stage_exploration()
+```
+
+每个transition保存并重放其边际Gaussian log-prob，actor/value、GAE和recurrent sequence仍按100 Hz。
+准确边界是：这是“时间相关collection exploration + per-transition PPO likelihood”，不是把整段K步
+residual当作一个联合随机变量后计算block joint likelihood。Deterministic eval直接取actor mean，两个
+hold参数均不进入部署actor或12-key checkpoint。
+
+### 27.2 回归合同
+
+`scripts/test_online_same_state_branch_ppo.py::exploration_test()`直接检查：K10的0--9、10--19、20--24
+分别保持三个residual；K10/K50在第12步进入gate时重采样、12--61共50步逐位不变、第62步退出gate
+再次重采样。2026-08-10实测通过。该测试只证明块和相位边界正确，没有运行30-update训练或四图600，
+所以两种探索当前均为“实现完成、性能未知”。
+
+## 28. 100 Hz序列上的10 Hz直接PPO loss抽样
+
+### 28.1 精确训练语义
+
+CLI为`--ppo_loss_sample_stride`，默认`1`。设为`10`时环境仍以100 Hz执行并保存全部observation、action、
+reward、old log-prob、actor/critic hidden与episode boundary；GAE/return也在完整100 Hz transition链上
+计算。Recurrent actor和critic在minibatch内仍逐步消费全部有效行，因此第`t`个被选loss位置的hidden
+包含此前每个`.01s` observation，不把GRU改成10 Hz。
+
+每个formal rollout结束后，独立`SeedSequence([seed,7])` RNG对每个env内的每个episode segment随机
+选择一个`0..min(9,length-1)`相位，再选`phase, phase+10, ...`。该mask在一个rollout内固定，actor的
+所有epoch和critic的所有epoch使用同一批位置；padding只影响replay有效性，不会被选入loss。Formal
+actor clipped surrogate、advantage normalization、KL/clip telemetry和value MSE只在mask为1的位置
+计算。Critic warm-up不是PPO formal loss，继续使用完整100 Hz数据。
+
+因此该接口准确描述为“100 Hz collection/GAE/recurrent replay + 10 Hz direct actor/value loss”，不能写成
+10 Hz环境、10 Hz动作输出、10 HzGRU或丢弃90% rollout。它是有意改变优化估计量的实验轴，并不声称
+与标准100 Hz PPO数学等价。
+
+### 28.2 回归合同
+
+`End2RaceRolloutBuffer.prepare_loss_sampling()`在flatten前生成固定mask；stride=1不调用RNG且mask全1。
+测试用2个env、100步、每个env两段episode，实测200个collection位置选择20个loss位置，每段相邻
+位置严格相差10。真实collision-prefix生命周期又用stride10完成一次actor/critic formal update，metrics
+确认selected count严格位于0与total之间。没有正式30-update或四图eval结果。
+
+## 29. 当前student碰撞前1秒定向分支PPO
+
+### 29.1 接口、数据边界与恢复算法
+
+CLI为`--collision_prefix_branch_ppo`，默认关闭。它与`--online_same_state_branch_ppo`互斥，并要求
+逐步独立speed exploration；它不读取U44/RW、first-action preference dataset、旧trace、旧hidden或
+旧PPO checkpoint，canonical BC与普通PPO collision cache仍是共有训练输入。
+
+每个worker在episode reset后只保存一个完整起点runtime snapshot和之后的ego action数组，不逐步保存
+100份大snapshot。当前student真实产生ego collision后，worker先保存terminal state，再恢复episode
+起点并确定性重放`episode_steps-100`个已执行ego action，由LatticePlanner在重放状态上重新计算对手
+动作；得到恰好碰撞时刻前`100*.01=1.00s`的完整prefix snapshot后恢复terminal。Vector env随后照常reset
+到主rollout的下一scenario，旧prefix只通过一次`take_collision_prefix_snapshot()`交给parent。
+
+Parent为每个rank保留最近100个主rollout pre-observation：381D observation、actor/critic hidden、
+episode-start与rollout step。只有worker prefix observation与parent历史逐位相同时才生成branch；formal
+rollout开始不足100步、短episode或没有collision时不生成数据，也不报错。每个有效prefix：
+
+1. 当前冻结`pi_old`在同一observation/hidden采4个第一动作及精确old log-prob；
+2. 每个候选恢复同一prefix，之后由同一`pi_old`闭环到terminal或100步horizon；候选共享continuation
+   RNG，return使用原reward和critic bootstrap；
+3. 同状态4个return形成leave-one-out advantage，再进入与§26相同的clipped branch PPO；branch loss
+   系数固定`.10`，critic仍只学习主rollout；
+4. 每组结束恢复vector auto-reset后的主environment snapshot与torch RNG，所以搜索不替换原主动作、
+   不改变scenario scheduler或主rollout随机流；
+5. 一个rollout若没有有效prefix，actor只执行原main PPO loss。Variable branch样本无放回分给现有actor
+   minibatch，不要求人为凑满固定状态数。
+
+固定内部量位于`ppo/ppo_config.yaml`：lookback 100步、4 actions/state、branch horizon 100步、loss
+coefficient `.10`。部署actor结构、361D输入和12-key checkpoint不变。该方法使用collision hindsight
+决定训练时回溯哪个状态，但future信息不会作为actor输入或部署gate；准确名称是
+`single-stage PPO with collision-triggered one-second same-state branch return augmentation`。
+
+### 29.2 机械验证与尚未证明
+
+真实Austin collision-cache scenario在第740步发生ego collision；重建prefix与terminal elapsed-time差
+`0.9999999999999787s`。完整2-worker CPU生命周期使用正式`.03/.15`探索，在一个有效prefix上得到4条
+branch：3条ego collision、1条安全跑满100步，return mean/std `-1.36334/.695286`、raw leave-one-out
+advantage std `.927048`、394个额外simulator step；pre-update log-ratio identity通过，并与stride10
+main loss共同完成一次actor/critic optimizer update和临时checkpoint。该回归与§26的16-worker CUDA
+64分支测试在同一脚本顺序通过。
+
+这些数字只证明1秒恢复、状态/hidden对齐、动作结果差异、likelihood与optimizer链正确；它们不是
+collision rescue率，更不是正式模型性能。没有30/45-update Austin训练，没有四图各600 eval，也没有
+证据说明固定4动作和100步horizon足够。正式运行前不得把机械测试写成方法通过；默认关闭路径不保存
+起点snapshot/action history，不改变production collection或训练数学。

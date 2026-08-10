@@ -15,7 +15,6 @@ value_loss_coefficient: 0.5
 max_grad_norm: 0.5
 
 # Actor Exploration
-temporal_resample_steps: 50
 exploration_gate_info_key: exploration_danger_gate
 steering_bound: 0.52
 
@@ -44,6 +43,10 @@ online_branch_states_per_rollout: 16
 online_branch_actions_per_state: 4
 online_branch_horizon_steps: 100
 online_branch_loss_coefficient: 0.10
+collision_prefix_branch_lookback_steps: 100
+collision_prefix_branch_actions_per_state: 4
+collision_prefix_branch_horizon_steps: 100
+collision_prefix_branch_loss_coefficient: 0.10
 
 # Potential-based shaping over anisotropic vehicle OBB and map-wall surface clearance.
 max_progress_delta_m: 1.0

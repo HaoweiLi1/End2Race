@@ -26,20 +26,17 @@ from stable_baselines3.common.distributions import Distribution
 CONFIG = load_config("ppo/ppo_config.yaml")
 
 
-def speed_exploration_modes():
-    return ("baseline", "temporal_global", "corridor_temporal")
+def speed_exploration_mode(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps):
+    if speed_noise_hold_steps == 1 and front_corridor_speed_noise_hold_steps == 0:
+        return "stepwise_independent"
+    if front_corridor_speed_noise_hold_steps == 0:
+        return "global_temporal"
+    return "front_corridor_dual_frequency"
 
 
-def exploration_uses_gate(mode: str) -> bool:
-    if mode not in speed_exploration_modes():
-        raise ValueError(f"Unknown speed exploration mode: {mode!r}")
-    return mode == "corridor_temporal"
-
-
-def exploration_metadata(mode: str, corridor_gate_config=None) -> dict[str, Any]:
-    if mode not in speed_exploration_modes():
-        raise ValueError(f"Unknown speed exploration mode: {mode!r}")
-    if mode == "corridor_temporal":
+def exploration_metadata(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps, corridor_gate_config=None):
+    mode = speed_exploration_mode(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps)
+    if front_corridor_speed_noise_hold_steps > 0:
         if corridor_gate_config is None:
             raise ValueError("Front-corridor exploration metadata requires its gate configuration")
         gate_type = f"front_corridor_overlap_gap{corridor_gate_config.maximum_front_gap_m:g}"
@@ -50,8 +47,8 @@ def exploration_metadata(mode: str, corridor_gate_config=None) -> dict[str, Any]
     return {
         "mode": mode,
         "baseline_speed_std": 0.15,
-        "corridor_temporal_speed_std": 0.15,
-        "temporal_resample_steps": CONFIG.temporal_resample_steps,
+        "speed_noise_hold_steps": int(speed_noise_hold_steps),
+        "front_corridor_speed_noise_hold_steps": int(front_corridor_speed_noise_hold_steps),
         "gate_type": gate_type,
         "gate": gate,
         "training_only": True,
@@ -621,7 +618,8 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         critic_learning_rate: float = 5.0e-4,
         steering_latent_std: float = 0.03,
         speed_physical_std: float = 0.15,
-        speed_exploration_mode: str = "baseline",
+        speed_noise_hold_steps: int = 1,
+        front_corridor_speed_noise_hold_steps: int = 0,
         **kwargs: Any,
     ):
         kwargs.pop("use_sde", None)
@@ -629,14 +627,9 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             raise ValueError(f"critic_variant must be one of {CRITIC_VARIANTS}, got {critic_variant!r}")
         if steering_latent_std <= 0 or speed_physical_std <= 0:
             raise ValueError("Exploration standard deviations must be positive")
-        if speed_exploration_mode not in speed_exploration_modes():
-            raise ValueError(
-                f"speed_exploration_mode must be one of {speed_exploration_modes()}"
-            )
-        if (
-            speed_exploration_mode != "baseline"
-            and abs(float(speed_physical_std) - 0.15) > 1e-12
-        ):
+        if speed_noise_hold_steps < 1 or front_corridor_speed_noise_hold_steps < 0:
+            raise ValueError("Speed-noise hold steps must be positive outside the corridor and nonnegative inside it")
+        if (speed_noise_hold_steps > 1 or front_corridor_speed_noise_hold_steps > 0) and abs(float(speed_physical_std) - 0.15) > 1e-12:
             raise ValueError(
                 "Structured speed exploration requires the frozen 0.15 baseline std"
             )
@@ -648,11 +641,14 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         super().__init__(observation_space, action_space, lr_schedule, net_arch=[], ortho_init=False, use_sde=False, log_std_init=0.0, lstm_hidden_size=1, n_lstm_layers=1, shared_lstm=False, enable_critic_lstm=False, **kwargs)
 
         self.critic_variant = critic_variant
-        self.speed_exploration_mode = speed_exploration_mode
+        self.speed_noise_hold_steps = int(speed_noise_hold_steps)
+        self.front_corridor_speed_noise_hold_steps = int(front_corridor_speed_noise_hold_steps)
+        self.speed_exploration_mode = speed_exploration_mode(self.speed_noise_hold_steps, self.front_corridor_speed_noise_hold_steps)
         self._rollout_danger_gates: torch.Tensor | None = None
         self._rollout_episode_starts: torch.Tensor | None = None
         self._temporal_speed_noise: torch.Tensor | None = None
         self._temporal_steps_remaining: torch.Tensor | None = None
+        self._temporal_corridor_phase: torch.Tensor | None = None
         self.end2race_actor = End2Race(mask_prob=0.0, hidden_scale=hidden_scale)
         checkpoint = Path(checkpoint_path).expanduser().resolve()
         self.end2race_actor.load_state_dict(torch.load(checkpoint, map_location="cpu", weights_only=True), strict=True)
@@ -914,6 +910,9 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             self._temporal_steps_remaining = torch.zeros(
                 batch_size, dtype=torch.int64, device=self.device
             )
+            self._temporal_corridor_phase = torch.zeros(
+                batch_size, dtype=torch.bool, device=self.device
+            )
 
     def _structured_rollout_parameters(
         self,
@@ -939,42 +938,23 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self._ensure_temporal_state(batch_size)
         assert self._temporal_speed_noise is not None
         assert self._temporal_steps_remaining is not None
+        assert self._temporal_corridor_phase is not None
         self._temporal_steps_remaining[starts] = 0
         self._temporal_speed_noise[starts] = 0.0
-
-        if self.speed_exploration_mode == "temporal_global":
-            begin = self._temporal_steps_remaining <= 0
-            count = int(begin.sum().item())
-            if count:
-                self._temporal_speed_noise[begin] = torch.randn(
-                    count, dtype=torch.float32, device=self.device
-                )
-                self._temporal_steps_remaining[begin] = CONFIG.temporal_resample_steps
-            noise = self._temporal_speed_noise.clone()
-            self._temporal_steps_remaining -= 1
-            return baseline_log_std, noise
-
-        if self.speed_exploration_mode != "corridor_temporal":
-            raise RuntimeError(
-                f"Unexpected structured exploration mode {self.speed_exploration_mode!r}"
-            )
-        active = self._temporal_steps_remaining > 0
-        begin = ~active & gates
+        phase_changed = gates != self._temporal_corridor_phase
+        begin = (self._temporal_steps_remaining <= 0) | phase_changed | starts
         count = int(begin.sum().item())
         if count:
             self._temporal_speed_noise[begin] = torch.randn(
                 count, dtype=torch.float32, device=self.device
             )
-            self._temporal_steps_remaining[begin] = CONFIG.temporal_resample_steps
-        active = self._temporal_steps_remaining > 0
-        fresh = ~active
-        fresh_count = int(fresh.sum().item())
-        if fresh_count:
-            self._temporal_speed_noise[fresh] = torch.randn(
-                fresh_count, dtype=torch.float32, device=self.device
-            )
+            hold_steps = torch.full((batch_size,), self.speed_noise_hold_steps, dtype=torch.int64, device=self.device)
+            if self.front_corridor_speed_noise_hold_steps > 0:
+                hold_steps[gates] = self.front_corridor_speed_noise_hold_steps
+            self._temporal_steps_remaining[begin] = hold_steps[begin]
+            self._temporal_corridor_phase[begin] = gates[begin]
         noise = self._temporal_speed_noise.clone()
-        self._temporal_steps_remaining[active] -= 1
+        self._temporal_steps_remaining -= 1
         return baseline_log_std, noise
 
     def _stage_exploration_transition(
@@ -1056,7 +1036,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         batch_size = mean_actions.shape[0]
         if (
             deterministic
-            or self.speed_exploration_mode == "baseline"
+            or self.speed_exploration_mode == "stepwise_independent"
         ):
             distribution = self._distribution(mean_actions)
             actions = distribution.get_actions(deterministic=deterministic)
@@ -1096,7 +1076,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         return self._distribution(mean_actions), actor_states
 
     def forward_independent_collection(self, obs: torch.Tensor, lstm_states: RNNStates, episode_starts: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, RNNStates]:
-        if self.speed_exploration_mode != "baseline" or obs.shape[0] != 1 or episode_starts.shape != (1,):
+        if self.speed_exploration_mode != "stepwise_independent" or obs.shape[0] != 1 or episode_starts.shape != (1,):
             raise RuntimeError("Independent online branch collection requires one baseline-exploration sequence")
         mean_actions, actor_states = self._actor_forward(obs, lstm_states.pi, episode_starts)
         actions = self._distribution(mean_actions).sample()
@@ -1144,7 +1124,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         return distribution.log_prob(actions), distribution.entropy()
 
     def evaluate_independent_actor_actions(self, observations: torch.Tensor, actions: torch.Tensor, actor_hidden: torch.Tensor, episode_starts: torch.Tensor) -> torch.Tensor:
-        if self.speed_exploration_mode != "baseline":
+        if self.speed_exploration_mode != "stepwise_independent":
             raise RuntimeError("Independent online branch replay requires baseline exploration")
         if observations.ndim != 2 or actions.shape != (observations.shape[0], END2RACE_ACTION_SIZE) or actor_hidden.ndim != 3 or actor_hidden.shape[1] != observations.shape[0] or episode_starts.shape != (observations.shape[0],):
             raise RuntimeError("Independent online branch actor replay shapes are invalid")

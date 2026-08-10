@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Generator
 import copy as copy_module
 import hashlib
@@ -214,8 +215,9 @@ class FirstActionPreferenceDataset:
 
 class OnlineBranchRollout:
 
-    def __init__(self, device):
+    def __init__(self, device, actions_per_state=CONFIG.online_branch_actions_per_state):
         self.device = device
+        self.actions_per_state = int(actions_per_state)
         self.reset()
 
     def reset(self):
@@ -243,7 +245,7 @@ class OnlineBranchRollout:
         returns = np.asarray(returns, dtype=np.float32).reshape(-1)
         branch_lengths = np.asarray(branch_lengths, dtype=np.int64).reshape(-1)
         count = actions.shape[0]
-        if actions.shape != (CONFIG.online_branch_actions_per_state, 2) or old_log_probs.shape != (count,) or returns.shape != (count,) or branch_lengths.shape != (count,) or len(outcomes) != count:
+        if actions.shape != (self.actions_per_state, 2) or old_log_probs.shape != (count,) or returns.shape != (count,) or branch_lengths.shape != (count,) or len(outcomes) != count:
             raise RuntimeError("Online branch group does not satisfy the fixed action-count contract")
         if not np.isfinite(actions).all() or not np.isfinite(old_log_probs).all() or not np.isfinite(returns).all():
             raise ValueError("Online branch action, log-prob, and return values must be finite")
@@ -268,35 +270,45 @@ class OnlineBranchRollout:
             self.outcomes.append(str(outcomes[index]))
         self.simulator_steps += int(branch_lengths.sum())
 
-    def finalize(self):
-        expected = CONFIG.online_branch_states_per_rollout * CONFIG.online_branch_actions_per_state
-        if len(self.actions) != expected or len(set(self.state_ids)) != CONFIG.online_branch_states_per_rollout:
-            raise RuntimeError(f"Online branch rollout requires {expected} actions from {CONFIG.online_branch_states_per_rollout} states")
-        roles, role_counts = np.unique(np.asarray(self.roles), return_counts=True)
-        counts = dict(zip(roles.tolist(), role_counts.tolist()))
-        expected_per_role = expected // 2
-        if counts != {"collision": expected_per_role, "ordinary": expected_per_role}:
-            raise RuntimeError(f"Online branch rollout role balance changed: {counts}")
+    def finalize(self, expected_states=None, require_role_balance=False, require_nonconstant=True):
+        state_count = len(set(self.state_ids))
+        if expected_states is not None:
+            expected = expected_states * self.actions_per_state
+            if len(self.actions) != expected or state_count != expected_states:
+                raise RuntimeError(f"Online branch rollout requires {expected} actions from {expected_states} states")
+        if require_role_balance:
+            roles, role_counts = np.unique(np.asarray(self.roles), return_counts=True)
+            counts = dict(zip(roles.tolist(), role_counts.tolist()))
+            expected_per_role = len(self.actions) // 2
+            if counts != {"collision": expected_per_role, "ordinary": expected_per_role}:
+                raise RuntimeError(f"Online branch rollout role balance changed: {counts}")
         advantages = np.asarray(self.advantages, dtype=np.float64)
-        if not np.isfinite(advantages).all() or float(advantages.std()) <= 0.0:
-            raise RuntimeError("Online branch advantages must be finite and nonconstant")
-        for state_id in range(CONFIG.online_branch_states_per_rollout):
+        if not np.isfinite(advantages).all():
+            raise RuntimeError("Online branch advantages must be finite")
+        if require_nonconstant and (len(advantages) == 0 or float(advantages.std()) <= 0.0):
+            raise RuntimeError("Online branch advantages must be nonconstant")
+        for state_id in range(state_count):
             state_advantages = advantages[np.asarray(self.state_ids) == state_id]
-            if len(state_advantages) != CONFIG.online_branch_actions_per_state or abs(float(state_advantages.sum())) > 1e-5:
+            if len(state_advantages) != self.actions_per_state or abs(float(state_advantages.sum())) > 1e-5:
                 raise RuntimeError("Leave-one-out online branch advantages must sum to zero within each state")
-        self.normalized_advantages = ((advantages - advantages.mean()) / (advantages.std() + 1e-8)).astype(np.float32)
+        if len(advantages) == 0 or float(advantages.std()) <= 0.0:
+            self.normalized_advantages = np.zeros_like(advantages, dtype=np.float32)
+        else:
+            self.normalized_advantages = ((advantages - advantages.mean()) / (advantages.std() + 1e-8)).astype(np.float32)
         self._finalized = True
 
-    def epoch_batches(self, batch_count, rng):
+    def epoch_batches(self, batch_count, rng, require_even=True):
         if not self._finalized:
             raise RuntimeError("Online branch rollout must be finalized before sampling")
-        if batch_count <= 0 or len(self.actions) % batch_count != 0:
+        if batch_count <= 0 or (require_even and len(self.actions) % batch_count != 0):
             raise ValueError("Online branch samples must split evenly across actor minibatches")
         permutation = rng.permutation(len(self.actions))
-        return np.split(permutation, batch_count)
+        return np.split(permutation, batch_count) if require_even else np.array_split(permutation, batch_count)
 
     def loss(self, policy, indices, clip_range):
         indices = np.asarray(indices, dtype=np.int64)
+        if len(indices) == 0:
+            raise RuntimeError("Online branch loss requires at least one action")
         observations = torch.as_tensor(np.asarray(self.observations)[indices], dtype=torch.float32, device=self.device)
         actions = torch.as_tensor(np.asarray(self.actions)[indices], dtype=torch.float32, device=self.device)
         old_log_probs = torch.as_tensor(np.asarray(self.old_log_probs)[indices], dtype=torch.float32, device=self.device)
@@ -318,6 +330,8 @@ class OnlineBranchRollout:
     def ratio_identity(self, policy):
         if not self._finalized:
             raise RuntimeError("Online branch rollout must be finalized before ratio identity")
+        if not self.actions:
+            return 0.0
         observations = torch.as_tensor(np.asarray(self.observations), dtype=torch.float32, device=self.device)
         actions = torch.as_tensor(np.asarray(self.actions), dtype=torch.float32, device=self.device)
         old_log_probs = torch.as_tensor(np.asarray(self.old_log_probs), dtype=torch.float32, device=self.device)
@@ -331,34 +345,37 @@ class OnlineBranchRollout:
             raise RuntimeError("Online branch pre-update log-ratio identity must be finite")
         return maximum
 
-    def statistics(self):
+    def statistics(self, prefix="online_branch"):
         if not self._finalized:
             return {
-                "online_branch_state_count": 0,
-                "online_branch_action_count": 0,
-                "online_branch_simulator_steps": 0,
+                f"{prefix}_state_count": 0,
+                f"{prefix}_action_count": 0,
+                f"{prefix}_simulator_steps": 0,
             }
         returns = np.asarray(self.returns, dtype=np.float64)
         advantages = np.asarray(self.advantages, dtype=np.float64)
         lengths = np.asarray(self.branch_lengths, dtype=np.float64)
         outcome_counts = {name: self.outcomes.count(name) for name in ("ego_collision", "overtake", "follow", "horizon")}
         return {
-            "online_branch_state_count": len(set(self.state_ids)),
-            "online_branch_action_count": len(self.actions),
-            "online_branch_simulator_steps": self.simulator_steps,
-            "online_branch_return_mean": float(returns.mean()),
-            "online_branch_return_std": float(returns.std()),
-            "online_branch_advantage_std": float(advantages.std()),
-            "online_branch_length_mean": float(lengths.mean()),
-            "online_branch_outcome_counts": outcome_counts,
+            f"{prefix}_state_count": len(set(self.state_ids)),
+            f"{prefix}_action_count": len(self.actions),
+            f"{prefix}_simulator_steps": self.simulator_steps,
+            f"{prefix}_return_mean": float(returns.mean()) if len(returns) else None,
+            f"{prefix}_return_std": float(returns.std()) if len(returns) else None,
+            f"{prefix}_advantage_std": float(advantages.std()) if len(advantages) else None,
+            f"{prefix}_length_mean": float(lengths.mean()) if len(lengths) else None,
+            f"{prefix}_outcome_counts": outcome_counts,
         }
 
 
 class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
     """Store the real actor and independent-critic GRU streams."""
 
-    def __init__(self, *args, store_independent_gru_hidden: bool = False, **kwargs):
+    def __init__(self, *args, store_independent_gru_hidden: bool = False, loss_sample_stride: int = 1, **kwargs):
         self.store_independent_gru_hidden = bool(store_independent_gru_hidden)
+        self.loss_sample_stride = int(loss_sample_stride)
+        if self.loss_sample_stride < 1:
+            raise ValueError("PPO loss sample stride must be positive")
         super().__init__(*args, **kwargs)
 
     def reset(self) -> None:
@@ -367,11 +384,29 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
         self.exploration_speed_log_stds = np.zeros(
             (self.buffer_size, self.n_envs), dtype=np.float32
         )
+        self.loss_sample_mask = np.ones((self.buffer_size, self.n_envs), dtype=np.float32)
         if self.store_independent_gru_hidden:
             self.hidden_states_vf = np.zeros(self.hidden_state_shape, dtype=np.float32)
         self._staged_speed_log_std: np.ndarray | None = None
         self.current_valid_by_timestep: tuple[tuple[bool, ...], ...] | None = None
         self.current_speed_log_stds: torch.Tensor | None = None
+
+    def prepare_loss_sampling(self, rng):
+        if self.generator_ready:
+            raise RuntimeError("PPO loss sampling must be fixed before flattening the rollout buffer")
+        self.loss_sample_mask.fill(0.0)
+        if self.loss_sample_stride == 1:
+            self.loss_sample_mask.fill(1.0)
+            return
+        for env_index in range(self.n_envs):
+            starts = np.flatnonzero(self.episode_starts[:, env_index] > 0.5).tolist()
+            boundaries = sorted(set([0, *starts, self.buffer_size]))
+            for begin, end in zip(boundaries[:-1], boundaries[1:]):
+                length = end - begin
+                if length <= 0:
+                    continue
+                phase = int(rng.integers(min(self.loss_sample_stride, length)))
+                self.loss_sample_mask[begin + phase : end : self.loss_sample_stride, env_index] = 1.0
 
     def stage_exploration(self, *, speed_log_std: np.ndarray) -> None:
         values = np.asarray(speed_log_std, dtype=np.float32).reshape(-1)
@@ -406,6 +441,7 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
                 "hidden_states_pi",
                 "episode_starts",
                 "exploration_speed_log_stds",
+                "loss_sample_mask",
             ]
             if self.store_independent_gru_hidden:
                 self.hidden_states_vf = self.hidden_states_vf.swapaxes(1, 2)
@@ -450,7 +486,7 @@ class End2RaceRolloutBuffer(RecurrentRolloutBuffer):
             returns=self.pad_and_flatten(self.returns[batch_inds]),
             lstm_states=RNNStates((actor_hidden, actor_cell), (critic_hidden, critic_cell)),
             episode_starts=self.pad_and_flatten(self.episode_starts[batch_inds]),
-            mask=self.pad_and_flatten(np.ones_like(self.returns[batch_inds])),
+            mask=self.pad_and_flatten(self.loss_sample_mask[batch_inds]),
         )
 
 
@@ -466,6 +502,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         first_action_preference_dataset: str = "",
         first_action_preference_step_fraction: float = 0.0,
         online_same_state_branch_ppo: bool = False,
+        collision_prefix_branch_ppo: bool = False,
+        ppo_loss_sample_stride: int = 1,
         **kwargs,
     ):
         self.actor_epochs = actor_epochs
@@ -483,7 +521,10 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.first_action_preference_beta = None
         self.first_action_preference_calibration = None
         self.online_same_state_branch_ppo = bool(online_same_state_branch_ppo)
+        self.collision_prefix_branch_ppo = bool(collision_prefix_branch_ppo)
+        self.ppo_loss_sample_stride = int(ppo_loss_sample_stride)
         self.online_branch_rollout = None
+        self.collision_prefix_histories = None
         kwargs["n_epochs"] = actor_epochs
         super().__init__(*args, **kwargs)
         if not math.isfinite(self.first_action_preference_step_fraction) or self.first_action_preference_step_fraction < 0.0:
@@ -492,14 +533,22 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             if not self.first_action_preference_dataset:
                 raise ValueError("Positive first-action preference step fraction requires a dataset")
             self.first_action_preference = FirstActionPreferenceDataset(self.first_action_preference_dataset, self.policy, self.device, self.seed)
-        if self.online_same_state_branch_ppo:
+        if self.ppo_loss_sample_stride < 1:
+            raise ValueError("PPO loss sample stride must be positive")
+        if self.online_same_state_branch_ppo and self.collision_prefix_branch_ppo:
+            raise ValueError("Online same-state and collision-prefix branch PPO are separate experiment arms")
+        if self.online_same_state_branch_ppo or self.collision_prefix_branch_ppo:
             if self.first_action_preference is not None:
-                raise ValueError("Online same-state branch PPO cannot be combined with an auxiliary actor loss")
-            if self.policy.speed_exploration_mode != "baseline":
-                raise ValueError("Online same-state branch PPO requires baseline exploration")
+                raise ValueError("Branched PPO cannot be combined with an auxiliary actor loss")
+            if self.policy.speed_exploration_mode != "stepwise_independent":
+                raise ValueError("Branched PPO requires stepwise-independent exploration")
+        if self.online_same_state_branch_ppo:
             if self.n_envs != CONFIG.online_branch_states_per_rollout or self.n_steps < CONFIG.online_branch_states_per_rollout:
                 raise ValueError("Online same-state branch PPO requires 16 environments and at least 16 rollout steps")
             self.online_branch_rollout = OnlineBranchRollout(self.device)
+        elif self.collision_prefix_branch_ppo:
+            self.online_branch_rollout = OnlineBranchRollout(self.device, CONFIG.collision_prefix_branch_actions_per_state)
+            self.collision_prefix_histories = [deque(maxlen=CONFIG.collision_prefix_branch_lookback_steps) for _rank in range(self.n_envs)]
 
     def _actor_step_space_norm(self, gradients) -> float:
         gru_count = len(tuple(self.policy.end2race_actor.gru.parameters()))
@@ -587,6 +636,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self.actor_minibatch_rng = np.random.default_rng(actor_minibatch_seed)  # Formal actor minibatch splits only.
         self.critic_minibatch_rng = np.random.default_rng(critic_minibatch_seed)  # Formal critic minibatch splits only.
         self.online_branch_minibatch_rng = np.random.default_rng(np.random.SeedSequence([self.seed, 6]))
+        self.loss_sample_rng = np.random.default_rng(np.random.SeedSequence([self.seed, 7]))
         self.rollout_buffer = End2RaceRolloutBuffer(
             self.n_steps,
             self.observation_space,
@@ -597,6 +647,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             gae_lambda=self.gae_lambda,
             n_envs=self.n_envs,
             store_independent_gru_hidden=self.policy.critic_is_independent_gru,
+            loss_sample_stride=self.ppo_loss_sample_stride,
         )
         self.policy._end2race_rollout_buffer = self.rollout_buffer
         self.clip_range = FloatSchedule(self.clip_range)
@@ -615,7 +666,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         self._rollout_episode_records = []
         if self.online_same_state_branch_ppo and self.warmup_completed:
             completed = self._collect_online_branch_rollouts(env, callback, rollout_buffer, n_rollout_steps)
-        elif self.policy.speed_exploration_mode == "baseline":
+        elif self.collision_prefix_branch_ppo and self.warmup_completed:
+            completed = self._collect_collision_prefix_branch_rollouts(env, callback, rollout_buffer, n_rollout_steps)
+        elif self.policy.speed_exploration_mode == "stepwise_independent":
             completed = super().collect_rollouts(
                 env, callback, rollout_buffer, n_rollout_steps
             )
@@ -623,19 +676,20 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             completed = self._collect_structured_exploration_rollouts(
                 env, callback, rollout_buffer, n_rollout_steps
             )
+        if completed and self.warmup_completed:
+            rollout_buffer.prepare_loss_sampling(self.loss_sample_rng)
         return completed
 
-    @staticmethod
-    def _torch_rng_state():
+    def _torch_rng_state(self):
         return {
             "cpu": torch.random.get_rng_state(),
-            "cuda": torch.cuda.get_rng_state_all(),
+            "cuda": torch.cuda.get_rng_state_all() if self.device.type == "cuda" else None,
         }
 
-    @staticmethod
-    def _restore_torch_rng_state(state) -> None:
+    def _restore_torch_rng_state(self, state) -> None:
         torch.random.set_rng_state(state["cpu"])
-        torch.cuda.set_rng_state_all(state["cuda"])
+        if state["cuda"] is not None:
+            torch.cuda.set_rng_state_all(state["cuda"])
 
     def _branch_critic_state_after_observation(self, observation_tensor, critic_state, episode_start_tensor):
         if self.policy.critic_is_independent_gru:
@@ -651,23 +705,14 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         require_finite_number("Online branch bootstrap value", result)
         return result
 
-    def _collect_online_branch_group(self, env, rank: int, observation: np.ndarray, lstm_states: RNNStates, episode_start: bool, rollout_step: int) -> None:
+    def _collect_branch_group(self, env, rank, branch_snapshot, restore_snapshot, observation, actor_state, critic_state, episode_start, rollout_step, role, actions_per_state, horizon_steps):
         if self.online_branch_rollout is None:
             raise RuntimeError("Online branch rollout storage was not initialized")
-        snapshot = env.env_method("capture_runtime_snapshot", indices=[rank])[0]
-        if not np.array_equal(np.asarray(snapshot["observation"], dtype=np.float32), np.asarray(observation, dtype=np.float32)):
+        if not np.array_equal(np.asarray(branch_snapshot["observation"], dtype=np.float32), np.asarray(observation, dtype=np.float32)):
             raise RuntimeError("Online branch snapshot observation differs from the current on-policy observation")
         rng_state = self._torch_rng_state()
         observation_tensor = obs_as_tensor(np.asarray(observation, dtype=np.float32).reshape(1, -1), self.device)
         episode_start_tensor = torch.as_tensor([episode_start], dtype=torch.float32, device=self.device)
-        actor_state = (
-            lstm_states.pi[0][:, rank : rank + 1].contiguous(),
-            lstm_states.pi[1][:, rank : rank + 1].contiguous(),
-        )
-        critic_state = (
-            lstm_states.vf[0][:, rank : rank + 1].contiguous(),
-            lstm_states.vf[1][:, rank : rank + 1].contiguous(),
-        )
         actions = []
         old_log_probs = []
         returns = []
@@ -679,7 +724,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 critic_state_after = self._branch_critic_state_after_observation(observation_tensor, critic_state, episode_start_tensor)
                 candidate_actions = []
                 candidate_log_probs = []
-                for _candidate in range(CONFIG.online_branch_actions_per_state):
+                for _candidate in range(actions_per_state):
                     action_tensor = distribution.sample()
                     log_prob_tensor = distribution.log_prob(action_tensor)
                     action = action_tensor[0].detach().cpu().numpy().astype(np.float32)
@@ -693,7 +738,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                     actions.append(action.copy())
                     old_log_probs.append(old_log_prob)
                     self._restore_torch_rng_state(continuation_rng_state)
-                    env.env_method("restore_runtime_snapshot", snapshot, indices=[rank])
+                    env.env_method("restore_runtime_snapshot", branch_snapshot, indices=[rank])
                     branch_actor_state = (actor_state_after[0].clone(), actor_state_after[1].clone())
                     branch_critic_state = (critic_state_after[0].clone(), critic_state_after[1].clone())
                     branch_action = action
@@ -702,7 +747,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                     branch_outcome = "horizon"
                     branch_observation = np.asarray(observation, dtype=np.float32)
                     branch_length = 0
-                    for branch_step in range(CONFIG.online_branch_horizon_steps):
+                    horizon_bootstrap = None
+                    for branch_step in range(horizon_steps):
                         branch_observation, reward, terminated, truncated, info = env.env_method("step", branch_action, indices=[rank])[0]
                         branch_observation = np.asarray(branch_observation, dtype=np.float32)
                         discounted_return += discount * float(reward)
@@ -716,23 +762,25 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                         next_observation_tensor = obs_as_tensor(branch_observation.reshape(1, -1), self.device)
                         branch_states = RNNStates(branch_actor_state, branch_critic_state)
                         branch_action_tensor, _value, next_states = self.policy.forward_independent_collection(next_observation_tensor, branch_states, torch.zeros(1, dtype=torch.float32, device=self.device))
+                        horizon_bootstrap = float(_value.reshape(-1)[0].detach().cpu().item())
                         branch_action = branch_action_tensor[0].detach().cpu().numpy().astype(np.float32)
                         branch_action = np.clip(branch_action, self.action_space.low, self.action_space.high)
                         branch_actor_state = next_states.pi
                         branch_critic_state = next_states.vf
                     else:
-                        discounted_return += discount * self._online_branch_bootstrap(branch_observation, branch_critic_state)
+                        if horizon_bootstrap is None:
+                            raise RuntimeError("Online branch horizon bootstrap value is missing")
+                        discounted_return += discount * horizon_bootstrap
                     require_finite_number("Online branch discounted return", discounted_return)
                     returns.append(discounted_return)
                     lengths.append(branch_length)
                     outcomes.append(branch_outcome)
         finally:
-            env.env_method("restore_runtime_snapshot", snapshot, indices=[rank])
+            env.env_method("restore_runtime_snapshot", restore_snapshot, indices=[rank])
             self._restore_torch_rng_state(rng_state)
-        restored_observation = env.env_method("restore_runtime_snapshot", snapshot, indices=[rank])[0]
-        if not np.array_equal(np.asarray(restored_observation, dtype=np.float32), np.asarray(observation, dtype=np.float32)):
+        restored_observation = env.env_method("restore_runtime_snapshot", restore_snapshot, indices=[rank])[0]
+        if not np.array_equal(np.asarray(restored_observation, dtype=np.float32), np.asarray(restore_snapshot["observation"], dtype=np.float32)):
             raise RuntimeError("Online branch collection did not restore the main rollout observation")
-        role = "collision" if rank % 2 == 0 else "ordinary"
         self.online_branch_rollout.add_group(
             observation,
             actor_state[0][:, 0].detach().cpu().numpy(),
@@ -746,6 +794,19 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             lengths,
             outcomes,
         )
+
+    def _collect_online_branch_group(self, env, rank: int, observation: np.ndarray, lstm_states: RNNStates, episode_start: bool, rollout_step: int) -> None:
+        snapshot = env.env_method("capture_runtime_snapshot", indices=[rank])[0]
+        actor_state = (
+            lstm_states.pi[0][:, rank : rank + 1].contiguous(),
+            lstm_states.pi[1][:, rank : rank + 1].contiguous(),
+        )
+        critic_state = (
+            lstm_states.vf[0][:, rank : rank + 1].contiguous(),
+            lstm_states.vf[1][:, rank : rank + 1].contiguous(),
+        )
+        role = "collision" if rank % 2 == 0 else "ordinary"
+        self._collect_branch_group(env, rank, snapshot, snapshot, observation, actor_state, critic_state, episode_start, rollout_step, role, CONFIG.online_branch_actions_per_state, CONFIG.online_branch_horizon_steps)
 
     def _collect_online_branch_rollouts(self, env, callback, rollout_buffer, n_rollout_steps: int) -> bool:
         if not isinstance(rollout_buffer, End2RaceRolloutBuffer) or self.online_branch_rollout is None:
@@ -795,10 +856,104 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device), lstm_states.vf, torch.as_tensor(dones, dtype=torch.float32, device=self.device))
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
         self._last_lstm_states = lstm_states
-        self.online_branch_rollout.finalize()
+        self.online_branch_rollout.finalize(expected_states=CONFIG.online_branch_states_per_rollout, require_role_balance=True, require_nonconstant=True)
         identity = self.online_branch_rollout.ratio_identity(self.policy)
         if identity > 5e-5:
             raise RuntimeError(f"Online branch pre-update actor log-ratio identity failed: {identity}")
+        callback.on_rollout_end()
+        return True
+
+    def _append_collision_prefix_history(self, lstm_states, rollout_step):
+        if self.collision_prefix_histories is None or self._last_obs is None:
+            raise RuntimeError("Collision-prefix actor histories were not initialized")
+        for rank, history in enumerate(self.collision_prefix_histories):
+            history.append({
+                "observation": np.asarray(self._last_obs[rank], dtype=np.float32).copy(),
+                "actor_hidden": lstm_states.pi[0][:, rank : rank + 1].detach().cpu().numpy().copy(),
+                "actor_cell": lstm_states.pi[1][:, rank : rank + 1].detach().cpu().numpy().copy(),
+                "critic_hidden": lstm_states.vf[0][:, rank : rank + 1].detach().cpu().numpy().copy(),
+                "critic_cell": lstm_states.vf[1][:, rank : rank + 1].detach().cpu().numpy().copy(),
+                "episode_start": bool(self._last_episode_starts[rank]),
+                "rollout_step": int(rollout_step),
+            })
+
+    def _collect_collision_prefix_group(self, env, rank, info, restore_observation):
+        if self.collision_prefix_histories is None:
+            raise RuntimeError("Collision-prefix actor histories were not initialized")
+        prefix_snapshot = env.env_method("take_collision_prefix_snapshot", indices=[rank])[0]
+        history = self.collision_prefix_histories[rank]
+        if prefix_snapshot is None or len(history) < CONFIG.collision_prefix_branch_lookback_steps:
+            return False
+        record = history[0]
+        if not np.array_equal(np.asarray(prefix_snapshot["observation"], dtype=np.float32), record["observation"]):
+            raise RuntimeError("Collision-prefix simulator replay and actor history are not aligned")
+        restore_snapshot = env.env_method("capture_runtime_snapshot", indices=[rank])[0]
+        if not np.array_equal(np.asarray(restore_snapshot["observation"], dtype=np.float32), np.asarray(restore_observation, dtype=np.float32)):
+            raise RuntimeError("Collision-prefix main reset snapshot differs from the vector observation")
+        actor_state = (
+            torch.as_tensor(record["actor_hidden"], dtype=torch.float32, device=self.device),
+            torch.as_tensor(record["actor_cell"], dtype=torch.float32, device=self.device),
+        )
+        critic_state = (
+            torch.as_tensor(record["critic_hidden"], dtype=torch.float32, device=self.device),
+            torch.as_tensor(record["critic_cell"], dtype=torch.float32, device=self.device),
+        )
+        env.env_method("set_collision_prefix_branching", True, indices=[rank])
+        try:
+            self._collect_branch_group(env, rank, prefix_snapshot, restore_snapshot, record["observation"], actor_state, critic_state, record["episode_start"], record["rollout_step"], str(info["env_role"]), CONFIG.collision_prefix_branch_actions_per_state, CONFIG.collision_prefix_branch_horizon_steps)
+        finally:
+            env.env_method("set_collision_prefix_branching", False, indices=[rank])
+        return True
+
+    def _collect_collision_prefix_branch_rollouts(self, env, callback, rollout_buffer, n_rollout_steps):
+        if not isinstance(rollout_buffer, End2RaceRolloutBuffer) or self.online_branch_rollout is None or self.collision_prefix_histories is None:
+            raise TypeError("Collision-prefix branch PPO requires End2RaceRolloutBuffer and branch storage")
+        if self._last_obs is None:
+            raise RuntimeError("No previous observation was provided")
+        self.policy.set_training_mode(False)
+        rollout_buffer.reset()
+        self.online_branch_rollout.reset()
+        callback.on_rollout_start()
+        lstm_states = copy_module.deepcopy(self._last_lstm_states)
+        n_steps = 0
+        while n_steps < n_rollout_steps:
+            self._append_collision_prefix_history(lstm_states, n_steps)
+            with torch.no_grad():
+                observation_tensor = obs_as_tensor(self._last_obs, self.device)
+                episode_starts = torch.as_tensor(self._last_episode_starts, dtype=torch.float32, device=self.device)
+                actions, values, log_probs, next_lstm_states = self.policy.forward(observation_tensor, lstm_states, episode_starts)
+            actions = actions.cpu().numpy()
+            clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high) if isinstance(self.action_space, spaces.Box) else actions
+            new_obs, rewards, dones, infos = env.step(clipped_actions)
+            self.num_timesteps += env.num_envs
+            callback.update_locals(locals())
+            if not callback.on_step():
+                return False
+            self._update_info_buffer(infos, dones)
+            n_steps += 1
+            for index, done in enumerate(dones):
+                if done and infos[index].get("terminal_observation") is not None and infos[index].get("TimeLimit.truncated", False):
+                    terminal_obs = self.policy.obs_to_tensor(infos[index]["terminal_observation"])[0]
+                    with torch.no_grad():
+                        terminal_state = (next_lstm_states.vf[0][:, index : index + 1].contiguous(), next_lstm_states.vf[1][:, index : index + 1].contiguous())
+                        terminal_value = self.policy.predict_values(terminal_obs, terminal_state, torch.zeros(1, dtype=torch.float32, device=self.device))[0]
+                    rewards[index] += self.gamma * terminal_value
+                if done and infos[index].get("ego_collision") and infos[index].get("collision_prefix_available"):
+                    self._collect_collision_prefix_group(env, index, infos[index], new_obs[index])
+                if done:
+                    self.collision_prefix_histories[index].clear()
+            rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs, lstm_states=lstm_states)
+            self._last_obs = new_obs
+            self._last_episode_starts = dones
+            lstm_states = next_lstm_states
+        with torch.no_grad():
+            values = self.policy.predict_values(obs_as_tensor(new_obs, self.device), lstm_states.vf, torch.as_tensor(dones, dtype=torch.float32, device=self.device))
+        rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
+        self._last_lstm_states = lstm_states
+        self.online_branch_rollout.finalize(require_nonconstant=False)
+        identity = self.online_branch_rollout.ratio_identity(self.policy)
+        if identity > 5e-5:
+            raise RuntimeError(f"Collision-prefix branch pre-update actor log-ratio identity failed: {identity}")
         callback.on_rollout_end()
         return True
 
@@ -1200,6 +1355,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
         online_branch_losses = []
         online_branch_approximate_kls = []
         online_branch_clip_fractions = []
+        branched_ppo_enabled = self.online_same_state_branch_ppo or self.collision_prefix_branch_ppo
+        branch_loss_coefficient = CONFIG.online_branch_loss_coefficient if self.online_same_state_branch_ppo else CONFIG.collision_prefix_branch_loss_coefficient
         update = self._n_updates + 1
         actor_optimizer_steps_per_epoch = (
             self.actor_epochs
@@ -1208,7 +1365,7 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             // self.batch_size
         ) // self.actor_epochs
         online_branch_ratio_identity = None
-        if self.online_same_state_branch_ppo:
+        if branched_ppo_enabled:
             if self.online_branch_rollout is None:
                 raise RuntimeError("Online branch rollout storage is missing before actor training")
             online_branch_ratio_identity = self.online_branch_rollout.ratio_identity(self.policy)
@@ -1220,8 +1377,8 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             parameter.requires_grad_(False)
         for epoch in range(self.actor_epochs):
             online_branch_batches = (
-                self.online_branch_rollout.epoch_batches(actor_optimizer_steps_per_epoch, self.online_branch_minibatch_rng)
-                if self.online_same_state_branch_ppo and self.online_branch_rollout is not None
+                self.online_branch_rollout.epoch_batches(actor_optimizer_steps_per_epoch, self.online_branch_minibatch_rng, require_even=self.online_same_state_branch_ppo)
+                if branched_ppo_enabled and self.online_branch_rollout is not None
                 else None
             )
             for minibatch, rollout_data in enumerate(
@@ -1251,16 +1408,20 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 policy_loss = -torch.min(advantages * ratio, advantages * torch.clamp(ratio, 1 - clip_range, 1 + clip_range))[mask].mean()
                 require_finite_tensor("Policy loss", policy_loss)
                 self.policy.actor_optimizer.zero_grad()
-                if self.online_same_state_branch_ppo:
+                if branched_ppo_enabled:
                     if online_branch_batches is None or self.online_branch_rollout is None:
                         raise RuntimeError("Online branch actor minibatches are missing")
-                    branch_loss, branch_kl, branch_clip_fraction = self.online_branch_rollout.loss(self.policy, online_branch_batches[minibatch - 1], clip_range)
-                    combined_loss = policy_loss + CONFIG.online_branch_loss_coefficient * branch_loss
-                    require_finite_tensor("Combined main and online branch PPO loss", combined_loss)
-                    combined_loss.backward()
-                    online_branch_losses.append(float(branch_loss.detach().cpu().item()))
-                    online_branch_approximate_kls.append(branch_kl)
-                    online_branch_clip_fractions.append(branch_clip_fraction)
+                    branch_indices = online_branch_batches[minibatch - 1]
+                    if len(branch_indices):
+                        branch_loss, branch_kl, branch_clip_fraction = self.online_branch_rollout.loss(self.policy, branch_indices, clip_range)
+                        combined_loss = policy_loss + branch_loss_coefficient * branch_loss
+                        require_finite_tensor("Combined main and branched PPO loss", combined_loss)
+                        combined_loss.backward()
+                        online_branch_losses.append(float(branch_loss.detach().cpu().item()))
+                        online_branch_approximate_kls.append(branch_kl)
+                        online_branch_clip_fractions.append(branch_clip_fraction)
+                    else:
+                        policy_loss.backward()
                 elif self.first_action_preference is None:
                     policy_loss.backward()
                 else:
@@ -1323,6 +1484,9 @@ class End2RaceRecurrentPPO(RecurrentPPO):
             "critic_epoch_value_losses": critic_epoch_value_losses,
             "approx_kl_mean": approximate_kl_mean,
             "clip_fraction_mean": clip_fraction_mean,
+            "ppo_loss_sample_stride": self.ppo_loss_sample_stride,
+            "ppo_loss_selected_transition_count": int(self.rollout_buffer.loss_sample_mask.sum()),
+            "ppo_loss_total_transition_count": int(self.rollout_buffer.buffer_size * self.rollout_buffer.n_envs),
             "ego_collision_count": sum(record["episode_outcome"] == "ego_collision" for record in episodes),
             "overtake_count": sum(record["episode_outcome"] == "overtake" for record in episodes),
             "follow_count": sum(record["episode_outcome"] == "follow" for record in episodes),
@@ -1339,15 +1503,16 @@ class End2RaceRecurrentPPO(RecurrentPPO):
                 "first_action_preference_margin_mean": float(np.mean(margin_array)),
                 "first_action_preference_satisfied_fraction": float(np.mean(margin_array > 0.0)),
             })
-        if self.online_same_state_branch_ppo:
+        if branched_ppo_enabled:
             if self.online_branch_rollout is None or online_branch_ratio_identity is None:
                 raise RuntimeError("Online branch metrics are unavailable")
+            prefix = "online_branch" if self.online_same_state_branch_ppo else "collision_prefix_branch"
             metrics.update({
-                "online_branch_preupdate_max_abs_log_ratio": online_branch_ratio_identity,
-                "online_branch_policy_loss_mean": float(np.mean(online_branch_losses)),
-                "online_branch_approx_kl_mean": float(np.mean(online_branch_approximate_kls)),
-                "online_branch_clip_fraction_mean": float(np.mean(online_branch_clip_fractions)),
-                **self.online_branch_rollout.statistics(),
+                f"{prefix}_preupdate_max_abs_log_ratio": online_branch_ratio_identity,
+                f"{prefix}_policy_loss_mean": float(np.mean(online_branch_losses)) if online_branch_losses else None,
+                f"{prefix}_approx_kl_mean": float(np.mean(online_branch_approximate_kls)) if online_branch_approximate_kls else None,
+                f"{prefix}_clip_fraction_mean": float(np.mean(online_branch_clip_fractions)) if online_branch_clip_fractions else None,
+                **self.online_branch_rollout.statistics(prefix),
             })
         actor_path, critic_path = self.recorder.save_formal_checkpoints(update, self.policy.actor_checkpoint_state_dict(), self.policy.value_net.state_dict())
         metrics["actor_checkpoint"] = str(actor_path)

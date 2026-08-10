@@ -356,7 +356,8 @@ class End2RaceGymnasiumEnv(gym.Env):
         ego_raceline: str,
         privileged: bool = False,
         reward_gamma: float = 0.999,
-        speed_exploration_mode: str = "baseline",
+        front_corridor_speed_noise_hold_steps: int = 0,
+        collision_prefix_branch_ppo: bool = False,
     ) -> None:
         super().__init__()
         self.f110_env = f110_env
@@ -384,7 +385,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             risk_wall_clearance_m=CONFIG.risk_wall_clearance_m,
             risk_potential_maximum=CONFIG.risk_potential_maximum,
         )
-        if speed_exploration_mode == "corridor_temporal":
+        if front_corridor_speed_noise_hold_steps > 0:
             corridor_config = FrontCorridorGateConfig(
                 maximum_front_gap_m=float(
                     CONFIG.front_corridor_gate_maximum_gap_m
@@ -430,6 +431,11 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._current_spec = None
         self._episode_return = 0.0
         self._episode_steps = 0
+        self.collision_prefix_branch_ppo = bool(collision_prefix_branch_ppo)
+        self._collision_prefix_branching = False
+        self._collision_prefix_episode_start_snapshot = None
+        self._collision_prefix_actions = []
+        self._pending_collision_prefix_snapshot = None
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][EGO_INDEX]).reshape(-1)
@@ -509,8 +515,42 @@ class End2RaceGymnasiumEnv(gym.Env):
                 opponent_index=OPPONENT_INDEX,
             )
         self.opponent_controller.reset(spec)
+        self._collision_prefix_actions = []
+        if self.collision_prefix_branch_ppo and not self._collision_prefix_branching:
+            self._collision_prefix_episode_start_snapshot = self.capture_runtime_snapshot()
         info = self._info(False, False, False, False, None, None)
         return self._observation(raw_observation), info
+
+    def set_collision_prefix_branching(self, active):
+        self._collision_prefix_branching = bool(active)
+
+    def take_collision_prefix_snapshot(self):
+        snapshot = self._pending_collision_prefix_snapshot
+        self._pending_collision_prefix_snapshot = None
+        return snapshot
+
+    def _build_collision_prefix_snapshot(self):
+        lookback_steps = CONFIG.collision_prefix_branch_lookback_steps
+        if self._collision_prefix_episode_start_snapshot is None or len(self._collision_prefix_actions) < lookback_steps:
+            return None
+        terminal_snapshot = self.capture_runtime_snapshot()
+        replay_actions = self._collision_prefix_actions[: len(self._collision_prefix_actions) - lookback_steps]
+        self._collision_prefix_branching = True
+        try:
+            self.restore_runtime_snapshot(self._collision_prefix_episode_start_snapshot)
+            for action in replay_actions:
+                _observation, _reward, terminated, truncated, _info = self.step(action)
+                if terminated or truncated:
+                    raise RuntimeError("Collision-prefix replay terminated before the requested one-second prefix")
+            prefix_snapshot = self.capture_runtime_snapshot()
+        finally:
+            self.restore_runtime_snapshot(terminal_snapshot)
+            self._collision_prefix_branching = False
+        elapsed_difference = float(terminal_snapshot["environment"]["wrapper"]["_elapsed_time"] - prefix_snapshot["environment"]["wrapper"]["_elapsed_time"])
+        expected_difference = CONFIG.collision_prefix_branch_lookback_steps * CONFIG.simulator_timestep
+        if abs(elapsed_difference - expected_difference) > 1e-9:
+            raise RuntimeError("Collision-prefix replay did not restore the requested one-second lead")
+        return prefix_snapshot
 
     @staticmethod
     def _copied_fields(obj: Any, names: Sequence[str]) -> dict[str, Any]:
@@ -702,6 +742,12 @@ class End2RaceGymnasiumEnv(gym.Env):
                 outcome = "follow"
         self._raw_observation = raw_observation
         self._previous_ego_speed = previous_ego_speed
+        collision_prefix_available = False
+        if self.collision_prefix_branch_ppo and not self._collision_prefix_branching:
+            self._collision_prefix_actions.append(np.asarray(action, dtype=np.float32).reshape(2).copy())
+            if ego_collision:
+                self._pending_collision_prefix_snapshot = self._build_collision_prefix_snapshot()
+                collision_prefix_available = self._pending_collision_prefix_snapshot is not None
         if self.following_danger_gate is not None:
             self.following_danger_gate.step(
                 raw_observation,
@@ -718,6 +764,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             outcome,
         )
         info["executed_ego_action"] = np.asarray(action, dtype=np.float32).reshape(2).copy()
+        info["collision_prefix_available"] = collision_prefix_available
         return self._observation(raw_observation), reward, terminated, truncated, info
 
     def render(self) -> Any:
@@ -736,7 +783,8 @@ def make_environment(
     map_name: str,
     privileged: bool = False,
     reward_gamma: float = 0.999,
-    speed_exploration_mode: str = "baseline",
+    front_corridor_speed_noise_hold_steps: int = 0,
+    collision_prefix_branch_ppo: bool = False,
 ) -> Callable[[], End2RaceGymnasiumEnv]:
 
     def factory() -> End2RaceGymnasiumEnv:
@@ -760,7 +808,8 @@ def make_environment(
             CONFIG.ego_raceline,
             privileged=privileged,
             reward_gamma=reward_gamma,
-            speed_exploration_mode=speed_exploration_mode,
+            front_corridor_speed_noise_hold_steps=front_corridor_speed_noise_hold_steps,
+            collision_prefix_branch_ppo=collision_prefix_branch_ppo,
         )
 
     return factory
@@ -849,7 +898,8 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         ordinary_scenarios: Sequence[ScenarioSpec],
         privileged: bool = False,
         reward_gamma: float = 0.999,
-        speed_exploration_mode: str = "baseline",
+        front_corridor_speed_noise_hold_steps: int = 0,
+        collision_prefix_branch_ppo: bool = False,
     ) -> None:
         if n_envs <= 0 or n_envs % 2 != 0:
             raise ValueError("n_envs must be positive and even")
@@ -869,7 +919,8 @@ class CentralScheduleSubprocVecEnv(VecEnv):
                 map_name,
                 privileged=privileged,
                 reward_gamma=reward_gamma,
-                speed_exploration_mode=speed_exploration_mode,
+                front_corridor_speed_noise_hold_steps=front_corridor_speed_noise_hold_steps,
+                collision_prefix_branch_ppo=collision_prefix_branch_ppo,
             )
             for rank in range(n_envs)
         ]
