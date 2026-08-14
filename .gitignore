@@ -7,10 +7,7 @@ install/
 .codex/
 .remember/
 Dataset_*/
-post-trained/ppo*
-post-trained/panels
+post-trained/
 eval_results*/
 scripts/*
-!scripts/build_bc_first_action_preference.py
-!scripts/test_first_action_preference.py
-run.sh
+!scripts/test_ppo_exploration.py

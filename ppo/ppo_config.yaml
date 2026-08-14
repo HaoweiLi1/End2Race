@@ -36,24 +36,6 @@ obb_longitudinal_clearance_half_response_m: 0.6
 obb_lateral_clearance_half_response_m: 0.2
 wall_clearance_half_response_m: 0.2
 
-# Auxiliary Actor Objectives
-first_action_preference_target_episodes_per_batch: 8
-first_action_preference_control_episodes_per_batch: 8
-first_action_preference_lead_steps: [150, 100, 50]
-first_action_preference_action_residuals:
-  - [-0.04, 0.0]
-  - [-0.02, 0.0]
-  - [0.02, 0.0]
-  - [0.04, 0.0]
-  - [0.0, -1.0]
-  - [0.0, -0.5]
-  - [0.0, 0.5]
-  - [0.0, 1.0]
-  - [-0.02, -0.5]
-  - [0.02, -0.5]
-  - [-0.02, 0.5]
-  - [0.02, 0.5]
-
 # Potential-based shaping over anisotropic vehicle OBB and map-wall surface clearance.
 progress_weight: 0.01
 relative_weight: 0.02

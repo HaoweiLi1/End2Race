@@ -262,23 +262,15 @@ post-trained/collision-cache/<ACTOR_ID>_<map>_<pool_type>_<scenario_count>/
 ```text
 post-trained/<EXPERIMENT_ID>/
 ├── run_config.json
-├── trajectory_manifest.json
 ├── metrics.jsonl
 ├── episodes.jsonl
 ├── collision_scenarios.json
 ├── ordinary_scenarios.json
-├── collision_cache_info.json
-├── critic_warmup.pt
-├── update1/
-│   ├── actor.pth
-│   └── critic.pt
-├── ...
-├── update30/
-│   ├── actor.pth
-│   └── critic.pt
-└── update45/
-    ├── actor.pth
-    └── critic.pt
+└── checkpoints/
+    ├── critic_warmup.pt
+    ├── actor_u0001.pth
+    ├── critic_u0001.pt
+    └── ...
 
 eval_results/<EXPERIMENT_ID>/update30/<MAP_NAME>/
 ├── multiagents/
@@ -346,17 +338,14 @@ checkpoint名。原始训练器内部使用的 `actor_u0030.pth` 等文件名可
   不为此新建顶层分析目录。
 - 不在HANDOFF或ANALYSIS维护JSON/CSV/report路径清单或文件摘要；这些运行产物允许在
   核心结果完成迁移后由用户另行清理。
-- **模型 checkpoint 例外**：actor checkpoint 会长期保留且身份必须可核对，其 SHA-256
-  集中登记在 HANDOFF 的模型身份登记节（canonical 初始化模型、production 模型、
-  各臂被评 checkpoint），其他章节引用该节而不重复写摘要。同时登记等价集（同一份权重
-  存在于多个 run 目录）和命名陷阱（未完成 run 与其 `_rerun`、同 run 不同 update）。
-  不对分析/评估产物计算摘要——文件会被清理，摘要即成死重量。
+- actor checkpoint 用实验目录、update和路径识别；不维护文件哈希或摘要。同时记录命名陷阱
+  （未完成run与其`_rerun`、同run不同update）。
 
 ## 7. 可复现性与记录
 
 `run_config.json` 至少记录：
 
-- `EXPERIMENT_ID`、seed、初始化actor路径及其 SHA-256；
+- `EXPERIMENT_ID`、seed和初始化actor路径；
 - 实际训练参数、updates、代码 commit/工作树状态；
 - 使用的数据、cache 或场景来源，以及 cache 的分类 actor 是否与训练起点一致；
 - 任何显式放宽默认不变量的开关及其后果；
@@ -370,7 +359,7 @@ resume、延长和纯分析目录各有自己的合同。
 `eval_manifest.json` 至少记录：
 
 - `PANEL_ID` 和完整评估参数；
-- actor checkpoint路径及其 SHA-256；
+- actor checkpoint路径；
 - 实际评估命令；
 - 预期/实际 episode 与 trace 数、唯一 key 数、error 数和验证结论。
 

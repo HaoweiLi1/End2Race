@@ -13,7 +13,6 @@ class PurePursuitPlanner:
         self.max_reacquire = 20.0
         self.wpt_path = wpt_path
 
-        self.drawn_waypoints = []
         # waypoint index
         self.wpt_xind = self.conf.wpt_xind
         self.wpt_yind = self.conf.wpt_yind
@@ -33,10 +32,15 @@ class PurePursuitPlanner:
         self.Pscale = self.conf.Pscale
         # D-term for damping
         self.D = self.conf.D
-        self.prev_error = 0.0
         # speed scaling & interpolation
         self.vel_scale = self.conf.vel_scale
         self.interpScale = self.conf.interpScale
+        self.reset()
+
+    def reset(self):
+        """Reset tracking state for a new episode"""
+        self.drawn_waypoints = []
+        self.prev_error = 0.0
 
     def _change_waypoint_xyv_idx(self, new_x_idx, new_y_idx, new_v_idx):
         self.wpt_xind = new_x_idx

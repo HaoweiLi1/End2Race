@@ -15,8 +15,7 @@
 - `.agents/ANALYSIS.md`：本文，完整结果、方法、数据分层和分析判断；
 - `.agents/EXPERIMENTS.md`：历史实验工具与回归测试的实现逻辑和重建合同。
 
-本文不把分析产物路径或其哈希作为证据索引。Actor checkpoint 的唯一 SHA-256 登记表位于
-`HANDOFF.md` §2；本文只记录实验臂、run和checkpoint update，不重复摘要，避免两份表漂移。
+本文不把分析产物路径或文件摘要作为证据索引；只记录实验臂、run、checkpoint update和路径。
 以下方法族导航是本文的主要阅读入口。详细章节仍保留历史编号和时间顺序，以免破坏既有引用；
 方法归属与后续追加位置以本表为准，同类实验不再散落到临时编号名下。
 
@@ -303,7 +302,7 @@ CUDA device，正式候选前仍需固定四图确认。没有产生新actor；�
 - **当前 production actor 是 `production U30`**：`privilege_gru`、clip 0.20、30 formal updates、
   seed 42、默认 reward/exploration/pool。权威路径是
   `post-trained/ppo_privilege_gru_clip020/update30/actor.pth`。迁移时验证过四个历史来源
-  中的U30 actor逐字节等价；来源容器已清理，SHA-256见**§1.3**。后续引用
+  中的U30 actor逐字节等价；来源容器已清理。后续引用
   历史表中的`B`、`U30`和`baseline`均指该模型及其固定配置；新的分析统一写
   `production U30`。
 - **production U30 的当前固定评测基线**只使用Austin600 `14 collision / 366 overtake`与
@@ -358,12 +357,12 @@ JSON/CSV/trace属于可清理产物。所以看到某个分析目录不存在时
 清理前的历史回归集合混有三个非测试文件，属于已知状态而非错误：`probe_hard_neighbors.py`、
 `build_outcome_aware_cache.py`、`OUTCOME_AWARE_MERGE_NOTES.md`。
 
-保留run以自己的`run_config.json`、`collision_cache_info.json`和机器可读产物为准；
+保留run以自己的`run_config.json`和机器可读产物为准；
 不得因为历史来源已清理而推翻本文已经记录的实验结论。
 
 ### 1.3 模型身份
 
-模型SHA-256的唯一权威登记在`HANDOFF.md` §2，本文不重复。
+模型身份用`HANDOFF.md` §2登记的实验目录、update和checkpoint路径表示。
 
 分析中使用的production baseline是B/U30：
 
@@ -414,14 +413,14 @@ eval_results/           # eval 面板输出
 
 | 文件 | 当前职责 |
 |---|---|
-| `train_ppo.py` | 薄CLI、固定collision cache读取、五个PPO模块装配和训练入口 |
-| `ppo/env.py` | 单logical env、361/381D observation、前向走廊门、一env一worker VecEnv、parent-side调度和auto reset |
-| `ppo/policy.py` | Actor adapter、动作分布、四种critic、P20特权状态、三种保留的训练期速度探索 |
+| `train_ppo.py` | CLI、固定collision cache读取、薄`End2RaceRecurrentPPO`适配类、直接模型装配和训练入口 |
+| `ppo/env.py` | 单logical env、361/381D observation、前向走廊门和parent-scheduled一env一worker VecEnv；复用统一赛道投影与Lattice opponent控制 |
+| `ppo/policy.py` | Actor adapter、动作分布、一个启用的Critic与三个注释备选、P20特权状态、三种保留的训练期速度探索 |
 | `ppo/reward.py` | Closed-track progress、OBB/map-wall geometry、collision latch、固定四项reward与risk potential |
 | `ppo/scenarios.py` | Scenario生成和collision/ordinary无放回调度 |
-| `ppo/rollout.py` | Recurrent buffer、critic warm-up、formal actor/critic phases、metrics |
+| `ppo/rollout.py` | Recurrent buffer、统一collection、critic warm-up与formal actor/critic辅助函数 |
 | `ppo/ppo_config.yaml` | Multiprocessing、timing、risk、scenario和前向走廊门距配置 |
-| `utils.py` | 通用评测工具，以及PPO run记录、JSONL和actor/critic checkpoint保存 |
+| `utils.py` | 通用评测、赛道/起点、PPO metrics计算及统一训练记录函数 |
 | `analyze_baseline_reward_seed42.py` | 默认四项reward的固定Austin600合同、分量和风险时机审计 |
 | `validate_following_response_reward.py` | Required-deceleration/escalation reward候选的离线因果重放；未接入production |
 | `eval_multiagent.py` | 单场景deterministic eval及numeric trace，含terminal post-step frame |
@@ -684,7 +683,6 @@ Run目录：
 ```text
 post-trained/<run>/
   run_config.json
-  collision_cache_info.json
   collision_scenarios.json
   ordinary_scenarios.json
   metrics.jsonl
@@ -692,8 +690,10 @@ post-trained/<run>/
   checkpoints/critic_warmup.pt
   checkpoints/actor_uXXXX.pth
   checkpoints/critic_uXXXX.pt
-  actor_final.pth
 ```
+
+当前新run把collision cache来源和数量写在`run_config.json`的`COLLISION_POOL`字段中；历史run可能
+仍保留独立`collision_cache_info.json`。
 
 Output dir必须位于project `post-trained/`内且为空。Actor checkpoint保存后会创建fresh CPU End2Race并strict-load，必须恰好12 keys。Critic checkpoint不能部署。
 
@@ -721,7 +721,8 @@ grad norm mean/max。target-KL专用字段随退役功能一并删除；历史ru
 
 Episode metrics包括episode count/steps/return、per-role return和relative position、collision/overtake/follow counts、reward components、risk telemetry、OBB/wall minima。Detached额外记录feature mean/std/abs-max；privileged记录每维normalized min/max/mean/std和saturation fraction。
 
-`rollout_policy_update=k-1`、`checkpoint_update=k` 表示formal update k的episodes由actor k-1收集，不能用该rollout直接评价actor k。
+当前episode记录中的`update=k`表示该rollout用于训练formal actor k，因此episodes由actor k-1收集，
+不能用该rollout直接评价actor k。历史run中的`rollout_policy_update`/`checkpoint_update`只是同一语义的旧字段。
 
 不建议再记录Python/CUDA/RNG dumps、每层parameter delta、calibration bins、Spearman表、大量hidden probes或重复raw feature统计。只有出现具体异常时才加定向诊断。
 
@@ -1659,7 +1660,7 @@ post-trained/collision-cache/pretrained_end2race_austin_collision_pool_479/
 post-trained/collision-cache/pretrained_end2race_austin_boundary_aware_collision_pool_805/
 ```
 
-Schema-2身份绑定冻结actor SHA、base-cache文件、map/raceline、opponent planner和
+Schema-2身份绑定冻结actor路径、base-cache文件、map/raceline、opponent planner和
 generator metadata；manifest验证失败时fail closed，构建使用临时目录并原子发布，不
 覆盖已有正式目录。
 
@@ -4247,7 +4248,7 @@ evaluate_scenario_panel.py
 没有训练、optimizer、reward、actor结构或输入变化；band固定U42--U45，四点权重均为0.25，
 没有查看结果后改成三点或非等权平均。输出仍为12-key actor，所有tensor有限，评估alias与
 canonical输出是同inode硬链接。平均actor相对U42/U43/U44/U45的L2距离依次为
-`1.0771e-4 / 6.1200e-5 / 6.1609e-5 / 1.1707e-4`；模型SHA只登记在HANDOFF §2。
+`1.0771e-4 / 6.1200e-5 / 6.1609e-5 / 1.1707e-4`；模型路径登记在HANDOFF §2。
 
 四图场景均为当前50 circular starts × 3 opponent racelines × 4 speeds、interval15；每图600。
 冻结场景的key和六个ScenarioSpec身份字段在评估前与现有BC、U44两侧逐项一致。near400复用
@@ -4332,10 +4333,9 @@ Gate B要求两类回归都至少8条；当前固定分层为`C=19`、`L=9`，�
 ### 34.2 先冻结split，再做fresh replay
 
 输入是Austin训练侧困难面板的868个scenario、91个unique `ego_idx`。任何actor评估之前，严格按
-`SHA256("bc-anchor-v1|Austin|" + str(ego_idx))`排序并冻结起点级split：development为
+冻结的确定性ego起点排序生成起点级split：development为
 718个scenario/72个起点，validation为150个scenario/19个起点；两侧起点和scenario key均零
-交集。development panel SHA-256为
-`61ccc0652a0f7cfafa142f88202bf235da1d7a6f5c7c3a06c3bc6e9c8c1e200e`。本节只评估development，
+交集。本节只评估development，
 没有对validation调用actor evaluator，也没有用validation选择cohort、阈值或stratum。
 
 五个actor均为fresh deterministic CUDA、8秒、`collision_scope=ego`、保存numeric trace：
@@ -4377,8 +4377,7 @@ U44单点回归为46条，多checkpoint共识保留28条，即单点集合中18�
 | speed 0.70 / 0.75 / 0.80 / 0.85 | `2 / 5 / 7 / 7` |
 
 19条collision stratum全为U44 `ego-opp`，没有`ego-wall`；9条lost-overtake全为安全`follow`。
-全部speed均按原始筛选结果报告并保留，0.55层的实测共识数为0，不是事后删除。冻结cohort panel含28条scenario、21个起点，
-SHA-256为`ffacda43c4bdf397173dfaf9c23795f165f52401fa9a5eb1e75409fb46e0afc1`；后续Gate B只能消费
+全部speed均按原始筛选结果报告并保留，0.55层的实测共识数为0，不是事后删除。冻结cohort panel含28条scenario、21个起点；后续Gate B只能消费
 这份development输入，不得回到U44单点46条或从validation补样本。
 
 ### 34.4 机制结果、证据边界与下一停止点
@@ -4421,7 +4420,7 @@ overtake，覆盖9个起点，raceline0/2救回`8/2`，也满足每线至少2条
 
 Gate A冻结的28条cohort全部满足窗口内至少50个`action_applied=true`步，短窗口剔除数为0。
 另从development中BC/U44都安全overtake的262条候选里，按相同raceline与speed、circular
-ego-index距离、scenario-key SHA tie-break无放回匹配28条controls。窗口在任何branch replay
+ego-index距离、scenario-key tie-break无放回匹配28条controls。窗口在任何branch replay
 前一次冻结：collision用首次ego碰撞前1.5秒；L/control用U44 trace上首次全局最小OBB clearance
 前1.0秒到后0.5秒，terminal行不执行动作。43/56条窗口为150步，其余因episode边界固定截断为
 85--138步，全部仍高于50步。
@@ -5139,7 +5138,7 @@ Collection-equivalent exact偏差全程0。Prefix fraction范围`8.43%--12.47%`�
 
 U27--U30在Austin、Hockenheim、MoscowRaceway、Nuerburgring各600条固定场景上CUDA、
 deterministic mean action、ego collision scope、8秒、完整numeric trace评测。16包共9,600
-result与9,600 trace；每包actor/panel SHA匹配，600个唯一key与trace集合相等，0 error。
+result与9,600 trace；每包actor/panel路径匹配，600个唯一key与trace集合相等，0 error。
 
 逐条读取全部NPZ验证：所有数组首维一致且finite，`time_s`严格递增，末行唯一
 `terminal_post_step=true/action_applied=false`且之前全部action applied；`ego_opp_collision`与
@@ -5242,8 +5241,8 @@ action-applied及typed ego collision marker均通过。候选集合在U42/U43/U4
 
 稳定source要求BC overtake、U44 collision且U42--U45至少3/4非overtake。41条满足且首次U44
 collision前窗口均至少50步。safe control要求BC/U44共同overtake；窗口是U44全局最小OBB
-clearance前100至后50步。每个`(raceline,speed)`内source按事前SHA排序，只取
-`min(source,control)`，再按循环ego距离与scenario-key SHA无放回匹配。
+clearance前100至后50步。每个`(raceline,speed)`内source按事前冻结顺序，只取
+`min(source,control)`，再按循环ego距离与scenario key无放回匹配。
 
 本轮所有41条稳定source都有exact support，没有被cap裁掉；匹配得到41 control，覆盖21个source
 起点，r0/r2=`31/10`。因此V0的`>=12 source、>=8起点、两条raceline各>=2、exact control闭合、
@@ -5391,7 +5390,7 @@ transition，逻辑role严格8/8。完整episode共153，57 collision、96非col
 waypoint。
 
 每个collision episode的Monte-Carlo cost-to-go为`0.999^(T-t)`，其他episode为0。所有相同
-`ego_idx`进入同fold；85个起点按冻结SHA顺序均分为每fold17个。五折test episode/collision为
+`ego_idx`进入同fold；85个起点按冻结顺序均分为每fold17个。五折test episode/collision为
 `24/11、35/14、34/14、32/9、28/9`，test transition为
 `14,043/23,082/20,890/21,979/18,743`。每折只用其余起点训练同构P20 MLP 10 epochs；test既不
 调epoch也不调阈值。
@@ -5442,7 +5441,7 @@ Production保持原U30。至此本阶段所有已授权具体方案均已按各�
 
 ### 47.1 独立核验记录
 
-我重算或直接核对过：Round Z2 四个 JSON 的 SHA-256（与记录精确匹配）、`10,944 + 912` 个 NPZ、
+我重算或直接核对过：Round Z2四个JSON内容、`10,944 + 912`个NPZ、
 branch0 全部 15 个字段最大绝对误差 `0.0`、Z2 全部表格算术自洽（分层 `109+46+13+63+225=456`、
 五折各列、oracle label 与 head 动作分布两列各 456、`147/148/31/51/79`、`+31/-28`）；
 Gate B 的 `lost_overtake.restored_overtake_count = 0/9` 与四条失败判据；Z3 的
@@ -5490,7 +5489,7 @@ Z5 的配对 `28:38, p=0.268` 与 `29:42, p=0.154`；Z6-F 四图 `105/1518`、`1
 速度探索实验、hard-neighbor、重加权、prefix-reset 无一例外。准确边界是**转向探索的幅度、
 时间相关性与训练期门控从未被改变**，不是训练时从未采样steering动作。
 另一条已核实事实：探索是纯训练期机制，正式评测直接取 mean action、无噪声无门，而
-`FrontCorridorGate` 本身条件在模拟器特权几何上、同样没有部署期 conditioning。
+`End2RaceGymnasiumEnv._front_corridor_gate()`本身条件在模拟器特权几何上、同样没有部署期 conditioning。
 
 **推断**：`HANDOFF.md` §10.1 第 16 条以"缺少可靠部署期 conditioning"关闭 side-phase steering
 exploration，该理由适用于部署期相位门控，不适用于训练期探索门。相关已测证据（新造失败以
@@ -5727,7 +5726,7 @@ warm-up+30行formal、30个actor和30个critic checkpoint。
 log-ratio/ratio误差0、16/16 actor optimizer steps、treatment leak 0、action identity 102,400。
 Active fraction为`2.8418%--3.8096%`，block数60--82。普通batched replay只作诊断，最大值在U29
 达到`.032192`；该行明确记录`not_applicable_exact_actor_replay`，因为actual optimizer没有使用
-batched路径。所有训练数值finite。U27--U30 actor均strict 12-key，SHA见HANDOFF §2。
+batched路径。所有训练数值finite。U27--U30 actor均strict 12-key，路径见HANDOFF §2。
 
 这消除了前一run在U14暴露的batched-gradient混淆，但也产生一条必须保留的归因边界：相对Z6-F，
 最终可运行pipeline同时增加joint temporal kernel并把actor recurrent执行顺序改为exact；FP32下
@@ -5738,7 +5737,7 @@ optimizer轨迹不同。Exact路径是实现联合likelihood所需的正确路�
 
 只评U27--U30；每个checkpoint在Austin、Hockenheim、MoscowRaceway、Nuerburgring各600，CUDA、
 ego collision scope、deterministic mean action、保存numeric traces。没有运行near400。16个manifest、
-9,600 result和9,600 NPZ全部通过：每图600 unique且0 error；actor/panel SHA匹配；result/trace/panel
+9,600 result和9,600 NPZ全部通过：每图600 unique且0 error；actor/panel路径匹配；result/trace/panel
 key-set相等；数组数值、shape与首维对齐；time严格递增；末行唯一terminal且action未执行；typed
 collision、二维collision marker和result outcome一致。
 
@@ -7007,8 +7006,7 @@ F110/CUDA生命周期完成64条在线branch与一次formal optimizer update，p
 
 训练已完整结束：`metrics.jsonl`含1行warm-up和30行连续formal update，30组actor/critic checkpoint
 齐全，累计4,211个完整训练episode；所有核心训练指标finite。U30 canonical actor与原checkpoint为
-同一inode，strict 12-key且所有tensor finite，SHA-256为
-`43aad0d5f05e0b4c207448066f3d58a19e1662b5c26476dd5dfab38606d61352`。
+同一inode，strict 12-key且所有tensor finite。
 
 U30冻结actor完成四图各600 CUDA deterministic ego-scope评测。2,400个JSON episode与2,400个同名
 NPZ trace逐条对应，0 error；全部数值finite、leading length一致，terminal只在最后一行、最后一行
@@ -7204,15 +7202,16 @@ CLI、临时pair容器、额外collector、环境episode action-history/snapshot
 temporal steering state和测试分支也删除，steering恢复逐step独立探索。历史实现语义仍保存在
 `EXPERIMENTS.md`，不再通过当前CLI重建。
 
-固定BC-native builder和dataset loss仍保留为已实现的历史能力，但当前无运行入口。三个lead和
-12个single-step residual配置重命名为`first_action_preference_*`，不再以已删除online方法命名。
-`scripts/test_first_action_preference.py`只保留K10/K50探索、默认走廊门、runtime snapshot和固定dataset
-loss合同。该清理不改变production PPO默认数学，也没有增加任何新训练行为。
+2026-08-14进一步删除全部固定first-action运行能力：builder、dataset loader/loss、beta标定、CLI、
+YAML参数、environment runtime snapshot/restore和专用测试均不再存在。历史逻辑、训练结果和证据边界
+仍由§54、§59与`EXPERIMENTS.md` §25保留，不得把“源码移除”改写成“历史结果无效”。当前
+`scripts/test_ppo_exploration.py`只验证K10/K50 speed噪声保持周期和默认走廊gate。默认、K10与
+K10/K50现共用一个collector；这次只收口执行路径，没有改变三种探索各自的动作分布合同。
 
 ### 60.5 汇报资产清理
 
 2026-08-13复核确认，K75中断run、K100、移除lateral-offset门、全局steering+speed K10、stride10
 loss、online same-state branch与两条失败偏好的model/eval已在先前清理中不存在。本次额外删除了
 全局speed K10和K10/K50两个保留run的中间`checkpoints/`容器，两个容器各有61个actor/critic文件。
-已确认U30 actor是与容器内actor相同inode的硬链接；删除后`update30/actor.pth`与原SHA-256均保持。
+已确认U30 actor是与容器内actor相同inode的硬链接；删除后`update30/actor.pth`仍保留。
 正式四图600评测未删除，因为它们仍承载production/保留候选对照或checkpoint band的汇报证据。

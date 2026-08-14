@@ -21,7 +21,6 @@ class ScenarioSpec:
     def to_reset_spec(self, env_role: str) -> dict:
         scenario = asdict(self)
         scenario["opponent_speed_scale"] = self.opp_speedscale
-        scenario["sampler_branch"] = env_role
         scenario["env_role"] = env_role
         poses, initial_speeds = load_positions_and_speeds_from_params(scenario, self.map_name)
         return {

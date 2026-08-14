@@ -3,6 +3,7 @@ import os
 import tempfile
 from pathlib import Path
 import numpy as np
+import torch
 
 def load_raceline_data(map_name, raceline_file):
     """Load unique raceline rows and the full closed-track length"""
@@ -287,6 +288,99 @@ def atomic_write_json(path, value):
         os.replace(temporary_path, destination)
     finally:
         temporary_path.unlink(missing_ok=True)
+
+def calculate_ppo_metrics(
+    update,
+    num_timesteps,
+    episodes,
+    policy_losses,
+    clip_fractions,
+    approximate_kls,
+    value_loss_samples,
+    critic_epoch_value_losses,
+):
+    """Calculate all metrics for one formal PPO update."""
+    collision_times = [record["elapsed_time"] for record in episodes if record["episode_outcome"] == "ego_collision"]
+    metrics = {
+        "phase": "formal",
+        "update": update,
+        "num_timesteps": num_timesteps,
+        "policy_gradient_loss": float(np.mean(policy_losses)),
+        "value_loss": sum(loss * count for loss, count in value_loss_samples) / sum(count for _loss, count in value_loss_samples),
+        "critic_epoch_value_losses": critic_epoch_value_losses,
+        "approx_kl_mean": float(np.mean(approximate_kls)),
+        "clip_fraction_mean": float(np.mean(clip_fractions)),
+        "ego_collision_count": sum(record["episode_outcome"] == "ego_collision" for record in episodes),
+        "overtake_count": sum(record["episode_outcome"] == "overtake" for record in episodes),
+        "follow_count": sum(record["episode_outcome"] == "follow" for record in episodes),
+        "mean_ego_collision_time": float(np.mean(collision_times)) if collision_times else None,
+        "episode_count": len(episodes),
+        "mean_episode_steps": float(np.mean([record["episode_steps"] for record in episodes])),
+        "mean_episode_return": float(np.mean([record["episode_return"] for record in episodes])),
+    }
+    for role in ("collision", "ordinary"):
+        role_episodes = [record for record in episodes if record["env_role"] == role]
+        metrics[f"{role}_role_episode_count"] = len(role_episodes)
+        metrics[f"mean_{role}_episode_return"] = float(np.mean([record["episode_return"] for record in role_episodes]))
+    return metrics
+
+def log_ppo(
+    output_dir,
+    event,
+    record,
+    logger=None,
+    actor_state_dict=None,
+    critic_state_dict=None,
+):
+    """Write all PPO setup, episode, rollout, metric, and checkpoint records."""
+    root = Path(output_dir).expanduser().resolve()
+    checkpoints = root / "checkpoints"
+    if event == "setup":
+        root.mkdir(parents=True)
+        checkpoints.mkdir()
+        atomic_write_json(root / "run_config.json", record["run_config"])
+        atomic_write_json(root / "collision_scenarios.json", record["collision_scenarios"])
+        atomic_write_json(root / "ordinary_scenarios.json", record["ordinary_scenarios"])
+        return
+    if event == "episode":
+        with (root / "episodes.jsonl").open("a", encoding="utf-8") as file:
+            file.write(json.dumps(record) + "\n")
+        return
+    if event == "rollout":
+        logger.record("time/total_timesteps", record["num_timesteps"], exclude="tensorboard")
+        logger.dump(step=record["num_timesteps"])
+        return
+    if event == "warmup":
+        critic_path = checkpoints / "critic_warmup.pt"
+        torch.save({name: tensor.detach().cpu() for name, tensor in critic_state_dict.items()}, critic_path)
+        record["critic_checkpoint"] = str(critic_path)
+    else:
+        actor_path = checkpoints / f"actor_u{record['update']:04d}.pth"
+        critic_path = checkpoints / f"critic_u{record['update']:04d}.pt"
+        torch.save({name: tensor.detach().cpu() for name, tensor in actor_state_dict.items()}, actor_path)
+        torch.save({name: tensor.detach().cpu() for name, tensor in critic_state_dict.items()}, critic_path)
+        record["actor_checkpoint"] = str(actor_path)
+        record["critic_checkpoint"] = str(critic_path)
+    with (root / "metrics.jsonl").open("a", encoding="utf-8") as file:
+        file.write(json.dumps(record) + "\n")
+    if event == "warmup":
+        print(
+            f"Warm-up complete: best_validation_loss={record['best_validation_loss']:.6f}, "
+            f"checkpoint={record['critic_checkpoint']}",
+            flush=True,
+        )
+        return
+    logger.record("train/n_updates", record["update"], exclude="tensorboard")
+    logger.record("train/policy_gradient_loss", record["policy_gradient_loss"])
+    logger.record("train/value_loss", record["value_loss"])
+    logger.record("train/approx_kl", record["approx_kl_mean"])
+    logger.record("train/clip_fraction", record["clip_fraction_mean"])
+    print(
+        f"Formal update {record['update']}: policy_loss={record['policy_gradient_loss']:.6f}, "
+        f"value_loss={record['value_loss']:.6f}, actor={record['actor_checkpoint']}, "
+        f"critic={record['critic_checkpoint']}",
+        flush=True,
+    )
 
 def update_singleagent_results(path, lap_key, metrics):
     """Insert one lap entry into the single-agent results JSON"""

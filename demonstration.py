@@ -91,6 +91,19 @@ def setup_opp_planner(map_name, raceline_file, config_path='latticeplanner/latti
     
     return opp_planner
 
+def lattice_opponent_action(planner, observation, trajectory, tracker_count, speed_scale, steering_bound=0.52, opponent_index=1):
+    """Plan and track one opponent action with the LatticePlanner cadence"""
+    pose_x = observation['poses_x'][opponent_index]
+    pose_y = observation['poses_y'][opponent_index]
+    pose_theta = observation['poses_theta'][opponent_index]
+    speed = observation['linear_vels_x'][opponent_index]
+    if tracker_count == 0 or trajectory is None:
+        opponent_poses = obsDict2oppoArray(observation, opponent_index)
+        trajectory = planner.plan(pose_x, pose_y, pose_theta, opponent_poses, speed)
+    steering, desired_speed = planner.tracker.plan(pose_x, pose_y, pose_theta, speed, trajectory)
+    tracker_count = (tracker_count + 1) % int(planner.conf.tracker_steps)
+    return np.clip(steering, -steering_bound, steering_bound), desired_speed * speed_scale, trajectory, tracker_count
+
 def save_data(args, collected_data, video_frames, collision_occurred, 
               final_state, base_filename, laptime, opp_idx):
     """Save data with unified format"""

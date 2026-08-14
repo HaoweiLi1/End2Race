@@ -9,8 +9,8 @@ import gc
 import imageio
 from f110_gym.envs.base_classes import Integrator
 from model import End2Race
-from latticeplanner.utils import TrackProjector, obsDict2oppoArray
-from demonstration import setup_opp_planner
+from latticeplanner.utils import TrackProjector
+from demonstration import lattice_opponent_action, setup_opp_planner
 from utils import *
 
 def collision_scope_stops_episode(collision_scope, ego_collision, opponent_collision):
@@ -102,7 +102,6 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     positions, initial_speeds = load_positions_and_speeds_from_params(params, map_name)
     # Initialize opponent planner using function from run_lattice_planner.py
     opponent = setup_opp_planner(map_name, opp_raceline)
-    tracker_steps = 10  # Default tracker steps
     
     # Initialize model state
     hidden_size = model.gru.hidden_size
@@ -219,14 +218,7 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
         prev_speed = obs['linear_vels_x'][0]
         
         # Opponent lattice planner
-        if tracker_count == 0:
-            opp_poses = obsDict2oppoArray(obs, 1)
-            opp_traj = opponent.plan(obs['poses_x'][1], obs['poses_y'][1], obs['poses_theta'][1], opp_poses, obs['linear_vels_x'][1])
-        
-        opp_steer, opp_speed = opponent.tracker.plan(obs['poses_x'][1], obs['poses_y'][1], obs['poses_theta'][1], obs['linear_vels_x'][1], opp_traj)
-        
-        opp_steer = np.clip(opp_steer, -0.52, 0.52)
-        opp_speed *= opp_speed_scale
+        opp_steer, opp_speed, opp_traj, tracker_count = lattice_opponent_action(opponent, obs, opp_traj, tracker_count, opp_speed_scale)
         opp_executed_action = np.array([opp_steer, opp_speed], dtype=np.float32)
         action_finite = action_finite and bool(np.isfinite(opp_executed_action).all())
 
@@ -375,8 +367,6 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
             trace["action_applied"].append(False)
             trace["terminal_post_step"].append(True)
         
-        tracker_count = (tracker_count + 1) % tracker_steps
-    
     # Save video if rendering was enabled
     if render and video_frames:
         state_prefix = (

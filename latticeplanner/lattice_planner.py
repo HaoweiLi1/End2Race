@@ -38,7 +38,6 @@ class LatticePlanner:
         self.add_sample_function(sample_lookahead_square)
         self.shape_cost_funcs = []
         self.constant_cost_funcs = []
-        self.selection_func = None
         self.add_shape_cost_function(get_follow_optim_cost)
         self.add_constant_cost_function(get_map_collision)
 
@@ -57,22 +56,10 @@ class LatticePlanner:
 
         self.v_lattice_span = np.linspace(conf.traj_v_span_min, conf.traj_v_span_max, conf.traj_v_span_num)
         self.v_lattice_num = conf.traj_v_span_num
-        self.best_traj = None
-        self.best_traj_ref_v = 0.0
-        self.best_traj_idx = 0
-        self.prev_traj_local = np.zeros((self.traj_points, 2))
-        self.prev_opp_pose = np.array([0, 0])
-        self.goal_grid = None
-        self.state_i = None
-        self.state_t = None
-        self.step_all_cost = {}
-        self.all_costs = None
         self.time_interval = conf.tracker_steps * 0.01
-        self.last_s = 0.0
 
         self.tracker = PurePursuitPlanner(conf, wpt_path, wb=wb)
         self.conf = conf
-        self.step = 0
 
         # load map image
         map_img_path = os.path.splitext(self.map_path)[0] + self.map_ext
@@ -101,6 +88,24 @@ class LatticePlanner:
         self.angle_span = np.linspace(-0.75 * np.pi, 0.75 * np.pi, self.scan_num)
         self.ittc_thres = conf.ittc_thres
         self.collision_thres = 0.35
+        self.reset()
+
+    def reset(self):
+        """Reset trajectory and tracker state for a new episode"""
+        self.best_traj = None
+        self.best_traj_ref_v = 0.0
+        self.best_traj_idx = 0
+        self.prev_traj_local = np.zeros((self.traj_points, 2))
+        self.prev_opp_pose = np.array([0, 0])
+        self.goal_grid = None
+        self.state_i = None
+        self.state_t = None
+        self.step_all_cost = {}
+        self.all_costs = None
+        self.last_s = 0.0
+        self.selection_func = None
+        self.step = 0
+        self.tracker.reset()
 
     def add_shape_cost_function(self, func):
         """
