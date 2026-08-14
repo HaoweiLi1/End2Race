@@ -16,9 +16,9 @@ gym_notices.notices.clear()
 from gymnasium import spaces
 from torch import nn
 
-from latticeplanner.utils import load_config
+from latticeplanner.utils import TrackProjector, load_config
 from model import End2Race
-from ppo.reward import CurrentStateClearances, ProgressProjector, wrapped_progress_delta
+from ppo.reward import wrapped_progress_delta
 from sb3_contrib.common.recurrent.policies import RecurrentActorCriticPolicy
 from sb3_contrib.common.recurrent.type_aliases import RNNStates
 from stable_baselines3.common.distributions import Distribution
@@ -26,20 +26,20 @@ from stable_baselines3.common.distributions import Distribution
 CONFIG = load_config("ppo/ppo_config.yaml")
 
 
-def speed_exploration_mode(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps):
+def exploration_mode(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps):
     if speed_noise_hold_steps == 1 and front_corridor_speed_noise_hold_steps == 0:
         return "stepwise_independent"
     if front_corridor_speed_noise_hold_steps == 0:
-        return "global_temporal"
-    return "front_corridor_dual_frequency"
+        return "global_temporal_speed"
+    return "front_corridor_dual_frequency_speed"
 
 
 def exploration_metadata(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps, corridor_gate_config=None):
-    mode = speed_exploration_mode(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps)
+    mode = exploration_mode(speed_noise_hold_steps, front_corridor_speed_noise_hold_steps)
     if front_corridor_speed_noise_hold_steps > 0:
         if corridor_gate_config is None:
             raise ValueError("Front-corridor exploration metadata requires its gate configuration")
-        gate_type = f"front_corridor_overlap_gap{corridor_gate_config.maximum_front_gap_m:g}"
+        gate_type = f"front_corridor_centerline_limited_overlap_gap{corridor_gate_config.maximum_front_gap_m:g}"
         gate = asdict(corridor_gate_config)
     else:
         gate_type = "none"
@@ -184,7 +184,7 @@ class PrivilegedStateExtractor:
         self,
         map_name: str,
         ego_raceline: str,
-        projector: ProgressProjector,
+        projector: TrackProjector,
         vehicle_length: float,
         vehicle_width: float,
         *,
@@ -294,17 +294,17 @@ class PrivilegedStateExtractor:
         ego_steering_angle: float,
         ego_slip_angle: float,
         opponent_slip_angle: float,
-        clearances: CurrentStateClearances,
+        obb_longitudinal_clearance_m: float,
+        obb_lateral_clearance_m: float,
+        wall_clearance_m: float,
     ) -> np.ndarray:
         ego_position, ego_heading, ego_speed, ego_yaw_rate = self._agent_state(raw_observation, ego_index)
         opponent_position, opponent_heading, opponent_speed, opponent_yaw_rate = self._agent_state(raw_observation, opponent_index)
         physical_state = np.asarray((ego_steering_angle, ego_slip_angle, opponent_slip_angle), dtype=np.float64)
         if not np.isfinite(physical_state).all():
             raise ValueError("Privileged steering and slip angles must be finite")
-        if not isinstance(clearances, CurrentStateClearances):
-            raise TypeError("Privileged features require reward's current-state clearance result")
-        ego_progress = self.projector.project(ego_position)
-        opponent_progress = self.projector.project(opponent_position)
+        ego_progress = self.projector.progress_at(ego_position)
+        opponent_progress = self.projector.progress_at(opponent_position)
         delta_s = wrapped_progress_delta(ego_progress, opponent_progress, self.projector.track_length)
         cos_ego, sin_ego = np.cos(ego_heading), np.sin(ego_heading)
         relative_position = opponent_position - ego_position
@@ -329,9 +329,9 @@ class PrivilegedStateExtractor:
                 np.clip(ego_speed / CONFIG.ego_speed_scale_mps, -1.0, 1.0),
                 np.clip(ego_yaw_rate / CONFIG.yaw_rate_scale_radps, -1.0, 1.0),
                 np.clip((opponent_yaw_rate - ego_yaw_rate) / CONFIG.yaw_rate_scale_radps, -1.0, 1.0),
-                soft_normalize_clearance(clearances.obb_longitudinal_clearance_m, self.obb_longitudinal_clearance_half_response_m),
-                soft_normalize_clearance(clearances.obb_lateral_clearance_m, self.obb_lateral_clearance_half_response_m),
-                soft_normalize_clearance(clearances.wall_clearance_m, self.wall_clearance_half_response_m),
+                soft_normalize_clearance(obb_longitudinal_clearance_m, self.obb_longitudinal_clearance_half_response_m),
+                soft_normalize_clearance(obb_lateral_clearance_m, self.obb_lateral_clearance_half_response_m),
+                soft_normalize_clearance(wall_clearance_m, self.wall_clearance_half_response_m),
                 np.clip(float(ego_steering_angle) / self.steering_scale_rad, -1.0, 1.0),
                 np.clip(float(ego_slip_angle) / CONFIG.slip_angle_scale_rad, -1.0, 1.0),
                 body_track.normalized_left_margin,
@@ -421,23 +421,15 @@ class EvaluatorCompatibleJointDistribution(Distribution):
         steering = self.steer_bound * torch.tanh(steer_distribution.rsample())
         return torch.stack((steering, speed_distribution.rsample()), dim=1)
 
-    def sample_with_speed_standard_noise(
-        self,
-        speed_standard_noise: torch.Tensor,
-    ) -> torch.Tensor:
+    def sample_with_speed_standard_noise(self, speed_standard_noise: torch.Tensor) -> torch.Tensor:
         """Sample steering normally while applying an audited speed residual."""
 
         _raw_means, _latent_mean, steer_distribution, speed_distribution = self._parameters()
-        noise = speed_standard_noise.to(
-            dtype=speed_distribution.loc.dtype,
-            device=speed_distribution.loc.device,
-        ).reshape(-1)
-        if noise.shape != speed_distribution.loc.shape:
-            raise ValueError(
-                "Speed standard noise must match the distribution batch"
-            )
+        speed_noise = speed_standard_noise.to(dtype=speed_distribution.loc.dtype, device=speed_distribution.loc.device).reshape(-1)
+        if speed_noise.shape != speed_distribution.loc.shape:
+            raise ValueError("Speed standard noise must match the distribution batch")
         steering = self.steer_bound * torch.tanh(steer_distribution.rsample())
-        speed = speed_distribution.loc + speed_distribution.scale * noise
+        speed = speed_distribution.loc + speed_distribution.scale * speed_noise
         return torch.stack((steering, speed), dim=1)
 
     def mode(self) -> torch.Tensor:
@@ -643,7 +635,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         self.critic_variant = critic_variant
         self.speed_noise_hold_steps = int(speed_noise_hold_steps)
         self.front_corridor_speed_noise_hold_steps = int(front_corridor_speed_noise_hold_steps)
-        self.speed_exploration_mode = speed_exploration_mode(self.speed_noise_hold_steps, self.front_corridor_speed_noise_hold_steps)
+        self.exploration_mode = exploration_mode(self.speed_noise_hold_steps, self.front_corridor_speed_noise_hold_steps)
         self._rollout_danger_gates: torch.Tensor | None = None
         self._rollout_episode_starts: torch.Tensor | None = None
         self._temporal_speed_noise: torch.Tensor | None = None
@@ -953,9 +945,9 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                 hold_steps[gates] = self.front_corridor_speed_noise_hold_steps
             self._temporal_steps_remaining[begin] = hold_steps[begin]
             self._temporal_corridor_phase[begin] = gates[begin]
-        noise = self._temporal_speed_noise.clone()
+        speed_noise = self._temporal_speed_noise.clone()
         self._temporal_steps_remaining -= 1
-        return baseline_log_std, noise
+        return baseline_log_std, speed_noise
 
     def _stage_exploration_transition(
         self,
@@ -1036,7 +1028,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
         batch_size = mean_actions.shape[0]
         if (
             deterministic
-            or self.speed_exploration_mode == "stepwise_independent"
+            or self.exploration_mode == "stepwise_independent"
         ):
             distribution = self._distribution(mean_actions)
             actions = distribution.get_actions(deterministic=deterministic)
@@ -1048,13 +1040,7 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
                 mean_actions,
                 speed_log_std=speed_log_std,
             )
-            actions = (
-                distribution.sample()
-                if speed_standard_noise is None
-                else distribution.sample_with_speed_standard_noise(
-                    speed_standard_noise
-                )
-            )
+            actions = distribution.sample_with_speed_standard_noise(speed_standard_noise)
             log_prob = distribution.log_prob(actions)
         self._stage_exploration_transition(
             speed_log_std=speed_log_std,
@@ -1074,18 +1060,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
     ) -> tuple[Distribution, tuple[torch.Tensor, torch.Tensor]]:
         mean_actions, actor_states = self._actor_forward(obs, lstm_states, episode_starts)
         return self._distribution(mean_actions), actor_states
-
-    def forward_independent_collection(self, obs: torch.Tensor, lstm_states: RNNStates, episode_starts: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, RNNStates]:
-        if self.speed_exploration_mode != "stepwise_independent" or obs.shape[0] != 1 or episode_starts.shape != (1,):
-            raise RuntimeError("Independent online branch collection requires one baseline-exploration sequence")
-        mean_actions, actor_states = self._actor_forward(obs, lstm_states.pi, episode_starts)
-        actions = self._distribution(mean_actions).sample()
-        if self.critic_is_independent_gru:
-            values, critic_states = self._independent_gru_forward_collection(obs, lstm_states.vf, episode_starts)
-        else:
-            values = self.value_net(self._critic_observation(obs))
-            critic_states = self._zero_states(lstm_states.vf)
-        return actions, values, RNNStates(actor_states, critic_states)
 
     def predict_values(
         self,
@@ -1122,14 +1096,6 @@ class End2RaceGRUPolicy(RecurrentActorCriticPolicy):
             speed_log_std=speed_log_std,
         )
         return distribution.log_prob(actions), distribution.entropy()
-
-    def evaluate_independent_actor_actions(self, observations: torch.Tensor, actions: torch.Tensor, actor_hidden: torch.Tensor, episode_starts: torch.Tensor) -> torch.Tensor:
-        if self.speed_exploration_mode != "stepwise_independent":
-            raise RuntimeError("Independent online branch replay requires baseline exploration")
-        if observations.ndim != 2 or actions.shape != (observations.shape[0], END2RACE_ACTION_SIZE) or actor_hidden.ndim != 3 or actor_hidden.shape[1] != observations.shape[0] or episode_starts.shape != (observations.shape[0],):
-            raise RuntimeError("Independent online branch actor replay shapes are invalid")
-        means, _states = self._actor_replay_collection_equivalent(observations, (actor_hidden, torch.zeros_like(actor_hidden)), episode_starts, None)
-        return self._distribution(means).log_prob(actions)
 
     def evaluate_values(self, critic_inputs: torch.Tensor) -> torch.Tensor:
         """Feed-forward critic values over observation rows or stored feature rows."""

@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ppo.reward import anisotropic_risk_potential  # noqa: E402
+from ppo.reward import risk_potential  # noqa: E402
 from scripts.screen_reward_candidate import (  # noqa: E402
     DEFAULT_GAE_LAMBDA,
     DEFAULT_GAMMA,
@@ -326,7 +326,7 @@ class ProductionRewardUnchangedTests(unittest.TestCase):
             longitudinal = float(rng.uniform(0.0, 2.0))
             lateral = float(rng.uniform(0.0, 0.8))
             wall = float(rng.uniform(0.0, 0.8))
-            value = anisotropic_risk_potential(
+            value = risk_potential(
                 longitudinal,
                 lateral,
                 wall,

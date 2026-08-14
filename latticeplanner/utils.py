@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from numba import njit
+from scipy.spatial import cKDTree
 import yaml
 from types import SimpleNamespace as Namespace
 import os
@@ -107,36 +108,83 @@ def obsDict2oppoArray(obs, ego_idx=0):
 
 
 @njit(cache=True)
-def nearest_point(point, trajectory):
-    """
-    Return the nearest point along the given piecewise linear trajectory.
+def _geometric_progress(points):
+    progress = np.zeros(len(points))
+    for index in range(len(points) - 1):
+        progress[index + 1] = progress[index] + np.linalg.norm(points[index + 1] - points[index])
+    return progress
 
-    Args:
-        point (numpy.ndarray, (2, )): (x, y) of current pose
-        trajectory (numpy.ndarray, (N, 2)): array of (x, y) trajectory waypoints
-            NOTE: points in trajectory must be unique. If they are not unique, a divide by 0 error will destroy the world
 
-    Returns:
-        nearest_point (numpy.ndarray, (2, )): nearest point on the trajectory to the point
-        nearest_dist (float): distance to the nearest point
-        t (float): nearest point's location as a segment between 0 and 1 on the vector formed by the closest two points on the trajectory. (p_i---*-------p_i+1)
-        i (int): index of nearest point in the array of trajectory waypoints
-    """
-    diffs = trajectory[1:, :] - trajectory[:-1, :]
-    l2s = diffs[:, 0] ** 2 + diffs[:, 1] ** 2
-    dots = np.empty((trajectory.shape[0] - 1,))
-    for i in range(dots.shape[0]):
-        dots[i] = np.dot((point - trajectory[i, :]), diffs[i, :])
-    t = dots / l2s
-    t[t < 0.0] = 0.0
-    t[t > 1.0] = 1.0
-    projections = trajectory[:-1, :] + (t * diffs.T).T
-    dists = np.empty((projections.shape[0],))
-    for i in range(dists.shape[0]):
-        temp = point - projections[i]
-        dists[i] = np.sqrt(np.sum(temp * temp))
-    min_dist_segment = np.argmin(dists)
-    return projections[min_dist_segment], dists[min_dist_segment], t[min_dist_segment], min_dist_segment
+@njit(cache=True)
+def _interpolate_geometric_progress(progress, points, index, fraction):
+    return progress[index] + fraction * np.linalg.norm(points[index + 1] - points[index])
+
+
+class TrackProjector:
+
+    def __init__(self, points, progress=None):
+        self.points = np.asarray(points, dtype=np.float64)
+        self.segment_start = self.points[:-1]
+        self.segment_vector = self.points[1:] - self.points[:-1]
+        self.segment_norm_sq = np.einsum("ij,ij->i", self.segment_vector, self.segment_vector)
+        self.segment_length = np.sqrt(self.segment_norm_sq)
+        if progress is None:
+            self.progress = _geometric_progress(self.points)
+            self.wrap_progress = False
+        else:
+            self.progress = np.asarray(progress, dtype=np.float64)
+            self.wrap_progress = True
+        self.track_length = float(self.progress[-1])
+        self.segment_progress = self.progress[1:] - self.progress[:-1]
+        self.tree = cKDTree(self.segment_start)
+
+    @classmethod
+    def from_csv(cls, path):
+        reference = np.loadtxt(path, delimiter=";", comments="#", dtype=np.float64)
+        return cls(reference[:, 1:3], reference[:, 0])
+
+    def nearest(self, point):
+        point = np.asarray(point, dtype=np.float64)
+        offsets = point - self.segment_start
+        fractions = np.clip(
+            np.einsum("ij,ij->i", offsets, self.segment_vector) / self.segment_norm_sq,
+            0.0,
+            1.0,
+        )
+        projections = self.segment_start + fractions[:, None] * self.segment_vector
+        differences = point - projections
+        distance_sq = np.einsum("ij,ij->i", differences, differences)
+        index = int(np.argmin(distance_sq))
+        return projections[index], float(np.sqrt(distance_sq[index])), float(fractions[index]), index
+
+    def progress_at(self, point):
+        _projection, _distance, fraction, index = self.nearest(point)
+        if not self.wrap_progress:
+            return float(_interpolate_geometric_progress(self.progress, self.points, index, fraction))
+        return float((self.progress[index] + fraction * self.segment_progress[index]) % self.track_length)
+
+    def frenet(self, point):
+        point = np.asarray(point, dtype=np.float64)
+        _distance, nearest = self.tree.query(point)
+        candidates = np.asarray((nearest, (nearest - 1) % len(self.segment_start)), dtype=np.int64)
+        starts = self.segment_start[candidates]
+        vectors = self.segment_vector[candidates]
+        offsets = point - starts
+        fractions = np.clip(
+            np.einsum("ij,ij->i", offsets, vectors) / self.segment_norm_sq[candidates],
+            0.0,
+            1.0,
+        )
+        projections = starts + fractions[:, None] * vectors
+        differences = point - projections
+        choice = int(np.argmin(np.einsum("ij,ij->i", differences, differences)))
+        segment = int(candidates[choice])
+        tangent = self.segment_vector[segment] / self.segment_length[segment]
+        normal = np.asarray((-tangent[1], tangent[0]), dtype=np.float64)
+        progress = (self.progress[segment] + fractions[choice] * self.segment_progress[segment]) % self.track_length
+        lateral = float(np.dot(differences[choice], normal))
+        heading = float(np.arctan2(tangent[1], tangent[0]))
+        return float(progress), lateral, heading
 
 
 @njit(cache=True)
@@ -454,36 +502,6 @@ def get_actuation_PD(pose_theta, lookahead_point, position, lookahead_distance, 
         return speed, 0., error
     steering_angle = P * error + D * (error-prev_error)
     return speed, steering_angle, error
-
-@njit(cache=True)
-def project_point_to_centerline(point, centerline):
-    """
-    Project a point onto a centerline and return progress along centerline.
-    
-    Args:
-        point (np.ndarray (2,)): [x, y] position to project
-        centerline (np.ndarray (N, 2)): centerline waypoints
-        
-    Returns:
-        progress (float): Distance along centerline from start (meters)
-        nearest_idx (int): Index of nearest centerline segment
-    """
-    # Find nearest point on centerline
-    nearest_p, nearest_dist, t, nearest_idx = nearest_point(point, centerline)
-    
-    # Calculate cumulative distance up to nearest segment
-    progress = 0.0
-    for i in range(nearest_idx):
-        segment_length = np.linalg.norm(centerline[i+1] - centerline[i])
-        progress += segment_length
-    
-    # Add fractional progress within current segment
-    if nearest_idx < len(centerline) - 1:
-        segment_vec = centerline[nearest_idx + 1] - centerline[nearest_idx]
-        segment_length = np.linalg.norm(segment_vec)
-        progress += t * segment_length
-    
-    return progress, nearest_idx
 
 def load_centerline_from_map(map_directory):
     """

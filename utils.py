@@ -1,56 +1,20 @@
 import json
-from dataclasses import asdict
-import math
-import numbers
 import os
 import tempfile
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 import numpy as np
 
-
-__all__ = [
-    "load_raceline_waypoints",
-    "load_raceline_with_speed",
-    "calculate_metrics",
-    "follow_vehicle_camera",
-    "set_score_label",
-    "update_point_batches",
-    "create_multiagent_render_callback",
-    "create_planner_render_callback",
-    "create_single_agent_render_callback",
-    "find_corresponding_waypoint",
-    "load_positions_and_speeds_from_params",
-    "get_circular_startpoints",
-    "get_opponent_startpoint",
-    "evaluation_root",
-    "singleagent_paths",
-    "episode_key",
-    "multiagent_paths",
-    "load_json",
-    "atomic_write_json",
-    "update_singleagent_results",
-    "save_numeric_npz",
-    "evaluate_proximity_quality",
-    "wrapped_progress_difference",
-    "aggregate_multiagent_batch",
-    "require_finite_number",
-    "require_finite_tensor",
-    "TrainingRecorder",
-]
+def load_raceline_data(map_name, raceline_file):
+    """Load unique raceline rows and the full closed-track length"""
+    raceline_path = os.path.join('f1tenth_racetracks', map_name, raceline_file)
+    data = np.loadtxt(raceline_path, delimiter=';', comments='#')
+    assert np.linalg.norm(data[-1, 1:3] - data[0, 1:3]) <= 1e-9
+    return data[:-1], float(data[-1, 0])
 
 def load_raceline_waypoints(map_name, raceline_file):
-    """Load raceline waypoints as an (N, 4) array of [x, y, theta, speed]"""
-    raceline_path = f"f1tenth_racetracks/{map_name}/{raceline_file}"
-    with open(raceline_path, 'r') as f:
-        lines = f.readlines()[1:]
-
-    waypoints = []
-    for line in lines:
-        parts = line.strip().split(';')
-        if len(parts) >= 6:
-            waypoints.append([float(parts[1]), float(parts[2]), float(parts[3]), float(parts[5])])
-    return np.array(waypoints)
+    """Load unique [x, y, theta, speed] waypoints without the closing duplicate"""
+    data, _ = load_raceline_data(map_name, raceline_file)
+    return data[:, (1, 2, 3, 5)]
 
 def load_raceline_with_speed(map_name, raceline_file, start_idx):
     """Load raceline waypoints with position and speed information"""
@@ -205,7 +169,13 @@ def find_corresponding_waypoint(ego_waypoint, opp_waypoints):
     """Find the waypoint on opponent raceline closest to ego waypoint spatially"""
     ego_position = ego_waypoint[:2]
     distances = np.linalg.norm(opp_waypoints[:, :2] - ego_position, axis=1)
-    return np.argmin(distances)
+    return int(np.argmin(distances))
+
+def get_opponent_startpoint_from_waypoints(ego_waypoints, opp_waypoints, ego_idx, interval_idx, same_raceline):
+    """Map ego to the opponent raceline, then apply the circular interval"""
+    ego_idx = ego_idx % len(ego_waypoints)
+    mapped_idx = ego_idx if same_raceline else find_corresponding_waypoint(ego_waypoints[ego_idx], opp_waypoints)
+    return (mapped_idx + interval_idx) % len(opp_waypoints)
 
 def load_positions_and_speeds_from_params(params, map_name):
     """Load initial positions and speeds based on segment parameters (from run_lattice_planner.py)"""
@@ -224,20 +194,18 @@ def load_positions_and_speeds_from_params(params, map_name):
     return positions, initial_speeds
 
 def get_circular_startpoints(map_name, raceline_file, num_startpoints, offset):
-    raceline_path = os.path.join('f1tenth_racetracks', map_name, raceline_file)
-    waypoints = np.loadtxt(raceline_path, delimiter=';', comments='#')
-    unique_waypoints = waypoints[:-1]
-    track_length = waypoints[-1, 0]
+    """Select evenly spaced indices from unique circular waypoints"""
+    unique_waypoints, track_length = load_raceline_data(map_name, raceline_file)
     offset_progress = unique_waypoints[offset % len(unique_waypoints), 0]
     targets = (offset_progress + np.arange(num_startpoints) * track_length / num_startpoints) % track_length
-    return [int(np.argmin(np.abs(unique_waypoints[:, 0] - target))) for target in targets]
+    progress_delta = np.abs(unique_waypoints[:, None, 0] - targets[None, :])
+    progress_delta = np.minimum(progress_delta, track_length - progress_delta)
+    return [int(index) for index in np.argmin(progress_delta, axis=0)]
 
 def get_opponent_startpoint(map_name, ego_raceline, opp_raceline, ego_idx, interval_idx):
-    ego_waypoints = load_raceline_waypoints(map_name, f'{ego_raceline}.csv')[:-1]
-    opp_waypoints = load_raceline_waypoints(map_name, f'{opp_raceline}.csv')[:-1]
-    ego_idx = ego_idx % len(ego_waypoints)
-    mapped_idx = ego_idx if opp_raceline == ego_raceline else find_corresponding_waypoint(ego_waypoints[ego_idx], opp_waypoints)
-    return (mapped_idx + interval_idx) % len(opp_waypoints)
+    ego_waypoints = load_raceline_waypoints(map_name, f'{ego_raceline}.csv')
+    opp_waypoints = ego_waypoints if opp_raceline == ego_raceline else load_raceline_waypoints(map_name, f'{opp_raceline}.csv')
+    return get_opponent_startpoint_from_waypoints(ego_waypoints, opp_waypoints, ego_idx, interval_idx, opp_raceline == ego_raceline)
 
 # --- Evaluation artifact helpers (paths, JSON results, traces, metrics) ---
 
@@ -430,113 +398,3 @@ def aggregate_multiagent_batch(results_path, temporary_directory, total_segments
     episodes.update(batch_episodes)
     atomic_write_json(destination, {"final": final, "episodes": dict(sorted(episodes.items()))})
     return final
-
-
-def require_finite_number(name, value):
-    if isinstance(value, bool) or not isinstance(value, numbers.Real) or not math.isfinite(float(value)):
-        raise RuntimeError(f"{name} must be finite, got {value!r}")
-    return float(value)
-
-
-def require_finite_tensor(name, value):
-    import torch
-
-    if not isinstance(value, torch.Tensor) or not bool(torch.isfinite(value).all().item()):
-        raise RuntimeError(f"{name} must be a finite tensor")
-
-
-class TrainingRecorder:
-
-    def __init__(self, output_dir, hidden_scale):
-        self.output_dir = Path(output_dir).expanduser().resolve()
-        if self.output_dir.exists():
-            if not self.output_dir.is_dir():
-                raise RuntimeError(f"PPO output path is not a directory: {self.output_dir}")
-            if any(self.output_dir.iterdir()):
-                raise RuntimeError(f"PPO output directory must be empty: {self.output_dir}")
-        else:
-            self.output_dir.mkdir(parents=True)
-        self.hidden_scale = int(hidden_scale)
-        self.checkpoints_dir = self.output_dir / "checkpoints"
-        self.checkpoints_dir.mkdir()
-        self.metrics_path = self.output_dir / "metrics.jsonl"
-        self.episodes_path = self.output_dir / "episodes.jsonl"
-        self.metrics_path.touch()
-        self.episodes_path.touch()
-
-    @staticmethod
-    def _write_json(path, payload):
-        with Path(path).open("w", encoding="utf-8") as file:
-            json.dump(payload, file, indent=2, allow_nan=False)
-            file.write("\n")
-
-    @staticmethod
-    def _append_jsonl(path, payload):
-        with Path(path).open("a", encoding="utf-8") as file:
-            file.write(json.dumps(payload, allow_nan=False) + "\n")
-
-    @staticmethod
-    def _cpu_state_dict(state_dict):
-        return {name: tensor.detach().cpu() for name, tensor in state_dict.items()}
-
-    def write_run_config(self, args, ppo_config, training_constants):
-        self._write_json(
-            self.output_dir / "run_config.json",
-            {
-                "args": dict(vars(args)),
-                "ppo_config": ppo_config,
-                **training_constants,
-            },
-        )
-
-    def write_scenario_pools(self, collision_scenarios, ordinary_scenarios, cache_info):
-        self._write_json(self.output_dir / "collision_scenarios.json", [asdict(scenario) for scenario in collision_scenarios])
-        self._write_json(self.output_dir / "ordinary_scenarios.json", [asdict(scenario) for scenario in ordinary_scenarios])
-        self._write_json(self.output_dir / "collision_cache_info.json", cache_info)
-
-    def record_episode(self, record):
-        self._append_jsonl(self.episodes_path, record)
-
-    @classmethod
-    def _require_finite_metrics(cls, name, value):
-        if isinstance(value, numbers.Real) and not isinstance(value, bool):
-            require_finite_number(name, value)
-        elif isinstance(value, Mapping):
-            for child_name, child_value in value.items():
-                cls._require_finite_metrics(f"{name}.{child_name}", child_value)
-        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
-            for index, child_value in enumerate(value):
-                cls._require_finite_metrics(f"{name}[{index}]", child_value)
-
-    def record_metrics(self, record):
-        for name, value in record.items():
-            self._require_finite_metrics(name, value)
-        self._append_jsonl(self.metrics_path, record)
-
-    def _save_actor(self, path, state_dict):
-        import torch
-        from model import End2Race
-
-        checkpoint = self._cpu_state_dict(state_dict)
-        if len(checkpoint) != 12:
-            raise RuntimeError(f"Expected a 12-key actor checkpoint, got {len(checkpoint)} keys")
-        torch.save(checkpoint, path)
-        with torch.random.fork_rng(devices=[]):
-            actor = End2Race(mask_prob=0.0, hidden_scale=self.hidden_scale)
-            actor.load_state_dict(torch.load(path, map_location="cpu", weights_only=True), strict=True)
-        return path
-
-    def save_warmup_critic(self, state_dict):
-        import torch
-
-        path = self.checkpoints_dir / "critic_warmup.pt"
-        torch.save(self._cpu_state_dict(state_dict), path)
-        return path
-
-    def save_formal_checkpoints(self, update, actor_state_dict, critic_state_dict):
-        import torch
-
-        actor_path = self._save_actor(self.checkpoints_dir / f"actor_u{update:04d}.pth", actor_state_dict)
-        critic_path = self.checkpoints_dir / f"critic_u{update:04d}.pt"
-        torch.save(self._cpu_state_dict(critic_state_dict), critic_path)
-        return actor_path, critic_path

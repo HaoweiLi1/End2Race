@@ -1,5 +1,6 @@
 import argparse
 import sys
+import traceback
 import gym
 import numpy as np
 import torch
@@ -8,9 +9,8 @@ import gc
 import imageio
 from f110_gym.envs.base_classes import Integrator
 from model import End2Race
-from latticeplanner.utils import project_point_to_centerline, obsDict2oppoArray
+from latticeplanner.utils import TrackProjector, obsDict2oppoArray
 from demonstration import setup_opp_planner
-from ppo.reward import ProgressProjector
 from utils import *
 
 def collision_scope_stops_episode(collision_scope, ego_collision, opponent_collision):
@@ -114,19 +114,13 @@ def evaluate_segment(model, device, noise_level, map_name, ego_idx, interval_idx
     centerline_wp = np.loadtxt(centerline_path, delimiter=';', skiprows=1)
     centerline = np.vstack((centerline_wp[:, 1], centerline_wp[:, 2])).T
     if collision_scope == "ego":
-        progress_projector = ProgressProjector.from_csv(centerline_path)
-        centerline_total_length = progress_projector.track_length
-
-        def project_progress(point):
-            return progress_projector.project(point)
+        progress_projector = TrackProjector.from_csv(centerline_path)
     elif collision_scope == "legacy":
-        centerline_total_length = sum(np.linalg.norm(centerline[i+1] - centerline[i]) for i in range(len(centerline)-1))
-
-        def project_progress(point):
-            progress, _ = project_point_to_centerline(point, centerline)
-            return progress
+        progress_projector = TrackProjector(centerline)
     else:
         raise ValueError(f"Unknown collision scope: {collision_scope}")
+    centerline_total_length = progress_projector.track_length
+    project_progress = progress_projector.progress_at
     
     # Reset environment
     obs, _, done, _ = env.reset(poses=positions)
@@ -499,8 +493,8 @@ if __name__ == "__main__":
             args.metrics_out,
             args.collision_scope,
         )
-    except Exception as error:
-        print(f"EVALUATION_ERROR={error}", file=sys.stderr)
+    except Exception:
+        traceback.print_exc()
         sys.exit(4)
     
     # Print results

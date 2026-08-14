@@ -7,7 +7,7 @@ import gc
 import imageio
 from f110_gym.envs.base_classes import Integrator
 from model import End2Race
-from latticeplanner.utils import project_point_to_centerline
+from latticeplanner.utils import TrackProjector
 from utils import *
 
 def parse_arguments():
@@ -68,8 +68,9 @@ def evaluate_laps(
     start_position = np.array([waypoints[0, 0], waypoints[0, 1]])
     
     # Load centerline for progress tracking
-    centerline = waypoints[:, :2]
-    centerline_total_length = sum(np.linalg.norm(centerline[i+1] - centerline[i]) for i in range(len(centerline)-1))
+    raceline_path = os.path.join('f1tenth_racetracks', map_name, raceline)
+    progress_projector = TrackProjector.from_csv(raceline_path)
+    centerline_total_length = progress_projector.track_length
     
     # Reset environment
     obs, _, done, _ = env.reset(poses=start_pose)
@@ -80,7 +81,7 @@ def evaluate_laps(
     prev_speed = initial_speed * 0.9  # Always use speed conditioning
     
     # Track initial state
-    initial_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][0], obs['poses_y'][0]]), centerline)
+    initial_progress = progress_projector.progress_at(np.array([obs['poses_x'][0], obs['poses_y'][0]]))
     
     # Simulation metrics
     lap_time = 0.0
@@ -201,7 +202,7 @@ def evaluate_laps(
     # Calculate results
     if len(trajectory) > 0:
         last_position = trajectory[-1]
-        last_progress, _ = project_point_to_centerline(np.array(last_position), centerline)
+        last_progress = progress_projector.progress_at(np.array(last_position))
         
         if last_progress < initial_progress - centerline_total_length/2:
             last_progress += centerline_total_length

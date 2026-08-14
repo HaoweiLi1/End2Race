@@ -9,7 +9,7 @@ from datetime import datetime
 import imageio
 from latticeplanner.lattice_planner import *
 from latticeplanner.utils import *
-from utils import create_planner_render_callback, get_opponent_startpoint
+from utils import create_planner_render_callback, get_opponent_startpoint, load_positions_and_speeds_from_params
 
 render_info = {"ego_steer": 0.0, "ego_speed": 0.0, "opp_steer": 0.0, "opp_speed": 0.0}
 draw_grid_pts = []
@@ -148,7 +148,6 @@ def save_data(args, collected_data, video_frames, collision_occurred,
 def run_lattice_planner(args):
     """Main execution function for multi-agent mode"""
     global ego_planner, opp_planner
-    rng = np.random.default_rng(6300)
     
     # Setup planners
     ego_planner, config_directory = setup_ego_planner(args.map_name, args.raceline)
@@ -166,12 +165,7 @@ def run_lattice_planner(args):
         render_callback = create_render_callback()
         env.add_render_callback(render_callback)
     
-    # Position setup
-    ego_waypoints_xytheta = np.hstack((ego_planner.waypoints[:, :2], ego_planner.waypoints[:, 3].reshape(-1, 1)))
-    ego_pos, _ = random_position(ego_waypoints_xytheta, 1, rng, 0.0, 0.0, args.ego_idx, 0)
-    
     # Multi-agent initialization
-    opp_waypoints_xytheta = np.hstack((opp_planner.waypoints[:, :2], opp_planner.waypoints[:, 3].reshape(-1, 1)))
     opp_wpt_xyhs = np.vstack((opp_planner.waypoints[:, 0], opp_planner.waypoints[:, 1], opp_planner.waypoints[:, 3], opp_planner.waypoints[:, 4])).T
     
     # Find corresponding opponent position
@@ -182,16 +176,15 @@ def run_lattice_planner(args):
         args.ego_idx,
         args.interval_idx,
     )
-    opp_pos, _ = random_position(opp_waypoints_xytheta, 1, rng, 0.0, 0.0, opp_idx, 0)
-    random_agent_pos = np.vstack([ego_pos, opp_pos])
+    params = {'ego_raceline': args.raceline, 'opp_raceline': args.opp_raceline, 'ego_idx': args.ego_idx, 'opp_idx': opp_idx}
+    random_agent_pos, _ = load_positions_and_speeds_from_params(params, args.map_name)
     
     # Setup centerline for state tracking
     centerline_path = os.path.join(config_directory, 'raceline1.csv')
     centerline_wp = np.loadtxt(centerline_path, delimiter=';', skiprows=1)
     centerline = np.vstack((centerline_wp[:, 1], centerline_wp[:, 2])).T
-    centerline_total_length = 0.0
-    for i in range(len(centerline) - 1):
-        centerline_total_length += np.linalg.norm(centerline[i+1] - centerline[i])
+    progress_projector = TrackProjector(centerline)
+    centerline_total_length = progress_projector.track_length
     
     # Reset environment
     obs, _, done, _ = env.reset(poses=random_agent_pos)
@@ -200,8 +193,8 @@ def run_lattice_planner(args):
         env.render()
     
     # Initialize state tracking
-    initial_ego_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][0], obs['poses_y'][0]]), centerline)
-    initial_opp_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][1], obs['poses_y'][1]]), centerline)
+    initial_ego_progress = progress_projector.progress_at(np.array([obs['poses_x'][0], obs['poses_y'][0]]))
+    initial_opp_progress = progress_projector.progress_at(np.array([obs['poses_x'][1], obs['poses_y'][1]]))
 
     if initial_ego_progress > initial_opp_progress:
         initial_state = "overtaking"
@@ -258,8 +251,8 @@ def run_lattice_planner(args):
             obs, timestep, done, _ = env.step(action)
             
             # State tracking
-            current_ego_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][0], obs['poses_y'][0]]), centerline)
-            current_opp_progress, _ = project_point_to_centerline(np.array([obs['poses_x'][1], obs['poses_y'][1]]), centerline)
+            current_ego_progress = progress_projector.progress_at(np.array([obs['poses_x'][0], obs['poses_y'][0]]))
+            current_opp_progress = progress_projector.progress_at(np.array([obs['poses_x'][1], obs['poses_y'][1]]))
             
             if current_ego_progress < initial_ego_progress - centerline_total_length/2:
                 current_ego_progress += centerline_total_length

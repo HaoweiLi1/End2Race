@@ -72,29 +72,6 @@ class PurePursuitPlanner:
             else:
                 self.drawn_waypoints[i].vertices = [scaled_points[i, 0], scaled_points[i, 1], 0.]
 
-    def _get_current_waypoint(self, lookahead_distance, position, theta, waypoints):
-        """
-        gets the current waypoint to follow
-        """
-        nearest_p, nearest_dist, t, i = nearest_point(position, self.waypoints[:, 0:2])
-        if nearest_dist < lookahead_distance:
-            lookahead_point, i2, t2 = intersect_point(position,
-                                                      lookahead_distance,
-                                                      self.waypoints[:, 0:2],
-                                                      i + t,
-                                                      wrap=True)
-            if i2 is None:
-                all_distance = np.linalg.norm(self.waypoints[:, 0:2] - position, axis=1)
-                all_distance_lh = np.abs(all_distance - lookahead_distance)
-                best_p_idx = np.argmin(all_distance_lh)
-                return self.waypoints[best_p_idx, :]
-            current_waypoint = np.array([self.waypoints[i2, 0], self.waypoints[i2, 1], self.waypoints[i, 2]])
-            return current_waypoint
-        elif nearest_dist < self.max_reacquire:
-            return self.waypoints[i, :]
-        else:
-            return None
-
     def get_L(self, curr_v):
         return curr_v * (self.maxL - self.minL) / self.Lscale + self.minL
 

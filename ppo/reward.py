@@ -1,551 +1,108 @@
-"""Closed-track progress projection and the fixed PPO reward."""
-
-from __future__ import annotations
-
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
-
 import numpy as np
 from scipy.ndimage import map_coordinates
-
-from latticeplanner.utils import load_config
-
-CONFIG = load_config("ppo/ppo_config.yaml")
+from latticeplanner.utils import get_vertices
 
 
-@dataclass(frozen=True)
-class CurrentStateClearances:
-    obb_clearance_m: float
-    obb_longitudinal_clearance_m: float
-    obb_lateral_clearance_m: float
-    wall_clearance_m: float
+class ClearanceCalculator:
 
-    def __post_init__(self) -> None:
-        values = np.asarray(
-            (
-                self.obb_clearance_m,
-                self.obb_longitudinal_clearance_m,
-                self.obb_lateral_clearance_m,
-                self.wall_clearance_m,
-            ),
-            dtype=np.float64,
-        )
-        if not np.isfinite(values).all() or np.any(values < 0.0):
-            raise ValueError("Current-state clearances must be finite and non-negative")
-
-
-def _point_segment_vector(point: np.ndarray, start: np.ndarray, end: np.ndarray) -> np.ndarray:
-    segment = end - start
-    norm_sq = float(np.dot(segment, segment))
-    if norm_sq <= 0.0:
-        raise ValueError("Rectangle edges must have positive length")
-    fraction = np.clip(np.dot(point - start, segment) / norm_sq, 0.0, 1.0)
-    return start + fraction * segment - point
-
-
-def _separating_axis_exists(vertices_a: np.ndarray, vertices_b: np.ndarray) -> bool:
-    for vertices in (vertices_a, vertices_b):
-        for index in range(len(vertices)):
-            edge = vertices[(index + 1) % len(vertices)] - vertices[index]
-            axis = np.asarray((-edge[1], edge[0]), dtype=np.float64)
-            projection_a = vertices_a @ axis
-            projection_b = vertices_b @ axis
-            if projection_a.max() < projection_b.min() or projection_b.max() < projection_a.min():
-                return True
-    return False
-
-
-def _validated_rectangles(vertices_a: np.ndarray, vertices_b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    first = np.asarray(vertices_a, dtype=np.float64)
-    second = np.asarray(vertices_b, dtype=np.float64)
-    if first.shape != (4, 2) or second.shape != (4, 2) or not np.isfinite((first, second)).all():
-        raise ValueError("Rectangle clearance requires two finite (4, 2) vertex arrays")
-    return first, second
-
-
-def _rectangle_separation_vector(vertices_a: np.ndarray, vertices_b: np.ndarray) -> np.ndarray:
-    first, second = _validated_rectangles(vertices_a, vertices_b)
-    if not _separating_axis_exists(first, second):
-        return np.zeros(2, dtype=np.float64)
-    best_vector = None
-    best_distance_sq = np.inf
-    for vertices_from, vertices_to in ((first, second), (second, first)):
-        for point in vertices_from:
-            for index in range(len(vertices_to)):
-                vector = _point_segment_vector(point, vertices_to[index], vertices_to[(index + 1) % len(vertices_to)])
-                distance_sq = float(np.dot(vector, vector))
-                if distance_sq < best_distance_sq:
-                    best_distance_sq = distance_sq
-                    best_vector = vector
-    if best_vector is None:
-        raise RuntimeError("Failed to compute rectangle separation")
-    return best_vector
-
-
-def rectangle_clearance(vertices_a: np.ndarray, vertices_b: np.ndarray) -> float:
-    return float(np.linalg.norm(_rectangle_separation_vector(vertices_a, vertices_b)))
-
-
-def rectangle_clearance_components(
-    vertices_a: np.ndarray,
-    vertices_b: np.ndarray,
-    reference_heading: float,
-) -> tuple[float, float, float]:
-    if not np.isfinite(reference_heading):
-        raise ValueError("Reference heading must be finite")
-    vector = _rectangle_separation_vector(vertices_a, vertices_b)
-    longitudinal_axis = np.asarray((np.cos(reference_heading), np.sin(reference_heading)))
-    lateral_axis = np.asarray((-np.sin(reference_heading), np.cos(reference_heading)))
-    longitudinal = abs(float(np.dot(vector, longitudinal_axis)))
-    lateral = abs(float(np.dot(vector, lateral_axis)))
-    return float(np.linalg.norm(vector)), longitudinal, lateral
-
-
-class OccupancyMapClearance:
-
-    def __init__(self, distance_field: np.ndarray, resolution: float, origin: np.ndarray) -> None:
-        field = np.asarray(distance_field, dtype=np.float64)
-        origin_array = np.asarray(origin, dtype=np.float64).reshape(-1)
-        if field.ndim != 2 or field.size == 0 or not np.isfinite(field).all() or np.any(field < 0.0):
-            raise ValueError("Map distance field must be a finite non-negative 2D array")
-        if not np.isfinite(resolution) or resolution <= 0.0:
-            raise ValueError("Map resolution must be finite and positive")
-        if origin_array.shape != (3,) or not np.isfinite(origin_array).all():
-            raise ValueError("Map origin must contain finite x, y, and heading")
-        self.distance_field = field
+    def __init__(self, distance_field, resolution, origin, vehicle_length, vehicle_width):
+        self.distance_field = np.asarray(distance_field, dtype=np.float64)
         self.resolution = float(resolution)
-        self.origin = origin_array
-
-    def rectangle_clearance(self, vertices: np.ndarray) -> float:
-        rectangle = np.asarray(vertices, dtype=np.float64)
-        if rectangle.shape != (4, 2) or not np.isfinite(rectangle).all():
-            raise ValueError("Map clearance requires one finite (4, 2) rectangle")
-        perimeter = []
-        for index in range(4):
-            start = rectangle[index]
-            end = rectangle[(index + 1) % 4]
-            sample_count = max(2, int(np.ceil(np.linalg.norm(end - start) / (0.5 * self.resolution))) + 1)
-            perimeter.append(np.linspace(start, end, sample_count))
-        points = np.concatenate(perimeter)
-        translated = points - self.origin[:2]
-        cosine = float(np.cos(self.origin[2]))
-        sine = float(np.sin(self.origin[2]))
-        columns = (translated[:, 0] * cosine + translated[:, 1] * sine) / self.resolution
-        rows = (-translated[:, 0] * sine + translated[:, 1] * cosine) / self.resolution
-        distances = map_coordinates(
-            self.distance_field,
-            np.vstack((rows, columns)),
-            order=1,
-            mode="constant",
-            cval=0.0,
-        )
-        return max(0.0, float(distances.min()) - 0.5 * self.resolution)
-
-
-def anisotropic_risk_potential(
-    longitudinal_clearance_m: float,
-    lateral_clearance_m: float,
-    wall_clearance_m: float,
-    *,
-    longitudinal_safe_m: float,
-    lateral_safe_m: float,
-    wall_safe_m: float,
-    maximum_magnitude: float,
-) -> float:
-    """One bounded potential over vehicle and wall proximity."""
-
-    values = np.asarray(
-        (
-            longitudinal_clearance_m,
-            lateral_clearance_m,
-            wall_clearance_m,
-            longitudinal_safe_m,
-            lateral_safe_m,
-            wall_safe_m,
-            maximum_magnitude,
-        ),
-        dtype=np.float64,
-    )
-    if (
-        not np.isfinite(values).all()
-        or np.any(values[:3] < 0.0)
-        or np.any(values[3:6] <= 0.0)
-        or maximum_magnitude < 0.0
-    ):
-        raise ValueError("Risk potential requires non-negative clearances and positive safety scales")
-    vehicle_distance = float(
-        np.hypot(
-            longitudinal_clearance_m / longitudinal_safe_m,
-            lateral_clearance_m / lateral_safe_m,
-        )
-    )
-    wall_distance = float(wall_clearance_m / wall_safe_m)
-    normalized_distance = min(vehicle_distance, wall_distance)
-    shortfall = max(0.0, 1.0 - normalized_distance)
-    return float(-maximum_magnitude * shortfall * shortfall)
-
-
-def potential_shaping_reward(
-    previous_potential: float,
-    physical_next_potential: float,
-    gamma: float,
-    *,
-    terminated: bool,
-) -> tuple[float, float]:
-    """Return potential reward and the next potential carried by the episode."""
-
-    values = np.asarray((previous_potential, physical_next_potential, gamma), dtype=np.float64)
-    if not np.isfinite(values).all() or previous_potential > 0.0 or physical_next_potential > 0.0:
-        raise ValueError("Risk potentials must be finite and non-positive")
-    if not 0.0 < gamma <= 1.0:
-        raise ValueError("Potential shaping gamma must be in (0, 1]")
-    next_potential = 0.0 if terminated else float(physical_next_potential)
-    return float(gamma * next_potential - previous_potential), next_potential
-
-
-def wrapped_progress_delta(current_s: float, previous_s: float, track_length: float) -> float:
-    """Return the shortest signed closed-track displacement."""
-
-    return float((current_s - previous_s + 0.5 * track_length) % track_length - 0.5 * track_length)
-
-
-def checked_progress_delta(
-    current_s: float,
-    previous_s: float,
-    track_length: float,
-    *,
-    scenario_id: str,
-    vehicle: str,
-    max_abs_delta_m: float = CONFIG.max_progress_delta_m,
-) -> float:
-    """Compute a progress delta and fail loudly on invalid transitions."""
-
-    values = np.asarray((current_s, previous_s, track_length), dtype=np.float64)
-    if not np.isfinite(values).all() or track_length <= 0.0:
-        raise ValueError(
-            f"Invalid {vehicle} progress for scenario {scenario_id}: "
-            f"previous_s={previous_s!r}, current_s={current_s!r}, track_length={track_length!r}"
-        )
-    delta = wrapped_progress_delta(current_s, previous_s, track_length)
-    if not np.isfinite(delta) or abs(delta) > max_abs_delta_m:
-        raise ValueError(
-            f"Invalid {vehicle} progress delta for scenario {scenario_id}: "
-            f"previous_s={previous_s!r}, current_s={current_s!r}, delta={delta!r}"
-        )
-    return delta
-
-
-class ProgressProjector:
-    """Project XY points onto cyclic raceline segments using the CSV ``s`` axis."""
-
-    def __init__(self, progress_s: np.ndarray, xy: np.ndarray, track_length: float) -> None:
-        progress_s = np.asarray(progress_s, dtype=np.float64).reshape(-1)
-        xy = np.asarray(xy, dtype=np.float64)
-        track_length = float(track_length)
-        if xy.ndim != 2 or xy.shape[1] != 2 or xy.shape[0] != progress_s.size:
-            raise ValueError("progress_s and xy must describe matching 2D raceline points")
-        if progress_s.size < 3 or not np.isfinite(progress_s).all() or not np.isfinite(xy).all():
-            raise ValueError("Raceline reference must contain at least three finite points")
-        if not np.isfinite(track_length) or track_length <= 0.0:
-            raise ValueError("track_length must be finite and positive")
-        if np.linalg.norm(xy[-1] - xy[0]) <= 1e-9:
-            progress_s = progress_s[:-1]
-            xy = xy[:-1]
-        if progress_s.size < 3 or np.any(np.diff(progress_s) <= 0.0):
-            raise ValueError("Raceline progress values must be strictly increasing after closing-point removal")
-        if progress_s[0] < -1e-9 or progress_s[-1] >= track_length:
-            raise ValueError("Raceline progress values must lie in [0, track_length)")
-
-        self.progress_s = progress_s
-        self.xy = xy
-        self.track_length = track_length
-        self._segment_start = xy
-        self._segment_vector = np.roll(xy, -1, axis=0) - xy
-        self._segment_norm_sq = np.einsum("ij,ij->i", self._segment_vector, self._segment_vector)
-        if np.any(self._segment_norm_sq <= 0.0):
-            raise ValueError("Cyclic raceline contains a zero-length segment")
-        self._segment_progress = np.concatenate(
-            (np.diff(progress_s), np.asarray([track_length - progress_s[-1]], dtype=np.float64))
-        )
-        if np.any(self._segment_progress <= 0.0):
-            raise ValueError("Cyclic raceline contains a non-positive progress segment")
-
-    @classmethod
-    def from_csv(cls, path: str | Path) -> "ProgressProjector":
-        data = np.loadtxt(Path(path), delimiter=";", comments="#", dtype=np.float64)
-        if data.ndim != 2 or data.shape[1] < 3:
-            raise ValueError(f"Expected s/x/y columns in raceline CSV: {path}")
-        return cls(data[:, 0], data[:, 1:3], float(data[-1, 0]))
-
-    def project(self, point_xy: np.ndarray) -> float:
-        point = np.asarray(point_xy, dtype=np.float64).reshape(-1)
-        if point.shape != (2,) or not np.isfinite(point).all():
-            raise ValueError(f"Progress point must be a finite XY pair, got {point_xy!r}")
-        offset = point - self._segment_start
-        fraction = np.einsum("ij,ij->i", offset, self._segment_vector) / self._segment_norm_sq
-        fraction = np.clip(fraction, 0.0, 1.0)
-        closest = self._segment_start + fraction[:, None] * self._segment_vector
-        distance_sq = np.einsum("ij,ij->i", point - closest, point - closest)
-        index = int(np.argmin(distance_sq))
-        progress = self.progress_s[index] + fraction[index] * self._segment_progress[index]
-        return float(progress % self.track_length)
-
-
-@dataclass(frozen=True)
-class RewardResult:
-    reward_progress: float
-    reward_relative: float
-    reward_collision: float
-    reward_risk: float
-    reward_total: float
-    ego_progress_delta_m: float
-    opponent_progress_delta_m: float
-    relative_position_m: float
-    ego_collision: bool
-    opponent_collision: bool
-    opponent_collision_latched: bool
-    obb_clearance_m: float
-    obb_longitudinal_clearance_m: float
-    obb_lateral_clearance_m: float
-    wall_clearance_m: float
-    risk_active: bool
-    scenario_id: str
-
-class PPOTransitionReward:
-    """Stateful progress/relative/collision reward with potential-based risk shaping."""
-
-    def __init__(
-        self,
-        map_name: str,
-        ego_raceline: str,
-        projector: ProgressProjector | None = None,
-        *,
-        gamma: float,
-        vehicle_length: float,
-        vehicle_width: float,
-        map_clearance: OccupancyMapClearance,
-        risk_longitudinal_clearance_m: float,
-        risk_lateral_clearance_m: float,
-        risk_wall_clearance_m: float,
-        risk_potential_maximum: float,
-    ) -> None:
-        self.progress_reference_path = Path(__file__).resolve().parents[1] / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
-        self.projector = projector or ProgressProjector.from_csv(self.progress_reference_path)
-        self._previous_ego_progress: float | None = None
-        self._previous_opponent_progress: float | None = None
-        self._relative_position_m = 0.0
-        self._opponent_collision_latched = False
-        self._ego_collision_penalty_applied = False
-        self._scenario_id: str | None = None
-        self.gamma = float(gamma)
+        self.origin = np.asarray(origin, dtype=np.float64)
         self.vehicle_length = float(vehicle_length)
         self.vehicle_width = float(vehicle_width)
-        self.map_clearance = map_clearance
-        self.risk_longitudinal_clearance_m = float(risk_longitudinal_clearance_m)
-        self.risk_lateral_clearance_m = float(risk_lateral_clearance_m)
-        self.risk_wall_clearance_m = float(risk_wall_clearance_m)
-        self.risk_potential_maximum = float(risk_potential_maximum)
-        parameters = np.asarray(
-            (
-                self.gamma,
-                self.vehicle_length,
-                self.vehicle_width,
-                self.risk_longitudinal_clearance_m,
-                self.risk_lateral_clearance_m,
-                self.risk_wall_clearance_m,
-                self.risk_potential_maximum,
-            ),
-            dtype=np.float64,
-        )
-        if (
-            not np.isfinite(parameters).all()
-            or not 0.0 < self.gamma <= 1.0
-            or self.vehicle_length <= 0.0
-            or self.vehicle_width <= 0.0
-            or self.risk_longitudinal_clearance_m <= 0.0
-            or self.risk_lateral_clearance_m <= 0.0
-            or self.risk_wall_clearance_m <= 0.0
-            or self.risk_potential_maximum < 0.0
-        ):
-            raise ValueError("Invalid PPO risk-potential parameters")
-        self._previous_risk_potential: float | None = None
-        self.current_clearances: CurrentStateClearances | None = None
+        self.map_cosine = float(np.cos(self.origin[2]))
+        self.map_sine = float(np.sin(self.origin[2]))
+        self.perimeter_spacing = 0.5 * self.resolution
 
-    @staticmethod
-    def _position(raw_observation: dict[str, Any], index: int) -> np.ndarray:
-        return np.asarray(
-            (raw_observation["poses_x"][index], raw_observation["poses_y"][index]),
-            dtype=np.float64,
-        )
+    def _vehicle_clearances(self, ego_vertices, opponent_vertices, reference_heading):
+        # Calculate OBB separation in the ego longitudinal and lateral frame.
+        # Opposite rectangle edges share an axis, so each body contributes two SAT axes.
+        overlap = True
+        for rectangle in (ego_vertices, opponent_vertices):
+            for index in (0, 1):
+                edge = rectangle[(index + 1) % 4] - rectangle[index]
+                axis = np.asarray((-edge[1], edge[0]), dtype=np.float64)
+                ego_projection = ego_vertices @ axis
+                opponent_projection = opponent_vertices @ axis
+                if ego_projection.max() < opponent_projection.min() or opponent_projection.max() < ego_projection.min():
+                    overlap = False
+                    break
+            if not overlap:
+                break
+        if overlap:
+            return 0.0, 0.0, 0.0
 
-    @staticmethod
-    def _heading(raw_observation: dict[str, Any], index: int) -> float:
-        return float(np.asarray(raw_observation["poses_theta"])[index])
+        separation = np.zeros(2, dtype=np.float64)
+        best_distance_sq = np.inf
+        for source, target in ((ego_vertices, opponent_vertices), (opponent_vertices, ego_vertices)):
+            for point in source:
+                for index in range(4):
+                    start = target[index]
+                    segment = target[(index + 1) % 4] - start
+                    fraction = np.clip(np.dot(point - start, segment) / np.dot(segment, segment), 0.0, 1.0)
+                    vector = start + fraction * segment - point
+                    distance_sq = float(np.dot(vector, vector))
+                    if distance_sq < best_distance_sq:
+                        separation = vector
+                        best_distance_sq = distance_sq
 
-    def _clearances(
-        self,
-        raw_observation: dict[str, Any],
-        ego_index: int,
-        opponent_index: int,
-    ) -> CurrentStateClearances:
-        from latticeplanner.utils import get_vertices
+        longitudinal_axis = np.asarray((np.cos(reference_heading), np.sin(reference_heading)))
+        lateral_axis = np.asarray((-np.sin(reference_heading), np.cos(reference_heading)))
+        return float(np.linalg.norm(separation)), abs(float(np.dot(separation, longitudinal_axis))), abs(float(np.dot(separation, lateral_axis)))
 
-        ego_position = self._position(raw_observation, ego_index)
-        opponent_position = self._position(raw_observation, opponent_index)
-        ego_pose = np.asarray(
-            (ego_position[0], ego_position[1], self._heading(raw_observation, ego_index)),
-            dtype=np.float64,
-        )
-        opponent_pose = np.asarray(
-            (opponent_position[0], opponent_position[1], self._heading(raw_observation, opponent_index)),
-            dtype=np.float64,
-        )
+    def _wall_clearance(self, vertices):
+        # Sample ego perimeter clearance from the map distance field.
+        perimeter = []
+        for index in range(4):
+            start = vertices[index]
+            end = vertices[(index + 1) % 4]
+            sample_count = int(np.ceil(np.linalg.norm(end - start) / self.perimeter_spacing)) + 1
+            # The next edge contains this edge's endpoint, so keep each corner only once.
+            perimeter.append(np.linspace(start, end, sample_count)[:-1])
+
+        points = np.concatenate(perimeter)
+        translated = points - self.origin[:2]
+        columns = (translated[:, 0] * self.map_cosine + translated[:, 1] * self.map_sine) / self.resolution
+        rows = (-translated[:, 0] * self.map_sine + translated[:, 1] * self.map_cosine) / self.resolution
+        # Read wall distance at the vehicle perimeter from the simulator's map distance field.
+        distances = map_coordinates(self.distance_field, np.vstack((rows, columns)), order=1, mode="constant", cval=0.0)
+        return max(0.0, float(distances.min()) - self.perimeter_spacing)
+
+    def calculate(self, ego_pose, opponent_pose):
+        # Return total, longitudinal, lateral and wall clearances.
         ego_vertices = get_vertices(ego_pose, self.vehicle_length, self.vehicle_width)
         opponent_vertices = get_vertices(opponent_pose, self.vehicle_length, self.vehicle_width)
-        obb_clearance, longitudinal_clearance, lateral_clearance = rectangle_clearance_components(
-            ego_vertices,
-            opponent_vertices,
-            ego_pose[2],
-        )
-        wall_clearance = self.map_clearance.rectangle_clearance(ego_vertices)
-        return CurrentStateClearances(
-            obb_clearance_m=obb_clearance,
-            obb_longitudinal_clearance_m=longitudinal_clearance,
-            obb_lateral_clearance_m=lateral_clearance,
-            wall_clearance_m=wall_clearance,
-        )
+        vehicle_clearances = self._vehicle_clearances(ego_vertices, opponent_vertices, ego_pose[2])
+        # Total OBB distance, ego-frame longitudinal/lateral distance, then wall distance.
+        return (*vehicle_clearances, self._wall_clearance(ego_vertices))
 
-    def _risk_potential(
-        self,
-        longitudinal_clearance_m: float,
-        lateral_clearance_m: float,
-        wall_clearance_m: float,
-    ) -> float:
-        return anisotropic_risk_potential(
-            longitudinal_clearance_m,
-            lateral_clearance_m,
-            wall_clearance_m,
-            longitudinal_safe_m=self.risk_longitudinal_clearance_m,
-            lateral_safe_m=self.risk_lateral_clearance_m,
-            wall_safe_m=self.risk_wall_clearance_m,
-            maximum_magnitude=self.risk_potential_maximum,
-        )
 
-    def reset(self, raw_observation: dict[str, Any], *, scenario_id: str, ego_index: int = 0) -> None:
-        num_agents = len(np.asarray(raw_observation["poses_x"]).reshape(-1))
-        opponent_indices = [index for index in range(num_agents) if index != ego_index]
-        if len(opponent_indices) != 1:
-            raise ValueError(f"PPO reward requires exactly one opponent, got {num_agents - 1}")
-        opponent_index = opponent_indices[0]
-        ego_progress = self.projector.project(self._position(raw_observation, ego_index))
-        opponent_progress = self.projector.project(self._position(raw_observation, opponent_index))
-        self._previous_ego_progress = ego_progress
-        self._previous_opponent_progress = opponent_progress
-        self._relative_position_m = wrapped_progress_delta(
-            ego_progress,
-            opponent_progress,
-            self.projector.track_length,
-        )
-        self._opponent_collision_latched = False
-        self._ego_collision_penalty_applied = False
-        self._scenario_id = str(scenario_id)
-        self.current_clearances = self._clearances(raw_observation, ego_index, opponent_index)
-        self._previous_risk_potential = self._risk_potential(
-            self.current_clearances.obb_longitudinal_clearance_m,
-            self.current_clearances.obb_lateral_clearance_m,
-            self.current_clearances.wall_clearance_m,
-        )
+# Convert current clearances into a bounded negative risk potential.
+def risk_potential(longitudinal_clearance_m, lateral_clearance_m, wall_clearance_m, *, longitudinal_safe_m, lateral_safe_m, wall_safe_m, maximum_magnitude):
+    vehicle_distance = np.hypot(longitudinal_clearance_m / longitudinal_safe_m, lateral_clearance_m / lateral_safe_m)
+    wall_distance = wall_clearance_m / wall_safe_m
+    shortfall = max(0.0, 1.0 - min(vehicle_distance, wall_distance))
+    return float(-maximum_magnitude * shortfall * shortfall)
 
-    def step(
-        self,
-        previous_raw_observation: dict[str, Any],
-        raw_observation: dict[str, Any],
-        *,
-        ego_collision: bool,
-        opponent_collision: bool,
-        terminated: bool,
-        scenario_id: str,
-        ego_index: int = 0,
-    ) -> RewardResult:
-        del previous_raw_observation  # Previous progress is initialized/reset and advanced internally.
-        if (
-            self._previous_ego_progress is None
-            or self._previous_opponent_progress is None
-            or self._previous_risk_potential is None
-        ):
-            raise RuntimeError("PPO reward must be reset before step")
-        if self._scenario_id != str(scenario_id):
-            raise ValueError(f"Reward scenario changed without reset: {self._scenario_id!r} -> {scenario_id!r}")
-        num_agents = len(np.asarray(raw_observation["poses_x"]).reshape(-1))
-        opponent_indices = [index for index in range(num_agents) if index != ego_index]
-        if len(opponent_indices) != 1:
-            raise ValueError(f"PPO reward requires exactly one opponent, got {num_agents - 1}")
-        opponent_index = opponent_indices[0]
+# Reward ego forward progress.
+def progress_reward(ego_delta, weight):
+    return float(weight * ego_delta)
 
-        ego_progress = self.projector.project(self._position(raw_observation, ego_index))
-        opponent_progress = self.projector.project(self._position(raw_observation, opponent_index))
-        ego_delta = checked_progress_delta(
-            ego_progress,
-            self._previous_ego_progress,
-            self.projector.track_length,
-            scenario_id=str(scenario_id),
-            vehicle="ego",
-        )
-        opponent_delta = checked_progress_delta(
-            opponent_progress,
-            self._previous_opponent_progress,
-            self.projector.track_length,
-            scenario_id=str(scenario_id),
-            vehicle="opponent",
-        )
-        self._previous_ego_progress = ego_progress
-        self._previous_opponent_progress = opponent_progress
-        self._relative_position_m += ego_delta - opponent_delta
+# Reward progress relative to a moving opponent.
+def relative_reward(ego_delta, opponent_delta, opponent_collision_latched, weight):
+    return 0.0 if opponent_collision_latched else float(weight * (ego_delta - opponent_delta))
 
-        if opponent_collision:
-            self._opponent_collision_latched = True
-        reward_progress = CONFIG.progress_weight * ego_delta
-        reward_relative = 0.0 if self._opponent_collision_latched else CONFIG.relative_weight * (ego_delta - opponent_delta)
-        if ego_collision and not self._ego_collision_penalty_applied:
-            reward_collision = CONFIG.collision_penalty
-            self._ego_collision_penalty_applied = True
-        else:
-            reward_collision = 0.0
-        self.current_clearances = self._clearances(
-            raw_observation,
-            ego_index,
-            opponent_index,
-        )
-        physical_risk_potential = self._risk_potential(
-            self.current_clearances.obb_longitudinal_clearance_m,
-            self.current_clearances.obb_lateral_clearance_m,
-            self.current_clearances.wall_clearance_m,
-        )
-        reward_risk, next_risk_potential = potential_shaping_reward(
-            self._previous_risk_potential,
-            physical_risk_potential,
-            self.gamma,
-            terminated=terminated,
-        )
-        self._previous_risk_potential = next_risk_potential
-        reward_total = reward_progress + reward_relative + reward_collision + reward_risk
-        return RewardResult(
-            reward_progress=float(reward_progress),
-            reward_relative=float(reward_relative),
-            reward_collision=float(reward_collision),
-            reward_risk=float(reward_risk),
-            reward_total=float(reward_total),
-            ego_progress_delta_m=float(ego_delta),
-            opponent_progress_delta_m=float(opponent_delta),
-            relative_position_m=float(self._relative_position_m),
-            ego_collision=bool(ego_collision),
-            opponent_collision=bool(opponent_collision),
-            opponent_collision_latched=bool(self._opponent_collision_latched),
-            obb_clearance_m=float(self.current_clearances.obb_clearance_m),
-            obb_longitudinal_clearance_m=float(self.current_clearances.obb_longitudinal_clearance_m),
-            obb_lateral_clearance_m=float(self.current_clearances.obb_lateral_clearance_m),
-            wall_clearance_m=float(self.current_clearances.wall_clearance_m),
-            risk_active=bool(physical_risk_potential < 0.0),
-            scenario_id=str(scenario_id),
-        )
+
+# Apply the ego collision penalty once collision is observed.
+def collision_reward(ego_collision, weight):
+    return float(weight) if ego_collision else 0.0
+
+# Shape reward from the change in risk potential.
+def risk_reward(previous_potential, next_potential, gamma, terminated, weight):
+    next_potential = 0.0 if terminated else next_potential
+    return float(weight * (gamma * next_potential - previous_potential)), next_potential
+
+# Measure signed progress across the cyclic track boundary.
+def wrapped_progress_delta(current_s, previous_s, track_length):
+    return float((current_s - previous_s + 0.5 * track_length) % track_length - 0.5 * track_length)

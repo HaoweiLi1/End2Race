@@ -23,6 +23,7 @@ class LatticePlanner:
         waypoints = np.vstack((waypoints[:, 1], waypoints[:, 2], waypoints[:, 5], waypoints[:, 3], waypoints[:, 0])).T
 
         self.waypoints = waypoints
+        self.track_projector = TrackProjector(self.waypoints[:, :2])
         self.traj_num = 55
         self.lh_grid_rows = 5
         self.lh_grid_lb = conf.lh_grid_lb
@@ -139,12 +140,12 @@ class LatticePlanner:
     def add_sample_function(self, func):
         self.sample_func = func
 
-    def sample(self, pose_x, pose_y, pose_theta, velocity, waypoints, lh_grid):
+    def sample(self, pose_x, pose_y, pose_theta, velocity, waypoints, lh_grid, nearest_p, t, nearest_i):
 
         if self.sample_func is None:
             raise NotImplementedError('Please set a sample function before sampling.')
 
-        goal_grid = self.sample_func(pose_x, pose_y, pose_theta, velocity, waypoints, lh_grid)
+        goal_grid = self.sample_func(pose_x, pose_y, pose_theta, velocity, waypoints, nearest_p, t, nearest_i, lh_grid)
 
         return goal_grid
 
@@ -200,21 +201,20 @@ class LatticePlanner:
         best_idx = self.selection_func(all_costs)
         return best_idx
 
-    def plan(self, pose_x, pose_y, pose_theta, opp_poses, velocity, waypoints=None):
+    def plan(self, pose_x, pose_y, pose_theta, opp_poses, velocity):
         self.step += 1
-        if waypoints is None:
-            waypoints = self.waypoints
+        waypoints = self.waypoints
 
         # state
         ego_pose = np.array([pose_x, pose_y, pose_theta])
-        _, _, t, nearest_i = nearest_point(ego_pose[:2], waypoints[:, 0:2])
+        nearest_p, _, t, nearest_i = self.track_projector.nearest(ego_pose[:2])
         self.state_i = nearest_i
         self.state_t = t
 
         # sample a grid based on current states
         min_L = self.tracker.get_L(velocity)
         lh_grid = np.linspace(min_L + self.lh_grid_lb, min_L + self.lh_grid_ub, self.lh_grid_rows)
-        self.goal_grid = self.sample(pose_x, pose_y, pose_theta, velocity, waypoints, lh_grid)
+        self.goal_grid = self.sample(pose_x, pose_y, pose_theta, velocity, waypoints, lh_grid, nearest_p, t, nearest_i)
 
         # generate clothoids
         all_traj = []
@@ -250,12 +250,13 @@ def sample_lookahead_square(pose_x,
                             pose_theta,
                             velocity,
                             waypoints,
-                            lookahead_distances=np.array([1.6, 1.8, 2.0, 2.2]),
+                            nearest_p,
+                            t,
+                            nearest_i,
+                            lookahead_distances,
                             widths=np.linspace(-1.25, 1.25, num=11)):
 
     # get lookahead points to create grid along waypoints
-    position = np.array([pose_x, pose_y])
-    nearest_p, nearest_dist, t, nearest_i = nearest_point(position, waypoints[:, 0:2])
     local_span = np.vstack((np.zeros_like(widths), widths))
     xy_grid = np.zeros((2, 1))
     theta_grid = np.zeros((len(lookahead_distances), 1))

@@ -19,13 +19,12 @@ gym_notices.notices.clear()
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-from scipy.spatial import cKDTree
 from stable_baselines3.common.vec_env.base_vec_env import CloudpickleWrapper, VecEnv, VecEnvIndices, VecEnvObs, VecEnvStepReturn
 from stable_baselines3.common.vec_env.patch_gym import _patch_env
 from threadpoolctl import threadpool_limits
 import torch
 
-from latticeplanner.utils import load_config
+from latticeplanner.utils import TrackProjector, load_config
 from ppo.policy import (
     END2RACE_LIDAR_SIZE,
     END2RACE_OBSERVATION_SIZE,
@@ -34,8 +33,8 @@ from ppo.policy import (
     PrivilegedStateExtractor,
     end2race_observation,
 )
-from ppo.reward import OccupancyMapClearance, PPOTransitionReward
-from ppo.scenarios import EpisodeResetSpec, ScenarioScheduler, ScenarioSpec
+from ppo.reward import ClearanceCalculator, collision_reward, progress_reward, relative_reward, risk_potential, risk_reward, wrapped_progress_delta
+from ppo.scenarios import ScenarioScheduler, ScenarioSpec
 
 CONFIG = load_config("ppo/ppo_config.yaml")
 
@@ -48,12 +47,13 @@ _PLANNER_TEMPLATE_CACHE: dict[tuple[str, str], Any] = {}
 RUNTIME_SNAPSHOT_REWARD_FIELDS = (
     "_previous_ego_progress",
     "_previous_opponent_progress",
-    "_relative_position_m",
+    "relative_position_m",
     "_opponent_collision_latched",
-    "_ego_collision_penalty_applied",
-    "_scenario_id",
     "_previous_risk_potential",
-    "current_clearances",
+    "current_obb_clearance_m",
+    "current_obb_longitudinal_clearance_m",
+    "current_obb_lateral_clearance_m",
+    "current_wall_clearance_m",
 )
 RUNTIME_SNAPSHOT_WRAPPER_FIELDS = (
     "_elapsed_time",
@@ -104,78 +104,11 @@ class FrontCorridorGateConfig:
     require_positive_lateral_overlap: bool = CONFIG.front_corridor_gate_require_positive_lateral_overlap
 
     def validate(self) -> None:
-        values = np.asarray(
-            (self.maximum_front_gap_m, self.maximum_abs_opponent_lateral_d_m),
-            dtype=np.float64,
-        )
+        values = np.asarray((self.maximum_front_gap_m, self.maximum_abs_opponent_lateral_d_m), dtype=np.float64)
         if not np.isfinite(values).all() or np.any(values <= 0.0):
             raise ValueError("Front-corridor gate thresholds must be finite and positive")
         if not self.require_positive_lateral_overlap:
             raise ValueError("Front-corridor temporal exploration requires positive lateral OBB overlap")
-
-
-@dataclass(frozen=True)
-class _Projection:
-    progress_m: float
-    lateral_d_m: float
-    tangent_heading_rad: float
-
-
-class _FrenetProjector:
-
-    def __init__(self, path: Path) -> None:
-        reference = np.loadtxt(path, delimiter=";", comments="#", dtype=np.float64)
-        if reference.ndim != 2 or reference.shape[1] < 3:
-            raise ValueError(f"Invalid raceline CSV: {path}")
-        self.track_length_m = float(reference[-1, 0])
-        progress = reference[:, 0]
-        points = reference[:, 1:3]
-        if np.linalg.norm(points[-1] - points[0]) <= 1e-9:
-            progress = progress[:-1]
-            points = points[:-1]
-        if (
-            len(points) < 3
-            or not np.isfinite(points).all()
-            or not np.isfinite(progress).all()
-            or np.any(np.diff(progress) <= 0.0)
-            or self.track_length_m <= progress[-1]
-        ):
-            raise ValueError(f"Invalid cyclic raceline geometry: {path}")
-        self.progress_m = progress
-        self.points_xy = points
-        self.segment_xy = np.roll(points, -1, axis=0) - points
-        self.segment_norm_sq = np.einsum("ij,ij->i", self.segment_xy, self.segment_xy)
-        if np.any(self.segment_norm_sq <= 0.0):
-            raise ValueError("Raceline contains a zero-length segment")
-        self.segment_length_m = np.sqrt(self.segment_norm_sq)
-        self.segment_progress_m = np.concatenate((np.diff(progress), np.asarray([self.track_length_m - progress[-1]])))
-        self.tree = cKDTree(points)
-
-    def project(self, point_xy: np.ndarray) -> _Projection:
-        point = np.asarray(point_xy, dtype=np.float64).reshape(-1)
-        if point.shape != (2,) or not np.isfinite(point).all():
-            raise ValueError("Projection point must be one finite XY pair")
-        _distance, nearest = self.tree.query(point)
-        candidates = np.asarray((nearest, (nearest - 1) % len(self.points_xy)), dtype=np.int64)
-        starts = self.points_xy[candidates]
-        vectors = self.segment_xy[candidates]
-        offsets = point - starts
-        fractions = np.clip(
-            np.einsum("ci,ci->c", offsets, vectors) / self.segment_norm_sq[candidates],
-            0.0,
-            1.0,
-        )
-        closest = starts + fractions[:, None] * vectors
-        distance_sq = np.einsum("ci,ci->c", point - closest, point - closest)
-        choice = int(np.argmin(distance_sq))
-        segment = int(candidates[choice])
-        fraction = float(fractions[choice])
-        tangent = self.segment_xy[segment] / self.segment_length_m[segment]
-        normal = np.asarray((-tangent[1], tangent[0]), dtype=np.float64)
-        progress = (self.progress_m[segment] + fraction * self.segment_progress_m[segment]) % self.track_length_m
-        lateral = float(np.dot(point - closest[choice], normal))
-        heading = float(np.arctan2(tangent[1], tangent[0]))
-        return _Projection(float(progress), lateral, heading)
 
 
 def _wrap_angle(value: float) -> float:
@@ -200,7 +133,7 @@ class FrontCorridorGate:
             raise ValueError("Vehicle dimensions must be finite and positive")
         self.vehicle_length_m = float(vehicle_length_m)
         self.vehicle_width_m = float(vehicle_width_m)
-        self.projector = _FrenetProjector(
+        self.projector = TrackProjector.from_csv(
             PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
         )
         self.current_gate = False
@@ -220,12 +153,12 @@ class FrontCorridorGate:
         return float(np.asarray(raw_observation["poses_theta"])[index])
 
     def _evaluate(self, raw_observation: dict[str, Any], *, ego_index: int, opponent_index: int) -> bool:
-        ego = self.projector.project(self._position(raw_observation, ego_index))
-        opponent = self.projector.project(self._position(raw_observation, opponent_index))
+        ego_progress, ego_lateral_d, ego_tangent = self.projector.frenet(self._position(raw_observation, ego_index))
+        opponent_progress, opponent_lateral_d, opponent_tangent = self.projector.frenet(self._position(raw_observation, opponent_index))
         raw_relative_m = float(
-            (ego.progress_m - opponent.progress_m + 0.5 * self.projector.track_length_m)
-            % self.projector.track_length_m
-            - 0.5 * self.projector.track_length_m
+            (ego_progress - opponent_progress + 0.5 * self.projector.track_length)
+            % self.projector.track_length
+            - 0.5 * self.projector.track_length
         )
         opponent_ahead_center_m = -raw_relative_m
 
@@ -238,23 +171,23 @@ class FrontCorridorGate:
             )
 
         ego_longitudinal, ego_lateral = extents(
-            _wrap_angle(self._heading(raw_observation, ego_index) - ego.tangent_heading_rad)
+            _wrap_angle(self._heading(raw_observation, ego_index) - ego_tangent)
         )
         opponent_longitudinal, opponent_lateral = extents(
-            _wrap_angle(self._heading(raw_observation, opponent_index) - opponent.tangent_heading_rad)
+            _wrap_angle(self._heading(raw_observation, opponent_index) - opponent_tangent)
         )
         front_gap_m = opponent_ahead_center_m - ego_longitudinal - opponent_longitudinal
-        ego_low = ego.lateral_d_m - ego_lateral
-        ego_high = ego.lateral_d_m + ego_lateral
-        opponent_low = opponent.lateral_d_m - opponent_lateral
-        opponent_high = opponent.lateral_d_m + opponent_lateral
+        ego_low = ego_lateral_d - ego_lateral
+        ego_high = ego_lateral_d + ego_lateral
+        opponent_low = opponent_lateral_d - opponent_lateral
+        opponent_high = opponent_lateral_d + opponent_lateral
         lateral_overlap_m = min(ego_high, opponent_high) - max(ego_low, opponent_low)
         self.current_gate = bool(
             opponent_ahead_center_m > 0.0
-            and opponent_ahead_center_m < 0.5 * self.projector.track_length_m
+            and opponent_ahead_center_m < 0.5 * self.projector.track_length
             and front_gap_m > 0.0
             and front_gap_m < self.config.maximum_front_gap_m
-            and abs(opponent.lateral_d_m) < self.config.maximum_abs_opponent_lateral_d_m
+            and abs(opponent_lateral_d) < self.config.maximum_abs_opponent_lateral_d_m
             and lateral_overlap_m > 0.0
         )
         return self.current_gate
@@ -318,11 +251,12 @@ class LatticePlannerOpponentController:
         planner.tracker.prev_error = 0.0
         return planner
 
-    def reset(self, spec: EpisodeResetSpec) -> None:
-        self.planner = self._create_planner(str(spec.scenario["map_name"]), str(spec.scenario["opp_raceline"]))
+    def reset(self, spec: dict) -> None:
+        scenario = spec["scenario"]
+        self.planner = self._create_planner(str(scenario["map_name"]), str(scenario["opp_raceline"]))
         self.trajectory = None
         self.tracker_count = 0
-        self.speed_scale = float(spec.scenario["opp_speedscale"])
+        self.speed_scale = float(scenario["opp_speedscale"])
 
     def action(self, raw_observation: dict[str, Any]) -> np.ndarray:
         from latticeplanner.utils import obsDict2oppoArray
@@ -351,13 +285,13 @@ class End2RaceGymnasiumEnv(gym.Env):
     def __init__(
         self,
         f110_env: Any,
-        reset_provider: Callable[[np.random.Generator], EpisodeResetSpec],
+        reset_provider: Callable[[np.random.Generator], dict],
         map_name: str,
         ego_raceline: str,
+        reward_weights: Sequence[float],
         privileged: bool = False,
         reward_gamma: float = 0.999,
         front_corridor_speed_noise_hold_steps: int = 0,
-        collision_prefix_branch_ppo: bool = False,
     ) -> None:
         super().__init__()
         self.f110_env = f110_env
@@ -368,29 +302,19 @@ class End2RaceGymnasiumEnv(gym.Env):
         vehicle_length = float(core_params["length"])
         vehicle_width = float(core_params["width"])
         scan_simulator = core.sim.agents[EGO_INDEX].scan_simulator
-        map_clearance = OccupancyMapClearance(
+        self.clearance_calculator = ClearanceCalculator(
             scan_simulator.dt,
             scan_simulator.map_resolution,
             scan_simulator.origin,
+            vehicle_length,
+            vehicle_width,
         )
-        self.transition_reward = PPOTransitionReward(
-            map_name,
-            ego_raceline,
-            gamma=reward_gamma,
-            vehicle_length=vehicle_length,
-            vehicle_width=vehicle_width,
-            map_clearance=map_clearance,
-            risk_longitudinal_clearance_m=CONFIG.risk_longitudinal_clearance_m,
-            risk_lateral_clearance_m=CONFIG.risk_lateral_clearance_m,
-            risk_wall_clearance_m=CONFIG.risk_wall_clearance_m,
-            risk_potential_maximum=CONFIG.risk_potential_maximum,
-        )
+        reference_path = PROJECT_ROOT / "f1tenth_racetracks" / map_name / f"{ego_raceline}.csv"
+        self.projector = TrackProjector.from_csv(reference_path)
+        self.reward_gamma = float(reward_gamma)
+        self.reward_weights = np.asarray(reward_weights, dtype=np.float64)
         if front_corridor_speed_noise_hold_steps > 0:
-            corridor_config = FrontCorridorGateConfig(
-                maximum_front_gap_m=float(
-                    CONFIG.front_corridor_gate_maximum_gap_m
-                )
-            )
+            corridor_config = FrontCorridorGateConfig(maximum_front_gap_m=float(CONFIG.front_corridor_gate_maximum_gap_m))
             self.corridor_gate_config = corridor_config
             self.following_danger_gate = FrontCorridorGate(
                 map_name,
@@ -405,7 +329,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             self.privileged_extractor = PrivilegedStateExtractor(
                 map_name,
                 ego_raceline,
-                self.transition_reward.projector,
+                self.projector,
                 vehicle_length,
                 vehicle_width,
                 steering_min_rad=float(core_params["s_min"]),
@@ -431,11 +355,6 @@ class End2RaceGymnasiumEnv(gym.Env):
         self._current_spec = None
         self._episode_return = 0.0
         self._episode_steps = 0
-        self.collision_prefix_branch_ppo = bool(collision_prefix_branch_ppo)
-        self._collision_prefix_branching = False
-        self._collision_prefix_episode_start_snapshot = None
-        self._collision_prefix_actions = []
-        self._pending_collision_prefix_snapshot = None
 
     def _ego_lidar(self, raw_observation: dict[str, Any]) -> np.ndarray:
         scan = np.asarray(raw_observation["scans"][EGO_INDEX]).reshape(-1)
@@ -445,6 +364,64 @@ class End2RaceGymnasiumEnv(gym.Env):
 
     def _ego_speed(self, raw_observation: dict[str, Any]) -> float:
         return float(np.asarray(raw_observation["linear_vels_x"])[EGO_INDEX])
+
+    @staticmethod
+    def _agent_pose(raw_observation, index):
+        # Read one XY-heading pose from the simulator observation.
+        return np.asarray((raw_observation["poses_x"][index], raw_observation["poses_y"][index], raw_observation["poses_theta"][index]), dtype=np.float64)
+
+    def _update_clearances(self, ego_pose, opponent_pose):
+        # Cache clearances shared by risk reward and the privileged critic.
+        (
+            self.current_obb_clearance_m,
+            self.current_obb_longitudinal_clearance_m,
+            self.current_obb_lateral_clearance_m,
+            self.current_wall_clearance_m,
+        ) = self.clearance_calculator.calculate(ego_pose, opponent_pose)
+
+    def _risk_potential(self):
+        # Convert cached clearances into the current physical risk.
+        return risk_potential(
+            self.current_obb_longitudinal_clearance_m,
+            self.current_obb_lateral_clearance_m,
+            self.current_wall_clearance_m,
+            longitudinal_safe_m=CONFIG.risk_longitudinal_clearance_m,
+            lateral_safe_m=CONFIG.risk_lateral_clearance_m,
+            wall_safe_m=CONFIG.risk_wall_clearance_m,
+            maximum_magnitude=1.0,
+        )
+
+    def _reset_reward(self, raw_observation):
+        # Initialize the previous-state values used by transition rewards.
+        ego_pose = self._agent_pose(raw_observation, EGO_INDEX)
+        opponent_pose = self._agent_pose(raw_observation, OPPONENT_INDEX)
+        self._previous_ego_progress = self.projector.progress_at(ego_pose[:2])
+        self._previous_opponent_progress = self.projector.progress_at(opponent_pose[:2])
+        self.relative_position_m = wrapped_progress_delta(self._previous_ego_progress, self._previous_opponent_progress, self.projector.track_length)
+        self._opponent_collision_latched = False
+        self._update_clearances(ego_pose, opponent_pose)
+        self._previous_risk_potential = self._risk_potential()
+
+    def _transition_reward(self, raw_observation, ego_collision, opponent_collision, terminated):
+        # Update track progress before calculating the four reward terms.
+        ego_pose = self._agent_pose(raw_observation, EGO_INDEX)
+        opponent_pose = self._agent_pose(raw_observation, OPPONENT_INDEX)
+        ego_progress = self.projector.progress_at(ego_pose[:2])
+        opponent_progress = self.projector.progress_at(opponent_pose[:2])
+        ego_delta = wrapped_progress_delta(ego_progress, self._previous_ego_progress, self.projector.track_length)
+        opponent_delta = wrapped_progress_delta(opponent_progress, self._previous_opponent_progress, self.projector.track_length)
+        self._previous_ego_progress = ego_progress
+        self._previous_opponent_progress = opponent_progress
+        self.relative_position_m += ego_delta - opponent_delta
+        self._opponent_collision_latched = self._opponent_collision_latched or opponent_collision
+
+        reward_progress = progress_reward(ego_delta, self.reward_weights[0])
+        reward_relative = relative_reward(ego_delta, opponent_delta, self._opponent_collision_latched, self.reward_weights[1])
+        reward_collision = collision_reward(ego_collision, self.reward_weights[2])
+        self._update_clearances(ego_pose, opponent_pose)
+        physical_risk_potential = self._risk_potential()
+        reward_risk, self._previous_risk_potential = risk_reward(self._previous_risk_potential, physical_risk_potential, self.reward_gamma, terminated, self.reward_weights[3])
+        return float(reward_progress + reward_relative + reward_collision + reward_risk)
 
     def _privileged_physical_state(self) -> tuple[float, float, float]:
         agents = self.f110_env.unwrapped.sim.agents
@@ -464,8 +441,6 @@ class End2RaceGymnasiumEnv(gym.Env):
         if self.privileged_extractor is None:
             return observation
         ego_steering_angle, ego_slip_angle, opponent_slip_angle = self._privileged_physical_state()
-        if self.transition_reward.current_clearances is None:
-            raise RuntimeError("Reward current-state geometry must exist before privileged observation")
         features = self.privileged_extractor.features(
             raw_observation,
             ego_index=EGO_INDEX,
@@ -473,7 +448,9 @@ class End2RaceGymnasiumEnv(gym.Env):
             ego_steering_angle=ego_steering_angle,
             ego_slip_angle=ego_slip_angle,
             opponent_slip_angle=opponent_slip_angle,
-            clearances=self.transition_reward.current_clearances,
+            obb_longitudinal_clearance_m=self.current_obb_longitudinal_clearance_m,
+            obb_lateral_clearance_m=self.current_obb_lateral_clearance_m,
+            wall_clearance_m=self.current_wall_clearance_m,
         )
         return np.concatenate((observation, features))
 
@@ -492,21 +469,18 @@ class End2RaceGymnasiumEnv(gym.Env):
         if seed is not None:
             self._reset_rng = np.random.default_rng(seed)
         spec = None if options is None else options.get(EXTERNAL_RESET_OPTION)
-        if spec is not None and not isinstance(spec, EpisodeResetSpec):
-            raise TypeError(f"{EXTERNAL_RESET_OPTION} must contain an EpisodeResetSpec")
         if spec is None:
             spec = self.reset_provider(self._reset_rng)
-        raw_observation, _, _, _ = self.f110_env.reset(poses=spec.poses.copy())
+        raw_observation, _, _, _ = self.f110_env.reset(poses=spec["poses"].copy())
         if int(self.f110_env.unwrapped.num_agents) != NUM_AGENTS:
             raise RuntimeError("PPO environment requires exactly two agents")
         self._elapsed_time = 0.0
         self._episode_return = 0.0
         self._episode_steps = 0
         self._raw_observation = raw_observation
-        self._previous_ego_speed = float(spec.initial_speed_feature)
+        self._previous_ego_speed = float(spec["initial_speed_feature"])
         self._current_spec = spec
-        scenario_id = str(spec.scenario["scenario_id"])
-        self.transition_reward.reset(raw_observation, scenario_id=scenario_id, ego_index=EGO_INDEX)
+        self._reset_reward(raw_observation)
         if self.following_danger_gate is not None:
             self.following_danger_gate.reset(
                 raw_observation,
@@ -515,42 +489,8 @@ class End2RaceGymnasiumEnv(gym.Env):
                 opponent_index=OPPONENT_INDEX,
             )
         self.opponent_controller.reset(spec)
-        self._collision_prefix_actions = []
-        if self.collision_prefix_branch_ppo and not self._collision_prefix_branching:
-            self._collision_prefix_episode_start_snapshot = self.capture_runtime_snapshot()
         info = self._info(False, False, False, False, None, None)
         return self._observation(raw_observation), info
-
-    def set_collision_prefix_branching(self, active):
-        self._collision_prefix_branching = bool(active)
-
-    def take_collision_prefix_snapshot(self):
-        snapshot = self._pending_collision_prefix_snapshot
-        self._pending_collision_prefix_snapshot = None
-        return snapshot
-
-    def _build_collision_prefix_snapshot(self):
-        lookback_steps = CONFIG.collision_prefix_branch_lookback_steps
-        if self._collision_prefix_episode_start_snapshot is None or len(self._collision_prefix_actions) < lookback_steps:
-            return None
-        terminal_snapshot = self.capture_runtime_snapshot()
-        replay_actions = self._collision_prefix_actions[: len(self._collision_prefix_actions) - lookback_steps]
-        self._collision_prefix_branching = True
-        try:
-            self.restore_runtime_snapshot(self._collision_prefix_episode_start_snapshot)
-            for action in replay_actions:
-                _observation, _reward, terminated, truncated, _info = self.step(action)
-                if terminated or truncated:
-                    raise RuntimeError("Collision-prefix replay terminated before the requested one-second prefix")
-            prefix_snapshot = self.capture_runtime_snapshot()
-        finally:
-            self.restore_runtime_snapshot(terminal_snapshot)
-            self._collision_prefix_branching = False
-        elapsed_difference = float(terminal_snapshot["environment"]["wrapper"]["_elapsed_time"] - prefix_snapshot["environment"]["wrapper"]["_elapsed_time"])
-        expected_difference = CONFIG.collision_prefix_branch_lookback_steps * CONFIG.simulator_timestep
-        if abs(elapsed_difference - expected_difference) > 1e-9:
-            raise RuntimeError("Collision-prefix replay did not restore the requested one-second lead")
-        return prefix_snapshot
 
     @staticmethod
     def _copied_fields(obj: Any, names: Sequence[str]) -> dict[str, Any]:
@@ -600,7 +540,7 @@ class End2RaceGymnasiumEnv(gym.Env):
             "f110_core": self._copied_fields(core, RUNTIME_SNAPSHOT_CORE_FIELDS),
             "f110_current_obs": copy_module.deepcopy(type(core).current_obs),
             "opponent_controller": self._capture_opponent_controller_state(),
-            "reward": self._copied_fields(self.transition_reward, RUNTIME_SNAPSHOT_REWARD_FIELDS),
+            "reward": self._copied_fields(self, RUNTIME_SNAPSHOT_REWARD_FIELDS),
             "wrapper": self._copied_fields(self, RUNTIME_SNAPSHOT_WRAPPER_FIELDS),
             "reset_rng_state": copy_module.deepcopy(self._reset_rng.bit_generator.state),
             "corridor_gate_current": None if self.following_danger_gate is None else bool(self.following_danger_gate.current_gate),
@@ -650,7 +590,7 @@ class End2RaceGymnasiumEnv(gym.Env):
         elif hasattr(tracker, "nearest_dist"):
             delattr(tracker, "nearest_dist")
         for name, value in state["reward"].items():
-            setattr(self.transition_reward, name, copy_module.deepcopy(value))
+            setattr(self, name, copy_module.deepcopy(value))
         for name, value in state["wrapper"].items():
             setattr(self, name, copy_module.deepcopy(value))
         self._reset_rng.bit_generator.state = copy_module.deepcopy(state["reset_rng_state"])
@@ -677,7 +617,7 @@ class End2RaceGymnasiumEnv(gym.Env):
         reason: str | None,
         outcome: str | None,
     ) -> dict[str, Any]:
-        scenario = dict(self._current_spec.scenario)
+        scenario = dict(self._current_spec["scenario"])
         return {
             "ego_collision": ego_collision,
             "opponent_collision": opponent_collision,
@@ -719,35 +659,19 @@ class End2RaceGymnasiumEnv(gym.Env):
             terminated, truncated, reason = False, True, "timeout"
         else:
             terminated, truncated, reason = False, False, None
-        scenario_id = str(self._current_spec.scenario["scenario_id"])
-        reward_result = self.transition_reward.step(
-            previous_raw_observation,
-            raw_observation,
-            ego_collision=ego_collision,
-            opponent_collision=opponent_collision,
-            terminated=terminated,
-            scenario_id=scenario_id,
-            ego_index=EGO_INDEX,
-        )
-        reward = reward_result.reward_total
+        reward = self._transition_reward(raw_observation, ego_collision, opponent_collision, terminated)
         self._episode_return += reward
         self._episode_steps += 1
         outcome = None
         if terminated or truncated:
             if ego_collision:
                 outcome = "ego_collision"
-            elif reward_result.relative_position_m > 0.0:
+            elif self.relative_position_m > 0.0:
                 outcome = "overtake"
             else:
                 outcome = "follow"
         self._raw_observation = raw_observation
         self._previous_ego_speed = previous_ego_speed
-        collision_prefix_available = False
-        if self.collision_prefix_branch_ppo and not self._collision_prefix_branching:
-            self._collision_prefix_actions.append(np.asarray(action, dtype=np.float32).reshape(2).copy())
-            if ego_collision:
-                self._pending_collision_prefix_snapshot = self._build_collision_prefix_snapshot()
-                collision_prefix_available = self._pending_collision_prefix_snapshot is not None
         if self.following_danger_gate is not None:
             self.following_danger_gate.step(
                 raw_observation,
@@ -764,7 +688,6 @@ class End2RaceGymnasiumEnv(gym.Env):
             outcome,
         )
         info["executed_ego_action"] = np.asarray(action, dtype=np.float32).reshape(2).copy()
-        info["collision_prefix_available"] = collision_prefix_available
         return self._observation(raw_observation), reward, terminated, truncated, info
 
     def render(self) -> Any:
@@ -774,7 +697,7 @@ class End2RaceGymnasiumEnv(gym.Env):
         self.f110_env.close()
 
 
-def _external_reset_required(_rng: np.random.Generator) -> EpisodeResetSpec:
+def _external_reset_required(_rng: np.random.Generator) -> dict:
     raise RuntimeError("Subprocess resets must be supplied by the parent scheduler")
 
 
@@ -783,9 +706,17 @@ def make_environment(
     map_name: str,
     privileged: bool = False,
     reward_gamma: float = 0.999,
+    reward_weights: Sequence[float] | None = None,
     front_corridor_speed_noise_hold_steps: int = 0,
-    collision_prefix_branch_ppo: bool = False,
 ) -> Callable[[], End2RaceGymnasiumEnv]:
+
+    if reward_weights is None:
+        reward_weights = (
+            CONFIG.progress_weight,
+            CONFIG.relative_weight,
+            CONFIG.collision_penalty,
+            CONFIG.risk_potential_maximum,
+        )
 
     def factory() -> End2RaceGymnasiumEnv:
         import gym
@@ -806,10 +737,10 @@ def make_environment(
             _external_reset_required,
             map_name,
             CONFIG.ego_raceline,
+            reward_weights,
             privileged=privileged,
             reward_gamma=reward_gamma,
             front_corridor_speed_noise_hold_steps=front_corridor_speed_noise_hold_steps,
-            collision_prefix_branch_ppo=collision_prefix_branch_ppo,
         )
 
     return factory
@@ -898,8 +829,8 @@ class CentralScheduleSubprocVecEnv(VecEnv):
         ordinary_scenarios: Sequence[ScenarioSpec],
         privileged: bool = False,
         reward_gamma: float = 0.999,
+        reward_weights: Sequence[float] | None = None,
         front_corridor_speed_noise_hold_steps: int = 0,
-        collision_prefix_branch_ppo: bool = False,
     ) -> None:
         if n_envs <= 0 or n_envs % 2 != 0:
             raise ValueError("n_envs must be positive and even")
@@ -919,8 +850,8 @@ class CentralScheduleSubprocVecEnv(VecEnv):
                 map_name,
                 privileged=privileged,
                 reward_gamma=reward_gamma,
+                reward_weights=reward_weights,
                 front_corridor_speed_noise_hold_steps=front_corridor_speed_noise_hold_steps,
-                collision_prefix_branch_ppo=collision_prefix_branch_ppo,
             )
             for rank in range(n_envs)
         ]

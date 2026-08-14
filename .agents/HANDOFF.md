@@ -1,6 +1,6 @@
 # End2Race 当前 HANDOFF
 
-更新时间：2026-08-10（Asia/Singapore；无训练或eval进程；已完成失效PPO模型、旧eval与panel资产清理）
+更新时间：2026-08-14（Asia/Singapore；进入汇报整理期，不再新增tech；当前无排队训练）
 
 ## 0. 文档职责和读取顺序
 
@@ -13,7 +13,7 @@
 - `STYLE.md`：当前Python代码风格与重构约束。
 
 专题预注册、阶段报告和历史重构计划已经在2026-08-10完成归并并删除。后U44各轮的当前判决与
-停止/重开边界以本文件§9.14--§9.35、§10为准；完整数字与方法学更正在`ANALYSIS.md` §33--§55，
+停止/重开边界以本文件§9.14--§10和§13--§14为准；完整数字与方法学更正在`ANALYSIS.md` §33--§60，
 可重建的脚本、数据和训练调用合同在`EXPERIMENTS.md` §13--§26。不得再寻找或恢复第二份专题
 HANDOFF、已删除的专题Gate汇编或单方法预注册文档作为并行权威。
 
@@ -52,26 +52,55 @@ near400、hard73、其他hard/near/noise/startpoint/single-agent或额外地图e
 当时实验事实，但不再参与新模型验收或选择。训练侧离线Gate和反事实branch只作机制证据，不是
 模型eval，也不能替代固定四图600。
 
-**当前活动（2026-08-10，接手时仍须用`pgrep`和metrics复核）：没有活跃的
-`train_ppo.py`、`evaluate.sh`或`eval_multiagent.py`子进程。** 用户先前启动的
-`pretrained/end2race_new.pth` Austin固定600评测已结束运行，但模型身份与结果尚未审计、
-未纳入模型判决，也不是下述新候选的训练或评测。保留的旧tmux session命令行不等于
-仍有实际训练任务，必须以子进程和metrics为准。
-为满足“消除上一代数据闭环”，新增的online same-state branched PPO已完成默认关闭实现和真实F110/
-CUDA生命周期测试，但没有启动45-update正式训练。它只从当前student的Austin on-policy rollout取16个
-状态，每状态由同一冻结`pi_old`采4个动作并运行最长100步同策略分支，以leave-one-out simulator
-return advantage形成第二个clipped PPO surrogate；不读取U44/RW/first-action preference panel或旧PPO
-trace。64条/6,400步机械测试的snapshot next-transition精确、主observation不变、pre-update最大
-absolute log-ratio为0、actor gradient finite/nonzero；一次16-step actor/critic生命周期更新和临时
-checkpoint成功。**这些只证明实现链正确，不是模型性能改善；formal 45-update和四图各600均未运行。**
-实现与测试合同见`EXPERIMENTS.md` §26。
+**当前活动（2026-08-13，接手时仍须用`pgrep`和metrics复核）：没有活跃的`train_ppo.py`、
+`evaluate.sh`或`eval_multiagent.py`进程，根目录也没有`run.sh`。冻结前曾定义的168个collision target +
+225个safe-overtake control BC-native固定偏好臂没有构造dataset、没有训练、没有评测，当前不是排队任务。
+K75在U20后中断并按用户决定清理；K100、去lateral-offset
+门、canonical-BC固定来源偏好和在线碰撞触发偏好均已完成正式评测但未形成新前沿，固定实例关闭。
+production U30已按当前合同补齐四图各600完整trace。**
 
-同日按用户明确列出的候选完成四项默认关闭接口：全局K10速度residual、走廊外K10/2m走廊内K50
-双频速度residual、100 Hz完整序列上固定1/10位置的direct PPO loss、以及当前student真实collision
-触发的1秒前同状态分支PPO。前两项保持actor mean 100 Hz；第三项保持collection、GAE与GRU replay
-100 Hz；第四项不读取U44或历史PPO trace。真实回归已通过块边界、loss mask、1.00s snapshot重建、
-pre-update ratio和一次optimizer生命周期。**四项都没有正式30/45-update训练或四图600性能结果，
-不得写成模型改善。** 具体接口与边界见`EXPERIMENTS.md` §27--§29及下文§9.35。
+**当前范围冻结（用户2026-08-13明确决定）：从本节点开始不再提出、实现、登记或排队任何新的
+technical method。当前工作只允许整理现有代码、统一活动入口、核对既有证据和准备汇报。已经讨论但
+未实现的Lattice-reference+BC、原`instrument_train`宇宙BC-native、action-conditioned短期Q/cost
+critic、group-robust PPO、reverse constrained PPO、selective reference retention和每5个update刷新
+偏好数据均只作为讨论历史，不是待办、准入项或隐含授权。冻结前的168/225 BC-native臂也已随
+`run.sh`移除而退出队列；保留其历史合同不等于授权执行。**
+
+本轮共同对照K10/K50 U30为`74/1566`。新臂U30依次为：固定BC偏好`67/1436`、在线碰撞偏好
+`85/1466`、K100 `110/1425`、去lateral-offset门`69/1369`。相对对照的collision
+removed/created与p依次为`55/48,.5546`、`33/44,.2543`、`49/85,.00237`、`55/50,.6965`；
+overtake lost/gained与p为`159/29,6.43e-23`、`122/22,5.45e-18`、`177/36,1.47e-23`、
+`224/27,8.36e-40`。四条均关闭；K75只中断、未获得效果结论。完整边界见`ANALYSIS.md` §59。
+
+全局K10转向-速度时间相关探索从canonical BC fresh start、Austin-only、seed42运行30 updates；相对
+speed K10唯一增加steering latent residual K10，不启用前向走廊。U30四图为`12/311、10/322、
+17/378、14/387`，合计`53/1398`。相对speed K10 `85/1488`，collision `62 removed / 30 created,
+p=.00111`，overtake `123 lost / 33 gained,p=2.10e-13`；安全收益主要伴随follow增加122，不是安全
+超车增加。该点又被first-action-preference U44 `49/1530`严格支配，固定实例关闭，不扫描steering
+hold/std或走廊叠加。完整判决见§9.36与`ANALYSIS.md` §57，实现合同见`EXPERIMENTS.md` §27、§31。
+
+本轮四个canonical-BC fresh-start、Austin-only、seed42正式训练均已完成，并对冻结最终actor完成
+四图各600 deterministic ego-scope评测。16个包共9,600条episode/trace全部通过600 unique、0 error、
+finite、key-set、长度、terminal/action与typed collision合同。正式主点为：全局K10速度residual U30
+`85/1488`；走廊外K10、2m前向走廊内K50双频速度residual U30 `74/1566`；100 Hz完整序列上
+stride10 direct PPO loss U30 `133/1452`；online same-state branched-return PPO U45 `130/1501`。
+
+其中双频速度探索相对同轮全局K10为collision `57 removed / 46 created,p=.3245`、overtake
+`33 lost / 111 gained,p=4.58e-11`，所以它是新的高超车前沿点，不是已确认的安全改进；相对RW30
+`73/1516`碰撞`38/39,p=1`而超车`32/82,p=3.14e-6`。stride10与online branch固定实例没有形成
+有用前沿，当前关闭；全局K10相对BC有真实正效应，但被既有模型支配，作为机制证据归档。
+collision触发的1秒前branched-return PPO仍未正式训练，也没有模型/eval目录。完整执行、目录、
+数据审计与判决见`ANALYSIS.md` §56和`EXPERIMENTS.md` §30。
+
+双频速度探索随后按预先连续checkpoint完成U27--U30四图各600收敛band：四图合计依次为
+`76/1567、74/1568、84/1557、74/1566`。U27、U28与固定主点U30聚集在
+`74--76 collision / 1566--1568 overtake`；U29出现一次`84/1557`的非单调回退。U27→U30配对
+collision为`17 removed / 15 created,p=.8601`、overtake为`15 lost / 14 gained,p=1`；U28→U30
+分别为`11/11,p=1`与`10/8,p=.8145`。因此U30不是孤立幸运点，晚段已形成稳定高超车工作区；
+但U28→U29的overtake `18 lost / 7 gained,p=.0433`说明相邻checkpoint仍有身份抖动，不能写成
+逐update单调收敛。U30继续作为事先固定主点，不事后改选U28。16个band包共9,600条episode/trace
+全部通过600 unique、0 error、finite、key-set、长度、terminal/action与typed collision合同；U28
+Hockenheim仅对一次SIGSEGV缺失场景作同模型精确补跑后重聚合，最终包完整。
 
 2026-08-10 PPO主线已清除不参与当前训练语义的保护与旁路：`train_ppo.py`不再维护独立参数
 预检或CPU设备回退，collision cache只从既有固定目录严格读取，不在训练进程内自动分类/重建；
@@ -97,6 +126,14 @@ First-action preference不再要求历史`dataset_id=first_action_preference_v1`
 verdict、manifest/gate SHA和每条sequence SHA。CLI、cache 10,800/479、60项reward测试、数值hold探索
 合同、preference loss和online branch CUDA生命周期均在集中配置后通过。
 
+2026-08-14场景调度继续按用户要求精简：删除默认关闭的ordinary异线高速分类/重加权分支及
+对应YAML项；`RoleScenarioQueue`并入`ScenarioScheduler`的两个无放回生成器；ordinary/collision
+训练起点直接复用`get_circular_startpoints(..., count * 2, 0)[1::2]`，不再保留独立距离筛选函数。
+`collision_scenarios.json`的唯一读取逻辑移入`train_ppo.py`，场景生成中的一次性ID局部变量已内联，
+同raceline对手直接复用ego waypoints。
+四张正式地图的600条ordinary、10,800条collision候选及seed42前120次交替调度在修改前后逐项一致，
+所以当前production场景集合、顺序和训练数学不变。历史重加权实验仅按`EXPERIMENTS.md`重建。
+
 `Simulator-return-filtered first-action preference`已完成seed42数据构造、canonical-BC fresh
 45-update Austin训练以及U42--U45四图各600正式eval。16个包共9,600 result/trace全部为600
 unique、0 error且通过finite、key、terminal与typed collision审计；预注册U44为`49 collision /
@@ -116,7 +153,8 @@ actor step、reward/cost唯一化和U27--U30 strict 12-key全部通过；16个CU
 0 error并通过统一审计。U30主点为`119 collision / 1528 overtake`，Hockenheim collision高于BC；
 相对U44/RW30均显著新增collision，没有形成新前沿。30/30训练pooled collision rate高于`d=.19`，
 dual从1经warm-up后单调升至3.0988。固定实例已关闭，见§9.31与`ANALYSIS.md` §50；production不变。
-根目录`run.sh`已移除完成任务的训练命令，没有排队中的自动下一臂。
+冻结前的168/225 BC-native合同从未执行，不能赋予dataset label数量或模型性能结论；
+其`run.sh`已移除，当前不排队。
 
 2026-08-10二值front signed interaction-phase potential离线Gate的方法学更正与V2方向诊断已完成，
 只读取既有BC/U44四图各600 result/trace，无新仿真、训练、actor或模型eval。V1两条绝对release
@@ -355,8 +393,8 @@ U35/U40/U45只用于收敛性记录。本文当前状态统一称其为`producti
 - 被否决的Post-pass生产模块和L12运行时override均已移除；following-response
   required-deceleration仅是离线候选。
 - Production collision pool 保持479；完整805 hard-neighbor、比例采样、外部fixed pool、
-  ordinary150和actor-mismatch复用接口已经在文档固化后退役。ordinary异线高速重加权
-  作为默认关闭的研究工具保留。
+  ordinary150和actor-mismatch复用接口已经在文档固化后退役。2026-08-14又按用户决定移除
+  ordinary异线高速重加权训练入口；历史模型、结果和重建语义继续保留。
 - Production speed exploration 保持逐步独立速度白噪声。条件白噪声放大、全局时间相关
   速度噪声、条件时间相关速度噪声、走廊门控时间相关速度噪声、延长训练和异线高速
   重加权在历史多面板协议下均未通过。用户最新明确：后续正式验收默认必须运行
@@ -473,21 +511,20 @@ U35/U40/U45只用于收敛性记录。本文当前状态统一称其为`producti
 当前没有需要接续的进程。用户于2026-08-10进一步明确授权清理`scripts/`中过期测试和临时工具；
 22个已完成/关闭实验的Gate、数据构造器、一次性分析器和checkpoint平均测试已删除，其算法与
 重建合同保留在`EXPERIMENTS.md`。First-action preference仍保留固定panel、训练期PPO模块、正式
-checkpoint和完整文档证据，但一次性dataset builder与formal eval analyzer已按授权删除；online
-same-state branched PPO的实现及当前机械回归测试继续保留。显式ScenarioSpec评测器在固定四图JSON
-删除后没有当前消费者，也已退役；`scripts/`当前只保留reward筛查器及其测试、online branch机械
-测试三个文件。更早的一次性审计脚本、notebook、NPZ、
+checkpoint和完整文档证据；BC fixed-dataset builder与精简机械回归保留，formal eval analyzer和online
+same-state branch实现/回归已删除。显式ScenarioSpec评测器在固定四图JSON删除后没有当前消费者，也已退役；
+`scripts/`当前只保留BC偏好builder/测试与reward筛查器/测试四个文件。更早的一次性审计脚本、notebook、NPZ、
 JSON和counterfactual续跑记录也已在对应文档固化后清理。`.agents/`已经纳入Git版本管理，后续修改
 必须出现在普通`git status`中。
 
 2026-08-10再次按当前判决清理`post-trained/`、`eval_results/`和`post-trained/panels/`：永久删除
 65个失败或重复run/Gate/eval/panel目标（删除前合计仍约127.01 GiB），再删除33个旧near400、hard73和
 noise子面板，以及first-action preference已由canonical U42--U45替代的旧式45轮checkpoint容器。
-当前实测为7个`post-trained/`顶层项（5个run、collision cache、panels）、6个`eval_results/`
-实验根和1个panel目录；占用约16 GiB / 96 GiB。保留对象限于§2登记的模型族、历史未定案
-hard-neighbor 10%、固定四图600评测、collision cache和first-action preference训练输入。被删除的
+本次清理后实测为8个`post-trained/`顶层项（6个run、collision cache、panels）、7个`eval_results/`
+实验根和1个panel目录；占用约12 GiB / 108 GiB。保留对象限于§2登记的模型族、固定四图600评测、
+collision cache和first-action preference训练输入。被删除的
 失败run不再出现在§2模型登记中，但其科学结论、边界与停止规则继续保留。hard-neighbor 10%只作为
-历史未定案资产；其训练接口已经退役，不属于待完成实验，也没有因本次清理变成“已否决”。
+历史未定案结论；其训练接口和资产已经退役，不属于待完成实验，也没有因清理变成“已否决”。
 
 当前保留目录名都是run config或manifest中的完整实验/dataset ID。`PJTE_*`、`failed_*`、旧Gate别名
 已删除；不为缩短名称而改动保留run根，否则会让历史run config与磁盘身份失配。除此之外仍禁止：
@@ -532,7 +569,8 @@ SHA 的用途仅是确认评测模型身份、识别等价 checkpoint 和检测 
 | 方向 | checkpoint/run | SHA-256 |
 |---|---|---|
 | base479 U45 | `post-trained/ppo_privilege_gru_clip020/update45/actor.pth` | `5233f5096a610e3db618f944fa78cc20530998124a2478ecf4454850e54c2325` |
-| hard-neighbor 10% U45，历史未定案、已主动停止 | `post-trained/ppo_hard_neighbor_boundary_aware_fraction0p10/checkpoints/actor_u0045.pth` | `2a24861a32331e39e887361def1813b5eea0324f196363df45314581c6c08f0a` |
+| 全局速度K10 U30，机制对照 | `post-trained/ppo_global_temporal_speed_noise_hold10steps/update30/actor.pth` | `e8f1dcaea8812ad531eef19745b5bc4767a50e4b5cd0d1d2835619e41e6e53dd` |
+| **全局速度K10 + 前向走廊K50 U30，高超车前沿** | `post-trained/ppo_global_hold10_front_corridor_hold50_speed_noise/update30/actor.pth` | `a3289769aca22119ad59ccf18dadc49acec629884c20b6c557999a9eac17d2de` |
 | 前向走廊门控时间相关速度噪声、2米门宽 U30 | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update30/actor.pth` | `b8ecc0a52bc01e521f1daff6abf2611091d5d33df2e5aef73a3b93f091b89182` |
 | **前向走廊门控时间相关速度噪声 U44，四图BC验收候选** | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update44/actor.pth` | `fb0c9895eb2ff004e414da09e4ee27675e825f0e6413a095377d66838e411bf7` |
 | 前向走廊门控时间相关速度噪声 U45 | `post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps/update45/actor.pth` | `305dfa8160a987e2b166d8ce548009cd667fa8cfdd0722880f43249ccb07295c` |
@@ -557,21 +595,18 @@ post-trained/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps_ordinary_o
 `eval_results/<完整实验名>/update<N>/<MAP_NAME>/multiagents/`组织，只保留固定600场景。
 First-action preference只保留正式U42--U45 canonical checkpoint；其旧式U1--U45
 `checkpoints/`容器已删除，训练metrics、run config与U42--U45固定四图600评测保留。
-Production三张跨地图的历史包仍只有完整trace、缺result与manifest；跨地图历史结论由本文和
-`ANALYSIS.md`保存，需要新的机器可读配对时必须重新按当前600合同评测，不能把trace-only目录
-冒充规范包。
+2026-08-13汇报清理又删除了全局speed K10和K10/K50两个run内各61个中间actor/critic文件的
+`checkpoints/`容器；两个U30 actor均通过硬链接保留在`update30/actor.pth`，SHA-256仍与§2.3一致。
+K75中断目录与K100/去lateral-offset门/两条失败偏好的run和eval在本次开始前已不存在，本次未重复删除。
+Production U30已重新按当前固定四图600、deterministic、ego-collision、完整100 Hz trace合同评测：
+Austin `14/366`、Hockenheim `26/356`、Moscow `32/385`、Nuerburgring `22/401`，合计
+`94 collision / 1508 overtake`。四包均为600 unique、600同名trace、0 error，并通过finite、
+terminal/action和typed collision审计。当前保留的92个正式eval包全部满足600/600、0 error和
+result/trace key-set一致，没有残缺包。
 
-历史未定案hard-neighbor 10%的模型和Austin评测分别位于同名canonical模型根目录和
-`eval_results/ppo_hard_neighbor_boundary_aware_fraction0p10/`，保留
-U1/U5/U10/U15/U20五个完整600包。它是“训练完成、晚期统一判决未完成、用户主动
-停止”，不再是待办实验，也不得写成有效或无效。20%臂已由U35/U40/U45配对结果否决，
-原模型和评测已清理。
-
-**布局例外（有意保留，不是遗漏）**：hard-neighbor 10% 是唯一仍使用旧
-`checkpoints/actor_uNNNN.pth` 布局的保留模型，另有若干顶层 `*_u000N.pth` 评估别名副本。
-其余4个保留run根都使用 `update<N>/{actor.pth,critic.pt}`。因为该臂尚未定案、
-且已经主动停止，所以没有再为历史资产做布局迁移。清点 checkpoint 时必须同时匹配
-两种布局，只找 `update<N>/actor.pth` 会把它误报为空。
+历史hard-neighbor 10%仍保持“训练完成、晚期统一判决未完成、用户主动停止”的科学状态；用户决定
+不再补评且训练入口已退役，其模型和Austin U1/U5/U10/U15/U20评测已于2026-08-12清理。删除不能
+改写成性能失败，也不再作为当前模型登记或特殊checkpoint布局存在。
 
 ---
 
@@ -585,7 +620,7 @@ ppo/env.py              单环境、前向走廊门与一env一worker VecEnv
 ppo/policy.py           actor、四种critic、P20与数值hold步数速度探索
 ppo/reward.py           固定reward、progress与OBB/map-wall geometry
 ppo/scenarios.py        场景、队列、collision classification/cache
-ppo/rollout.py          recurrent buffer、loss抽样、warm-up、PPO更新、preference与两种online branch
+ppo/rollout.py          recurrent buffer、warm-up、正式PPO更新与固定dataset first-action preference
 ppo/ppo_config.yaml     固定运行、reward、场景和研究配置
 utils.py                通用评测工具与训练记录/checkpoint保存
 evaluate.sh             多车固定面板调度
@@ -594,10 +629,11 @@ eval_singleagent.py     单车多圈与LiDAR beam masking
 post-trained/           run、checkpoint、collision-cache
 ```
 
-2026-07-30 `run.sh` 已整体删除（先清空历史命令，随后连同文件一并移除）。仓库当前**没有**训练命令入口：下一项实验必须在预注册完成后新建 `run.sh`，只写该实验一条可直接复制运行的显式命令。
+根目录当前没有`run.sh`。168/225 BC-native固定偏好只保留历史合同，没有dataset、run或评测产物，
+不是待执行入口。
 旧实验的状态索引保留在 `ANALYSIS.md` §13；其中 temporal hold K10/K25 与 Group13
-明确为未运行，hard-neighbor 10%明确为训练完成但无晚期统一eval结论，20%已否决。当前脚本
-没有待运行实验，误执行会明确失败，不会产生伪完成记录。
+明确为未运行，hard-neighbor 10%明确为训练完成但无晚期统一eval结论，20%已否决。历史状态不能
+授权恢复旧命令或重建`run.sh`。
 
 新增/实验性模块的功能和测试入口由 `EXPERIMENTS.md` 记录；本文件只保留生产合同。
 已完成且关闭的prefix-reset与prefix-local joint temporal不再存在于当前PPO模块或CLI；需要历史
@@ -756,8 +792,8 @@ Phi = -0.05 * max(0, 1 - distance)^2
 **清理criterion（这条不是自明的，改代码前先读）**：reward合同冻结且不可从CLI配置；
 训练分布/探索工具只有在仍有明确研究价值时才保留。2026-07-30先删除Post-pass生产模块
 和L12运行时override，随后在完整重建合同写入`EXPERIMENTS.md`后，又退役ordinary150、
-外部fixed pool、完整805/比例hard-neighbor和actor-mismatch cache复用。ordinary异线
-高速重加权保留为默认关闭工具；它不代表production winner。
+外部fixed pool、完整805/比例hard-neighbor和actor-mismatch cache复用。2026-08-14进一步
+退役ordinary异线高速重加权；它的历史结果不代表production winner。
 
 区别不在于"是否被否决"，而在于**改的是任务定义还是训练分布**：reward 就是任务规格，
 让它可配置等于让"目标是什么"变成运行时参数；pool 和 exploration 只改怎么采样和怎么
@@ -777,16 +813,17 @@ collision pool                         strict default 479 cache
 ordinary startpoints                   fixed 50
 --speed_noise_hold_steps               1
 --front_corridor_speed_noise_hold_steps 0
---ppo_loss_sample_stride               1
 front_corridor_gate_maximum_gap_m       2.0（YAML；仅前向走廊门控时间相关速度噪声）
-ordinary_offline_fast_fraction          null（YAML）
 --first_action_preference_dataset       empty（production关闭）
 --first_action_preference_step_fraction 0（production关闭）
---online_same_state_branch_ppo          false（production关闭）
---collision_prefix_branch_ppo           false（production关闭）
 ```
 
-当前CLI用两个整数hold直接表达全局时间相关速度噪声与前向走廊双频速度噪声，不再暴露
+已失败的`--online_same_state_branch_ppo`、未正式训练的`--collision_prefix_branch_ppo`和已完成失败评测的
+`--online_collision_preference_step_fraction`均已从活动代码删除；当前反事实动作学习只保留固定
+dataset形式的`--first_action_preference_dataset`，仅保留固定dataset loss能力；当前没有引用它的`run.sh`。
+
+已失败的`--front_corridor_ignore_opponent_lateral_offset`消融入口也已删除，走廊横向门固定回`.25m`。
+当前CLI用整数hold直接表达全局时间相关动作噪声与前向走廊双频速度噪声，不再暴露
 `temporal_global/corridor_temporal`文字模式。
 条件门控高方差逐步独立速度噪声、旧所需减速度门控时间相关速度噪声、speed-std退火和
 target-KL均已退役。
@@ -1043,8 +1080,8 @@ hard collision   54 -> 38
 - 当前源码不再提供ordinary150、外部fixed pool、hard-neighbor或actor-mismatch入口；
   需要重开时按`EXPERIMENTS.md`的退役接口合同重建到独立实验分支，不要临时拼回production。
 - hard-neighbor和outcome-aware源码模块均已删除；当前源码没有调用方，也不影响
-  全局时间相关速度噪声、前向走廊门控时间相关速度噪声或ordinary异线高速重加权。历史边界构建、cache schema和筛选算法已保存在
-  `EXPERIMENTS.md`，保留的cache/模型产物不由production入口读取。
+  当前保留的全局时间相关速度噪声或前向走廊门控时间相关速度噪声。历史边界构建、cache
+  schema和筛选算法已保存在`EXPERIMENTS.md`，保留的cache/模型产物不由production入口读取。
 
 ---
 
@@ -1061,7 +1098,7 @@ hard collision   54 -> 38
 | 全局时间相关速度噪声 | 不使用门控；全状态标准差0.15的同一个速度残差连续保持50步（0.5秒）后重采样 |
 | 条件时间相关速度噪声（历史，源码入口已移除） | 门外每步独立标准差0.15；旧required-deceleration门触发时采样标准差0.25的残差并保持50步；门中途关闭也跑完时间块，episode reset清空 |
 | 前向走廊门控时间相关速度噪声 | 前向same-corridor门内使用标准差0.15、保持50步的时间相关速度噪声 |
-| ordinary异线高速重加权 | 前向走廊门控时间相关速度噪声保持不变，仅在ordinary角色内提高异线高速场景采样权重；不是reward或optimizer改动 |
+| ordinary异线高速重加权（历史，源码入口已移除） | 前向走廊门控时间相关速度噪声保持不变，仅在ordinary角色内提高异线高速场景采样权重；不是reward或optimizer改动 |
 
 条件白噪声放大和条件时间相关速度噪声共用旧门
 `escalating_required_deceleration`：先以同走廊、前向净空和closing
@@ -1077,7 +1114,9 @@ YAML中`ordinary_offline_fast_fraction: 0.6`把三组自然的33.3%/33.3%/33.3%�
 33.3%/60.0%/6.7%，固定same-line份额、也不改变可达场景集合。目标是让前向走廊门控
 时间相关速度噪声模型学会区分
 同线跟车和异线高速超车。它收复了Austin/跨图超车并在跨图形成54–57碰撞、
-1146–1155超车，但near400碰撞恶化到63–77，故已否决。
+1146–1155超车，但near400碰撞恶化到63–77，故已否决。2026-08-14已删除活动代码中的
+三组分类、比例排槽和两个`ordinary_offline_fast_*`配置；若要复现只能按`EXPERIMENTS.md`
+的历史合同在独立实验分支重建。
 
 ### 8.2 固定面板总表
 
@@ -1173,7 +1212,7 @@ ordinary异线高速重加权收回Austin/跨图超车，且跨地图第一次�
 |---|---|---|
 | Reward与优化目标 | §9.27、§9.31--§9.32；基础reward见§6 | P20 collision-cost约束实例与二值front potential均未形成新前沿；只关闭已测公式/表征 |
 | 训练pool与采样 | §9.8；完整pool证据见§7 | role配比证据不足；既有hard/ordinary/difficult pool实例按§7停止 |
-| 探索与curriculum | §9.21--§9.24、§9.29；基础速度探索见§8 | prefix-reset链路成立，但已测prefix与联合时间相关探索没有形成新前沿 |
+| 探索与curriculum | §9.21--§9.24、§9.29、§9.35--§9.36；基础速度探索见§8 | K10/K50 speed形成高超车点；全局steering+speed K10退化为保守交换，固定实例关闭 |
 | BC/参考策略正则 | §9.15--§9.16、§9.18、§9.25、§9.30 | collision-only BC functional regularization正式点为`58/1390`，固定实例关闭 |
 | 反事实动作学习 | §9.17、§9.19--§9.20、§9.33--§9.34 | frozen selector失败；first-action preference形成新前沿；online same-state branched PPO仅完成机械验证 |
 | 表征与辅助监督 | §9.13、§9.19、§9.26 | 50步显式历史与paired collision/progress GRU auxiliary具体实例关闭 |
@@ -2096,7 +2135,7 @@ beta、动作库、lead、pair权重/温度、学习率、update数或事后选U
 yaw<=30度 `45/47`，same-line `32/49`；后续若追求`<40`应只针对该平行侧后接触族，不再扫全局
 速度/惩罚。完整分层见`ANALYSIS.md` §55。
 
-### 9.34 Online same-state branched PPO（2026-08-10，仅实现与机械测试，未正式训练）
+### 9.34 Online same-state branched PPO（2026-08-11，正式训练与四图600已完成）
 
 该臂是对§9.33上一代数据闭环的结构性替代，不复用其440个pair、U44 snapshot/hidden/action或任何
 旧PPO actor。每个当前student formal rollout按不看未来的固定时序取16个on-policy Austin状态，当前
@@ -2105,29 +2144,29 @@ yaw<=30度 `45/47`，same-line `32/49`；后续若追求`<40`应只针对该平�
 原361D strict 12-key actor。它没有模仿loss，但因额外分支stratum与固定权重，不称为完全未改动的
 标准PPO。
 
-真实F110/CUDA测试完成64条、6,400个branch simulator step：runtime snapshot的下一transition精确，
-16个rank的主observation均未改变，collision/ordinary action为32/32，pre-update最大absolute
-log-ratio为0，branch gradient finite且非零；随后16-step完整collector/actor/critic/checkpoint生命周期
-通过并确实改变actor。随后修正horizon末状态被recurrent critic重复消费一次的问题并完整重跑；
-64条仍全部在100步horizon截断，return mean/std为`.034905/.397455`、advantage std `.042417`、
-gradient norm `13.0399`且ratio identity仍为0。这没有任何collision rescue或模型性能结论。
+正式45-update训练完整：45轮各有actor/critic checkpoint，final actor为strict 12-key。累计从720个
+on-policy状态生成2,880条branch与266,795额外simulator step；branch终局为horizon 2,463、ego collision
+197、overtake 156、follow 64，平均每轮advantage std `.03638`。85.5%分支只到100步horizon，说明
+固定时序全状态抽样主要提供短期return差，而不是富集collision/overtake决策。
 
-状态：**实现可运行、默认关闭；formal 45-update Austin seed42训练及U42--U45四图各600未启动。**
-当前不能把它列为优于first-action preference U44的新模型，也不能因机械通过预判collision会下降。
-若用户批准正式运行，只准使用`EXPERIMENTS.md` §26冻结的单一合同；首轮前不扫描branch状态数、K、
-horizon、loss coefficient、seed、trigger或std。
+U45四图依次为Austin `23/359`、Hockenheim `33/361`、Moscow `42/388`、Nuerburgring `32/393`，
+总计`130/1501`。相对BC collision `55/56,p=1`、overtake `24/80,p=3.22e-8`；相对RW30显著多
+collision且少15次overtake，相对first-action preference U44也显著多collision并少29次overtake。
+判决：**当前16 states × 4 actions × 100-step horizon × coefficient .10固定实例关闭，不扫描剂量。**
+它证明在线branch能产生并更新信号，但没有把该信号转化为可用安全前沿；不外推否决所有collision
+富集的online branch设计。完整证据见`ANALYSIS.md` §56。
 
-### 9.35 四个新增PPO实验接口（2026-08-10，仅实现与机械测试，未正式训练）
+### 9.35 四个PPO实验接口的历史状态（2026-08-11；活动代码已收口）
 
 | 描述性方法 | CLI | 已验证机制 | 性能状态 |
 |---|---|---|---|
-| 全局K10时间相关速度探索 | `--speed_noise_hold_steps 10` | residual每10步换一次，actor mean仍100 Hz | 未训练 |
-| 走廊外K10/2m走廊内K50双频速度探索 | 上项再加`--front_corridor_speed_noise_hold_steps 50` | gate进出立即换块，走廊内连续50步 | 未训练 |
-| 100 Hz序列、10 Hz direct PPO loss | `--ppo_loss_sample_stride 10` | 200位置选20个loss位；100 Hz GAE/replay保留 | 未训练 |
-| collision触发的1秒前同状态分支PPO | `--collision_prefix_branch_ppo` | 真实collision恢复1.00s前；4候选产生3 collision/1 horizon，advantage std `.9270` | 未训练 |
+| 全局K10时间相关速度探索 | `--speed_noise_hold_steps 10` | residual每10步换一次，actor mean仍100 Hz | U30 `85/1488`；优于BC但被既有前沿支配 |
+| 走廊外K10/2m走廊内K50双频速度探索 | 上项再加`--front_corridor_speed_noise_hold_steps 50` | gate进出立即换块，走廊内连续50步 | U27--U30=`76/1567、74/1568、84/1557、74/1566`；保留U30固定高超车主点 |
+| 100 Hz序列、10 Hz direct PPO loss | 历史CLI已删除 | 200位置选20个loss位；100 Hz GAE/replay保留 | U30 `133/1452`；方法退役，模型/eval与实现已清除 |
+| collision触发的1秒前同状态分支PPO | 历史CLI已删除 | 真实collision恢复1.00s前；4候选产生3 collision/1 horizon，advantage std `.9270` | 只完成机械测试，未训练，接口退役 |
 
-默认`speed_noise_hold_steps=1`、`front_corridor_speed_noise_hold_steps=0`、
-`ppo_loss_sample_stride=1`且两个branch flag均false，继续走当前production PPO数学。碰撞回溯不保存
+默认`speed_noise_hold_steps=1`、`front_corridor_speed_noise_hold_steps=0`，继续走当前production PPO数学。
+历史碰撞回溯不保存
 逐步大snapshot，而是保存episode起点snapshot与ego action，碰撞后确定性重放到event-1.00s；parent
 最近100步observation/hidden必须与重放snapshot逐位一致。其4候选和后续continuation均来自当前冻结
 `pi_old`，不复用上一代PPO数据；无有效collision prefix的rollout只执行原main PPO。
@@ -2135,7 +2174,33 @@ horizon、loss coefficient、seed、trigger或std。
 准确边界：K10/K50使用per-transition marginal log-prob，不是K步joint block likelihood；10 Hz只抽
 formal actor/value loss位置，不降低环境、GAE或GRU频率；collision-prefix使用训练期collision hindsight
 选状态，但部署actor没有future输入或runtime branch。完整实现和测试合同见`EXPERIMENTS.md` §27--§29。
-这四项机械通过不提供任何四图600改善证据；不能据此替换production，也不能把未训练写成已否决。
+前三项已有四图600性能结论；collision-triggered一项只停留在机械测试，不能写成性能否决，但在
+当前“不新增tech”的范围冻结下也不是待办，活动实现已经删除。
+双频速度探索U27--U30的完整收敛band见`ANALYSIS.md` §56.2；它支持U30端点可重复，但不授权
+checkpoint选择或把collision方向改写为已确认安全改善。
+
+### 9.36 全局K10转向-速度时间相关探索（2026-08-11，训练与四图600完成并关闭）
+
+固定处理从canonical BC开始，只在Austin训练、seed42、30 formal updates；speed latent residual和
+steering latent residual均每10个`.01s` step重新采样，两个残差独立，actor mean仍100 Hz更新，
+steering/speed边际std仍`.03/.15`。`front_corridor_speed_noise_hold_steps=0`，所以没有前向走廊gate；
+相对§9.35 speed K10主对照唯一新增steering K10。
+
+训练1行warm-up、30行formal metrics、30组actor/critic和4,211个episode完整finite。U30 strict 12-key
+actor SHA为`43aad0d5f05e0b4c207448066f3d58a19e1662b5c26476dd5dfab38606d61352`。四图各600
+result/trace全部通过unique、key-set、finite、terminal/action和typed collision合同；依次为Austin
+`12/311`、Hockenheim `10/322`、Moscow `17/378`、Nuerburgring `14/387`，合计`53/1398`。
+
+相对speed K10 `85/1488`的同场景配对：collision `62 removed / 30 created,p=.0011109`，overtake
+`123 lost / 33 gained,p=2.10e-13`。62次collision removal中只有24次变为overtake、38次变为follow；
+四图desired speed均值下降`.2483m/s`，净follow增加122。结果是明确的全局保守化交换，不是更连贯
+steering带来安全超车。Production U30当前已有完整四图raw包，但本treatment原始eval已按授权清理，
+所以两者仍不能重新计算paired p；保留当时已固化的历史比较，不得用缺失一侧补造配对统计。
+
+判决：**固定全局steering K10 + speed K10实例关闭。** 它在Austin、Hockenheim、Nuerburgring未守住
+逐图BC overtake下限，并被first-action-preference U44 `49/1530`以更低collision和更高overtake严格
+支配。不得继续扫描steering hold/std或直接叠加走廊K50；本结论不外推否决所有时间相关steering探索。
+完整证据与边界见`ANALYSIS.md` §57。
 
 ## 10. 当前允许与不允许的下一步
 
@@ -2198,6 +2263,16 @@ formal actor/value loss位置，不降低环境、GAE或GRU频率；collision-pr
     原shortfall在`.5--1.5s`几乎无support。只有把相对运动方向置于有效提前窗口的新公式才按新
     方法重开，并必须与L12边界对账；若用户明确授权直接训练当前低先验公式，应另写效果实验合同，
     不能把本诊断改写成已通过。
+31. 重跑或扫描`ppo_loss_sample_stride10`的stride、随机相位、epoch或学习率；固定stride10 U30为
+    `133/1452`，相对BC两轴均未检出，相对现有前沿明显更差。它只否决当前100 Hz replay上的
+    1/10 direct-loss实例，不否决真正10 Hz环境/actor/GRU，因为后者从未测试。用户已明确退役该方法；
+    `post-trained/ppo_loss_sample_stride10`、对应`eval_results`以及专用CLI/mask/metrics/test实现均已删除。
+32. 重跑或扫描online same-state branched-return PPO的16 states、4 actions、100-step horizon、`.10`
+    coefficient或45-update长度；固定U45为`130/1501`并被RW30与first-action preference U44计数支配。
+    collision-triggered一秒前branch是不同的状态选择机制，仍未训练，不能被本条连带关闭。
+33. 重跑或扫描全局steering K10 + speed K10的steering hold、std，或直接叠加前向走廊K50；固定U30
+    为`53/1398`，相对speed K10以显著超车损失换取安全，并被first-action-preference U44严格支配。
+    该停止只覆盖当前全局K10组合，不否决所有时间相关steering探索。
 
 ### 10.2 未完成但不是高优先
 
@@ -2209,36 +2284,28 @@ formal actor/value loss位置，不降低环境、GAE或GRU频率；collision-pr
   12动作三分类结果监督；Round Z8又直接训练原GRU并否决paired collision/progress的具体
   GRU-changing auxiliary实例；
   新目标不得复用两者失败配置做参数扫描；
-- **全局10步时间相关速度探索：接口和机械回归已完成，尚未正式训练。**
-  固定对照是Production U30；从canonical BC fresh-start、Austin only、seed42、30 formal updates，
-  reward、50/50 role、pool、actor/critic、steering逐步探索与speed marginal std `.15`全部不变；唯一
-  变化是speed Gaussian residual由每个`.01s` timestep重采样改为每10步（`.1s`）重采样，所有状态
-  使用，不加前向走廊门。这里固定的是相对每步actor mean的speed residual，不是完整动作。它仍是
-  标准PPO actor loss和训练期exploration变化；K10从未正式训练，不得由历史K50结果插值为有效或无效。
-  最小无更新rollout只能排除实现错误或明显双role反向，正式判决仍须固定U30与四图各600。
-- temporal hold K25（0.25s）：仅提出，未训练；K75（0.75s）和K100（1.0s）在现有正式记录、
-  训练产物、源码常量与Git历史中都没有对应的temporal-hold实验；反事实面板中的`lead_steps=100`
-  与online branch的100步horizon是其他轴，不得误写为K100已测。
-- **走廊外K10、2米前向走廊内K50的双频速度探索：接口和机械回归已完成，尚未正式训练。**
-  它不是online branch组合；唯一处理是当前state gate决定同一个speed residual持有10或50步，进出
-  gate均开始新块。相对Production同时引入全局K10和走廊内K50两个变化，若直接作为复合臂运行，
-  成败不能拆分归因给其中之一。它不读取旧PPO数据，正式性能仍必须由四图各600判定。
-- **100 Hz collection/GAE/GRU replay + 10 Hz direct PPO loss：接口和一次formal生命周期已完成，
-  尚未正式训练。** 每个episode segment随机固定一个模10相位；只在这些位置算actor/value loss，
-  不把环境或GRU降到10 Hz。它改变优化估计量，不能写成无损加速；正式运行应作为独立单轴臂。
-- **collision触发的1秒前同状态分支PPO：接口和真实collision生命周期已完成，尚未正式训练。**
-  它从当前student碰撞回放到event-1.00s，同一`pi_old`采4个第一动作并闭环100步；测试已出现
-  3 collision/1 horizon及非零advantage variance，但只有1个状态，不能外推rescue率。它与固定时序
-  online same-state branch是两个互斥臂，也不能与历史first-action preference数据同时启用。
+- temporal hold K25（0.25s）仍仅提出、未训练。K75（0.75s）在U20中断并按用户决定清理，效果未知；
+  K100（1.0s）U30正式结果`110/1425`，相对K50 `74/1566`两轴显著变差，固定长度关闭。不得用K100
+  失败把未完成K75或未训练K25改写成已否决；也不再为补齐连续长度曲线而重跑它们。
+- collision触发的1秒前同状态分支PPO只完成过机械测试、没有正式性能结论；其活动接口已删除。
+  在当前范围冻结下它不是未完成待办，也不恢复实现；历史状态仍不能改写成科学失败。
 - Group13 GRU/head LR 2×2：未运行；
 - outcome-aware hard：历史上有实现、没有独立A/B；源码已删除，只有重建合同。
 
 不得把这些写成已否决。
 
+已完成项不再列在本节：全局speed K10 U30作为被既有前沿支配的正机制证据归档；K10/K50 U30
+`74/1566`保留为高超车前沿；全局steering+speed K10 U30、stride10 U30与online same-state U45
+固定实例关闭。不得把前两者误写成未训练，也不得因后三个固定实例失败外推否决所有时间相关
+steering、所有时间降采样或所有在线branch方法类。
+
 Hard-neighbor 10%另行归档为“训练完成但晚期eval未完成、用户主动终止”；当前入口已退役，
 不再列为可继续执行的下一步，也不得写成已证伪。
 
 ### 10.3 合法重开条件
+
+本节只保存历史上的科学重开边界，不构成当前开发授权。用户已在2026-08-13冻结新tech；除非用户
+今后明确撤销该冻结，不得据此设计、实现或运行新方法，也不得把讨论清单转成`run.sh`。
 
 只有以下变化才足以重开已关闭方向：
 
@@ -2258,13 +2325,15 @@ Hard-neighbor 10%另行归档为“训练完成但晚期eval未完成、用户�
 
 ---
 
-## 11. 新实验执行规则
+## 11. 既定实验与评测执行规则
+
+当前不接受新的实验设计或tech实现，也没有待运行的`run.sh`。以下只保留为用户未来明确解除冻结后的执行规则。
 
 1. 使用conda环境 `end2race` 的绝对Python。
 2. 长任务使用tmux，避免意外中断。
 3. 优先修改现有脚本参数；不要为每次运行新建bash/log。
-4. 新实验先完成预注册，再新建 `run.sh` 并只写该实验的显式命令；
-   一个时期只保留当前这一项实验，不把已完成或未运行提案继续注释在文件中。
+4. 无待运行实验时不创建`run.sh`；不得加入Lattice+BC、Q/cost critic、group-robust、reverse
+   constrained或其他讨论方案，也不得把已完成方法以注释形式堆回脚本。
 5. 每次只改一个轴；若不得不多变量，预注册每个变化和不可分离的限制。
 6. 从canonical BC fresh-start，除非问题明确是checkpoint continuation。
 7. 不使用自动checkpoint选择器；预先固定update或报告完整checkpoint band。
@@ -2356,3 +2425,36 @@ pgrep -af '[r]un\.sh|[t]rain_ppo\.py|[r]un_constrained_ppo\.py|[e]val_multiagent
 > 由用户选择“移出reward后约束collision”或“保留reward并约束overtake”，不能代替用户决定。
 > 用户明确禁止multi-map PPO；训练只可使用Austin。Production部署别名暂时仍指向U30，当前
 > 没有未完成run；Constrained PPO尚未预注册，当前不启动formal训练。
+
+## 13. 2026-08-12第一动作偏好结果与活动代码收口
+
+collision-triggered临时偏好和64-target/64-control canonical-BC固定偏好均完成30-update训练与
+U27--U30四图各600评测。固定BC数据实际只有13个target、5个control labeled episode（75/20 pair）；
+U30为`67/1436`，相对K10/K50对照collision `55 removed/48 created,p=.5546`、overtake
+`159 lost/29 gained,p=6.43e-23`。在线臂30轮产生1,019个pair、执行37,752条真实terminal branch；
+U30为`85/1466`，相对对照collision `33/44,p=.2543`、overtake `122/22,p=5.45e-18`。两条机制都
+真实生成偏好并更新最终actor，但都确认损失大量超车、没有新安全前沿，固定实例关闭。完整结果与
+证据边界见`ANALYSIS.md` §59。
+
+2026-08-13活动代码随之收口：已删除online collision preference的CLI、rollout collector、环境
+snapshot/action-history旁路、临时dataset/loss、metrics与专用回归；已删除移除走廊lateral-offset门的
+CLI和环境分支；已删除正式失败的全局steering hold CLI及policy temporal steering state，steering恢复
+每个`.01s` step独立采样。历史算法仍由`EXPERIMENTS.md`保存，但不能直接运行。第一动作偏好公共的三个lead
+和12个single-step residual从`online_collision_preference_*`改为
+`first_action_preference_*`，只供固定dataset构造器使用。活动训练路径只保留：production PPO、
+已验证的K10/K50探索参数，以及冻结前已明确要求的固定BC-native dataset preference。
+
+## 14. 汇报期技术范围
+
+当前汇报只区分三种状态：
+
+1. **已有模型与结论**：production、RW30、K10/K50、成功但含上一代U44数据闭环的simulator-return-
+   filtered first-action preference，以及所有已关闭实例；
+2. **未执行合同而非待办**：168 collision target + 225 safe-overtake control BC-native固定偏好
+   曾完成命令设计，但dataset/run/eval均不存在，`run.sh`已移除；
+3. **讨论历史而非待办**：Lattice-reference+BC、原`instrument_train`宇宙BC-native、每5个update刷新
+   preference、action-conditioned短期Q/cost critic、group-robust PPO、reverse constrained PPO、
+   selective reference retention及其他未实现变体。
+
+从本节点开始不得新增第四类，不得把第2/3类写进CLI、配置、`run.sh`或新文档。若后续汇报需要比较，
+只能引用既有实验事实，并明确“未实现/未训练”不等于“被科学否决”。

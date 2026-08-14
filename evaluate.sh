@@ -4,12 +4,12 @@
 MODEL_PATH="${MODEL_PATH:-pretrained/end2race_new.pth}"
 PYTHON="${PYTHON:-python}"
 HIDDEN_SCALE=4
-NOISE="${NOISE:-0.0}"
-NUM_WORKERS=12
+NOISE= 0
+NUM_WORKERS=8
 MAP_NAME="${MAP_NAME:-Austin}"
 COLLISION_SCOPE="${COLLISION_SCOPE:-ego}"
 RENDER=false
-SAVE_TRACE="${SAVE_TRACE:-false}"
+SAVE_TRACE=false
 SIM_DURATION=8.0
 EGO_RACELINE="raceline1"
 OPP_RACELINES=("raceline0" "raceline1" "raceline2")
@@ -37,6 +37,7 @@ echo "Noise level: $NOISE"
 
 # Temporary directory to store individual results
 temp_dir=$(mktemp -d)
+declare -a worker_commands
 
 show_progress() {
     local completed percent filled empty bar space
@@ -68,6 +69,7 @@ for ego_idx in "${ego_idx_range[@]}"; do
             if [ "$SAVE_TRACE" = true ]; then
                 cmd="$cmd --save_trace"
             fi
+            worker_commands[$job_id]="$cmd"
             
             while [ "$(jobs -rp | wc -l)" -ge "$NUM_WORKERS" ]; do
                 show_progress
@@ -87,6 +89,18 @@ done
 wait
 show_progress
 echo
+
+for exit_path in "$temp_dir"/*.exit; do
+    exit_code=$(<"$exit_path")
+    if [ "$exit_code" != 1 ] && [ "$exit_code" != 2 ] && [ "$exit_code" != 3 ]; then
+        failed_job_id=$(basename "$exit_path" .exit)
+        mv "$temp_dir/$failed_job_id.log" "$temp_dir/$failed_job_id.first.log"
+        echo "Retrying evaluation worker $failed_job_id after exit code $exit_code"
+        tail -n 20 "$temp_dir/$failed_job_id.first.log" >&2
+        eval "${worker_commands[$failed_job_id]}" >"$temp_dir/$failed_job_id.log" 2>&1
+        echo $? > "$exit_path"
+    fi
+done
 
 if ! result_counts=$("$PYTHON" -c '
 import sys

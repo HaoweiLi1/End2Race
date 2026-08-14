@@ -10,5 +10,7 @@ Dataset_*/
 post-trained/ppo*
 post-trained/panels
 eval_results*/
-scripts/
+scripts/*
+!scripts/build_bc_first_action_preference.py
+!scripts/test_first_action_preference.py
 run.sh

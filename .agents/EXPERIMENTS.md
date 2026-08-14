@@ -15,8 +15,8 @@ ordinary起点`50→150`扩展、外部fixed collision pool入口、boundary-awa
 hard-neighbor 805/比例采样、collision-cache actor-path mismatch逃生开关、speed-std
 退火、旧版conditional-temporal臂和target-KL early stop。默认479 collision cache、
 固定50个ordinary起点和collision/ordinary双角色队列必须保留；训练入口只读取固定cache，
-不再包含cache miss时的自动分类、写盘或CPU回退。ordinary异线高速重加权虽然未通过production验收，但作为已证明能改变跨地图
-安全/超车前沿的研究工具继续保留，改由`ppo_config.yaml`定义并默认关闭。
+不再包含cache miss时的自动分类、写盘或CPU回退。2026-08-14又移除ordinary异线高速重加权、
+三路ordinary queue及其YAML配置；历史实验语义保存在§0.5.5，不得把它当作当前入口。
 
 下面的§0.5是这些退役接口的重建合同；§2.8、§2.9、§2.11和§1.5仍保留历史测试的
 逐项断言。hard-neighbor与outcome-aware的源码模块也已删除：它们没有当前调用方，
@@ -42,13 +42,13 @@ hard-neighbor 805/比例采样、collision-cache actor-path mismatch逃生开关
 | 训练pool与采样 | §0.5、§2.8--§2.11、§3.1、§4 |
 | 探索与curriculum | §1.10、§2.7、§2.16、§15--§17、§21 |
 | BC/参考策略正则 | §11--§12、§18、§22 |
-| 反事实动作学习 | §8--§9、§13--§14、§25--§26 |
+| 反事实动作学习 | §8--§9、§13--§14、§25--§26、§32--§33 |
 | 表征与辅助监督 | §14、§19 |
 | Checkpoint组合 | §10 |
 | 共享验证、记录与评测合同 | §0.1--§0.4、§1--§7 |
 
-后续新增实现必须使用描述性机制名称，并追加到对应方法族；Round/Gate编号只能作为历史定位信息，
-不能替代方法名称。
+当前用户已冻结新tech，不新增实现。若未来用户明确解除冻结，新增实现仍必须使用描述性机制名称并
+追加到对应方法族；Round/Gate编号只能作为历史定位信息，不能替代方法名称。
 
 **2026-08-10实际清理边界**：历史专题合同已经固化后，`scripts/`中的23个已完成或关闭实验工具
 已删除。下文出现这些文件名时表示“可按本节重建的历史接口”，不表示文件仍在工作树。当前只保留：
@@ -56,11 +56,12 @@ hard-neighbor 805/比例采样、collision-cache actor-path mismatch逃生开关
 ```text
 scripts/screen_reward_candidate.py
 scripts/test_screen_reward_candidate.py
-scripts/test_online_same_state_branch_ppo.py
+scripts/test_first_action_preference.py
+scripts/build_bc_first_action_preference.py
 ```
 
-前两个承担reward候选合规筛查及其回归；最后一个验证合并到`ppo/rollout.py`的first-action
-preference真实数据加载/loss，以及当前默认关闭的online same-state branched PPO机械合同。普通四图
+前两个承担reward候选合规筛查及其回归；后两个验证合并到`ppo/rollout.py`的固定first-action
+preference数据/loss、canonical-BC固定数据构建、K10/K50探索与默认走廊门合同。普通四图
 600评测统一使用根目录`evaluate.sh`，不再保存重复ScenarioSpec或保留第二个
 显式panel评测入口。First-action preference的固定训练数据、训练期PPO模块和正式checkpoint仍保留，
 但其一次性dataset builder与formal eval analyzer已经删除，重建合同见§25。
@@ -76,8 +77,8 @@ joint-temporal专用状态。下文保留的是历史重建合同，不是待运
 episode reward分项/risk/最小净空累计、full-buffer value/critic/exploration/prefix统计、重复
 update/timestep/config字段、preference逐minibatch梯度分解和全量校准样本键；reward、GAE、P20
 输入、动作likelihood、optimizer、checkpoint与正式outcome记录未改变。当前活动训练侧保留production
-PPO、数值hold步数的时序速度探索、100 Hz序列loss抽样、first-action preference和两种默认关闭的
-same-state branched PPO。
+PPO、数值hold步数的时序动作探索和固定dataset first-action preference；100 Hz序列loss抽样与
+same-state branched PPO已经退役。
 
 同日进一步把PPO内部参数从`env.py`、`policy.py`、`reward.py`、`rollout.py`和`scenarios.py`
 集中到`ppo_config.yaml`；各模块沿用`latticeplanner.utils.load_config()`直接加载，不另建
@@ -85,6 +86,13 @@ same-state branched PPO。
 结构/schema常量。旧`FIRST_ACTION_PREFERENCE_DATASET_ID`及其名字相等校验已删除，因为schema、
 gate verdict、manifest/gate SHA与sequence SHA已经完整约束数据合同。`run_config.json`继续在
 `ppo_config`字段记录全部实际配置，不再重复写一套大写常量别名。
+
+**2026-08-13汇报期代码收口**：在线collision-triggered临时preference、移除走廊lateral-offset门和
+全局steering K10的
+正式结果已经在`ANALYSIS.md` §59固化，活动CLI、环境旁路、collector、临时loss/metrics及专用回归
+随之删除；policy不再保留temporal steering state。下文§31--§32.2只保留历史机制，不是当前实现合同。固定BC-native builder仍保留；三个lead和
+12个single-step residual的YAML键统一为`first_action_preference_lead_steps`与
+`first_action_preference_action_residuals`。用户同时冻结新tech，本文不得据此自动重建历史接口。
 
 ### 0.1 保真度分级（重要，不要误期待）
 
@@ -145,7 +153,8 @@ test_analyze_l12_heldout_hard_instrument.py -> analyze_l12_heldout_hard_instrume
 ```text
 scripts/screen_reward_candidate.py        reward 候选的合规门禁 + 学习信号量化 + 独立 oracle
 scripts/test_screen_reward_candidate.py   对应回归测试
-scripts/test_online_same_state_branch_ppo.py  first-action preference数据/loss + online branch机械合同测试
+scripts/test_first_action_preference.py       first-action preference数据/loss + online collision preference机械合同测试
+scripts/build_bc_first_action_preference.py   canonical-BC固定偏好数据构建
 ```
 
 **被测试 import 的符号名和函数签名属于契约的一部分**，重建时不得改名，否则测试无法
@@ -370,15 +379,20 @@ Scheduler state必须保存两队列、source cursor、fraction numerator/denomi
 该功能从未声称改善策略，只为早期Post-pass快速验证复用旧cache；删除后严格合同恢复为
 完整classification config一致，否则使用新的空cache目录重新分类。
 
-#### 0.5.5 保留项：ordinary异线高速重加权
+#### 0.5.5 退役项：ordinary异线高速重加权
 
-不要删除`ordinary_offline_fast_fraction`配置、三路ordinary queue或对应state
-round-trip合同。配置位于`ppo/ppo_config.yaml`，`null`表示production均匀ordinary
-队列；历史实验值`0.6`启用三路重加权。它将ordinary分为same-line、off-line-fast
-（异线且speed scale≥0.7）和off-line-slow，锁定same-line自然份额，把指定fraction分给
-off-line-fast，其余给slow；只改采样权重，不改可达场景集合。比例0.6虽被near400否决，
-但跨地图得到54–57 collision/1146–1155 overtake，对production 80/1142双轴占优，
-仍是有机制价值的默认关闭研究工具。
+2026-08-14按用户决定删除`ordinary_offline_fast_fraction`、
+`ordinary_offline_fast_min_speed_scale`和三路ordinary调度代码。当前`ScenarioScheduler`只保留
+collision/ordinary两个均匀无放回队列；历史checkpoint不受影响。
+
+历史值`ordinary_offline_fast_fraction=0.6`把ordinary分为same-line、off-line-fast
+（异线且speed scale≥0.7）和off-line-slow，三组份额从`1/3, 1/3, 1/3`改为
+`5/15, 9/15, 1/15`。三组各自使用独立无放回随机队列，same-line沿用ordinary seed，
+off-line-fast和off-line-slow分别使用`SeedSequence([seed, 0x4F464653])`与
+`SeedSequence([seed, 0x4F464C57])`；15槽周期按组内均匀位置排布。该方法只改变采样权重，
+不改变场景集合、reward或optimizer。它在跨地图得到54–57 collision/1146–1155 overtake，
+对production 80/1142双轴占优，但near400碰撞恶化到63–77，故历史协议否决。若要复现，
+只能按本段在独立实验分支重建，不得自动恢复到production。
 
 #### 0.5.6 退役target-KL early stop
 
@@ -469,7 +483,7 @@ trace/episode key 场景 ID 形如 `ol{line}_e{ego_idx}_o{opp_idx}_s{speed}`，
 `SAME_LINE_PREFIX = "ol1_"`（因为 ego raceline 是 raceline1）。多个脚本靠
 episode key 前缀而不是 spec 字段来分组，两种方式必须给出同一结果。
 
-**off-line fast 定义**（`ScenarioScheduler.is_offline_fast`）：
+**历史off-line fast定义**（原`ScenarioScheduler.is_offline_fast`已删除）：
 
 ```text
 off-line（opp_raceline != raceline1）AND opp_speedscale >= 0.7
@@ -1003,6 +1017,8 @@ id `toy-{0..3}`）；`make_outcomes(scenarios, values)` 生成
   `fraction=0.20` → `ValueError` 且消息匹配 `"non-empty base and hard-neighbor"`。
 
 ### 2.10 `test_ordinary_offline_fast_sampling.py`（189 行，2 个 class）
+
+该测试对应的活动功能已于2026-08-14删除；以下只保留历史重建断言。
 
 文件顶部有长 docstring 说明动机（CT-v2 的回退集中在 off-line fast regime），
 并 `sys.path.insert(0, parents[1])`。`build_scenarios()` 返回
@@ -1632,7 +1648,7 @@ CT-v2事件对齐、following-response完整ReplayConfig和post-pass候选选择
 - 清理前的`run.sh`曾直接引用`compare_postpass_formulas.py`、`build_collision_cache.py`、
   `run_structured_speed_exploration.sh`、`build_interval15_difficult_pool.py`和
   `run_interval15_difficult_validation.sh`；2026-07-30这些历史段落已从执行入口移除，
-  当前`run.sh`不再依赖它们；
+  当前根目录无`run.sh`；
 - 删除回归测试源码后不能再声称当前工作树“91 tests通过”，只能引用2026-07-30清理前的历史
   结果；任何源码再改动后都需要先重建测试或建立新的回归；
 - 历史`outcome_aware_hard`源码删除后，其筛选、cache和测试合同只由本文件承担；若重建，
@@ -3665,8 +3681,10 @@ report拒绝覆盖。脚本不做checkpoint选择；主点固定U44。
 
 本轮没有另建独立unit-test文件；数据构造器、dataset loader、formal argument validation和最终
 分析器本身均为fail-closed执行合同，且已在完整14,076 branch、45 update、9,600 trace规模上走通。
-2026-08-10模块合并后，`scripts/test_online_same_state_branch_ppo.py`另用保留的真实dataset断言
-46/19 episode计数、8/8 batch和三项finite preference loss。
+2026-08-10模块合并后，当时的`scripts/test_first_action_preference.py`曾用保留的真实dataset断言
+46/19 episode计数、8/8 batch和三项finite preference loss。2026-08-12当前回归已改为运行时生成
+1 target/1 control的最小schema fixture，只验证hash/schema/sampler/loss，不再依赖旧U44 panel；正式
+46/19数据与U44结果仍按本节前述完整产物审计，不受测试fixture替换影响。
 源码最小静态自检为相关五个Python文件`py_compile`。删除分析器会失去一键重算完整trace合同与配对
 统计的便利，但不会删除已在ANALYSIS和HANDOFF固化的科学结论。
 
@@ -3754,13 +3772,13 @@ reset RNG与causal corridor gate当前值。恢复拒绝schema或字段集合漂
 
 ### 26.4 回归测试与已验证结果
 
-`scripts/test_online_same_state_branch_ppo.py`无CLI、无持久输出；它只读canonical BC、first-action
-preference固定训练输入、canonical Austin collision cache和ordinary scenarios，所有checkpoint/metrics
-写入自动删除的临时目录，stdout给JSON。
+本节以下是退役general-state branch实现当时的历史回归合同；当前替代回归为
+`scripts/test_first_action_preference.py`，验证fixed preference与collision-triggered临时preference，
+不再重建旧general-state branch likelihood。
 固定断言：
 
-1. 保留的first-action preference真实dataset加载为46 target/19 control，单batch为8/8且总/两role
-   loss全部finite；
+1. 运行时最小fixed-preference fixture加载为1 target/1 control，按8/8循环采样且总/两role loss全部
+   finite；测试不读取任何旧U44 dataset；
 2. 真实单环境在第5步capture，restore后用同一动作得到381D next observation、reward、terminated/
    truncated及关键info逐位相同；
 3. 真实16-worker/CUDA policy对16个当前on-policy状态各跑4条100步分支，共64 action、6,400 simulator
@@ -3774,19 +3792,18 @@ preference固定训练输入、canonical Austin collision cache和ordinary scena
 100步，branch return mean/std `.0349048/.3974554`、raw leave-one-out advantage std `.0424168`、
 pre-update max abs log-ratio `0`；独立gradient norm `13.0399`且finite；
 actor/critic update和临时checkpoint成功。短生命周期的critic explained variance为`-.805422`，因主
-rollout只有16步，不是性能或critic准入证据。模块合并后真实preference smoke仍为46/19 episode、
-8/8 batch，总/target/control loss为`2.995607/5.957267/.033947`且finite。
+rollout只有16步，不是性能或critic准入证据。模块合并当时的真实preference smoke为46/19 episode、
+8/8 batch，总/target/control loss为`2.995607/5.957267/.033947`且finite；当前自包含fixture只替代
+机械回归的数据依赖，不改写该历史结果。
 
 ### 26.5 尚未证明与停止边界
 
-当前只证明机械链正确、没有上一代PPO数据闭环、branch return有动作差异且能更新最终actor。它没有
-证明64条/轮的样本量、100步horizon或`.10`权重最优，也没有证明能降低正式四图collision；测试中的
-64条都因100步horizon结束，不能被写成collision rescue证据。正式45-update训练和四图各600 eval尚未
-启动。
-
-不要在首轮前扫描state数、K、horizon、loss coefficient、seed、探索std或trigger；任何参数改变都是
-新实验。若首轮formal训练获授权，必须使用上述唯一固定合同，并只按GUIDE规定的U42--U45四图各600
-判定性能；训练branch不能替代模型eval。2026-08-10 `OnlineBranchRollout`与固定常量已经并入
+2026-08-11固定合同已完成45个formal update和U45四图各600。训练累计720个state、2,880条branch、
+266,795 branch simulator step；outcome为horizon 2,463、ego collision 197、overtake 156、follow 64，
+每轮advantage std均值`.03638`。U45四图为`23/359、33/361、42/388、32/393`，合计`130/1501`；
+相对BC碰撞无变化而超车增加，但被RW30与first-action preference U44计数支配。当前固定实例关闭，
+不得扫描state数、K、horizon、loss coefficient、seed、探索std、trigger或update长度。训练branch不能
+替代模型eval；完整执行和配对见§30与`ANALYSIS.md` §56。2026-08-10 `OnlineBranchRollout`与固定常量已经并入
 `ppo/rollout.py`；删除其中的在线分支实现、四个接入点和对应测试会失去该在线训练臂及其
 snapshot/ratio/lifecycle回归能力，但不会影响开关默认关闭时的production路径。
 
@@ -3794,14 +3811,15 @@ snapshot/ratio/lifecycle回归能力，但不会影响开关默认关闭时的pr
 
 ### 27.1 CLI与默认等价路径
 
-`train_ppo.py`不再暴露文字型探索模式，改为两个直接表达物理语义的整数接口：
+`train_ppo.py`不再暴露文字型探索模式，改为三个直接表达物理语义的整数接口：
 
 ```text
+--steering_noise_hold_steps 1
 --speed_noise_hold_steps 1
 --front_corridor_speed_noise_hold_steps 0
 ```
 
-默认`1/0`表示每个`.01s` simulator step都重新采样speed standard Gaussian residual，且不构造
+默认`1/1/0`表示每个`.01s` simulator step都重新采样steering与speed standard Gaussian residual，且不构造
 前向走廊gate；它继续走原逐步独立collector，不增加gate几何、temporal state或额外RNG draw。
 `--speed_noise_hold_steps 10`实现全局K10：actor对当前361D observation和GRU hidden的mean仍以
 100 Hz重算，只把同一个standard residual `z`连续用于10个mean，实际speed action始终为
@@ -3829,21 +3847,28 @@ train_ppo.py --speed_noise_hold_steps K [--front_corridor_speed_noise_hold_steps
 
 每个transition保存并重放其边际Gaussian log-prob，actor/value、GAE和recurrent sequence仍按100 Hz。
 准确边界是：这是“时间相关collection exploration + per-transition PPO likelihood”，不是把整段K步
-residual当作一个联合随机变量后计算block joint likelihood。Deterministic eval直接取actor mean，两个
+residual当作一个联合随机变量后计算block joint likelihood。Deterministic eval直接取actor mean，三个
 hold参数均不进入部署actor或12-key checkpoint。
+
+2026-08-11新增`--steering_noise_hold_steps`。设为`10`时，steering latent standard residual连续保留
+10个`.01s` step，actor steering mean仍每步重算，物理动作仍为
+`0.52*tanh(latent_mean_t + .03*z)`；speed K10语义不变。新接口不改变边际`.03/.15`标准差，且
+`front_corridor_speed_noise_hold_steps=0`时完全不构造走廊gate。当前正式处理只测试全局
+steering K10与speed K10的组合，不测试steering走廊K50。
 
 ### 27.2 回归合同
 
-`scripts/test_online_same_state_branch_ppo.py::exploration_test()`直接检查：K10的0--9、10--19、20--24
+`scripts/test_first_action_preference.py::exploration_test()`直接检查：speed K10及steering+speed K10的0--9、10--19、20--24
 分别保持三个residual；K10/K50在第12步进入gate时重采样、12--61共50步逐位不变、第62步退出gate
-再次重采样。2026-08-10实测通过。该测试只证明块和相位边界正确，没有运行30-update训练或四图600，
-所以两种探索当前均为“实现完成、性能未知”。
+再次重采样。2026-08-10实测通过。2026-08-11两臂正式30-update与四图各600均完成：全局K10为
+`85/1488`，K10/K50为`74/1566`；后者相对前者collision `57/46,p=.3245`、overtake
+`33/111,p=4.58e-11`。因此固定K10/K50配置通过为高超车前沿，未建立安全改善，见§30。
 
 ## 28. 100 Hz序列上的10 Hz直接PPO loss抽样
 
 ### 28.1 精确训练语义
 
-CLI为`--ppo_loss_sample_stride`，默认`1`。设为`10`时环境仍以100 Hz执行并保存全部observation、action、
+历史实验CLI为`--ppo_loss_sample_stride`，默认`1`。设为`10`时环境仍以100 Hz执行并保存全部observation、action、
 reward、old log-prob、actor/critic hidden与episode boundary；GAE/return也在完整100 Hz transition链上
 计算。Recurrent actor和critic在minibatch内仍逐步消费全部有效行，因此第`t`个被选loss位置的hidden
 包含此前每个`.01s` observation，不把GRU改成10 Hz。
@@ -3854,16 +3879,20 @@ reward、old log-prob、actor/critic hidden与episode boundary；GAE/return也�
 actor clipped surrogate、advantage normalization、KL/clip telemetry和value MSE只在mask为1的位置
 计算。Critic warm-up不是PPO formal loss，继续使用完整100 Hz数据。
 
-因此该接口准确描述为“100 Hz collection/GAE/recurrent replay + 10 Hz direct actor/value loss”，不能写成
+因此该历史接口准确描述为“100 Hz collection/GAE/recurrent replay + 10 Hz direct actor/value loss”，不能写成
 10 Hz环境、10 Hz动作输出、10 HzGRU或丢弃90% rollout。它是有意改变优化估计量的实验轴，并不声称
-与标准100 Hz PPO数学等价。
+与标准100 Hz PPO数学等价。2026-08-11负结果确认后，用户明确退役该方法；CLI与buffer mask、RNG、
+metrics和专用测试均已从活动代码删除，以下只保留历史语义。
 
 ### 28.2 回归合同
 
 `End2RaceRolloutBuffer.prepare_loss_sampling()`在flatten前生成固定mask；stride=1不调用RNG且mask全1。
 测试用2个env、100步、每个env两段episode，实测200个collection位置选择20个loss位置，每段相邻
 位置严格相差10。真实collision-prefix生命周期又用stride10完成一次actor/critic formal update，metrics
-确认selected count严格位于0与total之间。没有正式30-update或四图eval结果。
+确认selected count严格位于0与total之间。2026-08-11正式U30和四图各600完成，结果`133/1452`；
+相对BC collision `51/55,p=.771`、overtake `41/48,p=.525`，当前固定实例关闭，见§30。
+随后`post-trained/ppo_loss_sample_stride10`与对应`eval_results`被删除；模型身份和统计保留在
+`HANDOFF.md`与`ANALYSIS.md` §56。
 
 ## 29. 当前student碰撞前1秒定向分支PPO
 
@@ -3911,3 +3940,229 @@ main loss共同完成一次actor/critic optimizer update和临时checkpoint。�
 collision rescue率，更不是正式模型性能。没有30/45-update Austin训练，没有四图各600 eval，也没有
 证据说明固定4动作和100步horizon足够。正式运行前不得把机械测试写成方法通过；默认关闭路径不保存
 起点snapshot/action history，不改变production collection或训练数学。
+
+## 30. 2026-08-11 PPO temporal exploration, loss sampling, and online branch execution
+
+### 30.1 Executed contracts
+
+Four fresh actors were trained from `pretrained/end2race.pth`, Austin only, seed42. All unchanged parameters used
+the current `privilege_gru`, clip `.20`, 16 x 6,400 transitions/update, fixed collision cache and reward contract.
+
+```bash
+python train_ppo.py --pretrained_model_path pretrained/end2race.pth --output_dir post-trained/ppo_global_temporal_speed_noise_hold10steps --seed 42 --num_updates 30 --speed_noise_hold_steps 10
+python train_ppo.py --pretrained_model_path pretrained/end2race.pth --output_dir post-trained/ppo_global_hold10_front_corridor_hold50_speed_noise --seed 42 --num_updates 30 --speed_noise_hold_steps 10 --front_corridor_speed_noise_hold_steps 50
+python train_ppo.py --pretrained_model_path pretrained/end2race.pth --output_dir post-trained/ppo_loss_sample_stride10 --seed 42 --num_updates 30 --ppo_loss_sample_stride 10
+python train_ppo.py --pretrained_model_path pretrained/end2race.pth --output_dir post-trained/ppo_online_same_state_branched_return --seed 42 --num_updates 45 --online_same_state_branch_ppo
+```
+
+The first three runs contain warm-up plus 30 complete formal metric rows and 30 actor/critic checkpoint pairs; the
+online run contains warm-up plus 45 formal rows and 45 pairs. All final actors are finite strict 12-key checkpoints.
+
+### 30.2 Evaluation and data contract
+
+The frozen U30/U45 actor of each run was evaluated on Austin, Hockenheim, MoscowRaceway and Nuerburgring, 600
+deterministic ego-scope episodes per map. All 16 packages have 600 unique JSON episodes, 600 exact-key NPZ traces,
+zero errors, finite numeric arrays, common trace lengths, exactly one terminal post-step row, no terminal action and
+exact `ego-opp`/`ego-wall` marker agreement.
+
+Stride10 Moscow initially had one worker SIGSEGV. The exact scenario succeeded in an isolated deterministic rerun;
+its metrics/trace were restored and the original batch was re-aggregated to 600 unique episodes and zero errors. This
+repairs an intermittent worker failure; it does not hide a deterministic scenario failure.
+
+### 30.3 Results and fixed decisions
+
+| Actor | Austin | Hockenheim | Moscow | Nuerburgring | Total | Decision |
+|---|---:|---:|---:|---:|---:|---|
+| Global K10 speed residual U30 | `17/350` | `18/358` | `29/384` | `21/396` | `85/1488` | positive vs BC, superseded |
+| Global K10 + front-corridor K50 U30 | `25/384` | `13/389` | `18/397` | `18/396` | `74/1566` | retain high-overtake frontier |
+| Stride10 direct PPO loss U30 | `34/333` | `32/340` | `44/382` | `23/397` | `133/1452` | tested instance closed |
+| Online same-state branch U45 | `23/359` | `33/361` | `42/388` | `32/393` | `130/1501` | tested instance closed |
+
+K10 to K10/K50 paired collision is `57 removed / 46 created,p=.3245`; overtake is
+`33 lost / 111 gained,p=4.58e-11`. Against RW30 `73/1516`, K10/K50 collision is `38/39,p=1` and overtake is
+`32/82,p=3.14e-6`. The fixed dual-frequency configuration therefore contributes a confirmed progress gain at
+statistically indistinguishable collision, not a confirmed safety gain.
+
+Online branch telemetry totals 720 states, 2,880 branch actions and 266,795 simulator steps; 2,463/2,880 branches
+end at the 100-step horizon. This high unresolved fraction and general-state sampling are the observed mechanism
+limits for the fixed instance. Collision-triggered one-second branch PPO in §29 was not trained and is not judged by
+this result.
+
+Decision-grade package audit and reference comparisons are retained in `ANALYSIS.md` §56.
+
+After the recorded audit, the stride10 method was explicitly retired: its model/evaluation directories and active
+CLI, rollout-mask, telemetry and test implementation were removed. This does not alter the preserved result above.
+
+## 31. Global K10 steering-and-speed temporal exploration execution
+
+The completed treatment used:
+
+```bash
+python train_ppo.py --pretrained_model_path pretrained/end2race.pth --output_dir post-trained/ppo_global_temporal_steering_speed_noise_hold10steps --seed 42 --num_updates 30 --steering_noise_hold_steps 10 --speed_noise_hold_steps 10 --front_corridor_speed_noise_hold_steps 0
+```
+
+`End2RaceGRUPolicy` keeps independent per-slot counters and standard residuals for steering and speed. Steering uses
+`0.52*tanh(latent_mean_t + .03*z_block)` and speed uses `mean_t + .15*z_block`; both block lengths are ten simulator
+steps. Actor means, observations, GRU execution, reward, GAE and direct PPO losses remain 100 Hz. The environment
+does not construct a front-corridor gate when the corridor hold is zero. Evaluation remains deterministic.
+
+The regression in `scripts/test_first_action_preference.py::exploration_test()` checks three distinct K10
+blocks for both dimensions and preserves the older speed-only K10 and speed K10/K50 contracts. The full real
+F110/CUDA lifecycle also completed with zero pre-update log-ratio error and a successful optimizer update.
+
+Formal U30 performance is Austin `12/311`, Hockenheim `10/322`, Moscow `17/378`, Nuerburgring `14/387`, total
+`53/1398`. Relative to speed-only K10 it produces collision `62/30,p=.0011109` and overtake
+`123/33,p=2.10e-13`; it is a conservative trade rather than a useful frontier extension. The fixed instance is
+closed; the CLI and temporal-steering policy state were removed on 2026-08-13, while normal per-step steering
+exploration remains unchanged.
+
+## 32. Collision-triggered current-update and canonical-BC first-action preference
+
+### 32.1 Removed implementation
+
+The failed general-state online branch implementation is no longer callable. The deleted path sampled 16 arbitrary
+on-policy states, drew four stochastic first actions, stopped after at most 100 steps, bootstrapped unresolved returns
+with the critic, and optimized a second clipped-PPO surrogate. Its U45 `130/1501` result remains in §30 and
+`ANALYSIS.md` §56.4, but the following interfaces and helpers were removed:
+
+```text
+--online_same_state_branch_ppo
+--collision_prefix_branch_ppo
+OnlineBranchRollout
+forward_independent_collection
+evaluate_independent_actor_actions
+```
+
+Historical §29 documents the retired one-second branch-PPO prototype; it is not a current run contract.
+
+### 32.2 Online collision-triggered temporary preference（历史实现，已删除）
+
+以下只记录2026-08-12正式实验使用过的机制。该实例U30为`85/1466`并关闭；2026-08-13已从
+`train_ppo.py`、`ppo/env.py`、`ppo/rollout.py`、YAML和回归脚本删除，不能把下述CLI当作当前入口。
+
+历史CLI是一个非负比例：
+
+```text
+--online_collision_preference_step_fraction
+```
+
+Zero preserves production PPO. A positive value is mutually exclusive with a fixed first-action preference dataset.
+It supports both stepwise-independent exploration and the current temporally correlated speed exploration. In the
+latter case the online collector stages the same causal front-corridor gate before every actor step and carries the
+post-step/reset gate into the next transition; branch simulation itself remains deterministic. Each worker stores one
+episode-start runtime snapshot and the applied ego actions. On current-policy ego collision it deterministically
+reconstructs snapshots 150, 100 and 50 simulator steps before contact. The parent keeps the corresponding complete
+actor observation/hidden history; episodes whose beginning predates the formal collector are not labeled.
+
+At each aligned prefix, frozen current `pi_k` supplies its deterministic noop action. The fixed physical residual
+library contains steering `[-.04,-.02,+.02,+.04]`, speed `[-1,-.5,+.5,+1]`, and four `steering +/- .02 x speed
++/- .5` combinations. Every candidate changes only the first action; noop and candidates then use the same frozen
+actor deterministically on their own counterfactual observations until real terminated/truncated terminal. There is
+no 100-step branch horizon, critic bootstrap, sampled branch action, return ranking or old-policy branch ratio.
+
+Terminal outcomes map to `(no_ego_collision, overtake)`: collision `(0,0)`, follow `(1,0)`, overtake `(1,1)`.
+Candidate/noop pairs are retained only under strict Pareto ordering; equal outcomes produce no label. A temporary
+episode replays its actor-visible 361D sequence from zero hidden and applies
+`softplus(-(log_pi(good)-log_pi(bad)))` at the labeled decision positions. Candidate-preferred and noop-preferred
+losses receive equal weight when both exist. Before every update with labels, beta is calibrated from median
+learning-rate-weighted actor step norms so the auxiliary step fraction equals the CLI request. The pairs are reset at
+the next rollout and never written to a persistent dataset. An update without labels executes plain PPO.
+
+删除前的mechanical regression使用K10 global speed noise plus K50 front-corridor
+configuration and a deterministic current-policy collision only to make the terminal outcome reproducible. It
+produced 39 true-terminal branches over three prefixes, 3 strict pairs over two states, 3,915 additional simulator
+steps, a finite beta, and one completed actor/critic update. Snapshot next-transition identity and a self-contained
+fixed-dataset schema/sampler/loss fixture are checked in the same script; no old U44 preference panel is required.
+This is an execution test, not a performance result.
+
+### 32.3 Canonical-BC fixed source
+
+`scripts/build_bc_first_action_preference.py` creates the independent fixed-data alternative. The actor is hard-bound
+to `pretrained/end2race.pth`, map Austin, seed42 and hidden scale4. It uses only the existing canonical-BC
+classification of all 10,800 Austin collision candidates and the 479 collision subset. Current BC collisions form
+target sources. Controls are cache-noncollision difficult candidates that current BC actually finishes as overtake,
+ordered high-speed first; ordinary/eval panels and every PPO checkpoint/trace are excluded.
+
+Each source is branched immediately after its baseline, preventing intervening resets from invalidating runtime
+snapshot state. It uses the same three leads, fixed residuals, deterministic true-terminal continuation and strict
+outcome ordering as the online route. Only labeled episodes are written as schema-1 361D NPZ sequences. Manifest
+provenance records canonical actor/cache hashes and explicitly records no prior PPO/eval use. A dataset is published
+atomically only when both target and control labeled episodes exist; the existing loader then verifies gate verdict,
+gate hash and every sequence hash.
+
+The minimal smoke build requested one target and two difficult controls. It generated one labeled target with 10
+pairs and one labeled control with 1 pair; 117 branches reached terminal in 37,221 simulator steps. The published
+temporary dataset loaded and produced a finite loss. Formal construction defaults to 64 target sources and 64 safe
+control sources; actual labeled counts are reported by the gate and must be inspected before training.
+
+### 32.4 Historical commands and evidence boundary
+
+以下命令只用于解释已完成run，不再能由当前HEAD直接执行；当前没有活动命令。
+
+```bash
+python train_ppo.py --pretrained_model_path pretrained/end2race.pth --output_dir post-trained/ppo_online_collision_first_action_preference --seed 42 --num_updates 30 --speed_noise_hold_steps 10 --front_corridor_speed_noise_hold_steps 50 --online_collision_preference_step_fraction 0.10
+
+python scripts/build_bc_first_action_preference.py --output_dir post-trained/panels/bc_first_action_preference_v1 --target_source_count 64 --control_source_count 64
+python train_ppo.py --pretrained_model_path pretrained/end2race.pth --output_dir post-trained/ppo_bc_source_first_action_preference --seed 42 --num_updates 30 --speed_noise_hold_steps 10 --front_corridor_speed_noise_hold_steps 50 --first_action_preference_dataset post-trained/panels/bc_first_action_preference_v1 --first_action_preference_step_fraction 0.10
+```
+
+These were separate arms and were not combined. Both started the only student training from canonical BC and
+produced the standard 12-key actor, but both added a preference loss and therefore were not pure PPO. Both later
+completed formal training and four-map 600 evaluation; final evidence is in `ANALYSIS.md` §59. The online route was
+materially expensive because branch simulation was synchronous with the vector rollout.
+
+### 32.5 Completed controlled run matrix and reconstruction boundary
+
+The completed matrix used one explicit pure-PPO control and five treatments. All arms started from canonical BC,
+trained only Austin with seed42 for 30 intended formal updates, and retained the same reward, critic, collision cache,
+PPO settings and actor schema. The control was global speed K10 plus front-corridor speed K50. The treatments were:
+
+1. the same K10/K50 control plus canonical-BC fixed first-action preference;
+2. the same K10/K50 control plus online collision-triggered temporary first-action preference;
+3. pure PPO with only the corridor hold changed from K50 to K75;
+4. pure PPO with only the corridor hold changed from K50 to K100;
+5. pure PPO K10/K50 with only `abs(opponent lateral_d) < 0.25m` removed from the gate, while the positive lateral
+   OBB overlap and `(0,2m)` front-body-gap conditions remain.
+
+Control and both preference arms evaluated U27--U30 on four maps x600; K100 and the lateral-offset-gate ablation
+evaluated U30 on four maps x600. K75 stopped after U20 and had no model eval. U30 four-map totals were control
+`74/1566`, fixed BC preference `67/1436`, online collision preference `85/1466`, K100 `110/1425`, and no-lateral
+gate `69/1369`; exact paired results and scientific boundaries are in `ANALYSIS.md` §59. All four completed
+treatments were closed and their raw run/eval products were deleted after recording; K75 was deleted as interrupted,
+not as a measured failure. A later user instruction briefly created a `run.sh` for the distinct §33 BC-native scale arm,
+but it was never executed and was removed during reporting cleanup.
+
+Current mechanical regression keeps K10/K50 block timing, the fixed `.25m` lateral-offset gate, runtime snapshot and
+fixed-dataset loss. The removed-lateral and online preference lifecycle assertions were deleted with their activity
+paths. The numeric hold CLI remains generic even though the tested K100 instance is closed. Reconstructing a deleted
+historical arm would require explicit future authorization; this document alone does not authorize doing so.
+
+## 33. 未执行的BC-native旧规模固定第一动作偏好合同
+
+这是冻结前曾由用户明确要求并写入根目录`run.sh`、但从未执行的合同。`run.sh`已在汇报清理时移除，
+因此本节只记录历史设计，不是当前待办或执行授权。它复用§32.3的
+canonical-BC builder和现有`FirstActionPreferenceDataset` loss，只把source请求规模改为168个BC
+collision target与225个BC safe-overtake control，并把训练合同恢复为45 formal updates。实际labeled
+episode和pair数必须由构造后的`gate_report.json`给出；请求source数不是监督标签数。
+
+活动配置键为：
+
+```text
+first_action_preference_target_episodes_per_batch: 8
+first_action_preference_control_episodes_per_batch: 8
+first_action_preference_lead_steps: [150, 100, 50]
+first_action_preference_action_residuals: 12个固定single-step物理残差
+```
+
+原`run.sh`的固定顺序是：
+
+1. `scripts/build_bc_first_action_preference.py`构造
+   `post-trained/panels/bc_native_first_action_preference_168target_225control_v1`；
+2. 从`pretrained/end2race.pth` fresh start，只训练Austin、seed42，使用全局speed K10和2m前向走廊
+   speed K50、preference step fraction `.10`，输出到新的
+   `post-trained/ppo_bc_native_full_scale_first_action_preference`；
+3. 固定评测U42--U45，每个checkpoint依次运行Austin、Hockenheim、MoscowRaceway和Nuerburgring
+   各600 deterministic episode并保存完整trace。
+
+截至2026-08-13，dataset目录与run目录均不存在，且没有活动训练/评测进程，所以没有label数量、训练
+遥测或性能结果。Lattice-reference、原`instrument_train`场景宇宙、周期性刷新或其他数据来源也都只是历史讨论。
