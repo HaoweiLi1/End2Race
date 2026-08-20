@@ -1,0 +1,773 @@
+{
+  "band_count_level_task_achieved_updates": [
+    "U42",
+    "U43",
+    "U44",
+    "U45"
+  ],
+  "evidence_status": "completed_fixed_seed42_four_map_600_evaluation",
+  "experiment_id": "ppo_corridor_temporal_first_action_preference_v1",
+  "primary_count_level_task_achieved": true,
+  "primary_high_target_achieved": false,
+  "primary_update": 44,
+  "quality": {
+    "all_collision_markers_match_results": true,
+    "all_errors_zero": true,
+    "all_panels_600_unique": true,
+    "all_result_trace_panel_keys_equal": true,
+    "all_results_finite": true,
+    "all_terminal_contracts_pass": true,
+    "all_trace_arrays_aligned_and_finite": true,
+    "episode_count": 9600,
+    "formal_package_count": 16,
+    "original_per_package_eval_manifest_available": false,
+    "trace_count": 9600
+  },
+  "schema_version": 1,
+  "training": {
+    "actor_optimizer_steps_per_update": 16,
+    "beta": 0.005982391608326459,
+    "control_pairs": 103,
+    "formal_updates": 45,
+    "last_five_training_collision_range": [
+      17,
+      26
+    ],
+    "last_five_training_overtake_range": [
+      76,
+      85
+    ],
+    "metric_rows": 46,
+    "seed": 42,
+    "target_pairs": 337,
+    "target_step_fraction": 0.1,
+    "u1_margin_mean": 2.9527805012006025,
+    "u1_satisfied_fraction": 0.6330891330891331,
+    "u1_target_margin_mean": -1.4058163014980287,
+    "u45_margin_mean": 4.235247244595028,
+    "u45_satisfied_fraction": 0.6945121951219512,
+    "u45_target_margin_mean": 0.5059172850165327
+  },
+  "updates": {
+    "U42": {
+      "aggregate": {
+        "collision": 53,
+        "ego_opp": 50,
+        "ego_wall": 3,
+        "follow": 801,
+        "overtake": 1546
+      },
+      "all_per_map_bc_gates_pass": true,
+      "count_level_task_achieved": true,
+      "high_target_collision_below_40_and_overtake_above_1500": false,
+      "maps": {
+        "Austin": {
+          "collision": 11,
+          "ego_opp": 8,
+          "ego_wall": 3,
+          "follow": 212,
+          "overtake": 377,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 2,
+              "collision_exact_mcnemar_p": 1.049041748046875e-05,
+              "collision_removed": 24,
+              "overtake_exact_mcnemar_p": 4.1109160520136356e-10,
+              "overtake_gained": 40,
+              "overtake_lost": 2
+            },
+            "rw30": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 0.332305908203125,
+              "collision_removed": 11,
+              "overtake_exact_mcnemar_p": 0.0783538818359375,
+              "overtake_gained": 15,
+              "overtake_lost": 6
+            },
+            "u44": {
+              "collision_created": 7,
+              "collision_exact_mcnemar_p": 0.18924713134765625,
+              "collision_removed": 14,
+              "overtake_exact_mcnemar_p": 1.0258372640237212e-07,
+              "overtake_gained": 37,
+              "overtake_lost": 4
+            }
+          }
+        },
+        "Hockenheim": {
+          "collision": 8,
+          "ego_opp": 8,
+          "ego_wall": 0,
+          "follow": 213,
+          "overtake": 379,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 1,
+              "collision_exact_mcnemar_p": 2.09808349609375e-05,
+              "collision_removed": 20,
+              "overtake_exact_mcnemar_p": 2.837623469531536e-10,
+              "overtake_gained": 37,
+              "overtake_lost": 1
+            },
+            "rw30": {
+              "collision_created": 3,
+              "collision_exact_mcnemar_p": 0.03515625,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 0.0192108154296875,
+              "overtake_gained": 15,
+              "overtake_lost": 4
+            },
+            "u44": {
+              "collision_created": 4,
+              "collision_exact_mcnemar_p": 0.076812744140625,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 1.8570244719740003e-07,
+              "overtake_gained": 36,
+              "overtake_lost": 4
+            }
+          }
+        },
+        "MoscowRaceway": {
+          "collision": 18,
+          "ego_opp": 18,
+          "ego_wall": 0,
+          "follow": 189,
+          "overtake": 393,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 8,
+              "collision_exact_mcnemar_p": 0.00011222142620681552,
+              "collision_removed": 33,
+              "overtake_exact_mcnemar_p": 0.0011932429624721408,
+              "overtake_gained": 28,
+              "overtake_lost": 8
+            },
+            "rw30": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 1,
+              "collision_removed": 4,
+              "overtake_exact_mcnemar_p": 0.2890625,
+              "overtake_gained": 6,
+              "overtake_lost": 2
+            },
+            "u44": {
+              "collision_created": 13,
+              "collision_exact_mcnemar_p": 0.6776394844055176,
+              "collision_removed": 10,
+              "overtake_exact_mcnemar_p": 0.629058837890625,
+              "overtake_gained": 10,
+              "overtake_lost": 7
+            }
+          }
+        },
+        "Nuerburgring": {
+          "collision": 16,
+          "ego_opp": 16,
+          "ego_wall": 0,
+          "follow": 187,
+          "overtake": 397,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 0.04138946533203125,
+              "collision_removed": 15,
+              "overtake_exact_mcnemar_p": 0.09228515625,
+              "overtake_gained": 10,
+              "overtake_lost": 3
+            },
+            "rw30": {
+              "collision_created": 2,
+              "collision_exact_mcnemar_p": 0.0654296875,
+              "collision_removed": 9,
+              "overtake_exact_mcnemar_p": 0.0703125,
+              "overtake_gained": 7,
+              "overtake_lost": 1
+            },
+            "u44": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 0.5078125,
+              "collision_removed": 3,
+              "overtake_exact_mcnemar_p": 1,
+              "overtake_gained": 4,
+              "overtake_lost": 4
+            }
+          }
+        }
+      },
+      "paired_comparisons": {
+        "bc": {
+          "collision_created": 16,
+          "collision_exact_mcnemar_p": 3.77738189059387e-14,
+          "collision_removed": 92,
+          "overtake_exact_mcnemar_p": 6.510103489453573e-21,
+          "overtake_gained": 115,
+          "overtake_lost": 14
+        },
+        "rw30": {
+          "collision_created": 16,
+          "collision_exact_mcnemar_p": 0.0077874363057435225,
+          "collision_removed": 36,
+          "overtake_exact_mcnemar_p": 7.333218396948782e-05,
+          "overtake_gained": 43,
+          "overtake_lost": 13
+        },
+        "u44": {
+          "collision_created": 30,
+          "collision_exact_mcnemar_p": 0.33555761823401514,
+          "collision_removed": 39,
+          "overtake_exact_mcnemar_p": 1.3991901162745085e-11,
+          "overtake_gained": 87,
+          "overtake_lost": 19
+        }
+      },
+      "pareto_dominates_rw30": true,
+      "pareto_dominates_u44": true,
+      "per_map_bc_gate": {
+        "Austin": true,
+        "Hockenheim": true,
+        "MoscowRaceway": true,
+        "Nuerburgring": true
+      }
+    },
+    "U43": {
+      "aggregate": {
+        "collision": 50,
+        "ego_opp": 47,
+        "ego_wall": 3,
+        "follow": 817,
+        "overtake": 1533
+      },
+      "all_per_map_bc_gates_pass": true,
+      "count_level_task_achieved": true,
+      "high_target_collision_below_40_and_overtake_above_1500": false,
+      "maps": {
+        "Austin": {
+          "collision": 11,
+          "ego_opp": 8,
+          "ego_wall": 3,
+          "follow": 217,
+          "overtake": 372,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 4,
+              "collision_exact_mcnemar_p": 5.947612226009369e-05,
+              "collision_removed": 26,
+              "overtake_exact_mcnemar_p": 2.4995097192004323e-07,
+              "overtake_gained": 38,
+              "overtake_lost": 5
+            },
+            "rw30": {
+              "collision_created": 7,
+              "collision_exact_mcnemar_p": 0.359283447265625,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 0.5412561893463135,
+              "overtake_gained": 14,
+              "overtake_lost": 10
+            },
+            "u44": {
+              "collision_created": 8,
+              "collision_exact_mcnemar_p": 0.21003961563110352,
+              "collision_removed": 15,
+              "overtake_exact_mcnemar_p": 8.364584573428147e-06,
+              "overtake_gained": 34,
+              "overtake_lost": 6
+            }
+          }
+        },
+        "Hockenheim": {
+          "collision": 8,
+          "ego_opp": 8,
+          "ego_wall": 0,
+          "follow": 220,
+          "overtake": 372,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 1,
+              "collision_exact_mcnemar_p": 2.09808349609375e-05,
+              "collision_removed": 20,
+              "overtake_exact_mcnemar_p": 1.0843941709026694e-06,
+              "overtake_gained": 33,
+              "overtake_lost": 4
+            },
+            "rw30": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 0.063568115234375,
+              "collision_removed": 14,
+              "overtake_exact_mcnemar_p": 0.557197093963623,
+              "overtake_gained": 15,
+              "overtake_lost": 11
+            },
+            "u44": {
+              "collision_created": 4,
+              "collision_exact_mcnemar_p": 0.076812744140625,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 2.2361520677804947e-05,
+              "overtake_gained": 30,
+              "overtake_lost": 5
+            }
+          }
+        },
+        "MoscowRaceway": {
+          "collision": 19,
+          "ego_opp": 19,
+          "ego_wall": 0,
+          "follow": 193,
+          "overtake": 388,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 6.960169412195683e-05,
+              "collision_removed": 30,
+              "overtake_exact_mcnemar_p": 0.010673840530216694,
+              "overtake_gained": 23,
+              "overtake_lost": 8
+            },
+            "rw30": {
+              "collision_created": 7,
+              "collision_exact_mcnemar_p": 0.7744140625,
+              "collision_removed": 5,
+              "overtake_exact_mcnemar_p": 1,
+              "overtake_gained": 6,
+              "overtake_lost": 7
+            },
+            "u44": {
+              "collision_created": 13,
+              "collision_exact_mcnemar_p": 0.5234670639038086,
+              "collision_removed": 9,
+              "overtake_exact_mcnemar_p": 0.8145294189453125,
+              "overtake_gained": 8,
+              "overtake_lost": 10
+            }
+          }
+        },
+        "Nuerburgring": {
+          "collision": 12,
+          "ego_opp": 12,
+          "ego_wall": 0,
+          "follow": 187,
+          "overtake": 401,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 2,
+              "collision_exact_mcnemar_p": 0.001312255859375,
+              "collision_removed": 16,
+              "overtake_exact_mcnemar_p": 0.00341796875,
+              "overtake_gained": 12,
+              "overtake_lost": 1
+            },
+            "rw30": {
+              "collision_created": 0,
+              "collision_exact_mcnemar_p": 0.0009765625,
+              "collision_removed": 11,
+              "overtake_exact_mcnemar_p": 0.001953125,
+              "overtake_gained": 10,
+              "overtake_lost": 0
+            },
+            "u44": {
+              "collision_created": 4,
+              "collision_exact_mcnemar_p": 1,
+              "collision_removed": 5,
+              "overtake_exact_mcnemar_p": 0.3876953125,
+              "overtake_gained": 8,
+              "overtake_lost": 4
+            }
+          }
+        }
+      },
+      "paired_comparisons": {
+        "bc": {
+          "collision_created": 13,
+          "collision_exact_mcnemar_p": 7.984598955148307e-16,
+          "collision_removed": 92,
+          "overtake_exact_mcnemar_p": 2.314380693056468e-16,
+          "overtake_gained": 106,
+          "overtake_lost": 18
+        },
+        "rw30": {
+          "collision_created": 19,
+          "collision_exact_mcnemar_p": 0.004444019471066868,
+          "collision_removed": 42,
+          "overtake_exact_mcnemar_p": 0.060370037339928545,
+          "overtake_gained": 45,
+          "overtake_lost": 28
+        },
+        "u44": {
+          "collision_created": 29,
+          "collision_exact_mcnemar_p": 0.18821620302302766,
+          "collision_removed": 41,
+          "overtake_exact_mcnemar_p": 6.880761307711572e-08,
+          "overtake_gained": 80,
+          "overtake_lost": 25
+        }
+      },
+      "pareto_dominates_rw30": true,
+      "pareto_dominates_u44": true,
+      "per_map_bc_gate": {
+        "Austin": true,
+        "Hockenheim": true,
+        "MoscowRaceway": true,
+        "Nuerburgring": true
+      }
+    },
+    "U44": {
+      "aggregate": {
+        "collision": 49,
+        "ego_opp": 47,
+        "ego_wall": 2,
+        "follow": 821,
+        "overtake": 1530
+      },
+      "all_per_map_bc_gates_pass": true,
+      "count_level_task_achieved": true,
+      "high_target_collision_below_40_and_overtake_above_1500": false,
+      "maps": {
+        "Austin": {
+          "collision": 8,
+          "ego_opp": 6,
+          "ego_wall": 2,
+          "follow": 220,
+          "overtake": 372,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 1,
+              "collision_exact_mcnemar_p": 4.172325134277344e-07,
+              "collision_removed": 26,
+              "overtake_exact_mcnemar_p": 3.608874976634979e-08,
+              "overtake_gained": 36,
+              "overtake_lost": 3
+            },
+            "rw30": {
+              "collision_created": 4,
+              "collision_exact_mcnemar_p": 0.076812744140625,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 0.5412561893463135,
+              "overtake_gained": 14,
+              "overtake_lost": 10
+            },
+            "u44": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 0.052478790283203125,
+              "collision_removed": 16,
+              "overtake_exact_mcnemar_p": 4.255962267052382e-06,
+              "overtake_gained": 33,
+              "overtake_lost": 5
+            }
+          }
+        },
+        "Hockenheim": {
+          "collision": 9,
+          "ego_opp": 9,
+          "ego_wall": 0,
+          "follow": 216,
+          "overtake": 375,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 3,
+              "collision_exact_mcnemar_p": 0.0002771615982055664,
+              "collision_removed": 21,
+              "overtake_exact_mcnemar_p": 1.8570244719740003e-07,
+              "overtake_gained": 36,
+              "overtake_lost": 4
+            },
+            "rw30": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 0.11531829833984375,
+              "collision_removed": 14,
+              "overtake_exact_mcnemar_p": 0.24778856337070465,
+              "overtake_gained": 17,
+              "overtake_lost": 10
+            },
+            "u44": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 0.143463134765625,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 1.941574737429619e-06,
+              "overtake_gained": 32,
+              "overtake_lost": 4
+            }
+          }
+        },
+        "MoscowRaceway": {
+          "collision": 18,
+          "ego_opp": 18,
+          "ego_wall": 0,
+          "follow": 196,
+          "overtake": 386,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 4.12575900554657e-05,
+              "collision_removed": 31,
+              "overtake_exact_mcnemar_p": 0.029449373483657837,
+              "overtake_gained": 22,
+              "overtake_lost": 9
+            },
+            "rw30": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 1,
+              "collision_removed": 5,
+              "overtake_exact_mcnemar_p": 0.60723876953125,
+              "overtake_gained": 6,
+              "overtake_lost": 9
+            },
+            "u44": {
+              "collision_created": 12,
+              "collision_exact_mcnemar_p": 0.6636238098144531,
+              "collision_removed": 9,
+              "overtake_exact_mcnemar_p": 0.5034446716308594,
+              "overtake_gained": 8,
+              "overtake_lost": 12
+            }
+          }
+        },
+        "Nuerburgring": {
+          "collision": 14,
+          "ego_opp": 14,
+          "ego_wall": 0,
+          "follow": 189,
+          "overtake": 397,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 3,
+              "collision_exact_mcnemar_p": 0.007537841796875,
+              "collision_removed": 15,
+              "overtake_exact_mcnemar_p": 0.09228515625,
+              "overtake_gained": 10,
+              "overtake_lost": 3
+            },
+            "rw30": {
+              "collision_created": 1,
+              "collision_exact_mcnemar_p": 0.01171875,
+              "collision_removed": 10,
+              "overtake_exact_mcnemar_p": 0.0703125,
+              "overtake_gained": 7,
+              "overtake_lost": 1
+            },
+            "u44": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 1,
+              "collision_removed": 4,
+              "overtake_exact_mcnemar_p": 1,
+              "overtake_gained": 4,
+              "overtake_lost": 4
+            }
+          }
+        }
+      },
+      "paired_comparisons": {
+        "bc": {
+          "collision_created": 13,
+          "collision_exact_mcnemar_p": 4.542762798571598e-16,
+          "collision_removed": 93,
+          "overtake_exact_mcnemar_p": 2.219868911451848e-15,
+          "overtake_gained": 104,
+          "overtake_lost": 19
+        },
+        "rw30": {
+          "collision_created": 17,
+          "collision_exact_mcnemar_p": 0.0022325516199429227,
+          "collision_removed": 41,
+          "overtake_exact_mcnemar_p": 0.13017768031912763,
+          "overtake_gained": 44,
+          "overtake_lost": 30
+        },
+        "u44": {
+          "collision_created": 28,
+          "collision_exact_mcnemar_p": 0.14803218069275836,
+          "collision_removed": 41,
+          "overtake_exact_mcnemar_p": 2.451911338599065e-07,
+          "overtake_gained": 77,
+          "overtake_lost": 25
+        }
+      },
+      "pareto_dominates_rw30": true,
+      "pareto_dominates_u44": true,
+      "per_map_bc_gate": {
+        "Austin": true,
+        "Hockenheim": true,
+        "MoscowRaceway": true,
+        "Nuerburgring": true
+      }
+    },
+    "U45": {
+      "aggregate": {
+        "collision": 52,
+        "ego_opp": 49,
+        "ego_wall": 3,
+        "follow": 815,
+        "overtake": 1533
+      },
+      "all_per_map_bc_gates_pass": true,
+      "count_level_task_achieved": true,
+      "high_target_collision_below_40_and_overtake_above_1500": false,
+      "maps": {
+        "Austin": {
+          "collision": 13,
+          "ego_opp": 10,
+          "ego_wall": 3,
+          "follow": 219,
+          "overtake": 368,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 4,
+              "collision_exact_mcnemar_p": 0.00017999112606048584,
+              "collision_removed": 24,
+              "overtake_exact_mcnemar_p": 1.0843941709026694e-06,
+              "overtake_gained": 33,
+              "overtake_lost": 4
+            },
+            "rw30": {
+              "collision_created": 7,
+              "collision_exact_mcnemar_p": 0.629058837890625,
+              "collision_removed": 10,
+              "overtake_exact_mcnemar_p": 1,
+              "overtake_gained": 10,
+              "overtake_lost": 10
+            },
+            "u44": {
+              "collision_created": 8,
+              "collision_exact_mcnemar_p": 0.38331031799316406,
+              "collision_removed": 13,
+              "overtake_exact_mcnemar_p": 0.00011616700794547796,
+              "overtake_gained": 31,
+              "overtake_lost": 7
+            }
+          }
+        },
+        "Hockenheim": {
+          "collision": 10,
+          "ego_opp": 10,
+          "ego_wall": 0,
+          "follow": 213,
+          "overtake": 377,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 2,
+              "collision_exact_mcnemar_p": 0.00022125244140625,
+              "collision_removed": 19,
+              "overtake_exact_mcnemar_p": 5.398760549724102e-09,
+              "overtake_gained": 36,
+              "overtake_lost": 2
+            },
+            "rw30": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 0.143463134765625,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 0.0783538818359375,
+              "overtake_gained": 15,
+              "overtake_lost": 6
+            },
+            "u44": {
+              "collision_created": 6,
+              "collision_exact_mcnemar_p": 0.237884521484375,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 2.8288777684792876e-06,
+              "overtake_gained": 36,
+              "overtake_lost": 6
+            }
+          }
+        },
+        "MoscowRaceway": {
+          "collision": 15,
+          "ego_opp": 15,
+          "ego_wall": 0,
+          "follow": 195,
+          "overtake": 390,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 7,
+              "collision_exact_mcnemar_p": 1.5097200957825407e-05,
+              "collision_removed": 35,
+              "overtake_exact_mcnemar_p": 0.0059881205670535564,
+              "overtake_gained": 26,
+              "overtake_lost": 9
+            },
+            "rw30": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 0.7744140625,
+              "collision_removed": 7,
+              "overtake_exact_mcnemar_p": 1,
+              "overtake_gained": 8,
+              "overtake_lost": 7
+            },
+            "u44": {
+              "collision_created": 12,
+              "collision_exact_mcnemar_p": 1,
+              "collision_removed": 12,
+              "overtake_exact_mcnemar_p": 1,
+              "overtake_gained": 10,
+              "overtake_lost": 10
+            }
+          }
+        },
+        "Nuerburgring": {
+          "collision": 14,
+          "ego_opp": 14,
+          "ego_wall": 0,
+          "follow": 188,
+          "overtake": 398,
+          "paired_comparisons": {
+            "bc": {
+              "collision_created": 4,
+              "collision_exact_mcnemar_p": 0.01181793212890625,
+              "collision_removed": 16,
+              "overtake_exact_mcnemar_p": 0.057373046875,
+              "overtake_gained": 11,
+              "overtake_lost": 3
+            },
+            "rw30": {
+              "collision_created": 1,
+              "collision_exact_mcnemar_p": 0.01171875,
+              "collision_removed": 10,
+              "overtake_exact_mcnemar_p": 0.015625,
+              "overtake_gained": 7,
+              "overtake_lost": 0
+            },
+            "u44": {
+              "collision_created": 5,
+              "collision_exact_mcnemar_p": 1,
+              "collision_removed": 4,
+              "overtake_exact_mcnemar_p": 1,
+              "overtake_gained": 5,
+              "overtake_lost": 4
+            }
+          }
+        }
+      },
+      "paired_comparisons": {
+        "bc": {
+          "collision_created": 17,
+          "collision_exact_mcnemar_p": 4.263496347096333e-14,
+          "collision_removed": 94,
+          "overtake_exact_mcnemar_p": 2.314380693056468e-16,
+          "overtake_gained": 106,
+          "overtake_lost": 18
+        },
+        "rw30": {
+          "collision_created": 18,
+          "collision_exact_mcnemar_p": 0.007508175534150202,
+          "collision_removed": 39,
+          "overtake_exact_mcnemar_p": 0.04295654552438921,
+          "overtake_gained": 40,
+          "overtake_lost": 23
+        },
+        "u44": {
+          "collision_created": 31,
+          "collision_exact_mcnemar_p": 0.28878428041410487,
+          "collision_removed": 41,
+          "overtake_exact_mcnemar_p": 1.2607715321717734e-07,
+          "overtake_gained": 82,
+          "overtake_lost": 27
+        }
+      },
+      "pareto_dominates_rw30": true,
+      "pareto_dominates_u44": true,
+      "per_map_bc_gate": {
+        "Austin": true,
+        "Hockenheim": true,
+        "MoscowRaceway": true,
+        "Nuerburgring": true
+      }
+    }
+  }
+}

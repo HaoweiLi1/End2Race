@@ -1,0 +1,11 @@
+{
+  "mode": "baseline",
+  "hard_neighbors": false,
+  "cache_dir": "/home/haowei/Documents/End2Race/post-trained/collision-cache/default",
+  "base_cache_dir": "/home/haowei/Documents/End2Race/post-trained/collision-cache/default",
+  "base_cache_hit": true,
+  "base_reclassified": false,
+  "base_candidate_count": 10800,
+  "base_collision_count": 479,
+  "collision_count": 479
+}

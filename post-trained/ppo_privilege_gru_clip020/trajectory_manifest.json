@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "experiment_id": "ppo_privilege_gru_clip020",
+  "canonical_model_root": "post-trained/ppo_privilege_gru_clip020",
+  "formal_updates": 45,
+  "checkpoint_layout": "update<N>/{actor.pth,critic.pt}",
+  "training_record_source": "post-trained/ppo_privilege_gru_0722_long45_clip020",
+  "source_runs": [
+    {
+      "path": "post-trained/ppo_privilege_gru_0722_long_clip020",
+      "formal_updates": 30,
+      "role": "original_30_update_run"
+    },
+    {
+      "path": "post-trained/ppo_privilege_gru_0722_long45_clip020",
+      "formal_updates": 45,
+      "role": "complete_45_update_run"
+    }
+  ],
+  "merge_validation": {
+    "shared_update_range": [
+      1,
+      30
+    ],
+    "actor_tensor_equal_updates": 30,
+    "critic_tensor_equal_updates": 30,
+    "warmup_critic_tensor_equal": true,
+    "episode_prefix_linewise_equal": true,
+    "semantic_metrics_prefix_equal": true,
+    "ignored_nonsemantic_metric_fields": [
+      "actor_checkpoint",
+      "critic_checkpoint",
+      "rollout_wall_seconds",
+      "train_wall_seconds",
+      "actor_train_wall_seconds",
+      "critic_train_wall_seconds"
+    ],
+    "collision_scenarios_equal": true,
+    "ordinary_scenarios_equal": true
+  },
+  "resume_used": false,
+  "extension_method": "fresh_start_from_canonical_bc_to_45_updates"
+}

@@ -19,10 +19,11 @@ https://github.com/user-attachments/assets/5369f5ea-13fa-44c3-a6aa-5b3c2b59b10c
 ## Code Structure
 
 ```text
-End2Race/
+End2Race_PPO/
 ├── pretrained/
 │   └── end2race.pth             # Canonical pretrained 12-key actor
-├── post-trained/                # PPO run records and actor/critic checkpoints
+├── post-trained/                # Selected PPO actors and compact run provenance
+├── eval_results/                # Selected per-scenario result JSON; raw traces stay local
 ├── ppo/
 │   ├── env.py                   # PPO environment, corridor gate, and parent-scheduled VecEnv
 │   ├── policy.py                # Actor adapter, selected Critic, and exploration distribution
@@ -37,6 +38,7 @@ End2Race/
 ├── train.py                     # Imitation-learning training
 ├── train_ppo.py                 # PPO entry point and thin SB3 adapter
 ├── demonstration.py            # Expert demonstration generation
+├── lattice_single.py           # Single-agent lattice data collection
 ├── eval_singleagent.py
 ├── eval_multiagent.py
 ├── collect.sh
@@ -55,17 +57,27 @@ End2Race/
 ### Clone and install
 
 ```bash
-git clone https://github.com/HaoweiLi1/End2Race.git
-cd End2Race
-conda create --name end2race python=3.10 -y
-conda activate end2race
+git clone https://github.com/HaoweiLi1/End2Race_PPO.git
+cd End2Race_PPO
+conda create --name end2race_ppo python=3.10 -y
+conda activate end2race_ppo
 bash install.sh
 ```
+
+### Portable PPO artifacts
+
+The repository keeps the models needed to continue development without publishing the full local experiment archive:
+
+- canonical BC: `pretrained/end2race.pth`;
+- current production U30: `post-trained/ppo_privilege_gru_clip020/update30/actor.pth`;
+- selected first-action-preference U44 candidate: `post-trained/ppo_corridor_temporal_first_action_preference_v1/update44/actor.pth`.
+
+The selected run configuration, metrics, episode records, scenario identities, and lightweight deterministic `results_multi.json` files are versioned with these actors. Raw numerical traces, critic checkpoints, intermediate actors, datasets, and superseded evaluation products remain excluded because they are large and are not required for deployment or result comparison. The decision record and evidence boundaries are in `.agents/HANDOFF.md` and `.agents/ANALYSIS.md`.
 
 Run training commands from the repository root. On the primary development machine, the validated interpreter is:
 
 ```text
-/home/haowei/miniconda3/envs/end2race/bin/python
+/home/haowei/miniconda3/envs/end2race_ppo/bin/python
 ```
 
 ## Evaluation

@@ -1,6 +1,6 @@
 # End2Race 当前 HANDOFF
 
-更新时间：2026-08-14（Asia/Singapore；进入汇报整理期，不再新增tech；当前无排队训练）
+更新时间：2026-08-20（Asia/Singapore；进入汇报整理期，不再新增tech；当前无排队训练）
 
 ## 0. 文档职责和读取顺序
 
@@ -32,9 +32,9 @@ HANDOFF、已删除的专题Gate汇编或单方法预注册文档作为并行权
 固定反事实数据若仍在磁盘也只是历史资产，活动代码不再读取。正式四图600由`evaluate.sh`直接生成，
 不重复保存ScenarioSpec副本，也不维护任何文件哈希；当前仍存在的模型路径见§2。
 
-仓库：`/home/haowei/Documents/End2Race`
+仓库：`/home/haowei/Documents/End2Race_PPO`
 
-分支：`main`
+当前交接分支：`handoff/portable-state-20260820`（基于`main@d7f7c339`）
 
 提交和工作树状态必须在接手时实时查询，不能从本文件反推。`.agents/`已纳入Git版本管理；
 本轮一次性梯度诊断脚本、张量和评测复核产物在核心结果与重建合同写入文档后清理，不作为
@@ -58,6 +58,16 @@ near400、hard73、其他hard/near/noise/startpoint/single-agent或额外地图e
 K75在U20后中断并按用户决定清理；K100、去lateral-offset
 门、canonical-BC固定来源偏好和在线碰撞触发偏好均已完成正式评测但未形成新前沿，固定实例关闭。
 production U30已按当前合同补齐四图各600完整trace。**
+
+**2026-08-20 跨机器交接：**`origin`已实时核验为
+`https://github.com/HaoweiLi1/End2Race_PPO.git`，远端`main`与本地基线均为
+`d7f7c339`。交接分支保留canonical BC、production U30 actor、first-action preference U44
+首选候选actor，以及两条run的config/metrics/episodes/场景身份。本机现存的92个正式
+四图eval包已机械复核为各600 episode、600 trace、0 error，没有可根据事实标记为
+无效的包。Git只保留用于重算选择结论的轻量`results_multi.json`：BC、production U30、
+first-action preference U42--U45稳定性带、旧安全端U44和RW30直接对照。原始NPZ
+trace、critic、中间actor和其余eval产品仍是本机未跟踪档案，不属于GitHub可迁移集；
+克隆后可继续代码开发、部署与逐场景outcome复算，但不能离线重做trace级新分层。
 
 **当前范围冻结（用户2026-08-13明确决定）：从本节点开始不再提出、实现、登记或排队任何新的
 technical method。当前工作只允许整理现有代码、统一活动入口、核对既有证据和准备汇报。已经讨论但
@@ -588,6 +598,9 @@ collision cache和first-action preference历史资产。被删除的
 |---|---|
 | Canonical BC | `pretrained/end2race.pth` |
 | **production U30** | `post-trained/ppo_privilege_gru_clip020/update30/actor.pth` |
+
+上述两个actor与§2.3的first-action preference U44是2026-08-20交接分支中明确
+纳入Git的可迁移模型；其余历史checkpoint仍以本机未跟踪实验档案形式保留。
 
 完整U1--U45权重与训练记录已经迁入canonical根目录。迁移时验证了短训、45-update
 延长、structured-exploration control和current-code reproduction中的U30 actor等价；
