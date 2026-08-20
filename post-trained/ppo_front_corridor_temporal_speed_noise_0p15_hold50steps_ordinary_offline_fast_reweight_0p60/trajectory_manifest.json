@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "experiment_id": "ppo_front_corridor_temporal_speed_noise_0p15_hold50steps_ordinary_offline_fast_reweight_0p60",
+  "status": "rejected_but_retained",
+  "decision": "Not production: cross-map collision/overtake improved, but near400 collisions increased significantly at every evaluated late checkpoint.",
+  "training": {
+    "initial_actor": "pretrained/end2race.pth",
+    "seed": 42,
+    "formal_updates": 30,
+    "speed_exploration_mode": "corridor_temporal",
+    "speed_physical_std_mps": 0.15,
+    "temporal_hold_steps": 50,
+    "temporal_hold_seconds": 0.5,
+    "front_gap_m": 2.0,
+    "maximum_abs_opponent_lateral_d_m": 0.25,
+    "ordinary_offline_fast_fraction": 0.6,
+    "ordinary_sampling_shares": {
+      "same_line": 0.3333333333333333,
+      "offline_fast": 0.6,
+      "offline_slow": 0.0666666666666667
+    }
+  },
+  "canonical_checkpoints": {
+    "first_update": 1,
+    "last_update": 30,
+    "layout": "update<N>/{actor.pth,critic.pt}"
+  },
+  "source_runs": [
+    {
+      "path": "post-trained/ppo_corridor_offlinefast06_seed42_30u",
+      "formal_updates": 30,
+      "role": "canonical_complete_source"
+    }
+  ],
+  "artifact_policy": {
+    "checkpoint_files": "hard-linked from the complete source run",
+    "training_metadata": "retained at the canonical root",
+    "evaluation_root": "eval_results/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps_ordinary_offline_fast_reweight_0p60"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "mode": "fixed",
+  "cache_dir": "/home/haowei/Documents/End2Race/post-trained/collision-cache/pretrained_end2race_austin_collision_pool_479",
+  "candidate_count": 10800,
+  "collision_count": 479
+}

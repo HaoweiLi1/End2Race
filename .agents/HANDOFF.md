@@ -61,13 +61,14 @@ production U30已按当前合同补齐四图各600完整trace。**
 
 **2026-08-20 跨机器交接：**`origin`已实时核验为
 `https://github.com/HaoweiLi1/End2Race_PPO.git`，远端`main`与本地基线均为
-`d7f7c339`。交接分支保留canonical BC、production U30 actor、first-action preference U44
-首选候选actor，以及两条run的config/metrics/episodes/场景身份。本机现存的92个正式
+`d7f7c339`。交接分支保留§2登记的全部13个actor、六条保留run的
+config/metrics/episodes/场景身份，以及当前`train_ppo.py`默认必需的479条collision cache。
+本机现存的92个正式
 四图eval包已机械复核为各600 episode、600 trace、0 error，没有可根据事实标记为
-无效的包。Git只保留用于重算选择结论的轻量`results_multi.json`：BC、production U30、
-first-action preference U42--U45稳定性带、旧安全端U44和RW30直接对照。原始NPZ
-trace、critic、中间actor和其余eval产品仍是本机未跟踪档案，不属于GitHub可迁移集；
-克隆后可继续代码开发、部署与逐场景outcome复算，但不能离线重做trace级新分层。
+无效的包。Git保留全92个轻量`results_multi.json`；原始NPZ trace、critic、未登记
+中间actor和其余analysis产品不属于GitHub可迁移集。克隆后可继续代码开发、
+使用默认collision pool训练、部署全部登记actor与逐场景outcome复算，但不能
+离线重做trace级新分层。
 
 **当前范围冻结（用户2026-08-13明确决定）：从本节点开始不再提出、实现、登记或排队任何新的
 technical method。当前工作只允许整理现有代码、统一活动入口、核对既有证据和准备汇报。已经讨论但
@@ -599,8 +600,8 @@ collision cache和first-action preference历史资产。被删除的
 | Canonical BC | `pretrained/end2race.pth` |
 | **production U30** | `post-trained/ppo_privilege_gru_clip020/update30/actor.pth` |
 
-上述两个actor与§2.3的first-action preference U44是2026-08-20交接分支中明确
-纳入Git的可迁移模型；其余历史checkpoint仍以本机未跟踪实验档案形式保留。
+上述两个actor与§2.3登记的11个treatment actor均已纳入2026-08-20交接分支的
+Git可迁移集；未登记中间checkpoint不保留。
 
 完整U1--U45权重与训练记录已经迁入canonical根目录。迁移时验证了短训、45-update
 延长、structured-exploration control和current-code reproduction中的U30 actor等价；

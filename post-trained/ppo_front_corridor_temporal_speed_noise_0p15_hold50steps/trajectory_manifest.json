@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "experiment_id": "ppo_front_corridor_temporal_speed_noise_0p15_hold50steps",
+  "status": "rejected_but_retained",
+  "decision": "Not production: same-line collision reduction did not offset off-line and near-miss regressions.",
+  "training": {
+    "initial_actor": "pretrained/end2race.pth",
+    "seed": 42,
+    "formal_updates": 45,
+    "speed_exploration_mode": "corridor_temporal",
+    "speed_physical_std_mps": 0.15,
+    "temporal_hold_steps": 50,
+    "temporal_hold_seconds": 0.5,
+    "front_gap_m": 2.0,
+    "maximum_abs_opponent_lateral_d_m": 0.25,
+    "ordinary_offline_fast_fraction": null
+  },
+  "canonical_checkpoints": {
+    "first_update": 1,
+    "last_update": 45,
+    "layout": "update<N>/{actor.pth,critic.pt}"
+  },
+  "source_runs": [
+    {
+      "path": "post-trained/ppo_explore_corridor_temporal015_k50_seed42_30u",
+      "formal_updates": 30,
+      "role": "original_short_run"
+    },
+    {
+      "path": "post-trained/ppo_explore_corridor_temporal015_k50_seed42_45u",
+      "formal_updates": 45,
+      "role": "canonical_complete_source"
+    }
+  ],
+  "shared_prefix_validation": {
+    "updates": "1-30",
+    "actor_files_byte_equal": true,
+    "critic_files_byte_equal": true,
+    "interpretation": "The 45-update run is a fresh run whose first 30 updates exactly reproduce the 30-update run, so both belong to one canonical trajectory."
+  },
+  "artifact_policy": {
+    "checkpoint_files": "hard-linked from the complete source run",
+    "training_metadata": "retained at the canonical root",
+    "evaluation_root": "eval_results/ppo_front_corridor_temporal_speed_noise_0p15_hold50steps"
+  }
+}

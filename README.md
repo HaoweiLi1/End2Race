@@ -72,7 +72,7 @@ The repository keeps the models needed to continue development without publishin
 - current production U30: `post-trained/ppo_privilege_gru_clip020/update30/actor.pth`;
 - selected first-action-preference U44 candidate: `post-trained/ppo_corridor_temporal_first_action_preference_v1/update44/actor.pth`.
 
-The selected run configuration, metrics, episode records, scenario identities, and lightweight deterministic `results_multi.json` files are versioned with these actors. Raw numerical traces, critic checkpoints, intermediate actors, datasets, and superseded evaluation products remain excluded because they are large and are not required for deployment or result comparison. The decision record and evidence boundaries are in `.agents/HANDOFF.md` and `.agents/ANALYSIS.md`.
+All actors in the model registry in `.agents/HANDOFF.md` are versioned, including the selected checkpoint bands and direct comparison models. The six retained run families include their run configuration, metrics, episode records, and scenario identities. All 92 validated deterministic evaluation packages retain their lightweight `results_multi.json`; raw numerical traces, critic checkpoints, unregistered intermediate actors, datasets, and superseded analysis products remain excluded. The decision record and evidence boundaries are in `.agents/HANDOFF.md` and `.agents/ANALYSIS.md`.
 
 Run training commands from the repository root. On the primary development machine, the validated interpreter is:
 
@@ -246,7 +246,7 @@ The actor trains only its GRU and output head. BC pressure preprocessing, the sp
 
 Even logical environment slots use the collision role and odd slots use the ordinary role. Each role has one deterministic shuffled queue and visits every scenario in that role before reshuffling.
 
-The collision role is built by running the canonical BC actor over 10,800 generated candidates. The default checked-in cache currently contains 479 ego-collision scenarios, 10,285 other outcomes, and 36 invalid reset/classification cases. A missing or empty cache directory is classified and populated. A partial or configuration-mismatched cache fails closed; use a new empty `--collision_cache_dir` when rebuilding is required.
+The collision role was built by running the canonical BC actor over 10,800 generated candidates. The checked-in default cache at `post-trained/collision-cache/pretrained_end2race_austin_collision_pool_479/` contains 479 ego-collision scenarios, 10,285 other outcomes, and 36 invalid reset/classification cases. The current training entry point only loads the existing `collision_scenarios.json`; it does not classify or rebuild a missing cache.
 
 The cache currently keys the pretrained model by path rather than file hash. Do not overwrite a model at the same path and reuse an old cache; either use a new cache directory or reclassify.
 
